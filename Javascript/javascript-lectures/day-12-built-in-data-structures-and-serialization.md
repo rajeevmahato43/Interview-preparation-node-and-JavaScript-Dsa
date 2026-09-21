@@ -11,7 +11,7 @@
 By the end of this lecture, you should be able to:
 
 - Explain dense and sparse arrays and the meaning of `length`.
-- Choose array methods while understanding mutation and holes.
+- Choose array methods while understanding mutation and empty.
 - Avoid common number precision and sorting mistakes.
 - Compare objects, arrays, `Map`, and `Set` for lookup and uniqueness.
 - Explain important string and Unicode edge cases.
@@ -44,7 +44,7 @@ console.log(0 in values); // false
 console.log(values); // [ <3 empty items>, "fourth" ] in common Node output
 ```
 
-A hole is different from an element whose value is `undefined`.
+A Empty is different from an element whose value is `undefined`.
 
 ### 2. Mutation and iteration methods
 
@@ -141,7 +141,7 @@ console.log(text);
 
 ### Sparse arrays and callback methods
 
-Many array callback methods skip holes.
+Many array callback methods skip empty.
 
 ```js
 const sparse = [];
@@ -153,7 +153,7 @@ console.log(2 in mapped); // true
 console.log(mapped.length); // 3
 ```
 
-The result still has a hole at index 0. A `for...of` loop behaves differently because it reads each index position and produces `undefined` for a hole.
+The result still has a empty at index 0. A `for...of` loop behaves differently because it reads each index position and produces `undefined` for a empty.
 
 ```js
 for (const item of sparse) {
@@ -217,7 +217,7 @@ Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes,
 ## Common Mistakes and Interview Traps
 
 - Forgetting that default `sort()` compares strings.
-- Assuming a hole is the same as an explicit `undefined` element.
+- Assuming a empty is the same as an explicit `undefined` element.
 - Mixing `BigInt` and `number` in arithmetic.
 - Using `Number.isNaN` incorrectly with values that are not numbers.
 - Assuming `Map` object keys are compared by object contents instead of identity.
@@ -247,7 +247,7 @@ Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes,
 ## Summary
 
 - Arrays are objects with indexed properties and a `length` value.
-- Holes behave differently from explicit `undefined` values.
+- Empty behave differently from explicit `undefined` values.
 - Copy before mutating with methods such as `sort` when the original matters.
 - JavaScript numbers have precision limits; `BigInt` has separate arithmetic rules.
 - `Map` is for key-value lookup and `Set` is for uniqueness.
@@ -281,7 +281,7 @@ Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes,
    console.log(values.length, 0 in values, 2 in values);
    console.log(values.map((value) => value ?? "missing").length);
    ```
-   - Expected answer: `3 false true`, and the mapped result still has length 3 with holes preserved at skipped positions.
+   - Expected answer: `3 false true`, and the mapped result still has length 3 with empty preserved at skipped positions.
    - Follow-up: What would `Array.from(values, ...)` do differently?
 
 3. **Implementation:** Design a serializer for objects containing `BigInt`, `Date`, `Map`, and `Set`.

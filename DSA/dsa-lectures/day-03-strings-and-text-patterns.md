@@ -2,116 +2,155 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Recursion and Call Stack](day-04-recursion-and-call-stack.md)
+[← Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Day 04: Recursion and Call Stack →](day-04-recursion-and-call-stack.md)
 
 </nav>
 
-## Learning Outcomes
+---
 
-By the end of this lecture, you should be able to:
+## What You Will Learn Today
 
-- Explain what string immutability means in JavaScript and why it affects performance.
-- Avoid the hidden $O(n^2)$ cost of repeated string concatenation (`+=`) in loops.
-- Use character codes (`charCodeAt`) and the 26-element array trick for fast letter counting.
-- Solve **Valid Palindrome** using an in-place two-pointer scan.
-- Solve **Valid Anagram** using a character frequency count.
-- Understand how strings are stored in UTF-16 code units.
+- Why strings cannot be modified in place, and why that matters for performance.
+- How to avoid building strings inside loops the slow way.
+- How to use character codes to count letters without a Map.
+- How to check if a string is a palindrome and whether two strings are anagrams.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md)
-- Basic string methods (`slice`, `charAt`, `toLowerCase`).
+- [DSA Day 01 – Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
+- [DSA Day 02 – Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md)
+- **JavaScript strings:** [JS Day 03 – Values, Types, and Literals](../../Javascript/javascript-lectures/day-03-values-types-and-literals.md) and [JS Day 15 – Regular Expressions and Text Processing](../../Javascript/javascript-lectures/day-15-regular-expressions-and-text-processing.md)
 
 ---
 
-## Core Concepts
+## Quick Vocabulary
 
-### 1. Immutability: Strings Cannot Change
+| Word | Plain meaning |
+| :--- | :--- |
+| **Immutable** | Cannot be changed after it is created. |
+| **Allocate** | Reserve a new block of memory. |
+| **Character code** | The number that represents a letter internally. `'a'` is 97, `'b'` is 98, and so on. |
+| **Palindrome** | A string that reads the same forwards and backwards, e.g. `"racecar"`. |
+| **Anagram** | Two strings that use exactly the same letters the same number of times, e.g. `"eat"` and `"tea"`. |
+| **Two-pointer** | A technique that uses one index starting from the left and one from the right, moving toward the middle. |
 
-In JavaScript, strings are **immutable primitive values**. Once created, their characters cannot be modified in place:
+---
+
+## 1. Strings Cannot Be Changed In Place
+
+In JavaScript, a string is **immutable** — once created, its characters are fixed. You cannot swap one letter for another directly:
 
 ```js
-let str = "hello";
-str[0] = "j"; // Does nothing! In strict mode, it throws a TypeError.
-console.log(str); // Still "hello"
+let word = "hello";
+word[0] = "j"; // Does nothing in non-strict mode. Throws in strict mode.
+console.log(word); // "hello" — unchanged
 ```
 
-Every method that seems to modify a string (`toUpperCase()`, `slice()`, `replace()`) actually **allocates a brand new string** in memory.
+Every operation that appears to change a string — like `toUpperCase()`, `slice()`, or `replace()` — actually creates a **brand new string** in memory. The old one stays untouched.
 
-### 2. The Repeated Concatenation Trap
+---
 
-When you append characters in a loop using `+=`:
+## 2. The String-Building Trap — O(n²) Hidden in a Loop
+
+Because each `+=` creates a new string and copies all previous characters into it, building a string character by character in a loop is very slow.
+
 ```js
-// SLOW: O(n^2) Time and Memory!
+// SLOW — O(n²) time
 let result = "";
 for (let i = 0; i < n; i++) {
-  result += "a"; // Creates a new string each time, copying all previous characters!
+  result += chars[i]; // creates a new string every iteration, copying everything
 }
 ```
-Each step allocates a new string and copies all previous characters. For $n$ characters, total characters copied is $1 + 2 + \dots + n = O(n^2)$.
 
-#### The Fast Solution ($O(n)$):
-Use an array to accumulate characters, then join once at the end:
+For 10 000 characters: step 1 copies 1 character, step 2 copies 2, step 3 copies 3 … the total is roughly 50 million character copies.
+
+**The fix — collect into an array, join once at the end:**
+
 ```js
-const chars = [];
+// FAST — O(n) time
+const parts = [];
 for (let i = 0; i < n; i++) {
-  chars.push("a");
+  parts.push(chars[i]); // O(1) push
 }
-const result = chars.join(""); // O(n) single allocation
+const result = parts.join(""); // one allocation at the end
 ```
 
+> [!WARNING]
+> Any time you build a long string inside a loop, use an array + `.join("")`. This is a common interview and production pitfall.
+
 ---
 
-### 3. Character Codes and the 26-Bucket Trick
+## 3. Character Codes — A Fast Way to Count Letters
 
-Characters in JavaScript are stored as numbers:
-- `'a'` is $97$, `'b'` is $98$, ..., `'z'` is $122$
-- Formula: `str.charCodeAt(i) - 97` gives an index from $0$ to $25$.
+Every character has a number assigned to it. For lowercase English letters:
 
-```text
-Letter:    'a'   'b'   'c'  ...  'z'
-Index:      0     1     2   ...   25
-Array:    [ 0  ,  0  ,  0  , ... , 0 ]
+```
+'a' = 97,  'b' = 98,  'c' = 99, … 'z' = 122
 ```
 
-When an interview problem says *"lowercase English letters only"*, a simple 26-element array `new Array(26).fill(0)` is faster and cleaner than a `Map`!
-
----
-
-## Detailed Explanations
-
-### UTF-16 and Emojis
-
-JavaScript strings are made of 16-bit code units (UTF-16):
-- Regular letters and digits take 1 code unit: `"a".length === 1`.
-- Emojis and special symbols take 2 code units (a **surrogate pair**): `"🚀".length === 2`!
-
-If an interview problem might contain emojis or special Unicode symbols, use `for...of` or `Array.from(str)` to iterate over characters safely.
-
----
-
-## Examples and Traces
-
-### Example 1: Valid Palindrome (Two Pointers)
-
-#### Problem:
-Check if a string reads the same forwards and backwards, considering only alphanumeric characters and ignoring case.
-
-#### Approach:
-Use two pointers: `left` at the start, `right` at the end. Move them inward, skipping non-alphanumeric characters.
+To convert any letter to a slot in a 26-element array:
 ```js
+const index = str.charCodeAt(i) - 97;
+// 'a' → 0,  'b' → 1, … 'z' → 25
+```
+
+This gives you a frequency counter of fixed size O(1) space — faster and simpler than a Map when the problem says *"lowercase English letters only"*.
+
+```js
+// Count letter frequencies for "hello"
+const freq = new Array(26).fill(0);
+for (const ch of "hello") {
+  freq[ch.charCodeAt(0) - 97]++;
+}
+// freq[7]  = 1  (h)
+// freq[4]  = 1  (e)
+// freq[11] = 2  (l)
+// freq[14] = 1  (o)
+```
+
+---
+
+## 4. Unicode Note
+
+JavaScript strings store each character as a 16-bit number (UTF-16).
+
+- Normal letters and digits take **1 slot**: `"a".length === 1`.
+- Emojis and many international characters take **2 slots**: `"🚀".length === 2`.
+
+For most interview problems this does not matter. But if the problem could contain emojis, use `for...of` instead of index access — it reads full characters, not slots.
+
+> **Deep dive:** [JS Day 03 – Values, Types, and Literals](../../Javascript/javascript-lectures/day-03-values-types-and-literals.md) covers string encoding in detail.
+
+---
+
+## Worked Examples
+
+### Example 1 — Valid Palindrome (Two-Pointer)
+
+**Problem:** Check if a string reads the same forwards and backwards, ignoring non-letter, non-digit characters and case.
+
+```
+Input:  "A man, a plan, a canal: Panama"
+Output: true   (after removing non-alphanumeric characters and lowercasing → "amanaplanacanalpanama")
+```
+
+**Approach:** Place one pointer at the start (`left`) and one at the end (`right`). Skip any character that is not a letter or digit. Compare. Move both pointers inward. If any pair mismatches, return false.
+
+```js
+// JavaScript (Node.js / browser)
 function isPalindrome(s) {
   let left = 0;
   let right = s.length - 1;
 
   while (left < right) {
-    while (left < right && !isAlphaNumeric(s.charCodeAt(left))) left++;
-    while (left < right && !isAlphaNumeric(s.charCodeAt(right))) right--;
+    // Skip non-alphanumeric from the left
+    while (left < right && !isAlphaNum(s.charCodeAt(left))) left++;
+    // Skip non-alphanumeric from the right
+    while (left < right && !isAlphaNum(s.charCodeAt(right))) right--;
 
-    if (s[left].toLowerCase() !== s[right].toLowerCase()) {
-      return false;
-    }
+    if (s[left].toLowerCase() !== s[right].toLowerCase()) return false;
 
     left++;
     right--;
@@ -120,143 +159,239 @@ function isPalindrome(s) {
   return true;
 }
 
-function isAlphaNumeric(code) {
+function isAlphaNum(code) {
   return (
-    (code >= 48 && code <= 57) ||  // 0-9
-    (code >= 65 && code <= 90) ||  // A-Z
-    (code >= 97 && code <= 122)    // a-z
+    (code >= 48 && code <= 57)  || // '0'–'9'
+    (code >= 65 && code <= 90)  || // 'A'–'Z'
+    (code >= 97 && code <= 122)    // 'a'–'z'
   );
 }
 ```
-- **Complexity**: $O(n)$ time, $O(1)$ extra space (no new strings or arrays created).
+
+**Complexity:** O(n) time, O(1) space — no new strings or arrays are created.
 
 ---
 
-### Example 2: Valid Anagram
+### Example 2 — Valid Anagram (26-Bucket Frequency Count)
 
-#### Problem:
-Given two strings `s` and `t`, return `true` if `t` is an anagram of `s` (same characters with same counts).
+**Problem:** Given two strings `s` and `t`, return `true` if `t` is an anagram of `s`.
 
-#### Solution (26-Element Frequency Counter):
+```
+Input:  s = "anagram",  t = "nagaram"
+Output: true
+
+Input:  s = "rat",  t = "car"
+Output: false
+```
+
+**Approach:** Use a 26-element array as a counter. Add 1 for each character in `s`. Subtract 1 for each character in `t`. If all counts end up at zero, the strings are anagrams.
+
 ```js
+// JavaScript (Node.js / browser)
 function isAnagram(s, t) {
-  if (s.length !== t.length) return false;
+  if (s.length !== t.length) return false; // different lengths = definitely not anagram
 
   const counts = new Array(26).fill(0);
 
   for (let i = 0; i < s.length; i++) {
-    counts[s.charCodeAt(i) - 97]++;
-    counts[t.charCodeAt(i) - 97]--;
+    counts[s.charCodeAt(i) - 97]++; // add 1 for letter in s
+    counts[t.charCodeAt(i) - 97]--; // subtract 1 for letter in t
   }
 
-  // If anagrams, all counts should balance to 0
-  for (let i = 0; i < 26; i++) {
-    if (counts[i] !== 0) return false;
-  }
-
-  return true;
+  // If all counts are zero, every letter balanced out
+  return counts.every(c => c === 0);
 }
 ```
-- **Complexity**: $O(n)$ time, $O(1)$ space (the array size is always fixed at 26).
+
+**Complexity:** O(n) time, O(1) space (the array is always 26 elements regardless of input size).
 
 ---
 
-## Common Mistakes and Interview Traps
+## Common Mistakes
 
-1. **Reversing with `split('').reverse().join('')`**: While working for small strings, it creates two temporary arrays and a new string. A two-pointer scan uses $O(1)$ space.
-2. **Regex Replace Inside Loops**: Avoid calling `.replace(/[^a-z]/g, '')` repeatedly in a loop. Character code checks are much faster.
-3. **`replace` Only Replaces the First Match**: In JavaScript, `str.replace("a", "b")` only replaces the **first** `"a"`. Use `str.replaceAll("a", "b")` or `/a/g` for all occurrences.
+### 1. Using `replace` when you meant `replaceAll`
+
+```js
+"aabbcc".replace("b", "x");    // "axbcc"  — only the FIRST "b" is replaced
+"aabbcc".replaceAll("b", "x"); // "aaxxcc" — all "b"s replaced
+```
+
+When you need to replace every occurrence, use `replaceAll` or the regex global flag `/b/g`.
+
+### 2. Reversing a string with `split + reverse + join` in interviews
+
+```js
+const reversed = s.split("").reverse().join(""); // creates two temporary arrays
+```
+
+This works but uses O(n) extra memory. For palindrome checking, the two-pointer approach (Example 1 above) does it in O(1) space with no new allocations.
+
+### 3. Forgetting to normalise case before comparing characters
+
+```js
+// Bug: 'A' (65) !== 'a' (97) even though they are the same letter
+if (s[left] !== s[right]) return false; // fails for mixed-case input
+
+// Fix: normalise first
+if (s[left].toLowerCase() !== s[right].toLowerCase()) return false;
+```
 
 ---
 
 ## Tricky Points
 
-- **`substring` vs `slice`**: Prefer `str.slice(start, end)`. `slice` supports negative indices (e.g. `str.slice(-2)` gives the last two characters).
-- **String Memory Retention (Sliced Strings)**: In V8, `str.slice(0, 5)` on a 20 MB string can sometimes retain a pointer to the entire 20 MB parent string in memory until flattened.
+- **`slice` vs `substring`:** Prefer `str.slice(start, end)`. `slice` supports negative indices (`str.slice(-3)` = last 3 characters). `substring` treats negative indices as 0.
+- **V8 string slicing:** In V8 (the JavaScript engine in Node.js), `str.slice(0, 5)` on a very large string may keep a hidden reference to the full parent string in memory. If you need to release memory, copy with `String(str.slice(0, 5))`.
 
 ---
 
 ## Practical Exercise
 
-Write a function `firstUniqChar(s)` that returns the index of the first non-repeating character in a lowercase English string. If none exists, return `-1`.
-- *Hint*: Make one pass to count frequencies, and a second pass to find the first character with a count of 1.
+Write `firstUniqueChar(s)` that returns the index of the first character that appears only once in lowercase string `s`. Return `-1` if none exists.
+
+**Example:**
+```
+Input:  "leetcode"
+Output: 0   ('l' appears once)
+
+Input:  "aabb"
+Output: -1  (no unique character)
+```
+
+**Constraints:**
+- Must run in O(n) time.
+- Use the 26-bucket array approach, not a Map.
+- Two passes: one to count, one to find the first count-of-1.
 
 ---
 
 ## Summary
 
-- JavaScript strings are **immutable**; modifying a string creates a new allocation.
-- Avoid building large strings with `+=` inside loops; use an array with `.join("")`.
-- For lowercase English strings, use a **26-bucket array** for $O(1)$ space frequency counts.
-- **Two Pointers** allow checking palindromes in $O(n)$ time with $O(1)$ space.
+- Strings are **immutable** — every modification creates a new string in memory.
+- Never build a long string with `+=` inside a loop — use an array and `.join("")` for O(n) performance.
+- When the problem says "lowercase English letters only", a **26-element array** (`new Array(26).fill(0)`) is faster than a Map and uses O(1) space.
+- The **two-pointer** technique checks palindromes in O(n) time with O(1) space — no new string created.
+- Always normalise case before comparing characters; `'A' !== 'a'` in character code comparisons.
 
 ---
 
 ## Cheat Sheet
 
-### Fast Character Codes
-- `'0'` = 48, `'9'` = 57
-- `'A'` = 65, `'Z'` = 90
-- `'a'` = 97, `'z'` = 122
-- Lowercase bucket formula: `code - 97`
+### Character Code Reference
+| Range | Codes |
+| :--- | :--- |
+| `'0'` – `'9'` | 48 – 57 |
+| `'A'` – `'Z'` | 65 – 90 |
+| `'a'` – `'z'` | 97 – 122 |
 
-### String Complexities
-- Access by index: `s[i]` $\to O(1)$
-- Substring: `s.slice(i, j)` $\to O(k)$ where $k$ is slice length
-- Join array: `arr.join("")` $\to O(n)$
+Lowercase bucket index: `str.charCodeAt(i) - 97`
+
+### String Operation Complexity
+| Operation | Time | Notes |
+| :--- | :--- | :--- |
+| `s[i]` index read | O(1) | |
+| `s.slice(i, j)` | O(k) | k = slice length |
+| `s += x` in loop | O(n²) total | Use array + join instead |
+| `arr.join("")` | O(n) | One allocation |
+| `s.charCodeAt(i)` | O(1) | |
+
+### Pattern: 26-Bucket Counter
+```js
+const freq = new Array(26).fill(0);
+for (const ch of str) freq[ch.charCodeAt(0) - 97]++;
+// freq[0] = count of 'a', freq[1] = count of 'b', …
+```
 
 ---
 
 ## Interview Questions
 
-### 1. Deep Definitions and Mental Models
+### 1. Concept Check
 
-**Question:** What does it mean that JavaScript strings are immutable? How does this affect memory when modifying a string?
-- **Expected answer shape:** Immutability means string values cannot be modified in place after creation. Any method or concatenation creates a new string in memory and copies characters. Changing one character in a string of length $n$ takes $O(n)$ time and memory.
+**Question:** What does string immutability mean, and why does it make `+=` in a loop slow?
 
-### 2. Predict the Output and Trace Execution
+**Expected answer:** Immutable means the string's characters cannot be changed in place. Each `+=` allocates a fresh string and copies all previous characters into it. For n iterations, the total copy work is 1 + 2 + … + n = O(n²). Fix by pushing to an array and calling `.join("")` once at the end.
 
-**Question:** What does this code output, and why?
+---
+
+### 2. Predict the Output
+
+**Question:** What does this output and why?
 ```js
-const s = "cat";
-s[0] = "b";
+const s = "hello";
+s[0] = "j";
 console.log(s);
-console.log("hello".replace("l", "r"));
+console.log("ball".replace("l", "r"));
 ```
-- **Expected answer shape:** First line logs `"cat"` because strings are immutable; index assignment fails silently in non-strict mode. Second line logs `"herlo"` because `.replace()` without a global regex replaces only the first occurrence.
 
-### 3. Implementation Exercise
+**Expected answer:** First line prints `"hello"` — strings are immutable, so index assignment is silently ignored. Second line prints `"balr"` — `.replace` without a global flag replaces only the first match.
 
-**Question:** Implement `isSubsequence(s, t)` returning `true` if `s` is a subsequence of `t`. Must run in $O(t.\text{length})$ time and $O(1)$ space.
-- **Expected answer shape:**
+---
+
+### 3. Implement It
+
+**Question:** Implement `isSubsequence(s, t)` returning `true` if every character of `s` appears in `t` in the same order (not necessarily adjacent). Must run in O(n) time where n is the length of `t`.
+
+**Expected answer:**
 ```js
 function isSubsequence(s, t) {
-  let pS = 0, pT = 0;
-  while (pS < s.length && pT < t.length) {
-    if (s[pS] === t[pT]) pS++;
-    pT++;
+  let sIndex = 0;
+  let tIndex = 0;
+
+  while (sIndex < s.length && tIndex < t.length) {
+    if (s[sIndex] === t[tIndex]) sIndex++; // matched a character — advance in s
+    tIndex++; // always advance in t
   }
-  return pS === s.length;
+
+  return sIndex === s.length; // did we match all of s?
 }
+
+// isSubsequence("ace", "abcde") → true
+// isSubsequence("aec", "abcde") → false
 ```
 
-### 4. Debugging and Failure Analysis
+---
 
-**Question:** A backend function creates a 50,000-character CSV string using `csv += line + "\n"` in a loop and times out. How do you fix it?
-- **Expected answer shape:** `csv += ...` is $O(n^2)$ due to repeated string copying. Fix by pushing lines into an array: `const lines = []; lines.push(line);` and finishing with `return lines.join("\n");`, which takes $O(n)$ linear time.
+### 4. Debug a Bug
 
-### 5. Design and Tradeoff Questions
+**Question:** A function builds a 50 000-line CSV using `csv += line + "\n"` in a loop and times out. Why and how do you fix it?
 
-**Question:** When checking if two strings are anagrams, compare using a 26-element array vs a `Map` vs sorting both strings.
-- **Expected answer shape:** (1) 26-element array: fastest, $O(n)$ time, $O(1)$ space, but only works for known alphabets like lowercase English. (2) `Map`: $O(n)$ time, $O(u)$ space, works for any Unicode characters. (3) Sorting: `s.split('').sort().join('')` is simple to write, but takes $O(n \log n)$ time and allocates arrays.
+**Expected answer:** Each `+=` allocates a new string and copies all previous content. For 50 000 lines the total character copies grow as O(n²) — millions of unnecessary operations. Fix:
+```js
+const lines = [];
+for (const row of data) lines.push(formatRow(row));
+return lines.join("\n"); // O(n) — one allocation
+```
 
-### 6. Senior Follow-ups: Node.js Runtime
+---
 
-**Question:** You need to process a 5 GB text file on a Node.js server with 1 GB of RAM. Why does `fs.readFileSync` fail, and how do you solve it?
-- **Expected answer shape:** `fs.readFileSync` tries to load all 5 GB into memory at once, exceeding the V8 heap limit (~1.4 GB) and crashing the process. Solution: Use `fs.createReadStream()` with the `readline` module to process the file line-by-line as a stream in $O(1)$ bounded memory.
+### 5. Anagram Trade-offs
+
+**Question:** Compare three approaches for checking if two strings are anagrams: sort both, use a Map, use a 26-element array.
+
+**Expected answer:**
+| Approach | Time | Space | Constraint |
+| :--- | :--- | :--- | :--- |
+| Sort both strings | O(n log n) | O(n) for copies | Works for any characters |
+| Map | O(n) | O(u) — u unique chars | Works for any characters |
+| 26-element array | O(n) | O(1) | Lowercase English only |
+
+Use the array when the problem guarantees lowercase English — it is the fastest and uses constant space.
+
+---
+
+### 6. Senior Follow-up — Node.js
+
+**Question:** You need to process a 5 GB text file on a Node.js server with 1 GB of RAM. What goes wrong with `fs.readFileSync` and how do you solve it?
+
+**Expected answer:** `fs.readFileSync` loads the entire 5 GB into memory at once. Node.js (V8) has a default heap limit of about 1.5 GB, so this crashes the process with an out-of-memory error.
+
+Fix: read the file as a stream using `fs.createReadStream()` paired with the `readline` module to process one line at a time. Memory stays bounded at O(1) regardless of file size.
+
+---
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Recursion and Call Stack](day-04-recursion-and-call-stack.md)
+[← Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Day 04: Recursion and Call Stack →](day-04-recursion-and-call-stack.md)
 
 </nav>
