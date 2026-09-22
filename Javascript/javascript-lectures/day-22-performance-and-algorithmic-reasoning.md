@@ -75,6 +75,21 @@ Compare both versions using a focused correctness test and a large bounded input
 
 JavaScript computation runs on the event-loop execution path unless moved to another Node mechanism. An $O(n^2)$ request operation or a huge synchronous copy can delay unrelated requests. Algorithm choice, allocation volume, and input limits are latency and availability decisions.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Time complexity O(n) | Space complexity O(n) | Time: how execution steps grow with input size. Space: how memory usage grows. A solution can have O(n) time but O(1) space (streaming) or O(1) time but O(n) space (pre-built lookup). |
+| Array linear scan O(n) | Map lookup O(1) expected | Scanning an array for a key each time is O(n). Building a `Map` once and looking up is O(1) expected per lookup. If there are many lookups, the map wins despite upfront O(n) build cost. |
+| Recursive solution | Iterative solution | Recursion is often clearer. But each recursive call adds a stack frame; deep recursion causes `RangeError: Maximum call stack size exceeded`. Iterative with an explicit stack handles unbounded depth. |
+| Generator / lazy | Eager array | Eager: compute all values first, then process. Lazy: compute one value at a time on demand. Lazy is memory-efficient for large/infinite sequences; eager is simpler and sometimes faster for small inputs. |
+| Mutation in place | Copy and transform | Mutation is faster (no allocation). Copying is safer for callers who expect the original unchanged. In interview questions, always state which approach you're using and why. |
+| Input validation | Complexity analysis | Both matter in production. A valid O(log n) algorithm on uncapped input is O(adversarial). Always pair complexity with an input-size bound. |
+
+> **Cross-day links:** Data structures (`Map`, `Set`, array) are in [Day 12](day-12-built-in-data-structures-and-serialization.md). Memory and GC implications of large data structures are in [Day 21](day-21-memory-reachability-and-garbage-collection.md). Generators for lazy evaluation are in [Day 14](day-14-iterables-iterators-generators-and-symbols.md).
+
 ## Common Mistakes and Interview Traps
 
 - Calling every `Map` operation universally $O(1)$.
@@ -120,6 +135,8 @@ Use complexity to expose growth, then account for allocation, mutation, input va
 
 ## Interview Questions
 
-1. **Hard - Analysis:** Compare scan-per-query with an indexed `Map` solution, including construction cost and memory.
-2. **Hard - Debugging:** A recursive parser fails only on large input. Explain why and propose an iterative design.
-3. **Very Hard - Design:** Choose data structures for a high-throughput Node request path under a memory budget and an adversarial input limit.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Analysis:** Compare scan-per-query with an indexed `Map` solution, including construction cost and memory.
+2. **[Senior] Debugging:** A recursive parser fails only on large input. Explain why and propose an iterative design.
+3. **[Senior] Design:** Choose data structures for a high-throughput Node request path under a memory budget and an adversarial input limit.

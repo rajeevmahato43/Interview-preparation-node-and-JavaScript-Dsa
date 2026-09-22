@@ -1,4 +1,4 @@
-﻿# Day 11: Property Descriptors, Enumerability, and Immutability
+# Day 11: Property Descriptors, Enumerability, and Immutability
 
 <nav aria-label="Lecture navigation">
 
@@ -210,6 +210,22 @@ The top-level object is frozen and the nested headers object is copied. This is 
 
 Configuration and shared service state need explicit ownership because freezing is shallow and does not freeze collection contents.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `const` binding | `Object.freeze` | `const` prevents the variable from pointing to a new object. `freeze` prevents the object's **own properties** from being changed. They are independent. |
+| `Object.freeze` | Deep freeze | `Object.freeze` is **shallow** — it freezes only the object itself, not nested objects. `nested.property` can still change. |
+| `preventExtensions` | `seal` | `preventExtensions`: no new properties added. `seal`: no new properties AND no deleting or reconfiguring existing ones. Both still allow changing writable values. |
+| `seal` | `freeze` | `seal` = no adding/deleting. `freeze` = seal + no value changes. `freeze` is the strongest of the three. |
+| `enumerable: false` | Private / inaccessible | Non-enumerable is **not** private. `Object.getOwnPropertyDescriptor` and direct access still work. It just hides from `Object.keys`, `for...in`, and spread. |
+| `writable: false` | `configurable: false` | `writable` controls assignment. `configurable` controls deletion and redefinition. A property can be writable but not configurable, or vice versa. |
+| Descriptor defaults (literal) | Descriptor defaults (defineProperty) | Properties created via `{ key: value }` get `writable/enumerable/configurable = true`. Properties created via `Object.defineProperty` with omitted attrs get **false** for each omitted one. |
+
+> **Cross-day links:** `const` binding vs mutation is in [Day 02](day-02-variables-scope-and-hoisting.md). `Object.create` and object structures are in [Day 09](day-09-objects-and-property-access.md). Prototype chain effects on property lookup are in [Day 10](day-10-prototypes-classes-and-inheritance.md).
+
 ## Common Mistakes and Interview Traps
 
 - Assuming `Object.freeze` recursively freezes nested objects.
@@ -262,13 +278,31 @@ Configuration and shared service state need explicit ownership because freezing 
 | `Object.getOwnPropertyNames` | Own string keys, including non-enumerable |
 | `Object.getOwnPropertySymbols` | Own symbol keys |
 
+**vs. quick reference**
+
+| | `preventExtensions` | `seal` | `freeze` |
+|---|---|---|---|
+| No new properties | ✓ | ✓ | ✓ |
+| No deletion | ✗ | ✓ | ✓ |
+| No reconfiguration | ✗ | ✓ | ✓ |
+| No value change | ✗ | ✗ | ✓ |
+| Nested objects affected | ✗ | ✗ | ✗ |
+
+| Descriptor attribute | Default via `{}` literal | Default via `defineProperty` (if omitted) |
+|---|---|---|
+| `writable` | `true` | `false` |
+| `enumerable` | `true` | `false` |
+| `configurable` | `true` | `false` |
+
 ## Interview Questions
 
-1. **Definition:** Compare `writable`, `enumerable`, and `configurable` using one property descriptor.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Definition:** Compare `writable`, `enumerable`, and `configurable` using one property descriptor.
    - Expected answer: Define each attribute and explain assignment, enumeration, deletion, and redefinition separately.
    - Follow-up: Which attributes are created as `false` by `defineProperty` when omitted?
 
-2. **Trace:** What happens here in strict mode?
+2. **[Mid] Trace:** What happens here in strict mode?
 
    ```js
    "use strict";
@@ -280,15 +314,15 @@ Configuration and shared service state need explicit ownership because freezing 
    - Expected answer: Nested mutation succeeds because the nested object is not frozen; adding `extra` throws.
    - Follow-up: What changes after freezing `value.nested` too?
 
-3. **Implementation:** Design a deep-freeze helper for plain objects that handles cycles.
+3. **[Senior] Implementation:** Design a deep-freeze helper for plain objects that handles cycles.
    - Expected answer: State supported value types, use a visited set, explain arrays and descriptors, and identify cases not covered.
    - Follow-up: Why might deep freezing be the wrong production default?
 
-4. **Debugging:** A library breaks after the application freezes a shared `Map`. Explain why freezing did not prevent `.set` and why the library might still fail after a different freeze strategy.
+4. **[Mid] Debugging:** A library breaks after the application freezes a shared `Map`. Explain why freezing did not prevent `.set` and why the library might still fail after a different freeze strategy.
    - Expected answer: Internal collection state is not ordinary enumerable properties; discuss ownership and API contracts.
    - Follow-up: Would copying the map solve the ownership problem?
 
-5. **Design:** Choose between mutable state, shallow copies, deep copies, and persistent data structures for a high-throughput Node request pipeline.
+5. **[Senior] Design:** Choose between mutable state, shallow copies, deep copies, and persistent data structures for a high-throughput Node request pipeline.
    - Expected answer: Compare allocation cost, aliasing risk, payload size, concurrency, observability, and workload assumptions.
    - Follow-up: Which measurements would validate the decision?
 

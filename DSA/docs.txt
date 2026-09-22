@@ -1,0 +1,159 @@
+Big O:-
+it is a way to formalize fuzzy counting; It show worts case 
+
+It allow us to talk about how the runtime of algorithm grow as input grow;
+
+O(f(n)) is number of simple operation that computer has to do eventually less then a constant time  f(n), as n increase
+
+f(n) could be linear  f(n)=n
+f(n) could be quadratic  f(n)=n2
+f(n) could be constant  f(n)=1
+f(n) could be something different
+
+
+Example
+function addUpTo(n) {                    // Always 3 operations
+  return n * (n + 1) / 2;               //  O(1)
+}
+
+function addUpTo(n) {
+  let total = 0;
+  for (let i = 1; i <= n; i++) {            // Number of operations is (eventually) bounded by a multiple of n (say, 10n)
+    total += i;                             // O(n)
+  }
+  return total;
+}
+
+
+function countUpAndDown(n) {
+  console.log("Going up!");               //  
+  for (let i = 0; i < n; i++) {          //  O(n)  
+    console.log(i);                     //
+  }
+  console.log("At the top!\nGoing down...");
+  for (let j = n - 1; j >= 0; j--) {         //                               // Number of operations is (eventually) bounded by a multiple of n (say, 10n)
+    console.log(j);//                        // O(n)
+  }                                         //
+  console.log("Back down. Bye!");
+}
+
+
+
+
+Simplifying Big O Expressions
+When determining the time complexity of an algorithm, there are some helpful rule of thumbs for big O expressions.
+
+These rules of thumb are consequences of the definition of big O notation.
+
+1. Constants Don't Matter
+O(2n)       O(n) 
+
+O(500)      O(1)
+O(13n^2  )  O(n2)
+
+2. Smaller Terms Don't Matter
+O(n + 10)       O(n)
+
+O(1000n + 50)   O(n)
+
+
+Arithmetic operations are constant
+Variable assignment is constant
+Accessing elements in an array (by index) or object (by key) is constant
+In a loop, the the complexity is the length of the loop times the complexity of whatever happens inside of the loop
+
+
+
+
+Big O of Objects
+Insertion -   O(1)
+Removal -   O(1)
+Searching -   O(N)
+Access -   O(1)
+
+When you don't need any ordering, objects are an excellent choice!
+
+
+Big O of Object Methods
+Object.keys -   O(N)
+Object.values -   O(N)
+Object.entries -   O(N)
+hasOwnProperty -   O(1)
+
+
+Big O of Arrays
+Insertion -   It depends....
+Removal -   It depends....
+Searching -   O(N)
+Access -   O(1)
+
+Big O of Array Operations
+push -   O(1)
+pop -   O(1)
+shift -   O(N)
+unshift -   O(N)
+concat -   O(N)
+slice -   O(N)
+splice -   O(N)
+sort -   O(N * log N)
+forEach/map/filter/reduce/etc. -   O(N)
+
+Limitations of Arrays
+Inserting at the beginning is not as easy as we might think! There are more efficient data structures for that!
+
+
+PROBLEM SOLVING
+  Understand the Problem
+  Explore Concrete Examples
+  Break It Down
+  Solve/Simplify
+  Look Back and Refactor
+
+
+UNDERSTAND THE PROBLEM
+  Can I restate the problem in my own words?
+  What are the inputs that go into the problem?
+  What are the outputs that should come from the solution to the problem?
+  Can the outputs be determined from the inputs? In other words, do I have enough information to solve the problem? (You may not be able to answer this question until you set about solving the problem. That's okay; it's still worth considering the question at this early stage.)
+  How should I label the important pieces of data that are a part of the problem?
+
+
+EXPLORE EXAMPLES
+  Start with Simple Examples
+  Progress to More Complex Examples
+  Explore Examples with Empty Inputs
+  Explore Examples with Invalid Inputs
+
+HOW DO YOU IMPROVE?
+  1. Devise a plan for solving problems
+  2. Master common problem solving patterns
+
+
+########## SOME PATTERNS...#########################
+1. Frequency Counter
+2. Multiple Pointers
+3. Sliding Window
+4. Divide and Conquer
+5. Dynamic Programming
+6. Greedy Algorithms
+7. Backtracking
+8. Many more!
+
+
+
+FREQUENCY COUNTERS
+  This pattern uses objects or sets to collect values/frequencies of values
+  This can often avoid the need for nested loops or O(N^2) operations with arrays / strings
+
+MULTIPLE POINTERS
+  Creating pointers or values that correspond to an index or position and move towards the beginning, end or middle based on a certain condition
+  Very efficient for solving problems with minimal space complexity as well
+
+SLIDING WINDOW
+  This pattern involves creating a window which can either be an array or number from one position to another
+  Depending on a certain condition, the window either increases or closes (and a new window is created)
+  Very useful for keeping track of a subset of data in an array/string etc.
+
+Divide and Conquer
+  This pattern involves dividing a data set into smaller chunks and then repeating a process with a subset of data.
+  This pattern can tremendously decrease time complexity

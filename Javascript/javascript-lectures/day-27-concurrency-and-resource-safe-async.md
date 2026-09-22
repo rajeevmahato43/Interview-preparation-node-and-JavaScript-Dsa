@@ -80,6 +80,21 @@ console.log(output.failures.length); // 0
 
 Node APIs may accept `AbortSignal`, but support is API-specific. Timers, sockets, filesystem operations, and database clients have different cancellation contracts. Keep the coordinator language-level and pass signals to host adapters explicitly.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Timeout (race) | AbortSignal (cancellation) | `Promise.race` with a timer rejects the outer call after the deadline, but the underlying operation still runs. `AbortSignal` is a cooperative contract that tells the operation to stop — only works if the API supports it. |
+| Concurrency limit | Serial execution | Serial: one task at a time, unlimited delay. Concurrency limit: N tasks simultaneously. Limits prevent resource exhaustion (DB connections, file handles, memory) without serializing unnecessarily. |
+| Idempotent operation | Non-idempotent operation | Idempotent: calling it twice gives the same result as once. Non-idempotent: second call has a different effect (charge a card twice). Only retry idempotent operations automatically. |
+| `Promise.all` | Bounded worker pool | `Promise.all` starts all N operations immediately. A worker pool starts at most N at a time and queues the rest. Use a pool when N is unknown or could exhaust resources. |
+| Cooperative cancellation | Forced cancellation | JavaScript has no preemptive cancellation. All cancellation is cooperative: the operation must check the signal and stop. Async functions running synchronous CPU work cannot be interrupted mid-execution. |
+| Retry with backoff | Immediate retry | Immediate retry floods the failing resource. Exponential backoff with jitter spreads load and gives the service time to recover. Always add a maximum retry count and a deadline. |
+
+> **Cross-day links:** Promise combinators (`all`, `race`, `allSettled`, `any`) are in [Day 18](day-18-promises-and-composition.md). Abort signals and `async/await` cleanup are in [Day 19](day-19-async-await-errors-and-cleanup.md). Microtask scheduling is in [Day 20](day-20-jobs-microtasks-and-scheduling.md).
+
 ## Common Mistakes and Interview Traps
 
 - Treating `Promise.all` rejection as cancellation.
@@ -123,6 +138,8 @@ Bounded concurrency is a contract around work admission, result ordering, failur
 
 ## Interview Questions
 
-1. **Hard - Implementation:** Implement ordered bounded concurrency with a positive limit and failure policy.
-2. **Hard - Debugging:** Explain why a timed-out operation still writes to a dependency.
-3. **Very Hard - Design:** Design retries and cancellation for mixed idempotent and non-idempotent tasks.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Senior] Implementation:** Implement ordered bounded concurrency with a positive limit and failure policy.
+2. **[Senior] Debugging:** Explain why a timed-out operation still writes to a dependency.
+3. **[Senior] Design:** Design retries and cancellation for mixed idempotent and non-idempotent tasks.

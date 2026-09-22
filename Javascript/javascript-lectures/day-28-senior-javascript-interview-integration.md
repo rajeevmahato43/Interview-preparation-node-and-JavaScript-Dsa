@@ -58,6 +58,28 @@ Observable contract: invalid numeric input rejects; rejected persistence propaga
 
 This final review prepares the learner for the separate Node curriculum. Node supplies loaders, timers, I/O, diagnostics, and process behavior; JavaScript supplies values, functions, objects, promises, scheduling jobs, and ownership patterns that determine how those APIs are used.
 
+---
+
+## Compare & Recall — Master Reference
+
+This day is an integration review. Use the **Compare & Recall** sections in each earlier lecture to recall the key distinctions. Below is a quick reminder of the highest-value comparisons for senior interviews:
+
+| Topic area | Key pair to recall |
+|---|---|
+| Variables | `const` vs. `let` vs. `var` — scope, hoisting, and TDZ (Day 02) |
+| Types | `==` vs. `===` — coercion rules and when each is safe (Day 04) |
+| Objects | `in` vs. `Object.hasOwn` — prototype chain vs. own property (Day 09) |
+| Classes | Inheritance vs. composition — when each is appropriate (Day 10) |
+| Immutability | `Object.freeze` vs. `const` — shallow vs. binding-level (Day 11) |
+| Data structures | `Map` vs. plain object — key types, size, and prototype risk (Day 12) |
+| Async | Sequential `await` vs. parallel start + `await` (Day 19) |
+| Scheduling | Microtask vs. macrotask — ordering and starvation (Day 20) |
+| Security | Allowlist vs. blocklist validation (Day 25) |
+| Architecture | Pure function vs. side-effectful orchestration (Day 26) |
+| Concurrency | Timeout race vs. AbortSignal cancellation (Day 27) |
+
+> **All cross-day links live in the individual day's Compare & Recall section.** Use this day to rehearse the integrations, not to relearn individual concepts.
+
 ## Common Mistakes and Interview Traps
 
 - Optimizing before identifying the contract and workload.
@@ -100,6 +122,8 @@ Senior JavaScript mastery is the ability to connect language behavior to backend
 
 ## Interview Questions
 
-1. **Hard - Trace:** Review a service that mixes mutation, promise chains, and a timer. Identify the first incorrect observable behavior.
-2. **Very Hard - Design:** Design a reliable JavaScript service boundary with validation, injected dependencies, bounded concurrency, cancellation, retries, and safe errors.
-3. **Very Hard - Review:** Give prioritized findings for correctness, security, memory, performance, and maintainability, including tests that would prove each fix.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Senior] Trace:** Review a service that mixes mutation, promise chains, and a timer. Identify the first incorrect observable behavior.
+2. **[Senior] Design:** Design a reliable JavaScript service boundary with validation, injected dependencies, bounded concurrency, cancellation, retries, and safe errors.
+3. **[Senior] Review:** Give prioritized findings for correctness, security, memory, performance, and maintainability, including tests that would prove each fix.

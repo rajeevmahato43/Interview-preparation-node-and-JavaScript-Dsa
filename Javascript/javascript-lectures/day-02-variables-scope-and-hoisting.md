@@ -1,4 +1,4 @@
-﻿# Day 02: Variables, Declarations, and Scope Foundations
+# Day 02: Variables, Declarations, and Scope Foundations
 
 <nav aria-label="Lecture navigation">
 
@@ -923,6 +923,24 @@ The duplicate lexical declaration is rejected before normal execution. This is d
 
 Node module boundaries make declaration scope and shared mutable state directly relevant to request handlers and configuration.
 
+---
+
+## Compare & Recall
+
+This table is a quick cheat for the most commonly confused pairs. Full explanations are in the sections above.
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `var` | `let` / `const` | `var` is function-scoped and silently available before its line (as `undefined`); `let`/`const` are block-scoped and throw if read before their line (TDZ). |
+| `let` | `const` | Both are block-scoped. `let` allows reassignment; `const` does not. |
+| `const` | Deep immutability | `const` prevents the binding from pointing to a new value. It does **not** freeze the object the binding points to. Use `Object.freeze()` (shallow) for that — covered in [Day 11](day-11-property-descriptors-and-immutability.md). |
+| Hoisting | Source rewriting | JavaScript doesn't move your code. "Hoisting" means bindings are created before execution starts — but `let`/`const` stay uninitialised until their line runs (TDZ). |
+| Shadowing | Reassignment | Shadowing creates a **new** inner binding with the same name. Reassignment changes the value stored in an **existing** binding. |
+| TDZ (Temporal Dead Zone) | `undefined` | `var` gives you `undefined` before its line. `let`/`const` throw a `ReferenceError` before their line — a very different outcome. |
+| Function scope | Block scope | `var` leaks out of `if` blocks and loops into the surrounding function. `let`/`const` stay inside the block. |
+
+> **Cross-day links:** Object mutation vs binding immutability is deepened in [Day 11](day-11-property-descriptors-and-immutability.md). Closures that capture variables are covered in [Day 08](day-08-closures-execution-context-and-this.md). Module scope and `import`/`export` are in [Day 17](day-17-modules-and-interoperability.md).
+
 ## Common Mistakes and Interview Traps
 
 1. **Saying `let` and `const` are not hoisted.** Their bindings are created during setup, but they remain uninitialized in the TDZ until execution reaches the declaration.
@@ -1184,6 +1202,22 @@ In Node.js applications, scope affects whether state is request-specific, module
 | Module scope | Top-level bindings local to one ECMAScript module |
 | Node module scope | Top-level local declarations are module-local according to Node's module system |
 
+**vs. quick reference**
+
+| | `var` | `let` | `const` |
+|---|---|---|---|
+| Scope | Function | Block | Block |
+| Before its line | `undefined` | ReferenceError (TDZ) | ReferenceError (TDZ) |
+| Reassignable | ✓ Yes | ✓ Yes | ✗ No |
+| Initializer required | ✗ No | ✗ No | ✓ Yes |
+| Can redeclare | Usually yes | ✗ No | ✗ No |
+
+| Term | Plain-English meaning |
+|---|---|
+| TDZ | "The binding exists but hasn't been given a value yet — don't touch it." |
+| Shadowing | "I'm making a new variable with the same name in a smaller box." |
+| Hoisting | "The name is registered before any code runs, but `let`/`const` stay locked until their line." |
+
 For a variable question, ask:
 
 1. What declaration kind is being used?
@@ -1197,23 +1231,25 @@ For a variable question, ask:
 
 ## Interview Questions
 
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
 ### 1. Deep Definitions and Mental Models
 
-**Declaration vocabulary:** Explain declaration, initialization, assignment, and reassignment using one short example. Follow-up: Why does this vocabulary matter when explaining `const`?
+**[Beginner] Declaration vocabulary:** Explain declaration, initialization, assignment, and reassignment using one short example. Follow-up: Why does this vocabulary matter when explaining `const`?
 
 **Expected answer shape:** Define all four terms, show the order in a small snippet, and explain that `const` allows initialization but not reassignment.
 
-**Scope lookup:** Explain how JavaScript resolves a name when it is used inside a nested block. Follow-up: What is the difference between lexical scope and a caller-dependent lookup rule?
+**[Mid] Scope lookup:** Explain how JavaScript resolves a name when it is used inside a nested block. Follow-up: What is the difference between lexical scope and a caller-dependent lookup rule?
 
 **Expected answer shape:** Describe current-scope lookup followed by outer scopes, define lexical scope, and show a shadowing example.
 
-**Hoisting without folklore:** Give a precise explanation of hoisting for `var`, `let`, and `const`. Follow-up: Why is â€œ`let` is not hoistedâ€ incomplete?
+**[Mid] Hoisting without folklore:** Give a precise explanation of hoisting for `var`, `let`, and `const`. Follow-up: Why is "`let` is not hoisted" incomplete?
 
 **Expected answer shape:** Explain binding setup, `var` initialization to `undefined`, lexical TDZ behavior, required `const` initializer, and why literal source movement is only a teaching model.
 
 ### 2. Predict the Output and Trace Execution
 
-**Function-scoped `var`:** What does this print and why?
+**[Beginner] Function-scoped `var`:** What does this print and why?
 
 ```js
 var label = "outer";
@@ -1230,7 +1266,7 @@ Follow-up: Rewrite the behavior using an explicit setup model without claiming t
 
 **Expected answer shape:** State `undefined`, identify the function-scoped `var` binding, explain its initialization state, and distinguish the model from literal source transformation.
 
-**TDZ and shadowing:** What happens here?
+**[Mid] TDZ and shadowing:** What happens here?
 
 ```js
 const limit = 10;
@@ -1247,7 +1283,7 @@ Follow-up: What small rename would make the intended outer-variable read clear?
 
 **Expected answer shape:** State that the call throws `ReferenceError`, explain that the inner `const` shadows the outer binding for the function scope and is in the TDZ before initialization, then provide a corrected version.
 
-**Mutation versus reassignment:** Predict the output and classify the commented line.
+**[Beginner] Mutation versus reassignment:** Predict the output and classify the commented line.
 
 ```js
 const profile = { active: false };
@@ -1260,7 +1296,7 @@ Follow-up: What additional operation would be needed to protect the property fro
 
 **Expected answer shape:** State `true`, distinguish property mutation from binding reassignment, and explain that shallow freezing does not automatically protect nested objects.
 
-**Mixed scope trace:** Trace every output and error in this program without running it:
+**[Mid] Mixed scope trace:** Trace every output and error in this program without running it:
 
 ```js
 let state = "outer";
@@ -1283,13 +1319,13 @@ Follow-up: Change only the inner declaration to `var`. How does the answer chang
 
 ### 3. Implementation and Verification Exercises
 
-**Scope checker design:** Design a small static-analysis rule that reports use-before-declaration for `let` and `const` within a lexical scope. State the information the tool must collect and two cases where a text-only regular expression would fail.
+**[Senior] Scope checker design:** Design a small static-analysis rule that reports use-before-declaration for `let` and `const` within a lexical scope. State the information the tool must collect and two cases where a text-only regular expression would fail.
 
 Follow-up: How would you avoid incorrectly reporting a name that appears inside a function which is never called?
 
 **Expected answer shape:** Describe tokenization or an AST, lexical scope construction, declaration/reference tracking, TDZ-sensitive ordering, nested functions, and limitations of text matching.
 
-**Safe configuration boundary:** Design a JavaScript configuration module for a Node.js service. The configuration should be loaded once, passed to request handlers, avoid accidental global state, and prevent handlers from changing the original configuration accidentally.
+**[Mid] Safe configuration boundary:** Design a JavaScript configuration module for a Node.js service. The configuration should be loaded once, passed to request handlers, avoid accidental global state, and prevent handlers from changing the original configuration accidentally.
 
 Follow-up: Compare a shallow copy, deep copy, `Object.freeze`, and schema validation. Which guarantees does each provide?
 
@@ -1297,13 +1333,13 @@ Follow-up: Compare a shallow copy, deep copy, `Object.freeze`, and schema valida
 
 ### 4. Debugging and Failure Analysis
 
-**Unexpected `undefined`:** A developer says, â€œThe variable is declared, so it cannot be `undefined`.â€ Give at least three different ways a declared variable can produce `undefined` without the same explanation applying to all of them.
+**[Beginner] Unexpected `undefined`:** A developer says, "The variable is declared, so it cannot be `undefined`." Give at least three different ways a declared variable can produce `undefined` without the same explanation applying to all of them.
 
 Follow-up: How would you distinguish an uninitialized `var` from a missing property on an object?
 
 **Expected answer shape:** Discuss `var` setup, a declaration without an initializer, a function that returns no value, and missing object properties; explain that binding state and property lookup are different questions.
 
-**Cross-request state bug:** A Node.js handler stores the current user's ID in a top-level `let` variable. Requests sometimes return another user's ID. Diagnose the scope and concurrency design problem and propose a corrected ownership model.
+**[Senior] Cross-request state bug:** A Node.js handler stores the current user's ID in a top-level `let` variable. Requests sometimes return another user's ID. Diagnose the scope and concurrency design problem and propose a corrected ownership model.
 
 Follow-up: What additional test would detect the bug reliably instead of passing with one request at a time?
 
@@ -1311,11 +1347,11 @@ Follow-up: What additional test would detect the bug reliably instead of passing
 
 ### 5. Design and Tradeoff Questions
 
-**Choosing declaration forms:** Give a decision rule for choosing `const`, `let`, and `var` in new backend code. Follow-up: When might a codebase still contain `var` without that automatically meaning the code is broken?
+**[Mid] Choosing declaration forms:** Give a decision rule for choosing `const`, `let`, and `var` in new backend code. Follow-up: When might a codebase still contain `var` without that automatically meaning the code is broken?
 
 **Expected answer shape:** Prefer `const` for non-reassigned bindings, `let` for deliberate reassignment, avoid new `var` unless compatibility or legacy conventions require it, and judge behavior rather than syntax alone.
 
-**Module state and ownership:** Design a small in-memory cache used by several service functions. Explain where the binding lives, who may mutate it, how it is bounded, how it is tested, and how it behaves when multiple requests use it.
+**[Senior] Module state and ownership:** Design a small in-memory cache used by several service functions. Explain where the binding lives, who may mutate it, how it is bounded, how it is tested, and how it behaves when multiple requests use it.
 
 Follow-up: When should the cache move out of process memory into an external store?
 
@@ -1323,19 +1359,19 @@ Follow-up: When should the cache move out of process memory into an external sto
 
 ### 6. Senior-Level Node.js Follow-ups
 
-**Global state review:** A team proposes putting configuration and a service registry on `globalThis` so every module can access them. Review the design. Discuss test isolation, hidden dependencies, accidental mutation, module loading, worker or process boundaries, and observability.
+**[Senior] Global state review:** A team proposes putting configuration and a service registry on `globalThis` so every module can access them. Review the design. Discuss test isolation, hidden dependencies, accidental mutation, module loading, worker or process boundaries, and observability.
 
 Follow-up: Give a lower-coupling alternative that still avoids repeatedly constructing expensive resources.
 
 **Expected answer shape:** Explain the convenience and risks, distinguish host global state from module scope, propose explicit dependency passing or a controlled composition root, and discuss lifecycle and test cleanup.
 
-**CommonJS and ESM boundary:** Explain why a top-level `const` in one Node.js module is not automatically available as a variable in another module. Compare explicit exports/imports with global state.
+**[Mid] CommonJS and ESM boundary:** Explain why a top-level `const` in one Node.js module is not automatically available as a variable in another module. Compare explicit exports/imports with global state.
 
 Follow-up: Which details must be checked in the Node project configuration before making a claim about how a file is loaded?
 
 **Expected answer shape:** Explain module-local bindings, explicit module interfaces, CommonJS/ESM host loading assumptions, package configuration or file conventions, and why hidden globals weaken dependency boundaries.
 
-**Scope, memory, and reliability:** A long-running Node.js service has a module-level array declared with `const` that grows after every request. Explain why the declaration is legal, why `const` does not solve the problem, how scope differs from object reachability, and how you would redesign and monitor the state.
+**[Senior] Scope, memory, and reliability:** A long-running Node.js service has a module-level array declared with `const` that grows after every request. Explain why the declaration is legal, why `const` does not solve the problem, how scope differs from object reachability, and how you would redesign and monitor the state.
 
 Follow-up: What evidence would distinguish a real retained-reference problem from a short-lived allocation spike?
 

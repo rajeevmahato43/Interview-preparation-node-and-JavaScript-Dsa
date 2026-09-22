@@ -1,4 +1,4 @@
-﻿# Day 08: Closures, Execution Context, and `this`
+# Day 08: Closures, Execution Context, and `this`
 
 <nav aria-label="Lecture navigation">
 
@@ -317,6 +317,21 @@ These are JavaScript ownership and call-site questions, even when the host API i
 
 Request handlers, listeners, timers, and dependency factories can retain closures or lose method receivers in long-lived Node processes.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Closure | Copy of values | A closure **retains a live reference to the binding**. If that variable changes later, the closure sees the new value. It is *not* a snapshot. |
+| Lexical scope | `this` | Lexical scope is determined by **where the code is written**. `this` is determined by **how the function is called**. Arrow functions inherit lexical `this`; regular functions get a new `this` per call. |
+| Arrow function `this` | Regular function `this` | Arrow: `this` is fixed at definition — cannot be changed by `.call`, `.apply`, or `.bind`. Regular: `this` is set at the call site. |
+| `bind(obj)` | Arrow function | Both can "lock" the receiver. `bind` creates a **new function** (different identity). Arrow captures lexical `this` (no new identity). Matters for listener removal. |
+| `call(obj, a, b)` | `apply(obj, [a, b])` | Same result — both set receiver temporarily. `call` takes args individually; `apply` takes an array. |
+| `var` loop variable | `let` loop variable | `var` shares **one binding** across all iterations. `let` creates a **new binding per iteration**. Callbacks created in the loop see different values with `let`. |
+
+> **Cross-day links:** `this` is also critical in class methods — covered in [Day 10](day-10-classes-and-prototypal-inheritance.md). Memory leaks from retained closures are diagnosed in detail in the Node memory-leak section.
+
 ## Common Mistakes and Interview Traps
 
 - Saying a closure copies every outer value at creation time.
@@ -369,6 +384,16 @@ Request handlers, listeners, timers, and dependency factories can retain closure
 | `new Constructor()` | newly created instance |
 | Arrow function | Captured outer `this`; call form does not replace it |
 
+**vs. quick reference**
+
+| | Arrow | Regular function | `.bind(obj)` |
+|---|---|---|---|
+| `this` source | Lexical (outer scope) | Call site | Permanently bound |
+| Can change with `.call`/`.apply` | ✗ | ✓ | ✗ |
+| New identity created | No | No | ✓ Yes |
+| Good for object method | ✗ | ✓ | ✓ |
+| Good for callback | ✓ | Depends | ✓ |
+
 Other rules:
 
 - `let` in a loop gives callbacks per-iteration bindings.
@@ -378,23 +403,25 @@ Other rules:
 
 ## Interview Questions
 
-1. **Mental model:** Explain the difference between lexical scope, a closure, and dynamic `this`.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Mental model:** Explain the difference between lexical scope, a closure, and dynamic `this`.
    - **Expected answer shape:** Define each mechanism, show the lookup or call rule, and use one example where their results differ.
    - **Follow-up:** Why can an arrow function preserve `this` but still access variables through lexical scope?
 
-2. **Predict the output:** Trace a loop that creates callbacks with `var` and then rewrite it using `let`.
+2. **[Beginner] Predict the output:** Trace a loop that creates callbacks with `var` and then rewrite it using `let`.
    - **Expected answer shape:** Identify the shared versus per-iteration binding and give the final output.
    - **Follow-up:** Give an IIFE-based fix and explain what binding it creates.
 
-3. **Implementation:** Design a listener registry that can add, invoke, and remove callbacks while preserving method receivers and avoiding accidental duplicate registrations.
+3. **[Senior] Implementation:** Design a listener registry that can add, invoke, and remove callbacks while preserving method receivers and avoiding accidental duplicate registrations.
    - **Expected answer shape:** Define function identity, binding strategy, cleanup ownership, and data-structure complexity.
    - **Follow-up:** How would you prevent a registry from retaining callbacks after their owner is gone?
 
-4. **Debugging:** A Node service's memory grows after each request because a global array stores request handlers. Diagnose the retained object graph and propose tests or measurements.
+4. **[Mid] Debugging:** A Node service's memory grows after each request because a global array stores request handlers. Diagnose the retained object graph and propose tests or measurements.
    - **Expected answer shape:** Explain closure reachability, identify captured data, bound lifetime, eviction or cleanup, and evidence needed.
    - **Follow-up:** Why is forcing garbage collection not a complete fix?
 
-5. **Design:** Compare class methods, bound methods, arrow fields, and explicit-state functions for a callback-heavy service.
+5. **[Senior] Design:** Compare class methods, bound methods, arrow fields, and explicit-state functions for a callback-heavy service.
    - **Expected answer shape:** Discuss receiver behavior, prototype sharing, per-instance allocation, testability, identity, and memory.
    - **Follow-up:** Which option would you choose for a hot path and what measurements would support the choice?
 

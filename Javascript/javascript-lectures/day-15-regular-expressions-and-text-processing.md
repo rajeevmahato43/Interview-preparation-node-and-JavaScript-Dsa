@@ -1,4 +1,4 @@
-﻿# Day 15: Regular Expressions and Text Processing
+# Day 15: Regular Expressions and Text Processing
 
 <nav aria-label="Lecture navigation">
 
@@ -146,6 +146,21 @@ console.log(search.test("a+b")); // true
 
 Regex validation and parsing run on a Node request path, so pattern complexity and input limits affect availability.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Greedy `.*` | Lazy `.*?` | Greedy takes as much as possible, then backtracks. Lazy takes as little as possible, then expands. Both can match the same text; greedy is the default. |
+| Capturing group `(x)` | Non-capturing group `(?:x)` | Both group. Capturing creates a numbered match in results. Non-capturing groups silently for ordering/repetition without polluting match results. |
+| `pattern.test(str)` | `pattern.exec(str)` | `.test` returns true/false. `.exec` returns a match array with groups and index, or null. Use `.exec` when you need capture groups. |
+| `string.match(pattern)` | `string.matchAll(pattern)` | `.match` with `g` returns all matches but no group details. `.matchAll` with `g` returns an iterator of full match objects including groups. |
+| Global regex `lastIndex` | Stateless regex | A global (`/g`) regex on an object persists `lastIndex` between calls. Using `.test()` on a stored global regex twice on the same string can give different results. |
+| Regex validation | Parser | Regex works for flat, unambiguous patterns. For nested structures (HTML, JSON, nested brackets), use a proper parser. |
+
+> **Cross-day links:** String length and Unicode code points are covered in [Day 12](day-12-built-in-data-structures-and-serialization.md). Security implications of user-controlled regex are in [Day 25](day-25-security-relevant-javascript.md).
+
 ## Common Mistakes and Interview Traps
 
 - Forgetting anchors and accepting a valid substring inside invalid input.
@@ -201,13 +216,30 @@ Regex validation and parsing run on a Node request path, so pattern complexity a
 | `exec` | Returns detailed match data |
 | `replace` | Produces a new string |
 
+**vs. quick reference**
+
+| | Greedy `.*` | Lazy `.*?` |
+|---|---|---|
+| Takes | As much as possible | As little as possible |
+| Default? | ✓ Yes | ✗ (opt-in with `?`) |
+| Can cause ReDoS? | ✓ (exponential backtrack) | Less likely but still possible |
+
+| Method | Returns | Uses global state? |
+|---|---|---|
+| `.test(str)` | `true`/`false` | ✓ (if regex has `g`) |
+| `.exec(str)` | Match array or `null` | ✓ (if regex has `g`) |
+| `str.match(rgx)` | All matches (no groups with `g`) | ✗ |
+| `str.matchAll(rgx)` | Iterator of full match objects | Requires `g` |
+
 ## Interview Questions
 
-1. **Definition:** Explain greedy versus lazy matching with a trace.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain greedy versus lazy matching with a trace.
    - Expected answer: Define the search choice, show a pattern and input, and state why each match ends where it does.
    - Follow-up: Why is regex a poor choice for nested HTML?
 
-2. **Trace:** Predict two calls:
+2. **[Beginner] Trace:** Predict two calls:
 
    ```js
    const pattern = /x/g;
@@ -217,15 +249,15 @@ Regex validation and parsing run on a Node request path, so pattern complexity a
    - Expected answer: `true`, then `false` because `lastIndex` is 1 after the first call.
    - Follow-up: What happens after resetting `lastIndex`?
 
-3. **Implementation:** Validate a user-controlled identifier without introducing a regex denial-of-service risk.
+3. **[Senior] Implementation:** Validate a user-controlled identifier without introducing a regex denial-of-service risk.
    - Expected answer: Define a grammar, use bounded simple patterns, cap input size, and test adversarial cases.
    - Follow-up: When would you use a parser or another validation library?
 
-4. **Debugging:** A test suite passes alone but fails when tests run together because a regex has `g`. Diagnose the shared state.
+4. **[Mid] Debugging:** A test suite passes alone but fails when tests run together because a regex has `g`. Diagnose the shared state.
    - Expected answer: Explain `lastIndex`, test isolation, fresh regex creation, and reset strategies.
    - Follow-up: Which APIs consume global state differently?
 
-5. **Design:** Review a Node endpoint that accepts arbitrary regex patterns from users.
+5. **[Senior] Design:** Review a Node endpoint that accepts arbitrary regex patterns from users.
    - Expected answer: Discuss trust boundaries, input limits, timeout/isolation strategy, engine behavior, logging, and safer product requirements.
    - Follow-up: Why may a timeout not fully protect a blocked event loop?
 

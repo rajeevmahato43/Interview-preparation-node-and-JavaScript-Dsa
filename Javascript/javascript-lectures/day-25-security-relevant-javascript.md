@@ -72,6 +72,21 @@ The constraints are part of the security contract: type, length, finiteness, and
 
 Node services commonly process untrusted HTTP, environment, file, and dependency data. Node APIs provide the boundary, but JavaScript object semantics determine whether normalization is safe. Keep HTTP parsing, headers, filesystem policy, and deployment controls in the Node curriculum.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Prototype pollution | Property injection | Prototype pollution: assigning to `__proto__` or `constructor.prototype` affects **all objects** inheriting from `Object.prototype`. Property injection: adding a key to one specific object. Pollution is globally dangerous; injection is locally scoped. |
+| Allowlist validation | Blocklist validation | Allowlist: only known-good values pass. Blocklist: only known-bad values fail. Allowlists are safer because you can't predict all possible attacks. Prefer allowlists at trust boundaries. |
+| `eval(userInput)` | Template-based output | `eval` executes arbitrary JS. Template literals just format strings. Never evaluate untrusted strings as code. |
+| `JSON.parse` | Schema validation | `JSON.parse` converts text to a JavaScript value but does **not** validate its shape, types, or limits. Always validate parsed data against a schema before using it. |
+| `Number(input)` | `Number.isFinite(Number(input))` | `Number("abc")` returns `NaN`, which silently breaks comparisons. Always check `Number.isFinite` or `Number.isInteger` after converting user input. |
+| `RegExp(userInput)` | Static pattern | Dynamic regex from user input can cause ReDoS (denial of service via backtracking). Always use static patterns and add input length limits at the boundary. |
+
+> **Cross-day links:** Prototype pollution and `Object.create(null)` are in [Day 09](day-09-objects-and-property-access.md). Regex denial-of-service risks are in [Day 15](day-15-regular-expressions-and-text-processing.md). Input validation patterns are in [Day 26](day-26-javascript-boundaries-for-services.md).
+
 ## Common Mistakes and Interview Traps
 
 - Merging arbitrary keys into ordinary objects.
@@ -114,6 +129,8 @@ Dynamic JavaScript features are powerful and dangerous at trust boundaries. Vali
 
 ## Interview Questions
 
-1. **Hard - Review:** Identify the trust boundaries in an object normalizer.
-2. **Hard - Debugging:** Explain how an unsafe key can create inherited behavior and how to test for it.
-3. **Very Hard - Design:** Design validation for a public service endpoint with nested data, regex fields, numeric limits, and safe errors.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Review:** Identify the trust boundaries in an object normalizer.
+2. **[Senior] Debugging:** Explain how an unsafe key can create inherited behavior and how to test for it.
+3. **[Senior] Design:** Design validation for a public service endpoint with nested data, regex fields, numeric limits, and safe errors.

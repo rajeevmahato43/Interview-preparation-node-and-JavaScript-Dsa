@@ -1,4 +1,4 @@
-﻿# Day 16: Symbols, Reflection, Proxies, and Metaprogramming
+# Day 16: Symbols, Reflection, Proxies, and Metaprogramming
 
 <nav aria-label="Lecture navigation">
 
@@ -177,6 +177,23 @@ Symbols, reflection, and proxies help explain libraries, but proxy overhead and 
 
 ## Common Mistakes and Interview Traps
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `Symbol("name")` | String key | Two `Symbol("name")` calls produce **different** unique keys. Two strings `"name"` are always the same key. Use symbols when you need a key that is guaranteed collision-free. |
+| Symbol key | "Private" | Symbol keys are not enumerable in `Object.keys` or `for...in`, but `Object.getOwnPropertySymbols()` still finds them. They are **not** truly private — just non-enumerable. Use `#privateField` for real privacy. |
+| `Reflect.set(target, key, value, receiver)` | `target[key] = value` | Both do the same thing normally. `Reflect.set` returns a boolean (success/failure) and correctly handles the `receiver` for accessor properties. Always use `Reflect` inside Proxy traps. |
+| Proxy | Object wrapper | A Proxy intercepts operations on a **target** object. It changes **identity** (proxy !== target). A plain wrapper is just an object that holds a reference and delegates manually. |
+| Proxy invariant | Trap | A Proxy trap handles an operation (like `get`). An invariant is a **rule the trap must not violate** (e.g., you can't lie about a non-configurable property's value). Violations throw `TypeError`. |
+| `Symbol.iterator` | Custom iteration | `Symbol.iterator` is the **standard** well-known symbol used by `for...of`. You implement it on your object to make it iterable. |
+
+> **Cross-day links:** Well-known symbols and the iteration protocol are introduced in [Day 14](day-14-iterables-iterators-generators-and-symbols.md). Prototype-level object introspection is in [Day 10](day-10-prototypes-classes-and-inheritance.md). Security implications of Proxy and reflection are in [Day 25](day-25-security-relevant-javascript.md).
+
+## Common Mistakes and Interview Traps
+
 - Calling symbol properties private.
 - Forgetting to include symbol keys in a complete property inspection.
 - Returning the wrong value from a `set` trap.
@@ -226,13 +243,31 @@ Symbols, reflection, and proxies help explain libraries, but proxy overhead and 
 | Proxy invariant | Rule a trap must not violate |
 | `Object.getOwnPropertySymbols` | Own symbol keys only |
 
+**vs. quick reference**
+
+| | `Symbol` key | `String` key | `#private` field |
+|---|---|---|---|
+| Unique per creation | ✓ | ✗ (same string = same key) | N/A (scoped to class) |
+| Enumerable in `Object.keys` | ✗ | ✓ | N/A |
+| Discoverable with introspection | ✓ (`getOwnPropertySymbols`) | ✓ | ✗ (truly private) |
+| Use case | Collision-free meta-keys | Normal data properties | True encapsulation |
+
+| `Reflect` method | Equivalent to | Why prefer `Reflect` |
+|---|---|---|
+| `Reflect.get(t, k, r)` | `t[k]` | Returns value; consistent receiver |
+| `Reflect.set(t, k, v, r)` | `t[k] = v` | Returns boolean (no silent failure) |
+| `Reflect.ownKeys(t)` | `Object.keys + symbols` | One call for all own keys |
+| `Reflect.has(t, k)` | `k in t` | Same, but function form |
+
 ## Interview Questions
 
-1. **Definition:** Explain why two symbols with the same description are different.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Definition:** Explain why two symbols with the same description are different.
    - Expected answer: The description is metadata; each symbol creation produces a unique primitive identity.
    - Follow-up: How can symbol properties still be discovered?
 
-2. **Trace:** Why does this proxy access fail?
+2. **[Mid] Trace:** Why does this proxy access fail?
 
    ```js
    const target = {};
@@ -243,15 +278,15 @@ Symbols, reflection, and proxies help explain libraries, but proxy overhead and 
    - Expected answer: The trap contradicts a fixed non-configurable, non-writable data property and violates a proxy invariant.
    - Follow-up: What if the property were configurable?
 
-3. **Implementation:** Create a proxy that validates writes while preserving setters on the target.
+3. **[Senior] Implementation:** Create a proxy that validates writes while preserving setters on the target.
    - Expected answer: Use `Reflect.set` with the receiver, define accepted values, return a boolean or throw consistently, and test accessors.
    - Follow-up: Which traps must be coordinated if callers inspect descriptors?
 
-4. **Debugging:** A proxied object is missing from a `Map` lookup even though it wraps the original object.
+4. **[Mid] Debugging:** A proxied object is missing from a `Map` lookup even though it wraps the original object.
    - Expected answer: Proxy and target have different identities; use a canonical identity policy or avoid wrapping keys.
    - Follow-up: How would weak references affect the design?
 
-5. **Design:** Decide whether to use proxies for request validation in a high-throughput Node service.
+5. **[Senior] Design:** Decide whether to use proxies for request validation in a high-throughput Node service.
    - Expected answer: Compare explicit validation, proxy overhead, hidden behavior, target escape, error clarity, observability, and workload measurements.
    - Follow-up: What security boundary must still exist even with a proxy?
 

@@ -1,4 +1,4 @@
-﻿# Day 19: `async`/`await` and Asynchronous Error Propagation
+# Day 19: `async`/`await` and Asynchronous Error Propagation
 
 <nav aria-label="Lecture navigation">
 
@@ -197,6 +197,21 @@ This policy makes the user mandatory and notifications optional. The correct pol
 
 Node service operations must make timeout, cancellation, cleanup, and dependency failure ownership explicit around awaited work.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `async/await` | Promise `.then/.catch` | Both use promises. `async/await` reads like synchronous code. `.then/.catch` is more explicit about chaining. They're interchangeable but not always equivalent in stack traces and error bubbling. |
+| `return value` (in async fn) | `return await value` | `return value` passes the promise to the caller — local `catch` won't see its rejection. `return await value` awaits first, so a local `try/catch` **can** catch it. |
+| Sequential `await` | Parallel start + `await` | Sequential: `await a; await b;` — b starts only after a finishes. Parallel: `const pA = a(); const pB = b(); await pA; await pB;` — both start immediately. Parallel is faster for independent work. |
+| `Promise.race` timeout | Abort signal | `.race` with a timer rejects the outer promise after a deadline but does **not** cancel the underlying operation. An `AbortSignal` is a cooperative contract that cancels the work if the operation supports it. |
+| `try/catch` on awaited call | `.catch()` on non-awaited | `try { await fn() } catch` works because the rejection becomes a throw. `try { fn() } catch` misses async rejections that happen later. |
+| `finally` clause | `.then(cleanup, cleanup)` | `finally` is simpler and correct: runs on both success and failure, and errors inside it don't silently swallow the original. |
+
+> **Cross-day links:** Promise combinators (`all`, `allSettled`, `race`, `any`) are in [Day 18](day-18-promises-and-composition.md). Microtask scheduling (why `await` defers) is in [Day 20](day-20-jobs-microtasks-and-scheduling.md). Async iteration (`for await...of`) is introduced briefly here and expanded in [Day 27](day-27-concurrency-and-resource-safe-async.md).
+
 ## Common Mistakes and Interview Traps
 
 - Forgetting that an async function returns a promise.
@@ -250,13 +265,30 @@ Node service operations must make timeout, cancellation, cleanup, and dependency
 | Timeout race | Rejection boundary, not automatic cancellation |
 | Abort signal | Cooperative cancellation contract |
 
+**vs. quick reference**
+
+| Pattern | When `catch` fires | Awaiting? |
+|---|---|---|
+| `try { return fn() }` | Only on sync throw | ✗ (rejection goes to caller) |
+| `try { return await fn() }` | Sync throw AND async rejection | ✓ |
+| `.then(fn).catch(handler)` | Async rejection | ✓ |
+| `fn().catch(handler)` | Async rejection | ✓ (fire-and-forget safe) |
+
+| Execution style | How to write | When to use |
+|---|---|---|
+| Sequential | `await a; await b;` | b depends on a |
+| Parallel (known count) | `await Promise.all([a(), b()])` | Independent, limited count |
+| Parallel (bounded) | Queue + worker pool | Unknown count, resource limits |
+
 ## Interview Questions
 
-1. **Definition:** Explain why an async function that returns `5` still returns a promise.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Definition:** Explain why an async function that returns `5` still returns a promise.
    - Expected answer: Async functions wrap returned values in fulfillment and thrown errors in rejection.
    - Follow-up: What happens when it returns another promise?
 
-2. **Trace:** Which errors does this catch?
+2. **[Mid] Trace:** Which errors does this catch?
 
    ```js
    async function run(load) {
@@ -270,15 +302,15 @@ Node service operations must make timeout, cancellation, cleanup, and dependency
    - Expected answer: It catches synchronous throws from calling `load`, but not a later rejection of the returned promise because it is not awaited.
    - Follow-up: Repair it and explain the timing.
 
-3. **Implementation:** Design a deadline-aware operation that cancels underlying work when supported.
+3. **[Senior] Implementation:** Design a deadline-aware operation that cancels underlying work when supported.
    - Expected answer: Combine a timer, abort signal, cleanup, race semantics, and clear ownership of cancellation.
    - Follow-up: What if the underlying API ignores cancellation?
 
-4. **Debugging:** Latency doubled after converting callback code to async/await. Diagnose accidental serialization.
+4. **[Mid] Debugging:** Latency doubled after converting callback code to async/await. Diagnose accidental serialization.
    - Expected answer: Compare dependency graph, start independent promises before awaiting, measure external limits, and preserve error semantics.
    - Follow-up: When is sequential execution safer?
 
-5. **Design:** Design an async workflow where the primary result is mandatory, recommendations are optional, and cleanup must complete before response.
+5. **[Senior] Design:** Design an async workflow where the primary result is mandatory, recommendations are optional, and cleanup must complete before response.
    - Expected answer: Define failure policy, concurrency, deadline, cancellation, cleanup ordering, response contract, and observability.
    - Follow-up: How would you handle cleanup failure without hiding the primary failure?
 

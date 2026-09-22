@@ -1,4 +1,4 @@
-﻿# Day 12: Arrays, Strings, Numbers, `Map`, `Set`, and JSON
+# Day 12: Arrays, Strings, Numbers, `Map`, `Set`, and JSON
 
 <nav aria-label="Lecture navigation">
 
@@ -214,6 +214,22 @@ The schema must tell the parser that the string represents a `BigInt`; blindly c
 
 Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes, identifiers, logs, and service responses.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Plain object `{}` as lookup | `Map` | Object keys must be strings/symbols; has inherited prototype keys (risk). `Map` accepts any key type (including objects), has `.size`, preserves insertion order cleanly, and no prototype key conflicts. |
+| Array | `Set` | Array preserves order and allows duplicates. `Set` stores only unique values (by `SameValueZero`) and gives expected O(1) `.has()`. Use `Set` when uniqueness matters. |
+| `Map` | `WeakMap` | `Map` keeps strong references (prevents GC). `WeakMap` uses weak references (allows GC when key has no other references) and is non-iterable. Use `WeakMap` for private data keyed to objects. |
+| `sort()` (default) | `sort((a,b) => a-b)` | Default sort converts values to strings (`[10, 2]` sorts as `[10, 2]` not `[2, 10]`!). Always pass a numeric comparator for numbers. |
+| `string.length` | `[...string].length` | `.length` counts UTF-16 code units. `[...string].length` counts code points. For emoji/multi-byte characters, they differ: `"\u{1F60A}".length === 2` but `[..."\u{1F60A}"].length === 1`. |
+| JSON `undefined` | JSON `null` | JSON omits `undefined` properties from objects and converts `undefined` in arrays to `null`. They are not equivalent after a round-trip. |
+| `NaN === NaN` | `Set.has(NaN)` | `NaN !== NaN` under `===`. But `Set` uses `SameValueZero` and **can** store and find `NaN` correctly. |
+
+> **Cross-day links:** Object property rules are in [Day 09](day-09-objects-and-property-access.md). `for...of` iteration across these structures is in [Day 05](day-05-control-flow-and-loops.md). Iterables and custom iteration protocols are in [Day 14](day-14-iterables-iterators-generators-and-symbols.md).
+
 ## Common Mistakes and Interview Traps
 
 - Forgetting that default `sort()` compares strings.
@@ -267,13 +283,34 @@ Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes,
 | Large integer | `BigInt`, with an explicit serialization policy |
 | Count code points | `[...text].length` |
 
+**vs. quick reference**
+
+| | Array | `Set` | `Map` | Plain object |
+|---|---|---|---|---|
+| Keys/index | Numeric index | N/A (values only) | Any type | String or symbol |
+| Allows duplicates | ✓ | ✗ | ✓ (keys unique) | ✓ (keys unique) |
+| Has `.size` | ✗ (use `.length`) | ✓ | ✓ | ✗ |
+| Iterable with `for...of` | ✓ | ✓ | ✓ (.entries/.keys/.values) | ✗ (use Object.entries) |
+| Prototype key conflicts | ✗ | N/A | ✗ | ✓ risk |
+
+| Value in JSON | Result after `stringify` |
+|---|---|
+| `undefined` (object property) | Omitted |
+| `undefined` (array element) | `null` |
+| `NaN` | `null` |
+| `Date` | ISO string |
+| `Map`, `Set` | `{}` or `[]` (empty — data lost) |
+| `BigInt` | Throws unless replacer handles it |
+
 ## Interview Questions
 
-1. **Definition:** Compare an array, object, `Map`, and `Set` for a product lookup problem.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Compare an array, object, `Map`, and `Set` for a product lookup problem.
    - Expected answer: Discuss keys, ordering, uniqueness, lookup assumptions, memory, and mutation.
    - Follow-up: How would the answer change for ten lookups versus ten million lookups?
 
-2. **Trace:** Predict the result:
+2. **[Beginner] Trace:** Predict the result:
 
    ```js
    const values = [];
@@ -284,15 +321,15 @@ Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes,
    - Expected answer: `3 false true`, and the mapped result still has length 3 with empty preserved at skipped positions.
    - Follow-up: What would `Array.from(values, ...)` do differently?
 
-3. **Implementation:** Design a serializer for objects containing `BigInt`, `Date`, `Map`, and `Set`.
+3. **[Senior] Implementation:** Design a serializer for objects containing `BigInt`, `Date`, `Map`, and `Set`.
    - Expected answer: Define a tagged schema, avoid ambiguous strings, handle cycles or reject them, and test round trips.
    - Follow-up: How would you version the schema?
 
-4. **Debugging:** A report is sorted incorrectly because `10` appears before `2`. Diagnose it and preserve the caller's original order.
+4. **[Beginner] Debugging:** A report is sorted incorrectly because `10` appears before `2`. Diagnose it and preserve the caller's original order.
    - Expected answer: Default sort is string-based and mutating; copy then use a numeric comparator.
    - Follow-up: How should invalid numeric values be handled?
 
-5. **Design:** A Node API must return IDs larger than the safe integer range and remain compatible with existing clients.
+5. **[Senior] Design:** A Node API must return IDs larger than the safe integer range and remain compatible with existing clients.
    - Expected answer: Discuss string representation, schema compatibility, validation, database boundaries, precision, migration, and observability.
    - Follow-up: What tests would detect a client silently converting the string back to a number?
 

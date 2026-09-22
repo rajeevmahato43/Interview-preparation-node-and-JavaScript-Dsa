@@ -64,6 +64,21 @@ console.log(sent.length); // 1
 
 A Node composition root may inject filesystem, database, HTTP, clock, and logging adapters. Those APIs remain in the Node curriculum. The JavaScript responsibility is to keep dependencies visible, prevent hidden module state, and define ownership across async boundaries.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Pure function | Side-effectful function | Pure: given the same inputs, always returns the same output; no external writes. Side-effectful: writes to a database, logs, sends HTTP, modifies shared state. Pure functions are trivially testable; side-effectful ones require test doubles. |
+| Dependency injection | Module import | Module import: hard-coded dependency wired at load time. Injection: pass the dependency as a parameter or constructor argument. Injection makes testing and replacement easier without module mocking. |
+| Orchestrator layer | Domain logic layer | Domain logic decides **what** to do (business rules, validation). Orchestrator decides **how** to do it (which services to call, in what order, with what error handling). Keep them separate. |
+| Owned resource | Borrowed resource | Owned: the current code opens it and must close it. Borrowed: another layer opened it and passes it in. Mixing ownership causes double-close bugs, premature teardown, or leaks. |
+| Transparent error | Swallowed error | Transparent: the error propagates to the caller with its cause. Swallowed: caught and converted to a success or a different error without preserving the original. Never swallow errors silently. |
+| Observable dependency | Hidden global | Observable: passed explicitly (constructor, parameter, closure). Hidden global: `Date.now()`, `Math.random()`, module-level singleton. Hidden globals make testing non-deterministic. |
+
+> **Cross-day links:** Dependency injection and pure function testing are in [Day 23](day-23-testing-javascript-behavior.md). Error propagation and `cause` are in [Day 07](day-07-errors-and-exception-flow.md) and [Day 19](day-19-async-await-errors-and-cleanup.md). Module structure is in [Day 17](day-17-modules-and-interoperability.md).
+
 ## Common Mistakes and Interview Traps
 
 - Reading process state inside the pure decision core.
@@ -107,6 +122,8 @@ Pure cores make language behavior easy to test. Injected edges make side effects
 
 ## Interview Questions
 
-1. **Hard - Design:** Separate a service into pure decision logic and effectful orchestration.
-2. **Hard - Testing:** Choose fakes for repository, clock, and notifier and explain what each test proves.
-3. **Very Hard - Review:** Identify hidden dependencies and ownership violations in a module-based service.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Senior] Design:** Separate a service into pure decision logic and effectful orchestration.
+2. **[Senior] Testing:** Choose fakes for repository, clock, and notifier and explain what each test proves.
+3. **[Senior] Review:** Identify hidden dependencies and ownership violations in a module-based service.

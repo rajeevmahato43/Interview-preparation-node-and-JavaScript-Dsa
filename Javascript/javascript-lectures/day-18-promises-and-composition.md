@@ -1,4 +1,4 @@
-﻿# Day 18: Promises and Promise Composition
+# Day 18: Promises and Promise Composition
 
 <nav aria-label="Lecture navigation">
 
@@ -173,6 +173,21 @@ This is a teaching example. Real code should define what happens when one task f
 
 Promise composition controls service latency and failure policy, while Node adapters determine the underlying I/O and cancellation contract.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `.then(onFulfill, onReject)` | `.then().catch()` | Both handle rejection. Two-arg `.then` catches only the previous step. `.catch` chains separately and can recover from any earlier rejection in the chain. Prefer `.catch()` for clarity. |
+| `Promise.all` | `Promise.allSettled` | `.all`: one rejection immediately rejects the group. `.allSettled`: waits for all, always returns status records. Use `.allSettled` when partial results are acceptable. |
+| `Promise.race` | `Promise.any` | `.race`: first **settled** (fulfilled or rejected) wins. `.any`: first **fulfilled** wins; only rejects if all reject. Use `.any` for "any successful" semantics. |
+| Parallel execution | Sequential (chained) execution | Parallel: start all promises, then await. Sequential: `await` each before starting the next. Parallel is faster when tasks are independent; sequential when each depends on the previous. |
+| `finally` | `catch` | `catch` recovers from rejection and can change the result. `finally` runs on both success and failure but **passes the result through** (unless it throws or returns a rejected promise). |
+| Resolved | Fulfilled | Resolved is a superset: a promise is resolved if it adopts another promise's fate. Fulfilled means it resolved with a plain value (not pending). |
+
+> **Cross-day links:** `async`/`await` (syntactic sugar over promises) is in [Day 19](day-19-async-await-errors-and-cleanup.md). Microtask scheduling and when `.then` callbacks run is in [Day 20](day-20-jobs-microtasks-and-scheduling.md).
+
 ## Common Mistakes and Interview Traps
 
 - Forgetting to return a promise inside a `then` callback.
@@ -225,13 +240,24 @@ Promise composition controls service latency and failure policy, while Node adap
 | `Promise.race` | First settlement | First rejection can reject |
 | `Promise.any` | First fulfillment | Rejects if all reject |
 
+**vs. quick reference**
+
+| | `Promise.all` | `Promise.allSettled` | `Promise.race` | `Promise.any` |
+|---|---|---|---|---|
+| Waits for all? | Only if all fulfill | ✓ Always | ✗ (first settles) | ✗ (first fulfills) |
+| Rejects on one failure? | ✓ Yes | ✗ No | If first is rejected | Only if all reject |
+| Returns | Ordered values | Status records | First result | First fulfillment |
+| Use case | All required | Partial OK | Race/timeout | Any-success |
+
 ## Interview Questions
 
-1. **Definition:** Explain promise settlement and thenable adoption.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain promise settlement and thenable adoption.
    - Expected answer: State the three states, one-settlement rule, and how returned promises or thenables determine the next promise.
    - Follow-up: What happens if a thenable calls both resolve and reject?
 
-2. **Trace:** What is the final value?
+2. **[Beginner] Trace:** What is the final value?
 
    ```js
    Promise.resolve(1)
@@ -244,15 +270,15 @@ Promise composition controls service latency and failure policy, while Node adap
    - Expected answer: `10`; the catch recovers and finally passes the value through.
    - Follow-up: What if finally throws?
 
-3. **Implementation:** Implement bounded concurrency while preserving result order.
+3. **[Senior] Implementation:** Implement bounded concurrency while preserving result order.
    - Expected answer: Use a shared next index, limited workers, ordered result slots, and explicit handling of synchronous and async failures.
    - Follow-up: How would you add cancellation?
 
-4. **Debugging:** A service rejects early but database writes continue. Explain why `Promise.all` did not cancel them.
+4. **[Mid] Debugging:** A service rejects early but database writes continue. Explain why `Promise.all` did not cancel them.
    - Expected answer: Combinators observe promises but do not own cancellation; use cooperative cancellation and transaction/domain design.
    - Follow-up: How should partial writes be reconciled?
 
-5. **Design:** Choose a composition strategy for ten independent remote calls with rate limits and partial-result requirements.
+5. **[Senior] Design:** Choose a composition strategy for ten independent remote calls with rate limits and partial-result requirements.
    - Expected answer: Discuss bounded concurrency, retries, deadlines, result policy, observability, overload, and idempotency.
    - Follow-up: How would the design change if one result is mandatory?
 

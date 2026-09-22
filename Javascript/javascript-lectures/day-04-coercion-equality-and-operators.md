@@ -1,4 +1,4 @@
-﻿# Day 04: Coercion, Equality, and Operators
+# Day 04: Coercion, Equality, and Operators
 
 <nav aria-label="Lecture navigation">
 
@@ -344,6 +344,22 @@ Validate the type and allowed values before making an authorization decision.
 
 Configuration, authorization, pagination, and request validation should use explicit types and finite-number checks rather than accidental coercion.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `||` (OR) | `??` (nullish coalescing) | `||` uses the right side for any *falsy* value (`0`, `""`, `false` included). `??` uses the right side only when the left is `null` or `undefined`. |
+| `===` (strict) | `==` (loose) | `===` never coerces. `==` may convert types before comparing, which creates surprises. Prefer `===` by default. |
+| `===` | `Object.is` | `===` says `NaN !== NaN` and `0 === -0`. `Object.is` says `NaN === NaN` and `0 !== -0`. Use `Object.is` when those edge cases matter (e.g. cache keys). |
+| Falsy | Nullish | Falsy: `false`, `0`, `""`, `null`, `undefined`, `NaN`. Nullish: only `null` and `undefined`. |
+| Optional chaining `?.` | Validation | `?.` silently returns `undefined` for nullish access — it does **not** validate. Use it only when absence is a valid, expected outcome. |
+| `Number("")` | missing/empty | `Number("")` returns `0`, not `NaN`. An empty field is often not the same as zero. Validate the original string first. |
+| `parseInt(x, 10)` | `Number(x)` | `parseInt` reads a prefix (stops at first non-digit). `Number` requires the whole string to be a valid number. `Number("42px")` → `NaN`; `parseInt("42px", 10)` → `42`. |
+
+> **Cross-day links:** Truthiness in `if`/loops is used in [Day 05](day-05-control-flow-and-loops.md). The full type system is in [Day 03](day-03-values-types-and-literals.md). Coercion edge cases in objects and arrays appear in [Day 12](day-12-built-in-data-structures-and-serialization.md).
+
 ## Common Mistakes and Interview Traps
 
 - Using `||` when `0`, `false`, or `""` are valid values.
@@ -425,25 +441,40 @@ Test separately with `0`, `false`, `null`, `undefined`, invalid numeric text, an
 | `a?.b` | Stop access for nullish `a` |
 | `parseInt(text, 10)` | Parse an integer prefix, not necessarily the whole string |
 
+**vs. quick reference**
+
+| Operator | Triggers on | Common trap |
+|---|---|---|
+| `\|\|` | Any falsy value (0, "", false, null, undefined, NaN) | Replaces `0` and `false` unintentionally |
+| `??` | Only null or undefined | Leaves `0`, `""`, `false` unchanged |
+| `?.` | Only null or undefined | Not a validation tool — silently swallows errors |
+
+| Comparison | `NaN === NaN` | `0 === -0` | Coerces types? |
+|---|---|---|---|
+| `===` | false | true | No |
+| `==` | false | true | Yes |
+| `Object.is` | **true** | **false** | No |
+
 ## Interview Questions
 
-1. **Mental model:** Explain why `"0"`, `0`, `""`, `null`, `undefined`, `[]`, and `{}` behave differently in an `if` statement.
-   - **Expected answer shape:** Classify each value as truthy or falsy and connect the result to Boolean conversion.
-   - **Follow-up:** Which of these should mean â€œmissing page sizeâ€ in an API, and why?
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
 
-2. **Predict the output:** Trace `1 + 2 + "3"`, `"1" + 2 + 3`, `"10" - 1`, and `"10" < "2"`.
+1. **[Beginner] Mental model:** Explain why `"0"`, `0`, `""`, `null`, `undefined`, `[]`, and `{}` behave differently in an `if` statement.
+   - **Expected answer shape:** Classify each value as truthy or falsy and connect the result to Boolean conversion.
+   - **Follow-up:** Which of these should mean "missing page size" in an API, and why?
+
+2. **[Beginner] Predict the output:** Trace `1 + 2 + "3"`, `"1" + 2 + 3`, `"10" - 1`, and `"10" < "2"`.
    - **Expected answer shape:** Show operator order, conversions, intermediate values, final values, and final types.
    - **Follow-up:** Rewrite each expression so a reviewer can see the intended operation without relying on coercion.
 
-3. **Implementation:** Implement a strict parser for a query parameter that accepts only decimal digits and returns a bounded integer.
+3. **[Mid] Implementation:** Implement a strict parser for a query parameter that accepts only decimal digits and returns a bounded integer.
    - **Expected answer shape:** Define the grammar, reject whitespace and signs if required, convert explicitly, and check safe range and bounds.
    - **Follow-up:** How would you support a negative range without accidentally accepting `-0` when it has special meaning?
 
-4. **Debugging:** A feature flag stored as the string `"false"` enables a dangerous feature in production. Diagnose the exact language behavior and design the boundary fix.
+4. **[Mid] Debugging:** A feature flag stored as the string `"false"` enables a dangerous feature in production. Diagnose the exact language behavior and design the boundary fix.
    - **Expected answer shape:** Explain string truthiness, show explicit accepted representations, and place validation before use.
    - **Follow-up:** How would you handle configuration reloads without creating inconsistent decisions across requests?
 
-5. **Design:** Compare `||`, `??`, a schema validator, and explicit conditional logic for configuration defaults.
+5. **[Senior] Design:** Compare `||`, `??`, a schema validator, and explicit conditional logic for configuration defaults.
    - **Expected answer shape:** Discuss semantics, readability, invalid input handling, observability, and operational failure policy.
    - **Follow-up:** When is failing startup better than silently applying a default?
-

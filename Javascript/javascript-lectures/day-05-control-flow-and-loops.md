@@ -1,4 +1,4 @@
-﻿# Day 05: Conditions, Loops, and Control Transfer
+# Day 05: Conditions, Loops, and Control Transfer
 
 <nav aria-label="Lecture navigation">
 
@@ -375,6 +375,21 @@ The exact time depends on the machine, runtime, optimization, and workload. The 
 
 Synchronous control flow occupies the current Node execution path, so unbounded loops can delay unrelated callbacks.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `for...in` | `for...of` | `for...in` iterates **enumerable property keys** (strings) — avoid on arrays. `for...of` iterates **values** from any iterable (array, string, Map, Set, etc.). |
+| `for...of` | `forEach` | Both iterate values, but `for...of` supports `break`/`continue`/`return`; `forEach` does not. Also: `forEach` won't `await` async callbacks properly. |
+| `map` | `forEach` | `map` returns a **new array** of transformed values. `forEach` always returns `undefined`. Use `map` when you need the results; `forEach` for pure side effects. |
+| `switch` | `if/else if` | `switch` uses strict equality on one expression; `if/else if` can test any condition. `switch` fall-through is allowed but silent — always add `break`. |
+| `break` | `continue` | `break` exits the loop entirely. `continue` skips the current iteration and moves to the next. |
+| `var` in loop | `let` in loop | `var` creates **one shared binding** for all iterations. `let` creates a **fresh binding per iteration** — crucial when callbacks close over the loop variable. |
+
+> **Cross-day links:** Truthiness and short-circuit operators used in conditions are in [Day 04](day-04-coercion-equality-and-operators.md). Closures and per-iteration `let` capture are in [Day 08](day-08-closures-execution-context-and-this.md). `async` inside loops is in [Day 19](day-19-async-await-and-error-handling.md).
+
 ## Common Mistakes and Interview Traps
 
 - Using `for...in` to iterate array values.
@@ -434,25 +449,36 @@ Synchronous control flow occupies the current Node execution path, so unbounded 
 | Avoid accidental loop capture | Prefer `let` or `const` over `var` |
 | Prevent blocking | Improve the algorithm, split work, or move CPU work off the main thread |
 
+**vs. quick reference**
+
+| | `for...in` | `for...of` | `forEach` |
+|---|---|---|---|
+| Produces | Enumerable keys (strings) | Values from iterable | (side effects only) |
+| Supports `break` | ✓ | ✓ | ✗ |
+| Supports `await` properly | ✗ | ✓ (with `for await`) | ✗ |
+| Safe on arrays | ✗ (use `for...of`) | ✓ | ✓ |
+| Return value | N/A | N/A | `undefined` always |
+
 ## Interview Questions
 
-1. **Mental model:** Compare `for...in`, `for...of`, `Object.keys`, and `Object.entries` for arrays and plain objects.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Mental model:** Compare `for...in`, `for...of`, `Object.keys`, and `Object.entries` for arrays and plain objects.
    - **Expected answer shape:** State what each produces, whether inherited keys are possible, and when each is appropriate.
    - **Follow-up:** What changes when the object has a custom iterator?
 
-2. **Predict the output:** Explain the result of callbacks created inside a `var` loop versus a `let` loop.
+2. **[Mid] Predict the output:** Explain the result of callbacks created inside a `var` loop versus a `let` loop.
    - **Expected answer shape:** Identify the binding count, closure capture, and values observed after the loop ends.
    - **Follow-up:** Give two fixes that do not rely on changing `var` to `let`.
 
-3. **Implementation:** Find duplicate values in an array while meeting expected $O(n)$ time, then design a version using $O(1)$ extra space when the input constraints permit it.
+3. **[Mid] Implementation:** Find duplicate values in an array while meeting expected $O(n)$ time, then design a version using $O(1)$ extra space when the input constraints permit it.
    - **Expected answer shape:** Give both algorithms, assumptions, complexity, and mutation tradeoffs.
    - **Follow-up:** How do `NaN`, object identity, and duplicate strings affect the design?
 
-4. **Debugging:** A developer changes `array.forEach(async item => await save(item))` to â€œmake it concurrent,â€ but the API returns before saves finish and errors are missed. Diagnose it.
+4. **[Mid] Debugging:** A developer changes `array.forEach(async item => await save(item))` to "make it concurrent," but the API returns before saves finish and errors are missed. Diagnose it.
    - **Expected answer shape:** Explain that `forEach` does not await callback promises, then propose sequential and concurrent alternatives with failure behavior.
    - **Follow-up:** How would you add a concurrency limit rather than launching all work at once?
 
-5. **Design:** A Node endpoint scans ten million records synchronously and causes request latency spikes. Analyze algorithmic, event-loop, memory, and operational options.
+5. **[Senior] Design:** A Node endpoint scans ten million records synchronously and causes request latency spikes. Analyze algorithmic, event-loop, memory, and operational options.
    - **Expected answer shape:** Discuss complexity, batching, backpressure or pagination, worker isolation, cancellation, and observability.
    - **Follow-up:** What evidence would distinguish a bad algorithm from insufficient CPU capacity?
-

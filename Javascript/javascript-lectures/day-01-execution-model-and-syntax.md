@@ -1,4 +1,4 @@
-﻿# Day 01: JavaScript Execution Model and Grammar
+# Day 01: JavaScript Execution Model and Grammar
 
 <nav aria-label="Lecture navigation">
 
@@ -391,6 +391,23 @@ The main language references for this lecture are:
 - [MDN: Strict mode](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode)
 - [ECMAScript specification](https://tc39.es/ecma262/)
 
+---
+
+## Compare & Recall
+
+These concepts are easy to mix up. Full explanations are in the sections above; this table is for quick recall.
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| **Script** | **Module** | Script has no `import`/`export` and is not strict by default; module is always strict and uses `import`/`export`. |
+| **Strict mode** | **Linter / TypeScript** | Strict mode is a language-level runtime rule; a linter/TS checker runs on source text before execution and enforces different things. |
+| **Syntax error** | **Runtime error** | Syntax error stops parsing — no code runs. Runtime error happens during execution after parsing succeeded. |
+| **Syntax error** | **Incorrect result** | An incorrect result is a program that runs fine but silently produces the wrong value (e.g. `return` on its own line). |
+| **ECMAScript** | **Node.js / Browser** | ECMAScript defines the language; Node.js/browser are *host environments* that embed an engine and add their own APIs. |
+| **Expression** | **Statement** | An expression produces a value; a statement is an instruction (often containing expressions). |
+
+> **When studying other days:** Variables and scope live in [Day 02](day-02-variables-scope-and-hoisting.md). Types and values live in [Day 03](day-03-values-types-and-literals.md). Modules and `import`/`export` are covered deeply in [Day 17](day-17-modules-and-interoperability.md).
+
 The ECMAScript specification is the authority for language-level guarantees. MDN is useful for organized explanations and compatibility notes. Node.js documentation becomes authoritative when the question concerns Node's module selection, executable-file handling, loader behavior, or runtime APIs.
 
 ## Examples and Execution Traces
@@ -682,6 +699,20 @@ A syntax or early error prevents normal evaluation. A runtime error occurs after
 | Runtime error | Evaluation fails after parsing succeeds |
 | Incorrect result | Valid code runs but does not produce intended behavior |
 
+**vs. quick reference**
+
+| vs. | Script | Module |
+|---|---|---|
+| `import`/`export` | ✗ Not allowed | ✓ Allowed |
+| Strict by default | ✗ No | ✓ Yes |
+| Top-level `this` | Global object (host-dependent) | `undefined` |
+
+| Error type | When it happens |
+|---|---|
+| Syntax / early error | Before any code runs — engine rejected the source |
+| Runtime error | During execution — source was valid, evaluation failed |
+| Incorrect result | No error thrown — wrong value silently returned |
+
 Before accepting a newline as a boundary, check for:
 
 - `return`, `throw`, `break`, or `continue`
@@ -699,9 +730,11 @@ For Node.js questions, state:
 
 ## Interview Questions
 
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
 ### 1. Deep Definitions and Mental Models
 
-**ECMAScript versus JavaScript runtime:** Explain the relationship among ECMAScript, a JavaScript engine, Node.js, and a browser. Your answer should classify at least five examples as language behavior or host behavior. Follow-up: How would your answer change when a transpiler transforms the source before the engine receives it?
+**[Mid] ECMAScript versus JavaScript runtime:** Explain the relationship among ECMAScript, a JavaScript engine, Node.js, and a browser. Your answer should classify at least five examples as language behavior or host behavior. Follow-up: How would your answer change when a transpiler transforms the source before the engine receives it?
 
 **Expected answer shape:** Define each layer, give concrete examples, and explain why the distinction affects debugging and portability.
 
@@ -715,7 +748,7 @@ For Node.js questions, state:
 
 ### 2. Predict the Output and Trace Execution
 
-**Return line break:** What does this function return, and why?
+**[Beginner] Return line break:** What does this function return, and why?
 
 ```js
 function readStatus() {
@@ -728,7 +761,7 @@ Follow-up: Rewrite it in two unambiguous ways and classify the original behavior
 
 **Expected answer shape:** State `undefined`, explain the line terminator after `return`, and provide explicit rewrites.
 
-**Leading bracket:** Analyze this source without running it:
+**[Mid] Leading bracket:** Analyze this source without running it:
 
 ```js
 const value = 10
@@ -739,55 +772,55 @@ Explain at least two plausible parser interpretations, what explicit semicolon c
 
 **Expected answer shape:** Explain continuation parsing, statement boundaries, possible runtime consequences, semicolon placement, and host API assumptions.
 
-**Block or object:** What is the grammatical role of `{ mode: "test" }` at statement start? Compare it with `const config = { mode: "test" };`. Follow-up: How does this affect a function that intends to return an object?
+**[Beginner] Block or object:** What is the grammatical role of `{ mode: "test" }` at statement start? Compare it with `const config = { mode: "test" };`. Follow-up: How does this affect a function that intends to return an object?
 
 **Expected answer shape:** Explain statement context, labeled-statement/block parsing, expression context, and return formatting.
 
 ### 3. Implementation Exercises
 
-**Source classifier:** Design a small static-analysis rule that flags a newline immediately after `return` when the following token begins a likely object literal. State the inputs, false positives, false negatives, and whether your rule operates on raw text or tokens. Follow-up: Why is a regular expression alone a fragile implementation?
+**[Senior] Source classifier:** Design a small static-analysis rule that flags a newline immediately after `return` when the following token begins a likely object literal. State the inputs, false positives, false negatives, and whether your rule operates on raw text or tokens. Follow-up: Why is a regular expression alone a fragile implementation?
 
 **Expected answer shape:** Describe tokenization/parsing, limits of text matching, examples, and a conservative review strategy.
 
-**Unambiguous source transformation:** Design a formatter rule set that reduces ASI hazards while preserving program meaning. Include leading continuation tokens, restricted productions, comments, and object returns. Follow-up: What must the formatter do when source cannot be parsed, and how would you test semantic preservation?
+**[Senior] Unambiguous source transformation:** Design a formatter rule set that reduces ASI hazards while preserving program meaning. Include leading continuation tokens, restricted productions, comments, and object returns. Follow-up: What must the formatter do when source cannot be parsed, and how would you test semantic preservation?
 
 **Expected answer shape:** Explain parse-first transformation, explicit boundaries, invalid-source handling, differential tests, and known limitations.
 
 ### 4. Debugging and Failure Analysis
 
-**Module syntax failure:** A Node process reports an error near `export`. The file contains valid-looking module syntax. Describe your debugging sequence. Follow-up: Which conclusions can you make from ECMAScript alone, and which require inspecting Node configuration and version?
+**[Mid] Module syntax failure:** A Node process reports an error near `export`. The file contains valid-looking module syntax. Describe your debugging sequence. Follow-up: Which conclusions can you make from ECMAScript alone, and which require inspecting Node configuration and version?
 
 **Expected answer shape:** Check grammar goal, package/file configuration, loader, transformed output, runtime version, and the actual file executed.
 
-**Error classification:** A service starts successfully but later throws when calling a method on `null`. Contrast this with an invalid declaration that prevents startup. Follow-up: Why can a function with a `return` line break be more difficult to detect than either error?
+**[Beginner] Error classification:** A service starts successfully but later throws when calling a method on `null`. Contrast this with an invalid declaration that prevents startup. Follow-up: Why can a function with a `return` line break be more difficult to detect than either error?
 
 **Expected answer shape:** Distinguish parse/early failure, runtime failure, and valid-but-wrong behavior; include observability and tests.
 
-**Reported location is misleading:** A parser reports an unexpected token near the end of a 300-line file. Give a bounded debugging method using lexical and grammatical boundaries. Follow-up: How can an unterminated block comment, string, or template literal shift the reported location?
+**[Mid] Reported location is misleading:** A parser reports an unexpected token near the end of a 300-line file. Give a bounded debugging method using lexical and grammatical boundaries. Follow-up: How can an unterminated block comment, string, or template literal shift the reported location?
 
 **Expected answer shape:** Check unmatched delimiters and lexical terminators backward from the location, reduce to a minimal reproduction, and verify the exact source after tooling transformations.
 
 ### 5. Design and Tradeoff Questions
 
-**Semicolon policy:** Should a backend team require semicolons? Give a defensible policy that considers formatter configuration, code review, ASI hazards, generated code, and team consistency. Follow-up: Why is â€œalways use semicolonsâ€ a policy choice rather than proof that ASI is not part of the language?
+**[Mid] Semicolon policy:** Should a backend team require semicolons? Give a defensible policy that considers formatter configuration, code review, ASI hazards, generated code, and team consistency. Follow-up: Why is "always use semicolons" a policy choice rather than proof that ASI is not part of the language?
 
 **Expected answer shape:** State assumptions, identify risk reduction, explain consistency and tooling, and acknowledge valid alternative styles.
 
-**Host boundary in a shared library:** Design the source boundary for a library intended to run in Node.js and browser hosts. Decide what belongs to ECMAScript-only code, what belongs behind adapters, and how module publishing assumptions should be documented. Follow-up: How would you test grammar and host compatibility without claiming universal behavior?
+**[Senior] Host boundary in a shared library:** Design the source boundary for a library intended to run in Node.js and browser hosts. Decide what belongs to ECMAScript-only code, what belongs behind adapters, and how module publishing assumptions should be documented. Follow-up: How would you test grammar and host compatibility without claiming universal behavior?
 
 **Expected answer shape:** Separate pure language code from host APIs, define module/build targets, document assumptions, and use environment-specific tests.
 
 ### 6. Senior Follow-ups: Scale, Reliability, Security, and Operations
 
-**Source integrity in production:** A production service runs transformed JavaScript, while stack traces point to generated files. Design a process for diagnosing a syntax or ASI-related regression across source, formatter, transpiler, and runtime. Follow-up: What artifacts and version information should be retained for reliable reproduction?
+**[Senior] Source integrity in production:** A production service runs transformed JavaScript, while stack traces point to generated files. Design a process for diagnosing a syntax or ASI-related regression across source, formatter, transpiler, and runtime. Follow-up: What artifacts and version information should be retained for reliable reproduction?
 
 **Expected answer shape:** Cover source maps, exact generated artifacts, runtime/toolchain versions, reproducible builds, minimal reproduction, deployment metadata, and validation gates.
 
-**Unicode identifiers and review risk:** A security-sensitive codebase permits Unicode identifiers. Assess the maintainability and security risks and propose a policy. Follow-up: How would you distinguish a real language limitation from a team policy or tooling limitation?
+**[Senior] Unicode identifiers and review risk:** A security-sensitive codebase permits Unicode identifiers. Assess the maintainability and security risks and propose a policy. Follow-up: How would you distinguish a real language limitation from a team policy or tooling limitation?
 
 **Expected answer shape:** Discuss confusable characters, normalization/review/tooling concerns, restricted naming policy, linting, and the ECMAScript-versus-process boundary.
 
-**Syntax validation in a deployment pipeline:** Design a validation stage that catches invalid source, module/script mismatches, and selected ASI hazards before deployment. Follow-up: Which defects can only be found with runtime or integration tests even when parsing succeeds?
+**[Senior] Syntax validation in a deployment pipeline:** Design a validation stage that catches invalid source, module/script mismatches, and selected ASI hazards before deployment. Follow-up: Which defects can only be found with runtime or integration tests even when parsing succeeds?
 
 **Expected answer shape:** Include parser checks, target-runtime checks, module configuration, formatter/linter policy, focused behavior tests, and the distinction between syntax validity and semantic correctness.
 

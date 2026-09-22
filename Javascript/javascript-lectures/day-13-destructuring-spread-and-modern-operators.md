@@ -1,4 +1,4 @@
-﻿# Day 13: Destructuring, Spread, Rest, and Modern Operators
+# Day 13: Destructuring, Spread, Rest, and Modern Operators
 
 <nav aria-label="Lecture navigation">
 
@@ -184,6 +184,21 @@ This is a shallow immutable update. If `record` has nested mutable values, those
 
 Destructuring and spread are common in service code, but their shallow ownership behavior can share mutable request or configuration state.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Destructuring default `{ x = 10 }` | `||` fallback `x \|\| 10` | Destructuring default applies only when `x` is **`undefined`**. `||` applies for any falsy value (`0`, `false`, `""` too). |
+| Object rest `{ a, ...rest }` | Object spread `{ ...obj }` | Rest **collects** the remaining own properties into a new object. Spread **expands** an object's properties into a new object. Same `...` syntax, opposite directions. |
+| Array spread `[...a, ...b]` | `Array.concat(a, b)` | Both concatenate arrays. Spread works on any iterable; `.concat` is array-specific. They're equivalent for plain arrays. |
+| Optional chaining `?.` | Validation | `?.` stops the chain on `null`/`undefined` and returns `undefined` silently. It does **not** validate — it just avoids a throw. |
+| `??` (nullish) | `\|\|` (OR) | `??` gives the right side only for `null`/`undefined`. `||` gives the right side for any falsy value. Use `??` when `0`, `false`, or `""` are valid inputs. |
+| Shallow spread | Deep clone | `{ ...obj }` copies own enumerable properties one level. Nested objects are still shared references. |
+
+> **Cross-day links:** Types of values that are truthy/falsy are covered in [Day 04](day-04-coercion-equality-and-operators.md). Object ownership and spread behavior are in [Day 09](day-09-objects-and-property-access.md). The iteration protocol behind array spread is in [Day 14](day-14-iterables-iterators-generators-and-symbols.md).
+
 ## Common Mistakes and Interview Traps
 
 - Thinking defaults replace every falsy value.
@@ -238,13 +253,31 @@ Destructuring and spread are common in service code, but their shallow ownership
 | `value || fallback` | Fallback for any falsy value |
 | `value ??= fallback` | Nullish logical assignment |
 
+**vs. quick reference**
+
+| | `??` | `\|\|` | `?.` |
+|---|---|---|---|
+| Triggers on | `null` or `undefined` | Any falsy value | `null` or `undefined` |
+| Preserves `0`, `false`, `""` | ✓ Yes | ✗ No | N/A |
+| Returns right side | When left is nullish | When left is falsy | Returns `undefined` when left is nullish |
+| Use case | Safe defaults | Boolean-like defaults | Optional property access |
+
+| Syntax | Packs or unpacks? |
+|---|---|
+| `const { name } = obj` | Unpacks (destructuring) |
+| `const result = { name }` | Packs (shorthand property) |
+| `const merged = { ...a, ...b }` | Expands/spreads |
+| `const { a, ...rest } = obj` | Collects remainder (rest) |
+
 ## Interview Questions
 
-1. **Definition:** Explain the difference between rest and spread with array and object examples.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Definition:** Explain the difference between rest and spread with array and object examples.
    - Expected answer: Rest collects remaining values in a pattern; spread expands an iterable or enumerable object into a new context.
    - Follow-up: Why does object spread not copy inherited properties?
 
-2. **Trace:** Predict the output:
+2. **[Beginner] Trace:** Predict the output:
 
    ```js
    const value = { count: 0, name: "" };
@@ -254,15 +287,15 @@ Destructuring and spread are common in service code, but their shallow ownership
    - Expected answer: `0 ""`; defaults are not used for defined falsy values.
    - Follow-up: What would `value.count || 10` return?
 
-3. **Implementation:** Normalize a nested request without throwing when optional sections are absent.
+3. **[Mid] Implementation:** Normalize a nested request without throwing when optional sections are absent.
    - Expected answer: Use safe defaults, explicit validation, preserve valid falsy values, and avoid mutating or blindly spreading input.
    - Follow-up: How would you prevent prototype-related keys from entering the result?
 
-4. **Debugging:** A spread-based update unexpectedly changes the old state. Find the alias and repair only the necessary level.
+4. **[Mid] Debugging:** A spread-based update unexpectedly changes the old state. Find the alias and repair only the necessary level.
    - Expected answer: Identify the shared nested reference and copy that nested object or use a chosen immutable update strategy.
    - Follow-up: What is the cost of recursively copying the whole input?
 
-5. **Design:** Review a configuration loader using `||` for every default. Explain production bugs it can cause and propose tests.
+5. **[Senior] Design:** Review a configuration loader using `||` for every default. Explain production bugs it can cause and propose tests.
    - Expected answer: Discuss false, zero, empty strings, nullish semantics, validation, compatibility, and table-driven tests.
    - Follow-up: Which values should be rejected rather than defaulted?
 

@@ -1,4 +1,4 @@
-﻿# Day 10: Prototypes, Classes, and Inheritance
+# Day 10: Prototypes, Classes, and Inheritance
 
 <nav aria-label="Lecture navigation">
 
@@ -254,6 +254,21 @@ Composition makes the dependency explicit and easy to replace in a test. Inherit
 
 Prototype and class behavior affects domain objects, custom errors, and library integration in Node services.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Class | Prototype chain | A `class` is cleaner syntax, but instance methods still live on `ClassName.prototype` — not on each instance. No magic happens; it's the same prototype lookup as always. |
+| Instance method | Static method | Instance method: called on an object (`user.describe()`), gets `this` = the instance. Static method: called on the class itself (`User.category()`), not available on instances. |
+| Inheritance (`extends`) | Composition | `extends` is an "is-a" relationship — subclass shares and overrides parent behavior. Composition is "has-a" — object delegates to a collaborator. Prefer composition for flexibility and testability. |
+| `super.method()` | Parent method call | `super.method()` calls the parent's version while keeping `this` as the current instance. It is not simply a function reference. |
+| Private field `#val` | Naming convention `_val` | `#val` is enforced by the language — truly inaccessible from outside the class. `_val` is just a name convention; anyone can still access it. |
+| `instanceof` | `typeof` | `instanceof` checks the prototype chain (`obj instanceof MyClass`). `typeof` only gives a broad type string (`"object"` for all objects, including arrays). |
+
+> **Cross-day links:** Property descriptors and `configurable`/`enumerable` are in [Day 11](day-11-property-descriptors-and-immutability.md). Object creation methods including `Object.create` are in [Day 09](day-09-objects-and-property-access.md). `this` binding rules are in [Day 08](day-08-closures-execution-context-and-this.md).
+
 ## Common Mistakes and Interview Traps
 
 - Saying classes remove prototypes. They do not; class methods still live on prototypes.
@@ -316,13 +331,29 @@ Prototype and class behavior affects domain objects, custom errors, and library 
 | `super.method()` | Calls inherited behavior with current receiver |
 | `#field` | Private class field |
 
+**vs. quick reference**
+
+| | Instance method | Static method |
+|---|---|---|
+| Defined on | `Class.prototype` | Class constructor |
+| Called on | `new Class()` instance | Class itself (`Class.method()`) |
+| Has access to `this` | ✓ (the instance) | ✓ (the class) |
+| Available on instance | ✓ | ✗ |
+
+| Pattern | Best when |
+|---|---|
+| `extends` (inheritance) | Strong "is-a" contract; few overrides; stable parent |
+| Composition | Flexible, testable; dependency can change; no tight coupling |
+
 ## Interview Questions
 
-1. **Definition:** Explain the difference between an own property and an inherited property. Include a read trace and an assignment trace.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain the difference between an own property and an inherited property. Include a read trace and an assignment trace.
    - Expected answer: Define the prototype chain, use `Object.hasOwn`, and explain why assignment usually creates an own property.
    - Follow-up: How could changing the prototype affect `in` and `instanceof`?
 
-2. **Trace:** Predict the output and explain each lookup:
+2. **[Beginner] Trace:** Predict the output and explain each lookup:
 
    ```js
    const parent = { value: 1 };
@@ -333,15 +364,15 @@ Prototype and class behavior affects domain objects, custom errors, and library 
    - Expected answer: `1 3 true`; the read finds the parent value, then assignment creates the child's own value.
    - Follow-up: What changes if the inherited property is a setter?
 
-3. **Implementation:** Design a class hierarchy for payments without duplicating validation code.
+3. **[Senior] Implementation:** Design a class hierarchy for payments without duplicating validation code.
    - Expected answer: Show the stable parent contract, subclass responsibilities, composition alternatives, error behavior, and tests.
    - Follow-up: When would a strategy object be safer than another subclass?
 
-4. **Debugging:** A subclass constructor throws `ReferenceError: Must call super constructor`. Explain the cause and repair it without hiding initialization errors.
+4. **[Mid] Debugging:** A subclass constructor throws `ReferenceError: Must call super constructor`. Explain the cause and repair it without hiding initialization errors.
    - Expected answer: Derived constructors cannot use `this` before `super()`; call `super` first or redesign initialization.
    - Follow-up: How do private fields change subclass design?
 
-5. **Design:** A Node service has eight subclasses with many overridden methods and fragile parent assumptions. Recommend a redesign.
+5. **[Senior] Design:** A Node service has eight subclasses with many overridden methods and fragile parent assumptions. Recommend a redesign.
    - Expected answer: Identify violated contracts, compare composition and inheritance, define interfaces, migration steps, testing, and operational risk.
    - Follow-up: How would you detect behavior regressions during migration?
 

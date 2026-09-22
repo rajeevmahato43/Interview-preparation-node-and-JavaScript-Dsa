@@ -1,4 +1,4 @@
-﻿# Day 20: Jobs, Microtasks, and Observable Scheduling
+# Day 20: Jobs, Microtasks, and Observable Scheduling
 
 <nav aria-label="Lecture navigation">
 
@@ -157,6 +157,21 @@ This bounded example finishes. An unbounded chain can keep adding microtasks so 
 
 Node executes JavaScript on an event-driven runtime. A long synchronous loop or an endless microtask chain can delay other callbacks even when those callbacks represent unrelated requests. The JavaScript rule is scheduling; Node supplies the event loop and I/O integration.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Synchronous code | Microtask (promise reaction) | Synchronous code always finishes first. Microtasks run **after** the current synchronous job completes, but **before** the next macrotask (timer, I/O). |
+| Microtask (`Promise.then`) | Macrotask (`setTimeout`) | Microtasks: run after current job, before any I/O/timer callbacks. Macrotasks: scheduled by the host (Node/browser) with their own delay. Promise reactions are microtasks; timers are macrotasks. |
+| `queueMicrotask(fn)` | `Promise.resolve().then(fn)` | Both schedule a microtask. They run at the same checkpoint and are effectively equivalent in ordering. `queueMicrotask` is more explicit. |
+| `await value` | Synchronous read | Even `await 5` defers continuation to a microtask. The function pauses and yields to the microtask queue, even for a non-async value. |
+| Starvation (microtask loop) | Starvation (sync loop) | Endless synchronous code blocks everything. Endless microtask chaining also starves timers/I/O because the queue is drained before moving to macrotasks. |
+| Event loop (Node) | Event loop (browser) | Same basic principle (call stack + queues), but different phases and APIs. Node has libuv phases (timers, I/O, check/setImmediate). Don't assume browser diagrams map exactly to Node. |
+
+> **Cross-day links:** Promises and their settlement are in [Day 18](day-18-promises-and-composition.md). `async/await` and how `await` defers are in [Day 19](day-19-async-await-errors-and-cleanup.md). Node-specific async patterns are in [Day 27](day-27-concurrency-and-resource-safe-async.md).
+
 ## Common Mistakes and Interview Traps
 
 - Saying promise callbacks run immediately.
@@ -207,13 +222,26 @@ Node executes JavaScript on an event-driven runtime. A long synchronous loop or 
 | Long loop | Blocks other JavaScript callbacks |
 | Endless microtask chain | Can starve host work |
 
+**vs. quick reference**
+
+| Queue type | Examples | Runs when |
+|---|---|---|
+| Current (synchronous) | Regular code, call stack | Immediately |
+| Microtask | `Promise.then`, `queueMicrotask`, `await` resume | After current sync job, before next macrotask |
+| Macrotask | `setTimeout`, `setInterval`, I/O callbacks | After all microtasks are drained |
+| Node-specific | `setImmediate` (check phase), `process.nextTick` | Phase-dependent; check Node docs |
+
+> **Rule of thumb:** Promise reaction ≠ immediate. Timer ≠ exact delay. The only guarantees are: sync first, microtasks before macrotasks.
+
 ## Interview Questions
 
-1. **Definition:** Explain why a promise callback does not run in the middle of the current synchronous function.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Definition:** Explain why a promise callback does not run in the middle of the current synchronous function.
    - Expected answer: The reaction is scheduled for a later job/microtask checkpoint after the current job completes.
    - Follow-up: Does this create parallel JavaScript execution?
 
-2. **Trace:** Predict the output:
+2. **[Mid] Trace:** Predict the output:
 
    ```js
    console.log("a");
@@ -224,15 +252,15 @@ Node executes JavaScript on an event-driven runtime. A long synchronous loop or 
    - Expected answer: `a`, `b`, then `c`, `d` in the queue order for this example.
    - Follow-up: What if the first microtask queues another microtask?
 
-3. **Implementation:** Build a batch processor that handles at most 100 items per microtask turn and yields between batches.
+3. **[Senior] Implementation:** Build a batch processor that handles at most 100 items per microtask turn and yields between batches.
    - Expected answer: Define queue state, progress, error handling, yield mechanism, fairness, and memory limits.
    - Follow-up: Which yield mechanism is appropriate for the target host?
 
-4. **Debugging:** A Node server's timers and I/O callbacks are delayed even though no single promise is slow. Diagnose a microtask starvation pattern.
+4. **[Mid] Debugging:** A Node server's timers and I/O callbacks are delayed even though no single promise is slow. Diagnose a microtask starvation pattern.
    - Expected answer: Look for recursive promise/microtask scheduling, measure queue growth, add bounded batches and an appropriate yield, and test latency.
    - Follow-up: How would you distinguish CPU blocking from microtask starvation?
 
-5. **Design:** Explain scheduling guarantees for a cross-platform library that must behave consistently in browsers and Node.
+5. **[Senior] Design:** Explain scheduling guarantees for a cross-platform library that must behave consistently in browsers and Node.
    - Expected answer: Promise only language-level assumptions, avoid relying on timer/I/O order, document host adapters, test supported runtimes, and define fairness expectations.
    - Follow-up: How would you handle a host without a desired scheduling API?
 

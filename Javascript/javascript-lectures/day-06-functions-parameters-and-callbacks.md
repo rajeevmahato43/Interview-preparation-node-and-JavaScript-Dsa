@@ -1,4 +1,4 @@
-﻿# Day 06: Functions, Parameters, and Callbacks
+# Day 06: Functions, Parameters, and Callbacks
 
 <nav aria-label="Lecture navigation">
 
@@ -368,6 +368,21 @@ This small example is incomplete for truly asynchronous work because `task` may 
 
 Node libraries expose callback and promise contracts; callers need an explicit completion and error policy.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Function declaration | Function expression | Declarations are available before their line (hoisted fully). Expressions are only available after their line executes. |
+| Arrow function | Regular function | Arrow: no own `this`, no `arguments`, can't use `new`. Regular: all of those exist. Use arrow for callbacks; use regular/method for objects and constructors. |
+| Default parameter | `||` fallback | Default applies only when the argument is `undefined`. `||` applies for any falsy value (including `0`, `false`, `""`). |
+| Rest parameter `...rest` | `arguments` | `rest` is a real array, works in arrows, and only collects remaining args. `arguments` is array-like, not available in arrows, and always holds all args. |
+| Higher-order function | Callback | A higher-order function **accepts or returns** a function. A callback is the function **passed in**. Every callback is used by a higher-order function. |
+| Synchronous callback | Asynchronous callback | Synchronous: runs immediately inside the same call stack — a `try/catch` around the call can catch its errors. Async: runs later (after event loop turn) — the original `try/catch` is already gone. |
+
+> **Cross-day links:** `this` binding rules for functions (especially lost receivers) are the main topic of [Day 08](day-08-closures-execution-context-and-this.md). Promise and async/await function patterns are in [Days 18–19](day-18-promises-and-event-loop.md).
+
 ## Common Mistakes and Interview Traps
 
 - Calling a function value when the API expects the function itself, or passing `operation()` instead of `operation`.
@@ -426,25 +441,38 @@ Node libraries expose callback and promise contracts; callers need an explicit c
 | Higher-order function | Accepts or returns a function |
 | Callback contract | Define timing, arguments, errors, count, and completion |
 
+**vs. quick reference**
+
+| | Arrow function | Regular function | Method shorthand |
+|---|---|---|---|
+| Own `this` | ✗ (lexical) | ✓ (call-site) | ✓ (call-site) |
+| Own `arguments` | ✗ | ✓ | ✓ |
+| Can use `new` | ✗ | ✓ | ✗ |
+| Hoisted fully | ✗ | Declaration only | ✗ |
+| Good for callbacks | ✓ | ✓ | ✗ |
+| Good for methods | ✗ | ✓ | ✓ |
+
 ## Interview Questions
 
-1. **Mental model:** Compare a function declaration, a function expression, and an arrow function in terms of hoisting, `this`, `arguments`, `new`, and return syntax.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Mental model:** Compare a function declaration, a function expression, and an arrow function in terms of hoisting, `this`, `arguments`, `new`, and return syntax.
    - **Expected answer shape:** Use a comparison table and give one example where the difference changes behavior.
    - **Follow-up:** Which form would you choose for a class method, a collection callback, and a constructor replacement?
 
-2. **Predict the output:** Trace a function with default parameters, a rest parameter, and side-effecting argument expressions.
+2. **[Mid] Predict the output:** Trace a function with default parameters, a rest parameter, and side-effecting argument expressions.
    - **Expected answer shape:** Show argument evaluation order, which defaults run, the final parameter values, and the returned value.
    - **Follow-up:** How would a destructured parameter change the failure mode for `undefined`?
 
-3. **Implementation:** Design both synchronous and promise-aware versions of a callback adapter that guarantees completion exactly once.
+3. **[Senior] Implementation:** Design both synchronous and promise-aware versions of a callback adapter that guarantees completion exactly once.
    - **Expected answer shape:** Define accepted inputs, error normalization, completion ownership, and behavior when user code throws.
    - **Follow-up:** How would you prevent a malicious or buggy callback from causing duplicate completion?
 
-4. **Debugging:** A class method is passed directly as a callback and later fails because `this` is `undefined`. Diagnose and provide at least three fixes with tradeoffs.
+4. **[Mid] Debugging:** A class method is passed directly as a callback and later fails because `this` is `undefined`. Diagnose and provide at least three fixes with tradeoffs.
    - **Expected answer shape:** Explain method extraction and call-site binding, then compare `bind`, wrapper arrows, and class-field arrows.
    - **Follow-up:** Which fix changes allocation or prototype behavior?
 
-5. **Design:** Design a service API that can run independent validation rules concurrently but returns deterministic errors.
+5. **[Senior] Design:** Design a service API that can run independent validation rules concurrently but returns deterministic errors.
    - **Expected answer shape:** Define callback or promise contract, ordering policy, failure aggregation, cancellation, and complexity.
    - **Follow-up:** What changes if one rule has a side effect and must not run concurrently?
 

@@ -88,6 +88,21 @@ The observable guarantee here is the explicit bound, not when the runtime collec
 
 A Node process may serve requests for days. Module-level arrays, retained request closures, event listeners, pending promises, and unbounded maps can therefore accumulate across requests. Node heap tools can help locate retainers, but the language-level fix is usually clearer ownership, bounded state, and explicit teardown.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Strong reference | Weak reference | A strong reference keeps the object alive (GC cannot collect it). A weak reference (`WeakMap`/`WeakRef`) lets GC collect the object if no other strong references exist. |
+| `Map` | `WeakMap` | `Map` holds strong key references — entries stay until explicitly deleted. `WeakMap` holds weak keys — the entry is eligible for GC when the key object has no other references. |
+| Memory leak | Intentional retention | Not all long-lived objects are leaks. A cache, a registry, or a subscriber list is intentionally retained. A leak is retention that persists longer than intended with no path to release. |
+| `WeakRef` | `WeakMap` | `WeakRef` holds a weak reference to a single value; you call `.deref()` to get it back. `WeakMap` maps weak keys to values. Neither is iterable or suitable for explicit cleanup logic. |
+| `FinalizationRegistry` | Explicit teardown | `FinalizationRegistry` runs a callback **after** GC, timing unknown, not guaranteed. Explicit teardown (`.close()`, `.removeEventListener()`) runs immediately and reliably. Never use GC callbacks for correctness. |
+| Closure capture | Pass-by-value | Closures capture **references** to variables, not copies of values. If a large object is only reachable through a closure, it stays alive as long as the closure does. |
+
+> **Cross-day links:** `WeakMap` key identity and use cases are introduced in [Day 12](day-12-built-in-data-structures-and-serialization.md). Object lifetimes and property ownership are in [Day 09](day-09-objects-and-property-access.md). Async resource cleanup with `finally` is in [Day 19](day-19-async-await-errors-and-cleanup.md).
+
 ## Common Mistakes and Interview Traps
 
 - Calling every retained closure a memory leak.
@@ -130,6 +145,8 @@ Reachability determines whether an implementation may reclaim an object. Closure
 
 ## Interview Questions
 
-1. **Hard - Definition:** Explain reachability versus lexical scope. Include a closure example.
-2. **Hard - Debugging:** A service's heap grows after every request. Identify likely retention paths and the evidence you would collect.
-3. **Very Hard - Design:** Design a bounded cache with explicit ownership, eviction, and testable teardown. State what belongs to JavaScript and what belongs to Node diagnostics.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain reachability versus lexical scope. Include a closure example.
+2. **[Senior] Debugging:** A service's heap grows after every request. Identify likely retention paths and the evidence you would collect.
+3. **[Senior] Design:** Design a bounded cache with explicit ownership, eviction, and testable teardown. State what belongs to JavaScript and what belongs to Node diagnostics.

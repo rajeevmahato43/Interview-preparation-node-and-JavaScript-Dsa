@@ -65,6 +65,21 @@ The trace separates synchronous observation from later jobs. Exact timer/I/O ord
 
 Node provides stack inspection, logging, test, and diagnostic tools, but the debugging method begins with JavaScript semantics: scope, identity, promise chains, and scheduling. Keep the language failure separate from Node's event-loop or API behavior while investigating.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Synchronous error | Async rejection | Synchronous: thrown immediately, caught by `try/catch`. Async: the rejection arrives later as a microtask; only `catch` on the promise chain or `try { await }` can intercept it. |
+| Minimal reproduction | Full production trace | A minimal reproduction isolates the bug. Full traces have too much noise. Always minimize before debugging deeply. |
+| Promise chain swallowing | Explicit `.catch()` | A missing `.catch()` on a chain means a rejection propagates silently or becomes an unhandledRejection event. Always handle or surface rejections. |
+| Console log (temporal) | Snapshot + assertion | `console.log` captures value at the time of call, but async mutations happen later. Log before AND after the operation, or use assertions that run at the right time. |
+| Stack trace cause | Error wrapping | `new Error("outer", { cause: originalError })` preserves the original error as `.cause`. Logging only the outer message discards the root cause. |
+| Single change hypothesis | Scattered fixes | Debugging is more effective when you change **one thing at a time** and verify. Multiple simultaneous changes make it impossible to know what fixed the bug. |
+
+> **Cross-day links:** Promise error propagation is in [Day 18](day-18-promises-and-composition.md) and [Day 19](day-19-async-await-errors-and-cleanup.md). Scheduling and async ordering are in [Day 20](day-20-jobs-microtasks-and-scheduling.md). Testing to detect bugs is in [Day 23](day-23-testing-javascript-behavior.md).
+
 ## Common Mistakes and Interview Traps
 
 - Starting with a large production trace instead of a minimal reproduction.
@@ -104,6 +119,8 @@ Debugging is controlled observation. Minimize failures, find the first incorrect
 
 ## Interview Questions
 
-1. **Hard - Debugging:** A function resolves successfully even though its dependency rejects. Trace the promise chain and identify the missing operation.
-2. **Hard - Trace:** Explain why a synchronous log sees an empty array before a promise reaction mutates it.
-3. **Very Hard - Design:** Define safe async diagnostics for a service with causes, retries, and sensitive input.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Debugging:** A function resolves successfully even though its dependency rejects. Trace the promise chain and identify the missing operation.
+2. **[Mid] Trace:** Explain why a synchronous log sees an empty array before a promise reaction mutates it.
+3. **[Senior] Design:** Define safe async diagnostics for a service with causes, retries, and sensitive input.

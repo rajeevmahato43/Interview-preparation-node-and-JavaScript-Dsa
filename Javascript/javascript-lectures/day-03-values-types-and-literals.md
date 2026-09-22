@@ -1,4 +1,4 @@
-﻿# Day 03: Values, Types, and Literals
+# Day 03: Values, Types, and Literals
 
 <nav aria-label="Lecture navigation">
 
@@ -370,6 +370,24 @@ A service must choose a policy, such as sending a string ID, converting only val
 
 Node service boundaries must validate values before storing, mutating, or serializing them.
 
+---
+
+## Compare & Recall
+
+These are the pairs most commonly confused on this topic. Full explanations are in the sections above.
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| **Primitive** | **Object** | Primitives are immutable single values compared by their content (`===`). Objects are mutable collections compared by their memory identity. |
+| **`undefined`** | **`null`** | `undefined` means a variable was declared but never given a value, or a property doesn't exist. `null` is an intentional choice: "there is no object here." |
+| **`number`** | **`bigint`** | `number` uses floating-point and loses precision above `Number.MAX_SAFE_INTEGER`. `bigint` handles any integer exactly, but can't be mixed with `number` in arithmetic. |
+| **`typeof value`** | **`Array.isArray(value)`** | `typeof []` returns `"object"`, not `"array"`. Use `Array.isArray()` to detect arrays specifically. |
+| **`typeof null`** | **object check** | `typeof null === "object"` is a historical bug. Always check `value === null` separately before treating something as an object. |
+| **`===` on objects** | **structural equality** | `{}  === {}` is `false` because they're two different objects in memory. If you need "do these objects contain the same data?", you must write that check yourself. |
+| **`NaN`** | **invalid number** | `NaN` means the operation *tried* to produce a number but couldn't. It has type `"number"`. Use `Number.isNaN()` to test for it — it is the only value not equal to itself under `===`. |
+
+> **Cross-day links:** Coercion between types is in [Day 04](day-04-coercion-equality-and-operators.md). Object mutation, copying, and identity is explored deeply in [Day 09](day-09-objects-and-property-access.md). Immutability is covered in [Day 11](day-11-property-descriptors-and-immutability.md). `Map` and `Set` are in [Day 12](day-12-built-in-data-structures-and-serialization.md).
+
 ## Common Mistakes and Interview Traps
 
 - Saying that `const` makes an object immutable. It only prevents rebinding the variable.
@@ -427,25 +445,42 @@ Node service boundaries must validate values before storing, mutating, or serial
 | Remember `const` | It prevents rebinding, not nested mutation |
 | Broad type check | `typeof value`, followed by domain-specific checks |
 
+**vs. quick reference**
+
+| Type check | What it actually tells you |
+|---|---|
+| `typeof x === "object"` | x is an object, array, null, Date, Map, or regex (not useful alone) |
+| `x === null` | x is exactly null |
+| `Array.isArray(x)` | x is an array |
+| `x instanceof Date` | x has Date in its prototype chain (can break across realms) |
+| `Number.isNaN(x)` | x is the actual NaN value |
+
+| Primitive | Compared by | Mutable? |
+|---|---|---|
+| `number`, `string`, `boolean`, `null`, `undefined`, `symbol`, `bigint` | Value | No |
+| Object / Array / Function | Identity (memory address) | Yes (by default) |
+
 ## Interview Questions
 
-1. **Mental model:** Explain the difference between a primitive value, an object identity, a binding, and a shallow copy. Use a nested object to show which changes are shared.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Mental model:** Explain the difference between a primitive value, an object identity, a binding, and a shallow copy. Use a nested object to show which changes are shared.
    - **Expected answer shape:** Define each term, trace assignments, and identify the exact alias that causes shared mutation.
    - **Follow-up:** How would you design a copy policy for request data containing dates, maps, and nested arrays?
 
-2. **Predict the output:** What do these expressions return, and why: `typeof null`, `NaN === NaN`, `Object.is(NaN, NaN)`, `0 === -0`, and `Object.is(0, -0)`?
+2. **[Beginner] Predict the output:** What do these expressions return, and why: `typeof null`, `NaN === NaN`, `Object.is(NaN, NaN)`, `0 === -0`, and `Object.is(0, -0)`?
    - **Expected answer shape:** Give the result of each expression and distinguish historical behavior from deliberate equality semantics.
    - **Follow-up:** Which comparison would you use for a cache key and why?
 
-3. **Implementation:** Design a validator for an API field that accepts either a safe integer or a decimal string representing an integer larger than the safe-number range.
+3. **[Senior] Implementation:** Design a validator for an API field that accepts either a safe integer or a decimal string representing an integer larger than the safe-number range.
    - **Expected answer shape:** State the accepted grammar, validation order, representation after validation, and rejected inputs.
    - **Follow-up:** Explain how you would serialize the normalized result in JSON.
 
-4. **Failure analysis:** A production service compares two IDs after parsing them with `Number`, and distinct large database IDs occasionally match. Diagnose the failure.
+4. **[Mid] Failure analysis:** A production service compares two IDs after parsing them with `Number`, and distinct large database IDs occasionally match. Diagnose the failure.
    - **Expected answer shape:** Explain precision loss, identify the safe-integer boundary, and propose a representation that preserves identity.
    - **Follow-up:** What tests would catch this before deployment?
 
-5. **Design:** A Node.js service accepts user-provided JSON and passes it through several modules. Decide where type validation, copying, and serialization rules should live.
+5. **[Senior] Design:** A Node.js service accepts user-provided JSON and passes it through several modules. Decide where type validation, copying, and serialization rules should live.
    - **Expected answer shape:** Describe boundary ownership, mutation policy, error behavior, and how to keep internal assumptions explicit.
    - **Follow-up:** How would your design change if performance pressure made deep copying too expensive?
 

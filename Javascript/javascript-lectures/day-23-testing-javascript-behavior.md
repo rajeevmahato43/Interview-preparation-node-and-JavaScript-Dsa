@@ -83,6 +83,21 @@ Verify exact inspection output in the stated Node version; the semantic assertio
 
 The Node test runner, timers, filesystem, and network fakes are host tools. The language-level lesson is to isolate pure decisions and await async work. A test that passes because it never awaits a rejection is not evidence of correctness.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| Mock | Fake | Mock: a test double that verifies **how** it was called (specific interactions). Fake: a simpler working implementation (e.g., in-memory database). Fakes test more of the real behavior; mocks test only the contract call. |
+| Unit test | Integration test | Unit: tests one function/module in isolation. Integration: tests two or more units working together. Unit tests are faster and more isolated; integration tests catch wiring bugs. |
+| `assert.throws` | `await assert.rejects` | `assert.throws` catches synchronous throws. `await assert.rejects` catches async promise rejections. If you use `assert.throws` for an async function, the test passes even if it rejects. |
+| Table-driven test | Ad-hoc tests | Table-driven: one test function, many input/output rows. Easier to add cases, reduces duplication, and makes edge cases visible. Ad-hoc: individual test for each case, more verbose. |
+| Real dependency | Injected fake/stub | Real dependencies make tests slow, flaky, and hard to isolate. Injected fakes are fast and deterministic. Inject at a **boundary** (repository, clock, mailer) rather than mocking internal helper functions. |
+| `try { await fn() } catch` | Checking result value | `try/catch` is the right pattern for testing rejections inline. Alternatively, `await assert.rejects(fn(), /message/)` is cleaner and avoids the "passes without throwing" pitfall. |
+
+> **Cross-day links:** Async error handling patterns are in [Day 19](day-19-async-await-errors-and-cleanup.md). Debugging JavaScript behavior is in [Day 24](day-24-debugging-and-language-failures.md). Pure function architecture for testability is in [Day 26](day-26-javascript-boundaries-for-services.md).
+
 ## Common Mistakes and Interview Traps
 
 - Forgetting `await assert.rejects(...)`.
@@ -124,6 +139,8 @@ Tests should make behavior and contracts visible. Await async assertions, test b
 
 ## Interview Questions
 
-1. **Hard - Definition:** Explain why an async test can pass while the operation later rejects.
-2. **Hard - Implementation:** Design tests for a timeout wrapper that distinguish rejection from cancellation.
-3. **Very Hard - Review:** Identify which mocks in a service test hide the real contract and replace them with narrower fakes.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain why an async test can pass while the operation later rejects.
+2. **[Senior] Implementation:** Design tests for a timeout wrapper that distinguish rejection from cancellation.
+3. **[Senior] Review:** Identify which mocks in a service test hide the real contract and replace them with narrower fakes.

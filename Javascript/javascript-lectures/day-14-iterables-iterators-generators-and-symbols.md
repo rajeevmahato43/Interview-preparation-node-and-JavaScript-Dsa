@@ -1,4 +1,4 @@
-﻿# Day 14: Iterables, Iterators, Generators, and Symbols
+# Day 14: Iterables, Iterators, Generators, and Symbols
 
 <nav aria-label="Lecture navigation">
 
@@ -205,6 +205,21 @@ The generator creates one page when requested instead of building every intermed
 
 Iteration protocols explain lazy application data and provide language context for Node stream iteration without teaching stream APIs here.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| **Iterable** | **Iterator** | An iterable **can create** an iterator (it has `[Symbol.iterator]()`). An iterator **does the work** (it has `next()`). Arrays are iterable; calling `[Symbol.iterator]()` on them gives you an iterator. |
+| Generator function `function*` | Regular function | Regular function runs to completion and returns once. Generator function pauses at `yield`, returns a value, then resumes on the next `next()` call. |
+| `yield` | `return` | `yield` **pauses** and produces a value (done: false). `return` **ends** the generator (done: true). The final return value is visible only if you call `next()` after the last yield. |
+| `yield*` | Manually iterating | `yield*` delegates to another iterable, yielding each of its values as if they were your own. Equivalent to a `for...of` that yields each item. |
+| Lazy evaluation | Eager evaluation | Lazy (generators): compute the next value only when asked. Eager (arrays): compute all values up front. Lazy saves memory for large/infinite sequences. |
+| Synchronous iterator | Async iterator | Synchronous: `next()` returns `{ value, done }` synchronously. Async: `next()` returns a **Promise** of `{ value, done }`. Used with `for await...of` and `Symbol.asyncIterator`. |
+
+> **Cross-day links:** `for...of` and iteration over arrays/Maps/Sets are in [Day 05](day-05-control-flow-and-loops.md) and [Day 12](day-12-built-in-data-structures-and-serialization.md). Async iteration and `for await...of` are introduced in [Day 19](day-19-async-await-errors-and-cleanup.md).
+
 ## Common Mistakes and Interview Traps
 
 - Calling an iterable itself as if it were an iterator.
@@ -256,13 +271,31 @@ Iteration protocols explain lazy application data and provide language context f
 | `{ done: true }` | Iteration is complete |
 | `return()` | Request iterator cleanup/completion |
 
+**vs. quick reference**
+
+| | `yield` | `return` (in generator) |
+|---|---|---|
+| `done` in result | `false` | `true` |
+| Visible to `for...of` | ✓ Yes | ✗ No |
+| Visible to `.next()` | ✓ Yes | ✓ Yes (last call) |
+| Pauses the function | ✓ | Ends the function |
+
+| | Iterable | Iterator |
+|---|---|---|
+| Has `[Symbol.iterator]()` | ✓ | (may be its own iterator) |
+| Has `next()` | ✗ | ✓ |
+| Reusable (can iterate again) | Usually | Usually not |
+| Example | Array, Set, Map, String | Array iterator, generator object |
+
 ## Interview Questions
 
-1. **Definition:** Explain iterable and iterator with a custom object.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Mid] Definition:** Explain iterable and iterator with a custom object.
    - Expected answer: State the separate responsibilities and show `Symbol.iterator`, `next`, `value`, and `done`.
    - Follow-up: Why can the same iterable be consumed twice while an iterator often cannot?
 
-2. **Trace:** What does this print?
+2. **[Beginner] Trace:** What does this print?
 
    ```js
    function* values() {
@@ -274,15 +307,15 @@ Iteration protocols explain lazy application data and provide language context f
    - Expected answer: `[1]`; `for...of` and spread ignore the final return value.
    - Follow-up: How can you observe `2`?
 
-3. **Implementation:** Build a lazy breadth-first traversal interface for a tree.
+3. **[Senior] Implementation:** Build a lazy breadth-first traversal interface for a tree.
    - Expected answer: Define node shape, queue state, yield timing, memory complexity, and early termination.
    - Follow-up: How would an async source change the protocol?
 
-4. **Debugging:** A generator-backed report hangs in production. Find the unbounded consumer and add a safe limit.
+4. **[Mid] Debugging:** A generator-backed report hangs in production. Find the unbounded consumer and add a safe limit.
    - Expected answer: Identify infinite generation or missing termination, add explicit bounds or cancellation, and test large inputs.
    - Follow-up: How would you expose progress without materializing all results?
 
-5. **Design:** Compare a generator pipeline with eager arrays for a large Node data flow.
+5. **[Senior] Design:** Compare a generator pipeline with eager arrays for a large Node data flow.
    - Expected answer: Discuss memory, latency, backpressure boundaries, cleanup, error handling, and observability.
    - Follow-up: Which parts require async iteration rather than synchronous iteration?
 

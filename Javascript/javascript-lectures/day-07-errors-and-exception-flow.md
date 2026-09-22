@@ -1,4 +1,4 @@
-﻿# Day 07: Errors and Exception Flow
+# Day 07: Errors and Exception Flow
 
 <nav aria-label="Lecture navigation">
 
@@ -284,6 +284,21 @@ Do not catch an error only to log it and continue when the program's state may b
 
 Language-level error boundaries determine what Node request or service code can classify, clean up, log, and propagate.
 
+---
+
+## Compare & Recall
+
+| Concept A | Concept B | Key difference |
+|---|---|---|
+| `throw` value | `throw new Error(...)` | You can throw anything, but only `Error` objects carry a `.stack` trace. Always throw `Error` objects or subclasses in application code. |
+| `catch` block | `finally` block | `catch` handles errors. `finally` always runs (success or failure). Never `return` from `finally` — it silently replaces the original result. |
+| Synchronous error | Asynchronous error | A `try/catch` around `setTimeout(fn, 0)` **won't catch** errors that `fn` throws. The original `try` block is already done by then. |
+| Validation error | Programmer error | Validation: bad data from outside (recoverable, return 4xx). Programmer: bug in your own code (not recoverable, let it crash or log + alert). |
+| `error.message` | `error.cause` | `.message` is the human-readable summary. `.cause` links to the original lower-level error you wrapped — preserving the full error chain for debugging. |
+| `Error` (base) | Custom error class | Use base `Error` for generic failures. Subclass for domain errors you need to `instanceof`-check and route differently (e.g. `ValidationError`, `NotFoundError`). |
+
+> **Cross-day links:** Async error handling (`try/catch` with `await`) is in [Day 19](day-19-async-await-and-error-handling.md). Promise rejection chains are in [Day 18](day-18-promises-and-event-loop.md). Node process-level error events are in the Node lectures.
+
 ## Common Mistakes and Interview Traps
 
 - Calling every failure an exception without distinguishing syntax, runtime, and logic errors.
@@ -336,25 +351,41 @@ Language-level error boundaries determine what Node request or service code can 
 | Public response | Map internal errors to safe, stable messages |
 | `finally` | Never return there casually; it can suppress the original result or error |
 
+**vs. quick reference**
+
+| | `try/catch` | `try/finally` | `try/catch/finally` |
+|---|---|---|---|
+| Catches errors | ✓ | ✗ | ✓ |
+| Runs cleanup always | ✗ | ✓ | ✓ |
+| `return` in `finally` replaces result | ✓ | ✓ | ✓ |
+
+| Error category | Who should handle it |
+|---|---|
+| Validation error | Caller — return a 4xx-like response |
+| Operational error (e.g. DB timeout) | Service layer — retry or wrap and rethrow |
+| Programmer error (bug) | Let it propagate / log and alert; don't swallow |
+
 ## Interview Questions
 
-1. **Mental model:** Distinguish syntax errors, runtime errors, logic errors, validation errors, operational failures, and programmer errors.
+> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+
+1. **[Beginner] Mental model:** Distinguish syntax errors, runtime errors, logic errors, validation errors, operational failures, and programmer errors.
    - **Expected answer shape:** Define each category, give a small example, and explain who should handle it.
    - **Follow-up:** Which categories should normally trigger process termination, and why can the answer depend on architecture?
 
-2. **Predict the output:** Trace a function with a `throw` in `try`, a `catch`, and a `return` in `finally`.
+2. **[Mid] Predict the output:** Trace a function with a `throw` in `try`, a `catch`, and a `return` in `finally`.
    - **Expected answer shape:** State the returned value or thrown error and explain how abrupt completion from `finally` replaces earlier control flow.
    - **Follow-up:** What code review rule would prevent this bug?
 
-3. **Implementation:** Build an error hierarchy for a service that parses input, calls a dependency, and maps failures to an HTTP-facing result without exposing secrets.
+3. **[Senior] Implementation:** Build an error hierarchy for a service that parses input, calls a dependency, and maps failures to an HTTP-facing result without exposing secrets.
    - **Expected answer shape:** Define classes or stable codes, causes, safe messages, logging fields, and mapping boundaries.
    - **Follow-up:** How do you preserve useful context when an error is not an `Error` object?
 
-4. **Debugging:** A `try/catch` around a timer callback never catches a thrown error, and a process-level failure occurs. Explain the causal timeline and repair the API.
+4. **[Mid] Debugging:** A `try/catch` around a timer callback never catches a thrown error, and a process-level failure occurs. Explain the causal timeline and repair the API.
    - **Expected answer shape:** Show when the original `try` ends, identify the missing asynchronous error channel, and propose callback or promise handling.
    - **Follow-up:** How would you test that the error is observed exactly once?
 
-5. **Design:** A database timeout is wrapped three times by different layers. Design a cause and logging policy that keeps diagnosis possible without duplicating noisy stack traces or leaking query data.
+5. **[Senior] Design:** A database timeout is wrapped three times by different layers. Design a cause and logging policy that keeps diagnosis possible without duplicating noisy stack traces or leaking query data.
    - **Expected answer shape:** Discuss ownership, stable classification, cause chains, redaction, retry policy, and observability.
    - **Follow-up:** How should metrics distinguish dependency failure from invalid caller input?
 
