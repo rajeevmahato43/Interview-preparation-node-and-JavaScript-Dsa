@@ -65,7 +65,7 @@ console.log(Boolean({})); // true
 console.log(Boolean("0")); // true
 ```
 
-This is why a check for â€œdid the caller provide a value?â€ must be chosen carefully:
+This is why a check for "did the caller provide a value?" must be chosen carefully:
 
 ```js
 function oldStyleLimit(input) {
@@ -75,7 +75,7 @@ function oldStyleLimit(input) {
 console.log(oldStyleLimit(0)); // 10, even though 0 was provided
 ```
 
-If only `null` and `undefined` mean â€œmissing,â€ use nullish coalescing:
+If only `null` and `undefined` mean "missing," use nullish coalescing:
 
 ```js
 function limitOrDefault(input) {
@@ -340,12 +340,6 @@ console.log(Boolean("false")); // true
 
 Validate the type and allowed values before making an authorization decision.
 
-## Node.js Connection
-
-Configuration, authorization, pagination, and request validation should use explicit types and finite-number checks rather than accidental coercion.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |
@@ -418,7 +412,7 @@ Test separately with `0`, `false`, `null`, `undefined`, invalid numeric text, an
 ## Summary
 
 - Explicit conversion is easier to review than accidental coercion.
-- Truthiness includes many values that are not â€œmissingâ€; empty arrays and objects are truthy.
+- Truthiness includes many values that are not "missing"; empty arrays and objects are truthy.
 - `Number`, `String`, and `Boolean` follow defined conversion rules, including surprising cases.
 - `===` avoids ordinary coercion, while `==` may convert values.
 - `Object.is` differs from `===` for `NaN` and signed zero.

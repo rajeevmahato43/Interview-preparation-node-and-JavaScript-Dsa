@@ -193,12 +193,6 @@ async function loadDashboard(loadUser, loadNotifications) {
 
 This policy makes the user mandatory and notifications optional. The correct policy depends on the product requirement.
 
-## Node.js Connection
-
-Node service operations must make timeout, cancellation, cleanup, and dependency failure ownership explicit around awaited work.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

@@ -124,7 +124,7 @@ Node does not search every file in the project randomly. The spelling of the spe
 
 The importing file's location and the nearest package configuration matter. A package dependency is not resolved relative to the process working directory in the way many beginners assume. This is why a command can work from one project directory and fail after a package is moved or published.
 
-When debugging a resolution failure, record the exact specifier, importing file, module mode, Node version, package boundary, and installed dependency tree. ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œThe file existsÃƒÂ¢Ã¢â€šÂ¬Ã‚Â is not enough: the resolver may intentionally hide it behind `exports`.
+When debugging a resolution failure, record the exact specifier, importing file, module mode, Node version, package boundary, and installed dependency tree. "The file exists" is not enough: the resolver may intentionally hide it behind `exports`.
 
 ### 8. `exports` is an API firewall
 
@@ -153,7 +153,7 @@ When a module is used, ask three separate questions:
 2. **Evaluation:** What top-level code runs, and can it throw or start side effects?
 3. **Reuse:** What value or namespace does a later import receive in this process?
 
-CommonJS exposes a cached export value after its first evaluation. ESM also avoids evaluating the same resolved module repeatedly, but its module record exposes bindings and participates in the ESM linking/evaluation process. Do not reduce the difference to ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œone is cached and the other is not.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+CommonJS exposes a cached export value after its first evaluation. ESM also avoids evaluating the same resolved module repeatedly, but its module record exposes bindings and participates in the ESM linking/evaluation process. Do not reduce the difference to "one is cached and the other is not."
 
 For testability, keep module evaluation cheap: export factories, avoid opening servers during import, and pass external clients into functions. Import-time side effects make test order, startup failures, and shutdown ownership harder to reason about.
 
@@ -229,7 +229,7 @@ a.cjs -> b.cjs -> a.cjs
 
 Node must return something while the first module is still evaluating. A consumer may therefore observe an empty object, an incomplete export, or a warning depending on exactly when the value is read. ESM detects cycles as part of linking, but top-level initialization can still observe a temporal-dead-zone or an unfinished evaluation path.
 
-The practical fix is usually not ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œmake the import dynamic.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Identify the ownership cycle, move shared policy into a lower-level module, or inject the dependency at the call boundary. A cycle that is intentional should have a test that proves the initialization order.
+The practical fix is usually not "make the import dynamic." Identify the ownership cycle, move shared policy into a lower-level module, or inject the dependency at the call boundary. A cycle that is intentional should have a test that proves the initialization order.
 
 ## Node.js and DSA Connections
 

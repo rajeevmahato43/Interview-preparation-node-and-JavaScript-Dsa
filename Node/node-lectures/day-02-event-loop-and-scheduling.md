@@ -73,7 +73,7 @@ The important sequence is:
 8. Node drains nextTick and promise work created by that callback.
 ```
 
-The I/O can progress while JavaScript does other work, but the user callback still runs on the JavaScript thread. Network sockets usually use operating-system readiness; some filesystem, DNS, crypto, and compression work may use the libuv worker pool. ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œEverything runs in the thread poolÃƒÂ¢Ã¢â€šÂ¬Ã‚Â is incorrect.
+The I/O can progress while JavaScript does other work, but the user callback still runs on the JavaScript thread. Network sockets usually use operating-system readiness; some filesystem, DNS, crypto, and compression work may use the libuv worker pool. "Everything runs in the thread pool" is incorrect.
 
 ### 3. `setTimeout` is a lower bound
 

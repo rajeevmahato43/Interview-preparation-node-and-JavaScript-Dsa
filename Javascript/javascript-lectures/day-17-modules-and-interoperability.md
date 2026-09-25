@@ -155,12 +155,6 @@ export function calculateTotal(price, taxRate) {
 
 The pure function can be tested without loading a database or reading process state. A module should expose clear inputs and outputs instead of hiding all work in top-level side effects.
 
-## Node.js Connection
-
-Node selects and connects CommonJS or ESM modules through host configuration; package resolution remains in the Node curriculum.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

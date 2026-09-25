@@ -180,12 +180,6 @@ console.log(original.active, updated.active); // true false
 
 This is a shallow immutable update. If `record` has nested mutable values, those nested references remain shared.
 
-## Node.js Connection
-
-Destructuring and spread are common in service code, but their shallow ownership behavior can share mutable request or configuration state.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

@@ -129,7 +129,7 @@ This matches application behavior to the database-level constraint and lets the 
    - **Follow-up:** What is the risk if you interpolate untrusted input?
 
 2. **Trace:** A `UPDATE` statement returns row count zero. What should the service do?
-   - **Expected answer:** It should interpret that as ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œno matching row,ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not necessarily a database failure.
+   - **Expected answer:** It should interpret that as "no matching row," not necessarily a database failure.
    - **Follow-up:** What if the update also changed a unique field and violated a constraint?
 
 3. **Implementation:** Write a safe `INSERT ... RETURNING` statement for a users table.

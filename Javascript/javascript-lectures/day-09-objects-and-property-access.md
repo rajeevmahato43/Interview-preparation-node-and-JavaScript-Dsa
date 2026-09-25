@@ -479,18 +479,6 @@ Defensive rules include:
 
 This is not a replacement for security testing. It is a reminder that object property access is a trust-boundary operation in a server.
 
-### Node.js connection: request objects and data ownership
-
-A Node.js handler often receives an object parsed from external input and passes parts of it into services. Decide whether the service:
-
-- Reads the object without mutating it.
-- Creates a shallow copy and owns only top-level changes.
-- Deeply normalizes selected fields.
-- Rejects unknown keys.
-- Preserves or removes `undefined` values before serialization.
-
-Do not assume `{ ...input }` makes untrusted data safe or independent. It copies only enumerable own properties and keeps nested references.
-
 ### DSA connection: maps, objects, and lookup
 
 Objects can act as key-value stores, but `Map` may better express arbitrary key identity, frequent insertion and deletion, and non-string keys. A `Set` is often clearer for membership checks.
@@ -672,18 +660,6 @@ Defensive rules include:
 
 This is not a replacement for security testing. It is a reminder that object property access is a trust-boundary operation in a server.
 
-### Node.js connection: request objects and data ownership
-
-A Node.js handler often receives an object parsed from external input and passes parts of it into services. Decide whether the service:
-
-- Reads the object without mutating it.
-- Creates a shallow copy and owns only top-level changes.
-- Deeply normalizes selected fields.
-- Rejects unknown keys.
-- Preserves or removes `undefined` values before serialization.
-
-Do not assume `{ ...input }` makes untrusted data safe or independent. It copies only enumerable own properties and keeps nested references.
-
 ### DSA connection: maps, objects, and lookup
 
 Objects can act as key-value stores, but `Map` may better express arbitrary key identity, frequent insertion and deletion, and non-string keys. A `Set` is often clearer for membership checks.
@@ -700,10 +676,6 @@ console.log(counts.get("a")); // 2
 The expected lookup complexity of `Map` is commonly treated as $O(1)$, but this is an implementation and workload assumption, not a universal mathematical guarantee. State what the algorithm needs and why the chosen structure fits.
 
 `Map` and its full API (`set`, `get`, `has`, `delete`, `size`, iteration, object keys, `WeakMap`) are covered in depth in [Day 12: Built-in Data Structures](day-12-built-in-data-structures-and-serialization.md).
-
-## Node.js Connection
-
-Parsed request data is ordinary object data, so own-property checks, normalization, and unsafe-key rejection belong at service boundaries.
 
 ## Compare & Recall
 

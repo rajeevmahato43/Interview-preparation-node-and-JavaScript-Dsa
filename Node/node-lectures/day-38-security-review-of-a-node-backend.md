@@ -70,13 +70,13 @@ This is a common backend bug and one of the easiest ways to create privilege esc
 - Thinking CORS or browser headers are security controls.
 - Checking only user identity and not resource ownership.
 - Logging secrets or credentials.
-- Assuming a dependency is safe because it is ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œofficial.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+- Assuming a dependency is safe because it is "official."
 - Mixing validation and output sanitization without a clear contract.
 
 ## Tricky Points
 
 - Security is not a single setting or middleware list; it is a system view across boundaries.
-- A vulnerability can be exploited even when the code ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œworksÃƒÂ¢Ã¢â€šÂ¬Ã‚Â for normal use.
+- A vulnerability can be exploited even when the code "works" for normal use.
 - Dependency risk and secret handling are as important as route logic.
 
 ## Practical Exercise

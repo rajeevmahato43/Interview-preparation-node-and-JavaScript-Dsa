@@ -79,12 +79,6 @@ console.log(JSON.stringify({ invalid: NaN, missing: undefined }));
 
 Verify exact inspection output in the stated Node version; the semantic assertions are the important contract.
 
-## Node.js Connection
-
-The Node test runner, timers, filesystem, and network fakes are host tools. The language-level lesson is to isolate pure decisions and await async work. A test that passes because it never awaits a rejection is not evidence of correctness.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

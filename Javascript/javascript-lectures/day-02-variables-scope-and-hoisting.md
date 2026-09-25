@@ -499,7 +499,7 @@ You can describe the rule precisely like this:
 
 ### 11. Hoisting: a useful but incomplete word
 
-People often say â€œvariables are hoisted.â€ This sentence is too broad unless we explain what kind of variable and what operation is being discussed.
+People often say "variables are hoisted." This sentence is too broad unless we explain what kind of variable and what operation is being discussed.
 
 A better explanation is:
 
@@ -618,7 +618,7 @@ var value = "outer";
 }
 ```
 
-The exact rules depend on the nesting and declaration kinds. Do not memorize one slogan such as â€œshadowing is always allowed.â€ Instead, ask:
+The exact rules depend on the nesting and declaration kinds. Do not memorize one slogan such as "shadowing is always allowed." Instead, ask:
 
 1. What is the outer declaration kind?
 2. What is the inner declaration kind?
@@ -671,7 +671,7 @@ An early error means the source is rejected before normal evaluation. If a file 
 
 ### 14. Global, script, and module scope
 
-The word â€œglobalâ€ is often used too casually. There are several related ideas:
+The word "global" is often used too casually. There are several related ideas:
 
 - A **global binding** is a name available at the outermost level of a script environment.
 - The **global object** is an object supplied by the host environment.
@@ -919,12 +919,6 @@ console.log("This line is not reached if the duplicate declaration is active.");
 
 The duplicate lexical declaration is rejected before normal execution. This is different from a runtime `ReferenceError`, which occurs when already-parsed code tries to evaluate an unavailable or uninitialized binding.
 
-## Node.js Connection
-
-Node module boundaries make declaration scope and shared mutable state directly relevant to request handlers and configuration.
-
----
-
 ## Compare & Recall
 
 This table is a quick cheat for the most commonly confused pairs. Full explanations are in the sections above.
@@ -1033,7 +1027,7 @@ A name may be unavailable by scope rules after a block ends, while the value it 
 
 ### Goal
 
-Trace a JavaScript program containing `var`, `let`, `const`, shadowing, and access before initialization. Explain each output and each error without relying on the vague phrase â€œit is hoisted.â€
+Trace a JavaScript program containing `var`, `let`, `const`, shadowing, and access before initialization. Explain each output and each error without relying on the vague phrase "it is hoisted."
 
 ### Input
 

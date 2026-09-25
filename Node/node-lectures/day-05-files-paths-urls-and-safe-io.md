@@ -85,7 +85,7 @@ For high-risk file access, prefer a storage design where the client supplies an 
 | Upload | Stream to a temporary destination while counting bytes |
 | Random access | Open a handle and read bounded ranges |
 
-The limit must cover both the source bytes and any decoded or transformed representation. A ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ10 MB fileÃƒÂ¢Ã¢â€šÂ¬Ã‚Â can produce more memory pressure when converted to text, parsed as JSON, or copied through several buffers.
+The limit must cover both the source bytes and any decoded or transformed representation. A "10 MB file" can produce more memory pressure when converted to text, parsed as JSON, or copied through several buffers.
 
 ### 8. Atomic writes and temporary files
 
@@ -136,7 +136,7 @@ async function readWithHandle(filePath) {
 }
 ```
 
-The handle example is useful for bounded reads, but `fs.open()` followed by a later security decision can still be wrong if the decision is based on mutable metadata. Decide the trust boundary first, then open with the flags and permissions that express the intended operation. Handle `ENOENT`, `EACCES`, `EISDIR`, and `ENOSPC` as different operational categories rather than returning one misleading ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œfile error.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+The handle example is useful for bounded reads, but `fs.open()` followed by a later security decision can still be wrong if the decision is based on mutable metadata. Decide the trust boundary first, then open with the flags and permissions that express the intended operation. Handle `ENOENT`, `EACCES`, `EISDIR`, and `ENOSPC` as different operational categories rather than returning one misleading "file error."
 
 The `finally` block runs after success, a thrown error, or a rejected promise from `readFile`. If closing can fail, the application should decide how to record that failure.
 

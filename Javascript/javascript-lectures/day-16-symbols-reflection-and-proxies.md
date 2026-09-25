@@ -171,13 +171,7 @@ console.log(settings.mode); // "safe"
 
 This protects writes through the proxy only. Code that still holds the original target can mutate it. A proxy is not a replacement for ownership control.
 
-## Node.js Connection
-
-Symbols, reflection, and proxies help explain libraries, but proxy overhead and altered identity should be deliberate in service code.
-
 ## Common Mistakes and Interview Traps
-
----
 
 ## Compare & Recall
 

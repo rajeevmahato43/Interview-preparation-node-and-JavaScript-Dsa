@@ -210,12 +210,6 @@ console.log(restored.id); // 12n
 
 The schema must tell the parser that the string represents a `BigInt`; blindly converting every numeric-looking string could corrupt normal data.
 
-## Node.js Connection
-
-Arrays, maps, sets, numbers, and JSON shape request payloads, in-memory indexes, identifiers, logs, and service responses.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

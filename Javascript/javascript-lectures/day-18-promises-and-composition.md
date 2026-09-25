@@ -169,12 +169,6 @@ async function runTasks(tasks, workerCount) {
 
 This is a teaching example. Real code should define what happens when one task fails and whether already-started tasks should continue.
 
-## Node.js Connection
-
-Promise composition controls service latency and failure policy, while Node adapters determine the underlying I/O and cancellation contract.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

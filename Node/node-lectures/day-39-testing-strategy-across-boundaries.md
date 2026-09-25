@@ -25,7 +25,7 @@ By the end of this lecture, you should be able to:
 
 ### 1. Tests should prove behavior at the right boundary
 
-A good test answers: ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œWhat contract is being checked?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+A good test answers: "What contract is being checked?"
 
 - unit test: pure function behavior
 - HTTP integration: request/response contract
@@ -72,7 +72,7 @@ A repository or database test ensures the storage layer still respects constrain
 
 - A test suite is a product of its boundaries. A wrong boundary means a wrong confidence level.
 - The need to mock is not the same as the need to fake the behavior completely.
-- ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œIt passes locallyÃƒÂ¢Ã¢â€šÂ¬Ã‚Â is not the same as ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œthe contract is reliable in production.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+- "It passes locally" is not the same as "the contract is reliable in production."
 
 ## Practical Exercise
 

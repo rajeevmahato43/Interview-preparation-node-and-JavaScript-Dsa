@@ -301,24 +301,6 @@ const handler = createHandler(new Array(1_000_000).fill("item"));
 
 This does not prove a leak by itself. The object may be intentionally owned by `handler`. A leak happens when ownership is accidental or the handler is retained without a bound lifetime. Diagnose with allocation and retention evidence rather than assuming garbage collection is broken.
 
-### Node.js connection: request handlers and listeners
-
-Node applications frequently create closures inside request handlers, event listeners, timers, and dependency factories. Check:
-
-- Does the callback need the entire request object or only a small value?
-- Is a listener removed with the same function identity used to add it?
-- Does a cache retain closures forever?
-- Does a handler accidentally share mutable state across requests?
-- Does a method lose its receiver when passed to a framework?
-
-These are JavaScript ownership and call-site questions, even when the host API is Node.js.
-
-## Node.js Connection
-
-Request handlers, listeners, timers, and dependency factories can retain closures or lose method receivers in long-lived Node processes.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

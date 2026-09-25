@@ -48,7 +48,7 @@ A backend should separate:
 
 This makes retries and safety easier to reason about.
 
-### 3. Safe failure is not ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œalways succeedÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+### 3. Safe failure is not "always succeed"
 
 A robust system often chooses:
 
@@ -76,7 +76,7 @@ If an upstream dependency is slow, the app should fail with a bounded timeout. B
 
 ## Tricky Points
 
-- A system can be ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œavailableÃƒÂ¢Ã¢â€šÂ¬Ã‚Â while also being ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œunreliableÃƒÂ¢Ã¢â€šÂ¬Ã‚Â in business terms.
+- A system can be "available" while also being "unreliable" in business terms.
 - Backpressure and timeouts are an operational design decision, not just coding details.
 - Some failure modes are acceptable for a single request but unacceptable at whole-system scale.
 
@@ -94,7 +94,7 @@ If an upstream dependency is slow, the app should fail with a bounded timeout. B
 
 - Reliability is not just redundancy; it is controlled failure under realistic conditions.
 - Explicit boundaries, deadlines, retries, and operational signals are what make a system predictable.
-- The right design depends on business risk, not on a universal ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œalways use queueÃƒÂ¢Ã¢â€šÂ¬Ã‚Â answer.
+- The right design depends on business risk, not on a universal "always use queue" answer.
 
 ## Cheat Sheet
 
@@ -110,7 +110,7 @@ If an upstream dependency is slow, the app should fail with a bounded timeout. B
 
 1. **Definition:** Why is reliability considered a system property rather than a single bug fix?
    - **Expected answer:** Because failures appear across components, dependencies, and operations, so the design needs multiple controls.
-   - **Follow-up:** What is a ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œgood enoughÃƒÂ¢Ã¢â€šÂ¬Ã‚Â degraded mode?
+   - **Follow-up:** What is a "good enough" degraded mode?
 
 2. **Design:** Design a service that calls an external payment provider and then writes to a database.
    - **Expected answer:** Use a bounded timeout, idempotency key, safe retry policy, and a clear state machine to avoid duplicate charges.

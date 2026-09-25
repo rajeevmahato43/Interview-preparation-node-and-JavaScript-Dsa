@@ -201,12 +201,6 @@ console.log([...pages([1, 2, 3, 4, 5], 2)]);
 
 The generator creates one page when requested instead of building every intermediate result before the consumer starts.
 
-## Node.js Connection
-
-Iteration protocols explain lazy application data and provide language context for Node stream iteration without teaching stream APIs here.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

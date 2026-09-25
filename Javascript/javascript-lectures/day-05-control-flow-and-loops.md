@@ -176,7 +176,7 @@ for (const key in user) {
 }
 ```
 
-It is usually a poor choice for arrays because it gives keys, can include inherited properties, and does not express â€œiterate these valuesâ€:
+It is usually a poor choice for arrays because it gives keys, can include inherited properties, and does not express "iterate these values":
 
 ```js
 const colors = ["red", "blue"];
@@ -354,28 +354,6 @@ function hasDuplicate(numbers) {
 ```
 
 This uses $O(n)$ additional space and has expected $O(n)$ time under normal hash-table assumptions. A nested comparison uses $O(1)$ extra space but $O(n^2)$ time. Interview answers should state the tradeoff and the assumptions.
-
-### Node.js connection: synchronous work blocks progress
-
-A JavaScript loop runs synchronously. While a long loop is running, the current Node.js process cannot run other JavaScript callbacks on that thread. This can delay unrelated requests and timers.
-
-```js
-function expensiveWork(limit) {
-  let total = 0;
-  for (let number = 0; number < limit; number += 1) {
-    total += number;
-  }
-  return total;
-}
-```
-
-The exact time depends on the machine, runtime, optimization, and workload. The reliable point is that the loop occupies the current execution path. For large CPU work, consider smaller chunks, a worker thread, a separate process, or an algorithmic improvement. Do not promise that `setTimeout` automatically makes the work parallel; it only changes when a callback may run.
-
-## Node.js Connection
-
-Synchronous control flow occupies the current Node execution path, so unbounded loops can delay unrelated callbacks.
-
----
 
 ## Compare & Recall
 

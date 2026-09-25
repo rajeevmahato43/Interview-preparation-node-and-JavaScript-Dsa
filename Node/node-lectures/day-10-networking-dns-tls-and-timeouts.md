@@ -102,7 +102,7 @@ Use the `URL` class, allow only expected protocols and hosts, and do not build o
 
 ### DNS and address families
 
-A hostname can resolve to multiple addresses and address families. Resolution behavior, caching, and connection selection depend on Node and operating-system configuration. Do not diagnose every connection problem as ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œthe server is downÃƒÂ¢Ã¢â€šÂ¬Ã‚Â; record hostname, selected address, timing, and error code without logging secrets.
+A hostname can resolve to multiple addresses and address families. Resolution behavior, caching, and connection selection depend on Node and operating-system configuration. Do not diagnose every connection problem as "the server is down"; record hostname, selected address, timing, and error code without logging secrets.
 
 ## Node.js, JavaScript, and DSA Connections
 
@@ -115,7 +115,7 @@ A hostname can resolve to multiple addresses and address families. Resolution be
 - Using only a total timeout with no stage timing.
 - Retrying non-idempotent writes automatically.
 - Creating a new HTTP client per request.
-- Disabling TLS verification to ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œfixÃƒÂ¢Ã¢â€šÂ¬Ã‚Â certificates.
+- Disabling TLS verification to "fix" certificates.
 - Treating DNS failure, refusal, reset, timeout, and HTTP 500 as the same error.
 - Following redirects to unvalidated destinations.
 - Forgetting to consume or close an unsuccessful response body.
@@ -177,7 +177,7 @@ A hostname can resolve to multiple addresses and address families. Resolution be
 
 5. **Design [Very Hard]:** Design a reliable payment call over an unreliable network.
    - **Expected answer:** Idempotency, durable request state, deadlines, reconciliation, safe retry ownership, audit evidence, and manual recovery.
-   - **Follow-up:** Why is ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œretry on every errorÃƒÂ¢Ã¢â€šÂ¬Ã‚Â unsafe?
+   - **Follow-up:** Why is "retry on every error" unsafe?
 
 <nav aria-label="Lecture navigation">
 

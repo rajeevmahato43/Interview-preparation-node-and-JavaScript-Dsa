@@ -120,7 +120,7 @@ The pool returns rows and metadata, not just arrays. The service should use para
 
 4. **Design:** Why is SQL injection prevention important even when the API looks simple?
    - **Expected answer:** Client input can appear in identifiers, filters, or values, and parameterized queries keep the query structure separate from data.
-   - **Follow-up:** What does this protect beyond ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œbad user inputÃƒÂ¢Ã¢â€šÂ¬Ã‚Â?
+   - **Follow-up:** What does this protect beyond "bad user input"?
 
 <nav aria-label="Lecture navigation">
 

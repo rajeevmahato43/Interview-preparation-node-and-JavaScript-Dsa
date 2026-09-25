@@ -20,7 +20,7 @@ By the end of this lecture, you should be able to:
 
 ## Prerequisites
 
-Read [Day 02: Variables, Declarations, and Scope Foundations](day-02-variables-scope-and-hoisting.md) and [Day 05: Conditions, Loops, and Control Transfer](day-05-control-flow-and-loops.md). Day 8 expands the closure and `this` ideas introduced here. Promises and `async` functions are covered later in Days 18â€“19.
+Read [Day 02: Variables, Declarations, and Scope Foundations](day-02-variables-scope-and-hoisting.md) and [Day 05: Conditions, Loops, and Control Transfer](day-05-control-flow-and-loops.md). Day 8 expands the closure and `this` ideas introduced here. Promises and `async` functions are covered later in Days 18"“19.
 
 The examples use JavaScript. A callback can be synchronous or asynchronous; the function receiving it must state which contract it expects.
 
@@ -346,29 +346,6 @@ function runLater(callback) {
 ```
 
 The timer API is host behavior, and detailed scheduling belongs to later Node.js and async lectures. The function-design lesson is stable: document where errors go and how completion is reported.
-
-### Node.js connection: callback contracts
-
-Node APIs and libraries may expose callback-style contracts, promise-style contracts, or both. A callback API should make error-first conventions and single completion explicit:
-
-```js
-function runTask(task, callback) {
-  try {
-    const result = task();
-    callback(null, result);
-  } catch (error) {
-    callback(error);
-  }
-}
-```
-
-This small example is incomplete for truly asynchronous work because `task` may return a promise or call the callback multiple times. A production adapter must define whether it accepts synchronous functions, asynchronous functions, or both, and must guard cleanup and completion rules.
-
-## Node.js Connection
-
-Node libraries expose callback and promise contracts; callers need an explicit completion and error policy.
-
----
 
 ## Compare & Recall
 

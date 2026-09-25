@@ -61,7 +61,7 @@ This gives evidence about whether the database used an index, how many documents
 
 A query with a filter on `status` and a sort on `createdAt` may be efficient with a compound index. Without the index, MongoDB may scan many documents or sort in memory.
 
-The important question is not ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œdoes an index exist?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â but ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œwhat query pattern does it support?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+The important question is not "does an index exist?" but "what query pattern does it support?"
 
 ### Aggregation tradeoff
 

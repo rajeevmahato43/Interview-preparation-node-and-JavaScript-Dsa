@@ -76,12 +76,6 @@ console.log(output.failures.length); // 0
 
 **Verification:** Add tasks that record active count, reject synchronously and asynchronously, abort cooperatively, and verify active count never exceeds the limit.
 
-## Node.js Connection
-
-Node APIs may accept `AbortSignal`, but support is API-specific. Timers, sockets, filesystem operations, and database clients have different cancellation contracts. Keep the coordinator language-level and pass signals to host adapters explicitly.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

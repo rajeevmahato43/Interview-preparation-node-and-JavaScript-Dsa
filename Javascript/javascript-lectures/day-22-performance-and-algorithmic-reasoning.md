@@ -71,12 +71,6 @@ console.log(sumIteratively(input)); // 6
 
 Compare both versions using a focused correctness test and a large bounded input. Do not claim a performance result without actually running the same runtime and workload.
 
-## Node.js Connection
-
-JavaScript computation runs on the event-loop execution path unless moved to another Node mechanism. An $O(n^2)$ request operation or a huge synchronous copy can delay unrelated requests. Algorithm choice, allocation volume, and input limits are latency and availability decisions.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

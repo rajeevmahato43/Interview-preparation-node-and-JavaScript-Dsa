@@ -24,7 +24,7 @@ By the end of this lecture, you should be able to:
 
 ### 1. Senior reasoning is a system-level habit
 
-You are not just answering ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œwhat is X?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â You are being asked to explain:
+You are not just answering "what is X?" You are being asked to explain:
 
 - why the system behaves this way
 - what the failure modes are
@@ -86,7 +86,7 @@ A senior engineer would typically reason through:
 
 ## Tricky Points
 
-- ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œBest practiceÃƒÂ¢Ã¢â€šÂ¬Ã‚Â is not universal; the best solution depends on scale, latency target, and failure tolerance.
+- "Best practice" is not universal; the best solution depends on scale, latency target, and failure tolerance.
 - Correctness often wins over optimization at the wrong layer.
 - Awareness of operational reality is part of technical competence.
 
@@ -120,7 +120,7 @@ A senior engineer would typically reason through:
 
 1. **Definition:** What does a senior Node backend answer look like compared to a mid-level answer?
    - **Expected answer:** It includes assumptions, tradeoffs, failure handling, and operational considerations, not just an API summary.
-   - **Follow-up:** Why does a ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œworks on my machineÃƒÂ¢Ã¢â€šÂ¬Ã‚Â answer fail in an interview?
+   - **Follow-up:** Why does a "works on my machine" answer fail in an interview?
 
 2. **Design:** Design an API that must handle high read traffic but also write reliably to a database and queue events.
    - **Expected answer:** Use clear boundaries, caching where appropriate, async worker paths for non-critical work, and careful transaction and retry design.

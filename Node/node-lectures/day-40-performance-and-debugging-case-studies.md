@@ -27,7 +27,7 @@ By the end of this lecture, you should be able to:
 
 ### 1. A symptom is not a cause
 
-A user reports ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œthe API is slow,ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â but the real issue could be:
+A user reports "the API is slow," but the real issue could be:
 
 - DB latency spike
 - CPU-heavy request path

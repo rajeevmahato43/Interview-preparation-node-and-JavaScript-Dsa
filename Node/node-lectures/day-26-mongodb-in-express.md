@@ -79,7 +79,7 @@ MongoDB is attractive for flexible event and document-heavy data. PostgreSQL rem
 ## Tricky Points
 
 - A repository boundary reduces coupling but adds an abstraction layer that must still be chosen carefully.
-- Good Express code is not ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œdatabase-agnosticÃƒÂ¢Ã¢â€šÂ¬Ã‚Â by default; it is explicit about where DB work happens.
+- Good Express code is not "database-agnostic" by default; it is explicit about where DB work happens.
 - A database user interface that is too broad can hide important semantics.
 
 ## Practical Exercise
@@ -123,7 +123,7 @@ MongoDB is attractive for flexible event and document-heavy data. PostgreSQL rem
 
 4. **Tradeoff:** When would you choose MongoDB over PostgreSQL for a backend API?
    - **Expected answer:** When flexible document access patterns, nested data, or fast iteration patterns dominate and the workload fits.
-   - **Follow-up:** What does ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œfitÃƒÂ¢Ã¢â€šÂ¬Ã‚Â really mean in practice?
+   - **Follow-up:** What does "fit" really mean in practice?
 
 <nav aria-label="Lecture navigation">
 

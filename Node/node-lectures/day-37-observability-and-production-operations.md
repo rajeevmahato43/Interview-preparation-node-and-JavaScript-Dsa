@@ -41,7 +41,7 @@ A process can be alive but not ready to serve traffic.
 
 ### 3. The metric must have a question behind it
 
-A useful metric answers something like: ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œIs the API degraded?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â, ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œIs the event loop lag rising?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â, or ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œIs DB latency increasing?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â It is not enough to say the system has ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œsome logs.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+A useful metric answers something like: "Is the API degraded?", "Is the event loop lag rising?", or "Is DB latency increasing?" It is not enough to say the system has "some logs."
 
 ## Detailed Explanations and Traces
 
@@ -57,7 +57,7 @@ High event-loop delay is often a sign of blocking work, large CPU tasks, or a st
 
 - Using averages instead of percentiles.
 - Logging raw secrets or high-cardinality user fields.
-- Treating ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œprocess is aliveÃƒÂ¢Ã¢â€šÂ¬Ã‚Â as ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œservice is healthy.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+- Treating "process is alive" as "service is healthy."
 - Failing to preserve request correlation across logs and traces.
 
 ## Tricky Points

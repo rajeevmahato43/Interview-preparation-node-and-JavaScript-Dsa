@@ -215,7 +215,7 @@ console.log([] instanceof Array);          // true
 console.log({} instanceof Array);          // false
 ```
 
-`instanceof` depends on the prototype chain and can be affected by multiple realms or custom prototype changes. It is not a universal â€œwhat exact type is this?â€ operator.
+`instanceof` depends on the prototype chain and can be affected by multiple realms or custom prototype changes. It is not a universal "what exact type is this?" operator.
 
 ### 6. Numbers have a safe integer boundary
 
@@ -345,32 +345,6 @@ console.log(isPlainRecord([]));                // false
 ```
 
 This is only one possible policy. Validation should match the data contract rather than relying on a generic type label.
-
-### Node.js application connection
-
-In a Node.js service, values cross boundaries when a request is parsed, configuration is read, a database result is returned, or a response is serialized. At each boundary, ask:
-
-1. What representations are allowed?
-2. Are numbers exact enough for this identifier or amount?
-3. Is `null` different from a missing value?
-4. Is the value safe to mutate, or should it be copied?
-5. Will serialization preserve the value?
-
-For example, JSON does not represent `bigint` directly:
-
-```js
-const payload = { id: 123n };
-
-// JSON.stringify(payload); // TypeError: BigInt value cannot be serialized
-```
-
-A service must choose a policy, such as sending a string ID, converting only values known to be safe, or using a serializer that explicitly supports the chosen representation.
-
-## Node.js Connection
-
-Node service boundaries must validate values before storing, mutating, or serializing them.
-
----
 
 ## Compare & Recall
 

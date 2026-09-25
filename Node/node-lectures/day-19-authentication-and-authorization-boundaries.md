@@ -21,7 +21,7 @@ By the end of this lecture, you should be able to:
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md)
 - JavaScript lecture on object trust, validation, and security
 
-Authentication answers, ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œWho is this caller?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Authorization answers, ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œIs this caller allowed to do that?ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â These are different checks and should be treated separately.
+Authentication answers, "Who is this caller?" Authorization answers, "Is this caller allowed to do that?" These are different checks and should be treated separately.
 
 ## Core Concepts
 
@@ -101,7 +101,7 @@ This route may leak data if the caller is not authorized to read that user. The 
 
 ### Role versus scope
 
-A role is a broad permission label. Scope is a narrower condition like ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œuser can read only their own orders.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Both are useful, but they answer different questions.
+A role is a broad permission label. Scope is a narrower condition like "user can read only their own orders." Both are useful, but they answer different questions.
 
 ## Common Mistakes and Interview Traps
 

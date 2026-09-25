@@ -13,7 +13,7 @@ By the end of this lecture, you should be able to:
 - Design a layered backend around routes, services, and repositories.
 - Distinguish business rules from transport concerns and persistence concerns.
 - Explain why dependency direction matters in a maintainable Node service.
-- Avoid the most common ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œfat controllerÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mistakes.
+- Avoid the most common "fat controller" mistakes.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ A common pattern is:
 - repository: data access
 - configuration and infrastructure: env, logger, DB pools, queues
 
-This is not about ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œtoo much abstractionÃƒÂ¢Ã¢â€šÂ¬Ã‚Â; it is about keeping decisions in the correct place.
+This is not about "too much abstraction"; it is about keeping decisions in the correct place.
 
 ### 2. Dependency direction matters
 
@@ -78,7 +78,7 @@ If the route checks business rules, calls the DB directly, and writes the respon
 ## Tricky Points
 
 - Layering is not about adding ceremony. It is about keeping steady boundaries.
-- A ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œgoodÃƒÂ¢Ã¢â€šÂ¬Ã‚Â architecture is one that changes predictably when requirements change.
+- A "good" architecture is one that changes predictably when requirements change.
 - The right boundary depends on the actual service, not on a framework default.
 
 ## Practical Exercise
@@ -108,7 +108,7 @@ If the route checks business rules, calls the DB directly, and writes the respon
 
 ## Interview Questions
 
-1. **Definition:** What is a ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œfat controllerÃƒÂ¢Ã¢â€šÂ¬Ã‚Â and why is it a problem?
+1. **Definition:** What is a "fat controller" and why is it a problem?
    - **Expected answer:** It mixes HTTP concerns, business logic, and persistence too tightly, making the code hard to test and maintain.
    - **Follow-up:** What are the symptoms?
 

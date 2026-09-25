@@ -84,12 +84,6 @@ console.log(cache.get("a")); // undefined
 
 The observable guarantee here is the explicit bound, not when the runtime collects unreachable objects.
 
-## Node.js Connection
-
-A Node process may serve requests for days. Module-level arrays, retained request closures, event listeners, pending promises, and unbounded maps can therefore accumulate across requests. Node heap tools can help locate retainers, but the language-level fix is usually clearer ownership, bounded state, and explicit teardown.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

@@ -151,14 +151,6 @@ This bounded example finishes. An unbounded chain can keep adding microtasks so 
 | Node timer versus I/O ordering | No | Node runtime behavior |
 | Browser rendering opportunity | No | Browser behavior |
 
-### Node latency connection
-
-## Node.js Connection
-
-Node executes JavaScript on an event-driven runtime. A long synchronous loop or an endless microtask chain can delay other callbacks even when those callbacks represent unrelated requests. The JavaScript rule is scheduling; Node supplies the event loop and I/O integration.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

@@ -391,8 +391,6 @@ The main language references for this lecture are:
 - [MDN: Strict mode](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode)
 - [ECMAScript specification](https://tc39.es/ecma262/)
 
----
-
 ## Compare & Recall
 
 These concepts are easy to mix up. Full explanations are in the sections above; this table is for quick recall.
@@ -531,10 +529,6 @@ function getPayload() {
 ```
 
 The function returns `undefined`, not the intended object. This is a correctness bug rather than necessarily a syntax or runtime error.
-
-## Node.js Connection
-
-Node decides how source files are loaded and supplies host APIs; classify those facts separately from ECMAScript parsing and evaluation.
 
 ## Common Mistakes and Interview Traps
 
@@ -738,7 +732,7 @@ For Node.js questions, state:
 
 **Expected answer shape:** Define each layer, give concrete examples, and explain why the distinction affects debugging and portability.
 
-**Expression versus statement:** Define expressions, statements, declarations, and blocks. Explain why `const result = build();` contains both a declaration statement and an expression. Follow-up: Explain why â€œexpressions return values and statements do notâ€ is a useful beginner shortcut but not a complete interview answer.
+**Expression versus statement:** Define expressions, statements, declarations, and blocks. Explain why `const result = build();` contains both a declaration statement and an expression. Follow-up: Explain why "expressions return values and statements do not" is a useful beginner shortcut but not a complete interview answer.
 
 **Expected answer shape:** Use grammar roles, show a short snippet, and discuss nested constructs and expression statements.
 

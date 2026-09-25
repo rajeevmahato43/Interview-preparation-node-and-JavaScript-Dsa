@@ -72,7 +72,7 @@ MongoDB okay flexibility makes schema evolution easy, but it can also hide data 
 
 ## Common Mistakes and Interview Traps
 
-- Thinking ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œschema-lessÃƒÂ¢Ã¢â€šÂ¬Ã‚Â means ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œno design needed.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+- Thinking "schema-less" means "no design needed."
 - Embedding everything to simplify code, ignoring growth and update costs.
 - Using deep nesting without considering query patterns and indexing.
 - Ignoring validation and application invariants.

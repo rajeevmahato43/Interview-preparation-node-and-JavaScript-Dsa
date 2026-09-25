@@ -60,12 +60,6 @@ console.log(sent.length); // 1
 
 **Verification:** Run this in an async-capable Node file and assert the result, notifier call, invalid user behavior, and repository failure propagation.
 
-## Node.js Connection
-
-A Node composition root may inject filesystem, database, HTTP, clock, and logging adapters. Those APIs remain in the Node curriculum. The JavaScript responsibility is to keep dependencies visible, prevent hidden module state, and define ownership across async boundaries.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

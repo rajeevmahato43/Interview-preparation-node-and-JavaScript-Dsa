@@ -142,12 +142,6 @@ const search = new RegExp(escapeRegExp("a+b"), "u");
 console.log(search.test("a+b")); // true
 ```
 
-## Node.js Connection
-
-Regex validation and parsing run on a Node request path, so pattern complexity and input limits affect availability.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

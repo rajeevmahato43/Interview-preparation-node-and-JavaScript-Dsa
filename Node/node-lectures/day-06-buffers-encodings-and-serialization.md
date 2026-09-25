@@ -29,7 +29,7 @@ This lecture uses Node.js `Buffer` and `StringDecoder`. It does not claim that e
 A byte is a unit of binary data. A character is a human-readable symbol. Encodings map characters to bytes. UTF-8 uses one or more bytes for a character, so the number of bytes is not always the number of characters.
 
 ```js
-const text = "cafÃƒÆ’Ã‚Â©";
+const text = "café";
 const bytes = Buffer.from(text, "utf8");
 
 console.log(text.length); // 4 JavaScript UTF-16 code units
@@ -92,10 +92,10 @@ This is a **Node.js example**:
 const { StringDecoder } = require("node:string_decoder");
 
 const decoder = new StringDecoder("utf8");
-const bytes = Buffer.from("ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬", "utf8");
+const bytes = Buffer.from("€", "utf8");
 
 console.log(decoder.write(bytes.subarray(0, 1))); // ""
-console.log(decoder.write(bytes.subarray(1))); // "ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬"
+console.log(decoder.write(bytes.subarray(1))); // "€"
 console.log(decoder.end()); // ""
 ```
 

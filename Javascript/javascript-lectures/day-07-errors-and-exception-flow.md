@@ -20,7 +20,7 @@ By the end of this lecture, you should be able to:
 
 ## Prerequisites
 
-Read [Day 04: Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md) and [Day 06: Functions, Parameters, and Callbacks](day-06-functions-parameters-and-callbacks.md). Day 8 uses errors as an example of objects, prototypes, and stack context. Promise rejection and `async`/`await` error flow are covered in Days 18â€“19.
+Read [Day 04: Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md) and [Day 06: Functions, Parameters, and Callbacks](day-06-functions-parameters-and-callbacks.md). Day 8 uses errors as an example of objects, prototypes, and stack context. Promise rejection and `async`/`await` error flow are covered in Days 18"“19.
 
 This lecture teaches language-level exception behavior. Node-specific process events and graceful shutdown are outside this language-level scope.
 
@@ -268,23 +268,6 @@ function useTwoResources(openFirst, openSecond) {
 ```
 
 This example returns resources only to show the control flow; a real function would usually perform work before closing them. The important design question is: which function owns each resource and is responsible for cleanup on every path?
-
-### Node.js connection: error boundaries
-
-A Node.js service should usually have layers with different responsibilities:
-
-1. A low-level operation creates a detailed error and preserves its cause.
-2. A service layer decides whether the failure is expected, retryable, or a business failure.
-3. A request boundary maps safe categories to a response and logs internal context safely.
-4. A process-level boundary handles failures that cannot be safely recovered.
-
-Do not catch an error only to log it and continue when the program's state may be invalid. A catch block must choose a safe next action.
-
-## Node.js Connection
-
-Language-level error boundaries determine what Node request or service code can classify, clean up, log, and propagate.
-
----
 
 ## Compare & Recall
 

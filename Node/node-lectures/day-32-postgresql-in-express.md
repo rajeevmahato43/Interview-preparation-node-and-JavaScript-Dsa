@@ -97,7 +97,7 @@ A duplicate value or foreign-key issue should become a client-safe 409 or 400, n
 
 - PostgreSQL in Express should be structured through services and repositories.
 - Transaction ownership and pool lifecycle are operational requirements.
-- Database choice should follow the workloadÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢s correctness and access patterns.
+- Database choice should follow the workload's correctness and access patterns.
 
 ## Cheat Sheet
 

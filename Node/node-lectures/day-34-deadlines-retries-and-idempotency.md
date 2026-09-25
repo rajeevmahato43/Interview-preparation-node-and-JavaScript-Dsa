@@ -76,7 +76,7 @@ The server stores the key and returns the original result if the same key is see
 
 - A timeout is a policy decision at the boundary. It does not prove the backend stopped processing.
 - A retry can be safe only if the operation or the result is idempotent.
-- Backoff is partly about preventing retry storms, not just about being ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œpatient.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+- Backoff is partly about preventing retry storms, not just about being "patient."
 
 ## Practical Exercise
 

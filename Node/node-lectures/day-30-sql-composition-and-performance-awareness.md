@@ -80,7 +80,7 @@ The right answer is always workload-specific.
 
 ## Tricky Points
 
-- A query can ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œlook simpleÃƒÂ¢Ã¢â€šÂ¬Ã‚Â and still be expensive due to join multiplication or poor ordering.
+- A query can "look simple" and still be expensive due to join multiplication or poor ordering.
 - The optimizer may choose a different plan than the one you expect.
 - An index is only a help if the query pattern matches it.
 

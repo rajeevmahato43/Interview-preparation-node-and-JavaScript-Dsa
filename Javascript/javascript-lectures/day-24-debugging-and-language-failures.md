@@ -61,12 +61,6 @@ queueMicrotask(() => console.log(events)); // [ "first", "second" ]
 
 The trace separates synchronous observation from later jobs. Exact timer/I/O ordering remains host behavior and should be reproduced in the target Node runtime.
 
-## Node.js Connection
-
-Node provides stack inspection, logging, test, and diagnostic tools, but the debugging method begins with JavaScript semantics: scope, identity, promise chains, and scheduling. Keep the language failure separate from Node's event-loop or API behavior while investigating.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

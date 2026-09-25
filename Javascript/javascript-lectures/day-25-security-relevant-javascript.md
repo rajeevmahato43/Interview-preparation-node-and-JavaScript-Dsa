@@ -68,12 +68,6 @@ console.log(parseFiniteCount("3")); // 3
 
 The constraints are part of the security contract: type, length, finiteness, and range.
 
-## Node.js Connection
-
-Node services commonly process untrusted HTTP, environment, file, and dependency data. Node APIs provide the boundary, but JavaScript object semantics determine whether normalization is safe. Keep HTTP parsing, headers, filesystem policy, and deployment controls in the Node curriculum.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

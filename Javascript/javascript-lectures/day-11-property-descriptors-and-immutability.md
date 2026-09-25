@@ -206,12 +206,6 @@ console.log(options.headers.trace); // "on"
 
 The top-level object is frozen and the nested headers object is copied. This is a deliberate shallow boundary for this particular shape, not a universal deep-freeze solution.
 
-## Node.js Connection
-
-Configuration and shared service state need explicit ownership because freezing is shallow and does not freeze collection contents.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

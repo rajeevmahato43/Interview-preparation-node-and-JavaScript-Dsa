@@ -250,12 +250,6 @@ console.log(service.run()); // "[log] work completed"
 
 Composition makes the dependency explicit and easy to replace in a test. Inheritance can be useful when objects share a stable contract and substitutability is clear. It becomes risky when subclasses need to disable or contradict parent behavior.
 
-## Node.js Connection
-
-Prototype and class behavior affects domain objects, custom errors, and library integration in Node services.
-
----
-
 ## Compare & Recall
 
 | Concept A | Concept B | Key difference |

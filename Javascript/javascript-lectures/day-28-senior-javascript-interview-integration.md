@@ -54,12 +54,6 @@ async function reviewableOperation(input, dependencies) {
 
 Observable contract: invalid numeric input rejects; rejected persistence propagates; accepted decisions are persisted once; the input is not mutated. A complete review still asks who owns retries, timeout, cancellation, and persistence cleanup.
 
-## Node.js Connection
-
-This final review prepares the learner for the separate Node curriculum. Node supplies loaders, timers, I/O, diagnostics, and process behavior; JavaScript supplies values, functions, objects, promises, scheduling jobs, and ownership patterns that determine how those APIs are used.
-
----
-
 ## Compare & Recall — Master Reference
 
 This day is an integration review. Use the **Compare & Recall** sections in each earlier lecture to recall the key distinctions. Below is a quick reminder of the highest-value comparisons for senior interviews:
