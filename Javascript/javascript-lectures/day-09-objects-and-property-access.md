@@ -2,808 +2,827 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Closures, Execution Context, and `this`](day-08-closures-execution-context-and-this.md) | [Roadmap](../javascript-roadmap.md) | [Next: Prototypes, Classes, and Inheritance](day-10-prototypes-classes-and-inheritance.md)
+[← Day 08: Closures, Execution Context, and this](day-08-closures-execution-context-and-this.md) | [Roadmap](../javascript-roadmap.md) | [Day 10: Prototypes, Classes, and Inheritance →](day-10-prototypes-classes-and-inheritance.md)
 
 </nav>
 
-## Learning Outcomes
+---
+
+## What You Will Learn Today
 
 By the end of this lecture, you should be able to:
 
-- Create objects using all object literal features: shorthand properties, shorthand methods, and computed keys.
-- Use `Object.create()` to set a prototype explicitly and explain when a null-prototype object is the right choice.
-- Read or write properties with dot, bracket, and computed access.
-- Distinguish own properties from inherited properties.
-- Explain why a missing property usually evaluates to `undefined`.
-- Use `in`, `Object.hasOwn`, and descriptor-aware checks for different questions.
-- Use getters, setters, method shorthand, spread, and destructuring carefully.
-- Explain shallow copying and shared nested references.
-- Recognize unsafe property paths and prototype pollution risks at a basic interview level.
+- Create objects using modern literal features: shorthand properties, shorthand methods, and computed keys.
+- Choose accurately between dot notation and bracket notation for fixed vs. dynamic property access.
+- Understand property lookup along the prototype chain and distinguish own properties from inherited ones.
+- Differentiate an absent property from a property explicitly set to `undefined` across reads, existence operators (`in`, `Object.hasOwn`), and JSON serialization.
+- Master `Object.create(proto)` and understand when to use `Object.create(null)` for prototype-free, pollution-safe dictionaries.
+- Implement accessor properties (getters and setters) while avoiding hidden recursion and side-effect traps.
+- Distinguish shallow copies (`Object.assign()`, spread `{ ...obj }`) from deep clones (`structuredClone()`), avoiding shared reference bugs.
+- Recognize and prevent **Prototype Pollution** vulnerabilities caused by recursive merges of untrusted keys (`__proto__`, `constructor`).
+- Compare plain objects with `Map` and `Set` to choose the optimal data structure for lookups and caching in Node.js services.
 
-## Prerequisites
+**Prerequisites:** [Day 03 – Values, Types, and Literals](day-03-values-types-and-literals.md) (primitives vs. reference types), [Day 04 – Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md), and [Day 08 – Closures, Execution Context, and this](day-08-closures-execution-context-and-this.md) (object methods and `this`).  
+*Upcoming Connections:* [Day 10](day-10-prototypes-classes-and-inheritance.md) explores prototypes, constructor functions, and classes; [Day 11](day-11-property-descriptors-and-immutability.md) details property descriptors, freezing, and sealing.
 
-Read [Day 03: Values, Types, and Literals](day-03-values-types-and-literals.md), [Day 04: Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md), and [Day 08: Closures, Execution Context, and `this`](day-08-closures-execution-context-and-this.md). Day 10 covers prototypes and classes in greater detail. Day 11 covers descriptors and immutability more deeply.
+---
 
-This lecture focuses on ordinary objects and property access. It introduces the prototype chain only enough to explain lookup and security boundaries.
+## Quick Vocabulary Card
 
-## Core Concepts
+| Term | Definition |
+| :--- | :--- |
+| **Object Literal** | The comma-separated list of zero or more property name-value pairs wrapped in curly braces (`{}`). |
+| **Own Property** | A property defined directly on the object instance itself, rather than inherited from its prototype chain. |
+| **Inherited Property** | A property accessible on an object through its `[[Prototype]]` linkage up to `Object.prototype`. |
+| **Computed Property Key** | An object key evaluated dynamically at creation time from an expression inside brackets `[expr]`. |
+| **`Object.hasOwn()`** | A static ES2022 method that checks whether a specified property is an own property of an object (replaces `hasOwnProperty`). |
+| **`in` Operator** | An operator that evaluates to `true` if a property exists directly on an object **or anywhere on its prototype chain**. |
+| **Accessor Property** | A property governed by a getter (`get`) and/or setter (`set`) function instead of holding a direct value. |
+| **Shallow Copy** | A duplicate object whose top-level properties are copied, but whose nested object references are shared with the original. |
+| **Deep Clone** | A completely independent copy where all levels of nested objects and arrays are duplicated recursively. |
+| **Prototype Pollution** | A security vulnerability where an attacker injects properties into `Object.prototype`, altering the behavior of all objects across the application. |
 
-### 1. Object literals and their shorthand features
+---
 
-An **object literal** is the `{ }` syntax used to create an object inline. It is the most common way to create ordinary objects in JavaScript. The literal form supports several shorthand features introduced in ES2015 that appear constantly in interviews and production code.
+## 1. Object Creation and Modern Literal Features
 
-#### Basic literal
+An **object** in JavaScript is an unordered collection of key-value pairs (properties), where keys are either strings or symbols. 
+
+The **object literal** syntax `{}` is the standard way to create objects inline. Modern ECMAScript (ES2015+) provides three core syntactic conveniences: Shorthand Properties, Shorthand Methods, and Computed Keys.
 
 ```js
-const user = {
-  name: "Asha",
-  age: 24,
+// Node.js code
+const serviceId = "auth_srv";
+const port = 8080;
+const METRIC_KEY = Symbol("requestCount");
+
+// ✅ Modern Object Literal combining all modern features
+const microservice = {
+  // 1. Shorthand property: variable name matches property key
+  serviceId,
+  port,
+
+  // 2. Computed property key: dynamic expression evaluated at creation
+  [`url_${process.env.NODE_ENV || "dev"}`]: `http://localhost:${port}`,
+  [METRIC_KEY]: 0,
+
+  // 3. Shorthand method: concise function declaration
+  start() {
+    return `${this.serviceId} listening on ${this.port}`;
+  }
 };
 
-console.log(user.name);    // "Asha"
-console.log(user["age"]);  // 24
-```
+console.log(microservice.start()); // "auth_srv listening on 8080"
+console.log(microservice.url_dev);  // "http://localhost:8080"
+console.log(microservice[METRIC_KEY]); // 0
 
-Dot notation is convenient when the property name is a fixed identifier. Bracket notation is required for dynamic keys or names that are not valid identifier syntax:
-
-```js
-const field = "name";
-console.log(user[field]); // "Asha"
-
-const response = {
-  "display-name": "Asha",
+// ❌ Trap: Shorthand method vs. Arrow property
+const brokenService = {
+  port: 3000,
+  // Arrow functions have lexical this; 'this.port' is undefined!
+  getPort: () => this?.port
 };
-console.log(response["display-name"]); // "Asha"
+console.log("Broken method port:", brokenService.getPort()); // undefined
 ```
 
-#### Shorthand properties
+---
 
-When a variable name matches the property key you want, you can omit the `: value` part:
+## 2. Property Access: Dot Notation vs. Bracket Notation
+
+JavaScript supports two access mechanisms: **Dot notation** (`object.property`) and **Bracket notation** (`object[expression]`).
+
+### Comparison of Access Forms
+
+- **Dot Notation (`obj.key`):** Requires the property name to be a valid JavaScript identifier (no spaces, hyphens, or leading digits). It is static and cannot evaluate variables.
+- **Bracket Notation (`obj[expr]`):** Accepts any expression. Non-string expressions are automatically coerced to strings (except Symbols). Required for dynamic keys, invalid identifiers, and symbol properties.
 
 ```js
-const name = "Asha";
-const age = 24;
+// Node.js code
+const userPreferences = {
+  "content-type": "application/json",
+  "101": "User ID 101",
+  theme: "dark"
+};
 
-// Verbose form
-const userVerbose = { name: name, age: age };
+// ✅ Dot notation for valid static identifiers
+console.log(userPreferences.theme); // "dark"
 
-// Shorthand form — identical result
-const userShort = { name, age };
+// ❌ Dot notation fails for keys with dashes or leading numbers
+// userPreferences.content-type; // SyntaxError: Unexpected token '-'
+// userPreferences.101;          // SyntaxError: Unexpected number
 
-console.log(userShort); // { name: "Asha", age: 24 }
+// ✅ Bracket notation evaluates string keys with special characters
+console.log(userPreferences["content-type"]); // "application/json"
+console.log(userPreferences[101]);            // "User ID 101" (number 101 coerced to string "101")
+
+// ✅ Bracket notation evaluates variables dynamically
+const dynamicKey = "theme";
+console.log(userPreferences[dynamicKey]);     // "dark"
 ```
 
-This is purely a syntax convenience. The runtime value is the same object.
+---
 
-#### Shorthand methods
+## 3. Reading Missing Properties and Nullish Chaining
 
-A method can be defined without the `function` keyword or a colon:
+Reading a non-existent property on an object does **not** throw an error; JavaScript returns `undefined`.
+
+However, attempting to read a property from `null` or `undefined` throws an immediate `TypeError`.
 
 ```js
-// Verbose form
-const cart = {
-  items: [10, 20],
-  total: function () {
-    return this.items.reduce((sum, item) => sum + item, 0);
+// Node.js code
+const config = { database: { host: "localhost" } };
+
+// ✅ Missing property on valid object returns undefined
+console.log(config.database.port); // undefined
+
+// ❌ Accessing property on undefined/null throws TypeError!
+try {
+  console.log(config.cache.redisPort);
+} catch (err) {
+  console.log("❌ Base error:", err.name); // TypeError: Cannot read properties of undefined (reading 'redisPort')
+}
+
+// ✅ Optional Chaining (?.) short-circuits to undefined when the base is nullish
+console.log(config.cache?.redisPort); // undefined
+console.log(config.database?.host);   // "localhost"
+```
+
+> **Design Tip:** Use optional chaining `?.` only when the property or base is legitimately optional. Do not use `?.` to mask programming bugs or missing configuration invariants.
+
+---
+
+## 4. Missing Property vs. Property Present with `undefined`
+
+In JavaScript, there is a fundamental difference between an object that **lacks a property** and an object that **has a property whose value is `undefined`**.
+
+A direct read (`obj.key === undefined`) is ambiguous because both cases evaluate to `undefined`.
+
+```js
+// Node.js code
+const objMissing = {};
+const objPresentUndefined = { status: undefined };
+
+// Direct reads are identical (ambiguous!)
+console.log(objMissing.status);          // undefined
+console.log(objPresentUndefined.status); // undefined
+
+// ✅ 1. 'in' operator: checks own properties AND prototype chain
+console.log("status" in objMissing);          // false
+console.log("status" in objPresentUndefined); // true
+
+// ✅ 2. Object.hasOwn(obj, key): checks OWN properties ONLY
+console.log(Object.hasOwn(objMissing, "status"));          // false
+console.log(Object.hasOwn(objPresentUndefined, "status")); // true
+
+// ✅ 3. JSON Serialization difference: undefined properties are dropped!
+console.log(JSON.stringify(objMissing));          // "{}"
+console.log(JSON.stringify(objPresentUndefined)); // "{}" (property stripped during serialization!)
+
+// ✅ 4. Object.keys() / Object.entries()
+console.log(Object.keys(objMissing));          // []
+console.log(Object.keys(objPresentUndefined)); // [ 'status' ]
+```
+
+### Existence Check Comparison Table
+
+| Technique | Checks Own Properties | Checks Prototype Chain | Safe on `Object.create(null)` | Returns for `value: undefined` |
+| :--- | :--- | :--- | :--- | :--- |
+| `obj.prop !== undefined` | ✅ Yes | ✅ Yes | ✅ Yes | ❌ `false` (Ambiguous) |
+| `"prop" in obj` | ✅ Yes | ✅ Yes | ✅ Yes | ✅ `true` |
+| `Object.hasOwn(obj, "prop")` | ✅ Yes | ❌ No | ✅ Yes | ✅ `true` |
+| `obj.hasOwnProperty("prop")` | ✅ Yes | ❌ No | ❌ Crashes (`TypeError`) | ✅ `true` |
+
+---
+
+## 5. Own Properties vs. Inherited Properties
+
+An **own property** is defined directly on the object instance. An **inherited property** is located on one of the prototypes in the object’s prototype chain.
+
+- **Reads:** Look for an own property first. If not found, JavaScript walks up the `[[Prototype]]` chain until it finds the property or reaches `null`.
+- **Writes:** By default, writing a property (`obj.key = value`) creates or mutates an **own property** on `obj`, shadowing any property with the same name on the prototype.
+
+```js
+// Node.js code
+const systemDefaults = { timeout: 5000, maxRetries: 3 };
+
+// Create client inheriting from systemDefaults
+const clientConfig = Object.create(systemDefaults);
+clientConfig.timeout = 2000; // Creates an OWN property on clientConfig (shadowing)
+
+console.log(clientConfig.timeout);    // 2000 (read from own property)
+console.log(clientConfig.maxRetries); // 3 (read from prototype)
+
+// Own property verification
+console.log(Object.hasOwn(clientConfig, "timeout"));    // true
+console.log(Object.hasOwn(clientConfig, "maxRetries")); // false
+console.log("maxRetries" in clientConfig);              // true (inherited)
+```
+
+---
+
+## 6. `Object.create()` and Null-Prototype Objects
+
+`Object.create(proto, [propertiesObject])` creates a new object with its internal `[[Prototype]]` explicitly set to `proto`.
+
+### Creating a Null-Prototype Object (`Object.create(null)`)
+
+When `null` is passed as the prototype, JavaScript creates an object with **no prototype at all**—it does not even inherit from `Object.prototype`.
+
+```js
+// Node.js code
+// Regular object: inherits toString, hasOwnProperty, constructor from Object.prototype
+const regularObj = {};
+console.log("toString in regularObj:", "toString" in regularObj); // true
+
+// Null-prototype object: clean slate with ZERO inherited properties
+const dictionary = Object.create(null);
+dictionary["user_101"] = "Alice";
+
+console.log(dictionary.user_101);         // "Alice"
+console.log("toString" in dictionary);     // false
+console.log(Object.getPrototypeOf(dictionary)); // null
+
+// ❌ Calling Object.prototype methods on a null-prototype object throws TypeError!
+try {
+  dictionary.hasOwnProperty("user_101");
+} catch (err) {
+  console.log("❌ Crash:", err.message); // TypeError: dictionary.hasOwnProperty is not a function
+}
+
+// ✅ Always use Object.hasOwn(dict, key) in modern JavaScript
+console.log(Object.hasOwn(dictionary, "user_101")); // true
+```
+
+### Why Null-Prototype Objects Matter in Production
+
+1. **Immunity to Key Collisions:** A regular object has inherited keys like `"constructor"`, `"toString"`, and `"valueOf"`. Checking `if (obj[key])` for a user-supplied key `"toString"` returns a function instead of `undefined`. A null-prototype object has no inherited keys.
+2. **Safe Lookup Tables & Caches:** Perfect for fast key-value lookups when arbitrary user input acts as dictionary keys.
+
+---
+
+## 7. Accessor Properties: Getters and Setters
+
+An **accessor property** does not store a value directly; it binds a property to functions executed when the property is read (`get`) or written (`set`).
+
+### Defining Getters and Setters
+
+```js
+// Node.js code
+const bankAccount = {
+  _balance: 100, // convention for backing field
+
+  // Getter: executed on read (account.balance)
+  get balance() {
+    return `$${this._balance.toFixed(2)}`;
   },
-};
 
-// Shorthand form
-const cart2 = {
-  items: [10, 20],
-  total() {
-    return this.items.reduce((sum, item) => sum + item, 0);
-  },
-};
-
-console.log(cart2.total()); // 30
-```
-
-Shorthand methods also support `async` and generator syntax:
-
-```js
-const api = {
-  async fetchUser(id) {
-    // await fetch(...)
-  },
-  *range(from, to) {
-    for (let i = from; i <= to; i++) yield i;
-  },
-};
-```
-
-#### Computed property keys
-
-Wrap any expression in `[ ]` inside an object literal to use its value as the key:
-
-```js
-const field = "status";
-const record = {
-  [field]: "ready",
-  [`${field}_code`]: 200,
-};
-
-console.log(record.status);      // "ready"
-console.log(record.status_code); // 200
-```
-
-Computed keys evaluate once at object creation time. They can use any expression: variables, function calls, template literals, or symbols.
-
-```js
-const PREFIX = "user";
-const config = {
-  [`${PREFIX}_id`]: "u1",
-  [`${PREFIX}_role`]: "admin",
-};
-// { user_id: "u1", user_role: "admin" }
-```
-
-All three shorthands can be mixed freely in one literal:
-
-```js
-const role = "admin";
-const id = "u1";
-const CACHE_KEY = Symbol("cache");
-
-const record = {
-  id,              // shorthand property
-  role,            // shorthand property
-  [CACHE_KEY]: {},  // computed symbol key
-  describe() {     // shorthand method
-    return `${this.role}:${this.id}`;
-  },
-};
-
-console.log(record.describe()); // "admin:u1"
-```
-
-### 2. Reading a missing property
-
-Reading a missing ordinary property normally returns `undefined`; it does not immediately throw:
-
-```js
-const user = { name: "Asha" };
-
-console.log(user.role); // undefined
-```
-
-The result does not tell you whether the property is absent or present with the value `undefined`:
-
-```js
-const first = {};
-const second = { role: undefined };
-
-console.log(first.role);  // undefined
-console.log(second.role); // undefined
-console.log("role" in first);  // false
-console.log("role" in second); // true
-```
-
-If the base value is `null` or `undefined`, property access throws:
-
-```js
-const user = null;
-// user.name; // TypeError
-```
-
-Optional chaining handles an accepted nullish base:
-
-```js
-console.log(user?.name); // undefined
-```
-
-It should not hide a required invariant. If a user must exist, fail with a clear validation or domain error instead of silently continuing.
-
-### 3. Own properties and inherited properties
-
-An **own property** belongs directly to the object. An inherited property is found through its prototype chain:
-
-```js
-const user = { name: "Asha" };
-
-console.log(Object.hasOwn(user, "name"));      // true
-console.log(Object.hasOwn(user, "toString"));  // false
-console.log("toString" in user);               // true
-```
-
-`in` asks whether a property exists anywhere in the object or its prototype chain. `Object.hasOwn` asks only whether it is an own property.
-
-When iterating user-controlled keys, own-property checks matter because inherited properties may not be part of the input data you intended to process.
-
-### 4. Property lookup and the prototype chain
-
-If an object does not have an own property, JavaScript looks at its prototype, then that prototype's prototype, until it finds a property or reaches `null`:
-
-```js
-const parent = { shared: "from parent" };
-const child = Object.create(parent);
-child.own = "from child";
-
-console.log(child.own);    // "from child"
-console.log(child.shared); // "from parent"
-console.log(child.missing); // undefined
-```
-
-Assignment usually creates or changes an own property on the receiver:
-
-```js
-child.shared = "now on child";
-console.log(child.shared); // "now on child"
-console.log(parent.shared); // "from parent"
-```
-
-This is a preview of Day 10. The immediate lesson is that a read and a write can involve different objects in the chain.
-
-### 5. Adding, updating, and deleting properties
-
-Assignment adds a new own property or updates an existing writable property:
-
-```js
-const settings = {};
-settings.retries = 3;
-settings.retries = 4;
-
-console.log(settings); // { retries: 4 }
-```
-
-`delete` removes an own property when it is configurable:
-
-```js
-delete settings.retries;
-console.log(settings.retries); // undefined
-```
-
-Deleting a property is not the same as assigning `undefined`:
-
-```js
-const first = { value: undefined };
-const second = { value: 1 };
-delete second.value;
-
-console.log(Object.hasOwn(first, "value"));  // true
-console.log(Object.hasOwn(second, "value")); // false
-```
-
-Whether deletion is allowed depends on property descriptors. Day 11 explains that boundary.
-
-### 6. Methods and `this`
-
-Method shorthand creates a function-valued property:
-
-```js
-const cart = {
-  items: [10, 20],
-  total() {
-    return this.items.reduce((sum, item) => sum + item, 0);
-  },
-};
-
-console.log(cart.total()); // 30
-```
-
-The receiver is supplied by the call form. Extracting `cart.total` can lose `this`, as Day 8 explained. An arrow stored as an object property does not receive dynamic `this`:
-
-```js
-const incorrectCart = {
-  items: [10, 20],
-  total: () => this.items,
-};
-```
-
-Use an ordinary method when the object should be the receiver, or pass state explicitly when that makes ownership clearer.
-
-### 7. Getters and setters
-
-A getter looks like a property read but runs a function:
-
-```js
-const account = {
-  balance: 100,
-  get isPositive() {
-    return this.balance > 0;
-  },
-};
-
-console.log(account.isPositive); // true
-```
-
-A setter runs when a property is assigned:
-
-```js
-const profile = {
-  _name: "Asha",
-  get name() {
-    return this._name;
-  },
-  set name(value) {
-    if (typeof value !== "string" || value.length === 0) {
-      throw new TypeError("name must be a non-empty string");
+  // Setter: executed on assignment (account.balance = 250)
+  set balance(value) {
+    if (typeof value !== "number" || Number.isNaN(value) || value < 0) {
+      throw new RangeError("Balance must be a non-negative number");
     }
-    this._name = value;
-  },
+    this._balance = value;
+  }
 };
 
-profile.name = "Mina";
-console.log(profile.name); // "Mina"
+console.log(account.balance); // "$100.00"
+account.balance = 250;
+console.log(account.balance); // "$250.00"
+
+// ❌ Setting invalid value triggers validation inside setter
+try {
+  account.balance = -50;
+} catch (err) {
+  console.log("❌ Setter validation error:", err.message); // RangeError: Balance must be a non-negative number
+}
 ```
 
-Getters and setters can hide work, throw errors, or mutate state behind property syntax. Use them when the property-like behavior is clear; otherwise an explicit method can be easier to review.
+> **Warning (The Infinite Recursion Trap):** A setter for `balance` must not assign to `this.balance = value`. Doing so invokes the setter itself again, resulting in `RangeError: Maximum call stack size exceeded`. Always use an internal backing variable (e.g., `this._balance`).
 
-### 8. Spread creates a shallow copy
+---
 
-Object spread copies enumerable own properties into a new object:
+## 8. Shallow Copying vs. Deep Cloning
+
+When cloning objects, developers frequently mistake **shallow copying** for **deep copying**.
+
+### Shallow Copying (`Object.assign` & Spread `{ ...obj }`)
+
+Shallow copying copies own enumerable properties. If a property value is a primitive, it is duplicated. If a property value is a reference (object or array), **only the memory address is copied**. Both objects point to the exact same nested instance!
 
 ```js
-const original = {
-  name: "Asha",
-  preferences: { theme: "light" },
+// Node.js code
+const originalSession = {
+  sessionId: "sess_9988",
+  user: { name: "Alice", role: "viewer" }
 };
 
-const copy = { ...original };
-copy.name = "Mina";
-copy.preferences.theme = "dark";
+// Shallow copy via spread
+const shallowCopy = { ...originalSession };
 
-console.log(original.name); // "Asha"
-console.log(original.preferences.theme); // "dark"
-console.log(original === copy); // false
+// Modifying top-level primitive: isolated
+shallowCopy.sessionId = "sess_0001";
+console.log(originalSession.sessionId); // "sess_9988" (Unchanged ✅)
+
+// ❌ Modifying nested object: MUTATES BOTH OBJECTS!
+shallowCopy.user.role = "admin";
+console.log(originalSession.user.role); // "admin" (Original corrupted! ❌)
 ```
 
-The top-level object is new, but the nested `preferences` object is shared. This is a shallow copy, not a deep clone.
+### Deep Cloning Solutions
 
-Spread also does not copy non-enumerable properties, prototype identity, or all special internal state. Choose a copy strategy according to the values and ownership rules.
-
-### 9. Destructuring and property defaults
-
-Object destructuring reads properties into local bindings:
+1. **`structuredClone(obj)` (Node.js 17+, Modern Browsers):** Native deep cloning algorithm. Correctly clones nested objects, arrays, `Date`, `Map`, `Set`, `RegExp`, and handles circular references.
+2. **`JSON.parse(JSON.stringify(obj))` (Legacy hack):** Drops functions, `undefined`, `Symbol`, and `BigInt`, and converts `Date` instances into strings. Fails on circular references.
 
 ```js
-const request = { id: "r1", limit: 20 };
-const { id, limit = 10, missing = "fallback" } = request;
-
-console.log(id, limit, missing); // "r1" 20 "fallback"
-```
-
-A destructuring default is used when the property value is `undefined`, not for every falsy value:
-
-```js
-const { count = 10 } = { count: 0 };
-console.log(count); // 0
-```
-
-Renaming avoids collisions:
-
-```js
-const { id: requestId } = request;
-console.log(requestId); // "r1"
-```
-
-Destructuring is convenient, but it can hide the exact property access point. Use explicit checks when missing and undefined have different meanings.
-
-### 10. `Object.create()` — explicit prototype delegation
-
-`Object.create(proto)` creates a new, empty object whose prototype is `proto`. It gives you direct control over the prototype chain without using a class or a constructor function.
-
-#### Basic usage
-
-```js
-const animalMethods = {
-  describe() {
-    return `${this.name} makes a sound`;
-  },
+// Node.js code
+const deepOriginal = {
+  id: 1,
+  data: { role: "guest" },
+  createdAt: new Date("2026-01-01")
 };
 
-const dog = Object.create(animalMethods);
-dog.name = "Rex";
+// ✅ Modern native deep clone
+const safeDeepCopy = structuredClone(deepOriginal);
+safeDeepCopy.data.role = "superadmin";
 
-console.log(dog.describe()); // "Rex makes a sound"
-console.log(Object.getPrototypeOf(dog) === animalMethods); // true
+console.log(deepOriginal.data.role); // "guest" (Completely isolated! ✅)
+console.log(safeDeepCopy.createdAt instanceof Date); // true
 ```
 
-`dog` has no own `describe` property. The engine finds it by walking up to `animalMethods`.
+---
 
-#### Second argument: property descriptors
+## 9. Prototype Pollution: The Backend Security Threat
 
-`Object.create(proto, descriptors)` also accepts a property-descriptor map as its second argument (same format as `Object.defineProperties`):
+**Prototype Pollution** is a severe JavaScript vulnerability where an attacker manipulates the prototype of base objects (typically `Object.prototype`) by injecting properties via recursive merge or path assignment functions.
 
-```js
-const base = { greet() { return `Hello, ${this.name}`; } };
+Because virtually all objects inherit from `Object.prototype`, polluting it injects properties into every object across the entire Node.js runtime!
 
-const user = Object.create(base, {
-  name: { value: "Asha", writable: true, enumerable: true, configurable: true },
-});
-
-console.log(user.greet()); // "Hello, Asha"
-console.log(Object.hasOwn(user, "name")); // true
-```
-
-#### Null-prototype objects
-
-Passing `null` creates an object with **no prototype at all** — not even `Object.prototype`:
+### The Vulnerable Merge Pattern
 
 ```js
-const clean = Object.create(null);
-clean.key = "value";
-
-console.log(clean.key);           // "value"
-console.log(clean.toString);      // undefined — no inherited method
-console.log("key" in clean);      // true
-console.log(Object.hasOwn(clean, "key")); // true
-```
-
-A null-prototype object is useful as a safe dictionary or lookup table because keys such as `constructor` or `__proto__` have no special meaning on it. Libraries that accept arbitrary user keys (caches, registries, option maps) often use this pattern to avoid prototype pollution.
-
-#### When to prefer `Object.create()` over an object literal
-
-| Goal | Preferred approach |
-|---|---|
-| Quick plain data object | Object literal `{}` |
-| Safe dictionary with no prototype baggage | `Object.create(null)` |
-| Inherit shared methods without a class | `Object.create(methodsObject)` |
-| Full class-based inheritance | `class` syntax (Day 10) |
-
-Object.create() is a lower-level tool. You will mostly meet it in interview prototype-chain questions or in code that deliberately manages prototype delegation without classes.
-
-## Detailed Explanations and Traces
-
-### Dynamic property access and safe allowlists
-
-A function that copies arbitrary user-provided keys needs an allowlist when only certain fields are valid:
-
-```js
-const allowedFields = new Set(["displayName", "timezone"]);
-
-function pickAllowed(input) {
-  const result = {};
-  for (const [key, value] of Object.entries(input)) {
-    if (allowedFields.has(key)) {
-      result[key] = value;
+// Node.js code (VULNERABLE MERGE IMPLEMENTATION)
+function unsafeDeepMerge(target, source) {
+  for (const key of Object.keys(source)) {
+    if (typeof source[key] === "object" && source[key] !== null) {
+      if (!target[key]) target[key] = {};
+      unsafeDeepMerge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
     }
   }
-  return result;
+  return target;
 }
+
+// Attacker supplies malicious JSON payload:
+const maliciousPayload = JSON.parse('{"__proto__": {"isAdmin": true}}');
+
+const emptyConfig = {};
+unsafeDeepMerge(emptyConfig, maliciousPayload);
+
+// ❌ The entire application is compromised!
+const normalUser = {};
+console.log("Is normal user admin?", normalUser.isAdmin); // true! (Polluted from Object.prototype)
+
+// Cleanup prototype pollution
+delete Object.prototype.isAdmin;
 ```
 
-An allowlist is clearer than trying to blacklist every dangerous key. If a function supports nested paths such as `profile.name`, it must parse and validate each segment rather than blindly assigning a path supplied by a caller.
+### How to Prevent Prototype Pollution
 
-### Prototype pollution connection
-
-Unsafe merging code can accidentally modify an object's prototype or create unexpected inherited behavior when it accepts special keys such as `__proto__`, `constructor`, or `prototype`. The exact impact depends on the merge implementation and runtime behavior.
-
-Defensive rules include:
-
-- Validate keys against an allowlist where possible.
-- Avoid dynamic assignment of untrusted nested paths.
-- Use `Object.hasOwn` for input checks.
-- Decide whether null-prototype objects fit the data structure.
-- Keep dependencies updated and understand their merge behavior.
-
-This is not a replacement for security testing. It is a reminder that object property access is a trust-boundary operation in a server.
-
-### DSA connection: maps, objects, and lookup
-
-Objects can act as key-value stores, but `Map` may better express arbitrary key identity, frequent insertion and deletion, and non-string keys. A `Set` is often clearer for membership checks.
+1. **Block Dangerous Keys:** Reject keys named `__proto__`, `constructor`, and `prototype`.
+2. **Use `Object.hasOwn()`:** Never rely on the `in` operator to inspect untrusted input.
+3. **Use `Object.create(null)` or `Map`:** For dictionaries handling user-supplied keys.
+4. **Freeze `Object.prototype` (Defensive hardening):** `Object.freeze(Object.prototype)` prevents runtime mutation of the base prototype.
 
 ```js
-const counts = new Map();
-for (const word of ["a", "b", "a"]) {
-  counts.set(word, (counts.get(word) ?? 0) + 1);
-}
-
-console.log(counts.get("a")); // 2
-```
-const profile = {
-  _name: "Asha",
-  get name() {
-    return this._name;
-  },
-  set name(value) {
-    if (typeof value !== "string" || value.length === 0) {
-      throw new TypeError("name must be a non-empty string");
+// Node.js code (SECURE MERGE IMPLEMENTATION)
+function safeDeepMerge(target, source) {
+  for (const key of Object.keys(source)) {
+    // ✅ 1. Block dangerous prototype traversal keys
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
     }
-    this._name = value;
-  },
-};
 
-profile.name = "Mina";
-console.log(profile.name); // "Mina"
-```
-
-Getters and setters can hide work, throw errors, or mutate state behind property syntax. Use them when the property-like behavior is clear; otherwise an explicit method can be easier to review.
-
-### 8. Spread creates a shallow copy
-
-Object spread copies enumerable own properties into a new object:
-
-```js
-const original = {
-  name: "Asha",
-  preferences: { theme: "light" },
-};
-
-const copy = { ...original };
-copy.name = "Mina";
-copy.preferences.theme = "dark";
-
-console.log(original.name); // "Asha"
-console.log(original.preferences.theme); // "dark"
-console.log(original === copy); // false
-```
-
-The top-level object is new, but the nested `preferences` object is shared. This is a shallow copy, not a deep clone.
-
-Spread also does not copy non-enumerable properties, prototype identity, or all special internal state. Choose a copy strategy according to the values and ownership rules.
-
-### 9. Destructuring and property defaults
-
-Object destructuring reads properties into local bindings:
-
-```js
-const request = { id: "r1", limit: 20 };
-const { id, limit = 10, missing = "fallback" } = request;
-
-console.log(id, limit, missing); // "r1" 20 "fallback"
-```
-
-A destructuring default is used when the property value is `undefined`, not for every falsy value:
-
-```js
-const { count = 10 } = { count: 0 };
-console.log(count); // 0
-```
-
-Renaming avoids collisions:
-
-```js
-const { id: requestId } = request;
-console.log(requestId); // "r1"
-```
-
-Destructuring is convenient, but it can hide the exact property access point. Use explicit checks when missing and undefined have different meanings.
-
-### 10. `Object.create()` — explicit prototype delegation
-
-`Object.create(proto)` creates a new, empty object whose prototype is `proto`. It gives you direct control over the prototype chain without using a class or a constructor function.
-
-#### Basic usage
-
-```js
-const animalMethods = {
-  describe() {
-    return `${this.name} makes a sound`;
-  },
-};
-
-const dog = Object.create(animalMethods);
-dog.name = "Rex";
-
-console.log(dog.describe()); // "Rex makes a sound"
-console.log(Object.getPrototypeOf(dog) === animalMethods); // true
-```
-
-`dog` has no own `describe` property. The engine finds it by walking up to `animalMethods`.
-
-#### Second argument: property descriptors
-
-`Object.create(proto, descriptors)` also accepts a property-descriptor map as its second argument (same format as `Object.defineProperties`):
-
-```js
-const base = { greet() { return `Hello, ${this.name}`; } };
-
-const user = Object.create(base, {
-  name: { value: "Asha", writable: true, enumerable: true, configurable: true },
-});
-
-console.log(user.greet()); // "Hello, Asha"
-console.log(Object.hasOwn(user, "name")); // true
-```
-
-#### Null-prototype objects
-
-Passing `null` creates an object with **no prototype at all** — not even `Object.prototype`:
-
-```js
-const clean = Object.create(null);
-clean.key = "value";
-
-console.log(clean.key);           // "value"
-console.log(clean.toString);      // undefined — no inherited method
-console.log("key" in clean);      // true
-console.log(Object.hasOwn(clean, "key")); // true
-```
-
-A null-prototype object is useful as a safe dictionary or lookup table because keys such as `constructor` or `__proto__` have no special meaning on it. Libraries that accept arbitrary user keys (caches, registries, option maps) often use this pattern to avoid prototype pollution.
-
-#### When to prefer `Object.create()` over an object literal
-
-| Goal | Preferred approach |
-|---|---|
-| Quick plain data object | Object literal `{}` |
-| Safe dictionary with no prototype baggage | `Object.create(null)` |
-| Inherit shared methods without a class | `Object.create(methodsObject)` |
-| Full class-based inheritance | `class` syntax (Day 10) |
-
-Object.create() is a lower-level tool. You will mostly meet it in interview prototype-chain questions or in code that deliberately manages prototype delegation without classes.
-
-## Detailed Explanations and Traces
-
-### Dynamic property access and safe allowlists
-
-A function that copies arbitrary user-provided keys needs an allowlist when only certain fields are valid:
-
-```js
-const allowedFields = new Set(["displayName", "timezone"]);
-
-function pickAllowed(input) {
-  const result = {};
-  for (const [key, value] of Object.entries(input)) {
-    if (allowedFields.has(key)) {
-      result[key] = value;
+    if (typeof source[key] === "object" && source[key] !== null && !Array.isArray(source[key])) {
+      if (!Object.hasOwn(target, key) || typeof target[key] !== "object") {
+        target[key] = {};
+      }
+      safeDeepMerge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
     }
   }
-  return result;
+  return target;
 }
 ```
 
-An allowlist is clearer than trying to blacklist every dangerous key. If a function supports nested paths such as `profile.name`, it must parse and validate each segment rather than blindly assigning a path supplied by a caller.
+---
 
-### Prototype pollution connection
+## 10. DSA Connection: Objects vs. `Map` and `Set`
 
-Unsafe merging code can accidentally modify an object's prototype or create unexpected inherited behavior when it accepts special keys such as `__proto__`, `constructor`, or `prototype`. The exact impact depends on the merge implementation and runtime behavior.
-
-Defensive rules include:
-
-- Validate keys against an allowlist where possible.
-- Avoid dynamic assignment of untrusted nested paths.
-- Use `Object.hasOwn` for input checks.
-- Decide whether null-prototype objects fit the data structure.
-- Keep dependencies updated and understand their merge behavior.
-
-This is not a replacement for security testing. It is a reminder that object property access is a trust-boundary operation in a server.
-
-### DSA connection: maps, objects, and lookup
-
-Objects can act as key-value stores, but `Map` may better express arbitrary key identity, frequent insertion and deletion, and non-string keys. A `Set` is often clearer for membership checks.
+In algorithm design and high-performance backend code, choose intentionally between plain Objects, `Map`, and `Set`:
 
 ```js
-const counts = new Map();
-for (const word of ["a", "b", "a"]) {
-  counts.set(word, (counts.get(word) ?? 0) + 1);
-}
+// Node.js code
+// ✅ Using Map for dynamic, high-frequency key-value lookups
+const rateLimitCache = new Map();
+rateLimitCache.set("ip_127.0.0.1", { count: 4, resetAt: Date.now() + 60000 });
 
-console.log(counts.get("a")); // 2
+console.log(rateLimitCache.get("ip_127.0.0.1").count); // 4
+console.log(rateLimitCache.size); // 1 (O(1) size check, unlike Object.keys(obj).length which is O(N))
 ```
 
-The expected lookup complexity of `Map` is commonly treated as $O(1)$, but this is an implementation and workload assumption, not a universal mathematical guarantee. State what the algorithm needs and why the chosen structure fits.
+### Plain Objects vs. `Map`
 
-`Map` and its full API (`set`, `get`, `has`, `delete`, `size`, iteration, object keys, `WeakMap`) are covered in depth in [Day 12: Built-in Data Structures](day-12-built-in-data-structures-and-serialization.md).
+| Feature | Plain Object `{}` | `Map` |
+| :--- | :--- | :--- |
+| **Key Types** | Strings and Symbols only | Any value (objects, functions, primitives) |
+| **Key Ordering** | Complex (integers ascending, strings in insertion order) | Strict insertion order |
+| **Size Determination**| Manual: `Object.keys(obj).length` ($O(n)$) | Built-in: `map.size` ($O(1)$) |
+| **Prototype Inheritance** | Inherits `Object.prototype` (unless `Object.create(null)`) | Clean slate; no default keys |
+| **Performance** | Optimized for fixed shapes / records | Optimized for frequent addition & deletion |
 
-## Compare & Recall
-
-| Concept A | Concept B | Key difference |
-|---|---|---|
-| Object literal `{}` | `Object.create(proto)` | `{}` automatically inherits from `Object.prototype`. `Object.create(proto)` lets you choose the prototype explicitly. `Object.create(null)` gives a prototype-free dictionary. |
-| `object.key` | `object[key]` | Dot notation is for **fixed, known** property names. Bracket notation is for **dynamic** keys, computed values, or names that aren't valid identifiers. |
-| `in` operator | `Object.hasOwn(obj, key)` | `in` checks the **entire prototype chain**. `Object.hasOwn` checks only **direct (own) properties**. Use `hasOwn` for input validation. |
-| Shorthand property `{ name }` | Destructuring `const { name } = obj` | Both look similar but do the **opposite**. `{ name }` **packs** a value from scope into an object. `const { name }` **unpacks** a value from an object into scope. |
-| Object spread `{ ...obj }` | Deep clone | Spread copies only **enumerable own properties** one level deep. Nested objects still share the same reference. |
-| Plain object `{}` as a map | `Map` | Plain objects inherit prototype keys (risk of conflicts), only support string/symbol keys, and have no size. `Map` has arbitrary keys, insertion-order iteration, and a `.size` property. Full `Map` API in [Day 12](day-12-built-in-data-structures-and-serialization.md). |
-
-> **Cross-day links:** Prototype chain in detail is [Day 10](day-10-prototypes-classes-and-inheritance.md). Property descriptors (writable, enumerable, configurable) are [Day 11](day-11-property-descriptors-and-immutability.md). `Map` and `Set` full API is [Day 12](day-12-built-in-data-structures-and-serialization.md).
-
-## Common Mistakes and Interview Traps
-
-- Assuming a missing property and an own property with `undefined` are identical.
-- Using `in` when only own input fields should count.
-- Using `for...in` on untrusted objects without an own-property check.
-- Treating object spread as a deep clone.
-- Expecting a getter to be a passive stored value.
-- Using an arrow function as an object method and expecting dynamic `this`.
-- Dynamically assigning user-controlled property paths.
-- Treating `Object.create(null)` as interchangeable with an ordinary object; it has no normal object prototype methods.
-- Assuming JSON serialization preserves prototypes, symbols, functions, `undefined`, or `bigint` values.
-- Confusing shorthand property syntax `{ name }` with destructuring `const { name } = obj` — they look similar but operate in opposite directions (one packs a value into an object, the other unpacks it).
-- Forgetting that the second argument of `Object.create()` is a property-descriptor map, not a plain value map. Missing `enumerable: true` makes the property invisible to `for...in` and `Object.keys`.
-- Using a computed key `[expr]` and assuming it always produces a string — symbols are also valid and survive as symbol-keyed properties.
+---
 
 ## Tricky Points
 
-1. `in` includes inherited properties; `Object.hasOwn` does not.
-2. A missing property and a present `undefined` property read the same but behave differently under existence checks and serialization.
-3. Object spread is shallow and copies enumerable own properties only.
-4. Getters can execute code during a read, so copying or inspecting objects may have side effects.
-5. A dynamic property path is executable mutation logic at a trust boundary, not just a string lookup.
-6. `Object.create(null)` produces an object with no `toString`, no `hasOwnProperty`, and no other `Object.prototype` methods. Calling `obj.hasOwnProperty(key)` on a null-prototype object throws a `TypeError`. Use `Object.hasOwn(obj, key)` instead.
-7. The shorthand method syntax `total() {}` and a function expression `total: function() {}` look equivalent, but only the shorthand form can use `super` — a difference that matters in classes and prototype-delegation patterns.
-8. Computed keys with symbol values produce **symbol-keyed** properties that are invisible to `Object.keys()`, `Object.entries()`, and `for...in`. Use `Object.getOwnPropertySymbols()` to find them.
+### 1. `Object.hasOwn` vs. `hasOwnProperty`
+Calling `obj.hasOwnProperty("key")` fails if `obj` was created via `Object.create(null)` or if the object has an own property named `hasOwnProperty`. `Object.hasOwn(obj, "key")` is universal and safe.
 
-## Practical Exercise
+### 2. Deleting a Property vs. Setting to `undefined`
+`obj.key = undefined` leaves the property present (`"key" in obj` is `true`, `Object.keys()` includes it). `delete obj.key` removes the key entirely from the hash table.
 
-**Goal:** Safely normalize a profile update object.
+### 3. Modifying Inherited Properties on the Prototype
+Executing `child.inheritedMethod = fn` creates an own property on `child` that shadows the method. It does **not** mutate the prototype object itself.
 
-**Input:** An untrusted object that may contain `displayName`, `timezone`, `preferences`, unknown keys, and nested values.
+### 4. Shorthand Method `super` Capability
+Shorthand methods `{ method() {} }` possess an internal `[[HomeObject]]` slot allowing them to use `super.method()`. Normal function properties `{ method: function() {} }` cannot use `super`.
 
-**Task:** Accept only allowed top-level fields, distinguish missing fields from explicit `undefined`, avoid mutating the caller's object, and document whether nested preferences are copied or retained.
+### 5. Symbol Properties are Ignored by Standard Iterators
+Properties keyed by Symbols are skipped by `Object.keys()`, `Object.values()`, `Object.entries()`, and `for...in` loops. You must use `Object.getOwnPropertySymbols(obj)` or `Reflect.ownKeys(obj)` to access them.
 
-**Edge cases:** `null`, arrays, inherited properties, `__proto__`, getters, empty strings, and nested objects shared by two references.
+### 6. Destructuring Defaults Trigger Only on `undefined`
+`const { timeout = 5000 } = { timeout: null }` results in `timeout === null`! Defaults evaluate **only** when the property value is `undefined`.
 
-**Acceptance criteria:** The function rejects invalid input, ignores or reports unknown keys according to a stated policy, uses own-property checks, proves the original object is not unexpectedly mutated, and explains shallow versus deep ownership.
+### 7. Recursive Setter Stack Overflow
+Assigning `this.prop = val` inside a setter for `prop` causes infinite recursion. Always store values in an internal backing property like `this._prop`.
+
+---
+
+## Hands-on Exercise
+
+### Scenario: Safe Dynamic Configuration Normalizer
+
+You are building a configuration ingest service in Node.js that accepts untrusted JSON input from API clients and normalizes it for database updates.
+
+### Buggy Code
+
+A developer wrote the following profile updater, but it contains severe production flaws:
+1. It uses a naive shallow merge that allows prototype pollution.
+2. It treats properties set to `undefined` the same as omitted properties.
+3. It cannot handle null-prototype dictionary lookups safely.
+
+```js
+// Node.js code (Buggy Implementation)
+function updateSystemProfile(existingConfig, untrustedInput) {
+  // Bug 1: Object.assign allows prototype pollution if untrustedInput contains __proto__
+  const updated = Object.assign({}, existingConfig, untrustedInput);
+
+  // Bug 2: Missing vs. undefined ambiguity
+  if (untrustedInput.status === undefined) {
+    updated.status = "ACTIVE"; // Overwrites explicit status: undefined!
+  }
+
+  // Bug 3: Using obj.hasOwnProperty crashes on Object.create(null)
+  if (untrustedInput.hasOwnProperty("customMetadata")) {
+    updated.customMetadata = untrustedInput.customMetadata;
+  }
+
+  return updated;
+}
+```
+
+### Acceptance Criteria
+
+1. **Prototype Pollution Protection:** Explicitly discard `__proto__`, `constructor`, and `prototype` keys from untrusted input.
+2. **Strict Field Allowlist:** Only allow known configuration fields (`displayName`, `timezone`, `maxConnections`, `customMetadata`).
+3. **Null-Prototype Compatibility:** Use `Object.hasOwn()` rather than `obj.hasOwnProperty()`.
+4. **Preserve Explicit `undefined`:** Distinguish an omitted property from one explicitly passed as `undefined`.
+
+### Solution
+
+```js
+// Node.js code
+const ALLOWED_CONFIG_FIELDS = new Set([
+  "displayName",
+  "timezone",
+  "maxConnections",
+  "customMetadata"
+]);
+
+function normalizeSystemProfile(existingConfig, untrustedInput) {
+  // Validate input types
+  if (!existingConfig || typeof existingConfig !== "object") {
+    throw new TypeError("existingConfig must be a valid object");
+  }
+  if (!untrustedInput || typeof untrustedInput !== "object" || Array.isArray(untrustedInput)) {
+    throw new TypeError("untrustedInput must be a valid non-array object");
+  }
+
+  // Deep clone the existing configuration to ensure isolation
+  const result = structuredClone(existingConfig);
+
+  // Read all own keys of untrustedInput (including non-enumerable if needed)
+  for (const key of Object.keys(untrustedInput)) {
+    // 1. Prototype pollution barrier
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
+
+    // 2. Strict allowlist enforcement
+    if (!ALLOWED_CONFIG_FIELDS.has(key)) {
+      continue;
+    }
+
+    // 3. Null-prototype safe property existence check
+    if (Object.hasOwn(untrustedInput, key)) {
+      const incomingVal = untrustedInput[key];
+
+      if (typeof incomingVal === "object" && incomingVal !== null && !Array.isArray(incomingVal)) {
+        // Deep clone nested metadata objects to avoid shared references
+        result[key] = structuredClone(incomingVal);
+      } else {
+        // Preserves incoming value, including explicit undefined
+        result[key] = incomingVal;
+      }
+    }
+  }
+
+  return result;
+}
+
+// --- Verification Tests ---
+
+const baseConfig = {
+  displayName: "Default Node",
+  timezone: "UTC",
+  maxConnections: 100,
+  customMetadata: { env: "prod" }
+};
+
+// Test 1: Normal clean update
+const update1 = { displayName: "Auth Cluster", maxConnections: 500 };
+const res1 = normalizeSystemProfile(baseConfig, update1);
+console.log("Test 1 Result:", res1.displayName, res1.maxConnections); // "Auth Cluster" 500
+
+// Test 2: Attempted Prototype Pollution
+const attackPayload = JSON.parse('{"__proto__": {"polluted": true}, "unknownField": "hacked"}');
+const res2 = normalizeSystemProfile(baseConfig, attackPayload);
+console.log("Test 2 Result (Pollution blocked):", ({}).polluted); // undefined ✅
+console.log("Test 2 Result (Unknown blocked):", res2.unknownField); // undefined ✅
+
+// Test 3: Null-prototype dictionary input
+const nullProtoInput = Object.create(null);
+nullProtoInput.timezone = "Europe/London";
+const res3 = normalizeSystemProfile(baseConfig, nullProtoInput);
+console.log("Test 3 Result (Null-proto safe):", res3.timezone); // "Europe/London" ✅
+
+// Test 4: Nested mutation isolation
+const res4 = normalizeSystemProfile(baseConfig, { customMetadata: { env: "staging" } });
+res4.customMetadata.env = "dev";
+console.log("Test 4 Result (Original unmutated):", baseConfig.customMetadata.env); // "prod" ✅
+```
+
+---
 
 ## Summary
 
-- An object literal supports shorthand properties `{ name }`, shorthand methods `{ total() {} }`, and computed keys `{ [expr]: value }` — all usable together.
-- Objects store string and symbol keyed properties.
-- Dot notation is fixed-name access; bracket notation supports dynamic keys.
-- Missing property reads usually return `undefined`, but a nullish base throws.
-- `in` checks the prototype chain; `Object.hasOwn` checks direct ownership.
-- Prototype lookup affects reads, while writes commonly create an own property.
-- `Object.create(proto)` creates an object with an explicit prototype. `Object.create(null)` creates one with no prototype, useful as a safe dictionary.
-- Methods depend on their receiver; getters and setters run code behind property syntax.
-- Object spread and destructuring are useful but have shallow and `undefined`-specific behavior.
-- Untrusted property names and paths can become security problems, especially in server code.
-- `Map` is covered in full in [Day 12](day-12-built-in-data-structures-and-serialization.md).
+- **Literal Features:** Modern object literals support shorthand properties `{ key }`, shorthand methods `{ m() {} }`, and computed keys `{ [expr]: val }`.
+- **Property Access:** Dot notation requires static valid identifiers; bracket notation evaluates dynamic expressions and handles arbitrary string/symbol keys.
+- **Missing vs. `undefined`:** Reading missing properties returns `undefined`. Use `Object.hasOwn(obj, key)` to detect direct property ownership and `in` to detect inherited properties.
+- **Null-Prototype Objects:** `Object.create(null)` creates dictionaries without `Object.prototype` baggage, protecting against key collisions and prototype pollution.
+- **Accessors:** Getters and setters execute custom logic on read/write. Backing variables (`_prop`) prevent infinite recursion.
+- **Copying Semantics:** Spread (`...`) and `Object.assign()` perform shallow copies. Use `structuredClone()` for deep copies.
+- **Prototype Pollution:** Unvalidated recursive merges that process `__proto__` or `constructor` can compromise all objects across the Node.js runtime. Always block these keys.
+- **Objects vs. `Map`:** Use plain objects for structured domain models and fixed shapes. Use `Map` for high-frequency dynamic key-value caches with non-string keys and size tracking.
+
+---
 
 ## Cheat Sheet
 
-| Question | Tool or rule |
-| --- | --- |
-| Shorthand property | `{ name }` instead of `{ name: name }` |
-| Shorthand method | `{ total() {} }` instead of `{ total: function() {} }` |
-| Dynamic key at creation | `{ [expr]: value }` |
-| Create object with chosen prototype | `Object.create(proto)` |
-| Safe prototype-free dictionary | `Object.create(null)` |
-| Read fixed key | `object.key` |
-| Read dynamic key | `object[key]` |
-| Is key anywhere in chain? | `key in object` |
-| Is key directly on object? | `Object.hasOwn(object, key)` |
-| Avoid nullish base failure | `object?.key`, only when absence is valid |
-| Copy top-level enumerable own properties | `{ ...object }` |
-| Copy nested data | Choose an explicit domain-appropriate strategy |
-| Iterate own key-value pairs | `Object.entries(object)` |
-| Count arbitrary keys | `Map` — see Day 12 |
-| Handle untrusted keys | Prefer allowlists and validate paths |
+### Existence Checks
 
-**vs. quick reference**
+| Syntax | Scope | Safe for `Object.create(null)` | Returns for `prop: undefined` |
+| :--- | :--- | :--- | :--- |
+| `obj.prop !== undefined` | Own & Inherited | ✅ Yes | ❌ `false` (Ambiguous) |
+| `"prop" in obj` | Own & Inherited | ✅ Yes | ✅ `true` |
+| `Object.hasOwn(obj, "prop")`| **Own Only** | ✅ Yes | ✅ `true` |
+| `obj.hasOwnProperty("prop")`| **Own Only** | ❌ `TypeError` | ✅ `true` |
 
-| | `in` | `Object.hasOwn` | Direct read |
-|---|---|---|---|
-| Checks prototype chain | ✓ Yes | ✗ No | ✗ No |
-| Returns for missing own | true (if inherited) | false | `undefined` |
-| Recommended for input validation | ✗ | ✓ | ✗ |
+### Object Creation Mechanisms
 
-| Object creation method | Prototype | When to use |
-|---|---|---|
-| `{}` | `Object.prototype` | Default for everyday objects |
-| `Object.create(proto)` | Chosen proto | Deliberate prototype chain |
-| `Object.create(null)` | None | Safe dictionaries, caches, lookup tables |
+| Mechanism | Resulting Prototype | Best Use Case |
+| :--- | :--- | :--- |
+| `{ prop: val }` | `Object.prototype` | Standard application records and configurations |
+| `Object.create(proto)` | Custom `proto` | Explicit prototype delegation without classes |
+| `Object.create(null)` | `null` (None) | Safe lookup dictionaries, caches, option maps |
+
+### Common Pitfalls
+
+- **Confusing shallow copy with deep copy** → mutating nested properties on `{ ...obj }` modifies the original object. Use `structuredClone()`.
+- **Using `obj.hasOwnProperty(key)`** → crashes on null-prototype objects. Use `Object.hasOwn(obj, key)`.
+- **Unsafe recursive merging of untrusted input** → leads to prototype pollution via `__proto__` injection.
+- **Infinite recursion in setters** → assigning to `this.prop` inside `set prop(v)` calls the setter recursively until the call stack blows.
+- **Assuming `Object.keys()` finds Symbol properties** → symbols are skipped by `Object.keys()` and `for...in`. Use `Object.getOwnPropertySymbols()`.
+- **Relying on direct read for optional properties** → `if (!user.settings)` fails if `settings` is present with `false` or `null`.
+
+---
 
 ## Interview Questions
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+### 1. What is the difference between `in`, `Object.hasOwn()`, and a direct property read?
 
-1. **[Mid] Mental model:** Explain property lookup through an object's prototype chain and compare `in`, `Object.hasOwn`, and a direct read.
-   - **Expected answer shape:** Trace own lookup, inherited lookup, missing lookup, and the result of each operation.
-   - **Follow-up:** How can a write change later reads without changing the prototype?
+**Question:** Compare `key in obj`, `Object.hasOwn(obj, key)`, and `obj[key] !== undefined`. Provide examples where each produces a different result.
 
-2. **[Mid] Predict the output:** Compare an object with a missing property and one with an own property set to `undefined` using direct read, `in`, `Object.hasOwn`, destructuring defaults, and JSON serialization.
-   - **Expected answer shape:** Give each result and explain why read equality does not mean structural equality.
-   - **Follow-up:** How should an API represent "clear this value" versus "do not update this value"?
+**Answer:**
+1. **`key in obj` (Prototype-aware):**
+   - Returns `true` if the property exists on the object **or anywhere in its prototype chain**, regardless of the property's value (even if `undefined`).
+   - *Example:* `"toString" in {}` returns `true` because `toString` is inherited from `Object.prototype`.
+2. **`Object.hasOwn(obj, key)` (Own properties only):**
+   - Returns `true` **only** if the property is defined directly on the object instance itself. It completely ignores inherited properties.
+   - It is safe to use on null-prototype objects (`Object.create(null)`).
+   - *Example:* `Object.hasOwn({}, "toString")` returns `false`.
+3. **`obj[key] !== undefined` (Value check):**
+   - Evaluates the value of the property.
+   - It cannot distinguish between an absent property and a property that exists with the value `undefined`.
+   - *Example:* For `{ a: undefined }`, both `a in obj` and `Object.hasOwn(obj, "a")` are `true`, but `obj.a !== undefined` evaluates to `false`.
 
-3. **[Mid] Implementation:** Implement a safe field picker for untrusted input with an allowlist and explain why it is safer than copying every key.
-   - **Expected answer shape:** Show validation, own-key iteration, output ownership, and treatment of accessors or nested values.
-   - **Follow-up:** How would you handle nested allowlisted paths without accepting arbitrary traversal?
+---
 
-4. **[Senior] Debugging:** A supposedly copied request object changes when a nested object is modified by a service. Diagnose the alias and propose shallow, deep, and immutable alternatives.
-   - **Expected answer shape:** Draw or describe the object graph, identify the shared reference, and state performance and correctness tradeoffs.
-   - **Follow-up:** Which values make generic deep cloning unsafe or incomplete?
+### 2. Predict the Output: Destructuring defaults, missing properties, and JSON serialization
 
-5. **[Senior] Design:** Design a server-side update boundary that prevents prototype pollution, rejects unknown fields, distinguishes omitted fields from explicit `undefined`, and remains observable.
-   - **Expected answer shape:** Cover parsing, validation, ownership, key policy, error reporting, logging/redaction, and tests.
-   - **Follow-up:** How would you review a third-party merge utility before allowing it on this boundary?
+```js
+const record = {
+  title: "API Gateway",
+  active: undefined,
+  retryCount: 0
+};
 
-6. **[Beginner] Object literals:** What are all the shorthand forms available in an object literal? Write one object that demonstrates shorthand properties, a shorthand method, a computed key, and a symbol key.
-   - **Expected answer shape:** Show all four forms in one literal and explain how the runtime treats each. State which are visible to `Object.keys()` and which are not.
-   - **Follow-up:** When does the shorthand method form behave differently from storing an arrow function in the same key?
+const {
+  title = "Default",
+  active = true,
+  retryCount = 3,
+  timeout = 1000
+} = record;
 
-7. **[Mid] `Object.create()`:** When would you use `Object.create(null)` instead of `{}` or a `class`? What breaks on a null-prototype object that works on a plain `{}`?
-   - **Expected answer shape:** Explain the prototype chain difference, give a concrete use case (safe dictionary, registry, or cache), name at least two inherited methods that become unavailable, and show the correct alternative (`Object.hasOwn` over `obj.hasOwnProperty`).
-   - **Follow-up:** How would you share methods across multiple objects without using a class, and how is that different from using a class internally?
+console.log(title, active, retryCount, timeout);
+console.log(JSON.stringify(record));
+console.log(Object.keys(record));
+```
+
+**Question:** Predict the output of the destructured variables, the JSON string, and the `Object.keys()` array. Explain why `retryCount` and `active` evaluate the way they do.
+
+**Answer:**
+**Output:**
+```text
+API Gateway true 0 1000
+{"title":"API Gateway","retryCount":0}
+[ 'title', 'active', 'retryCount' ]
+```
+
+**Explanation:**
+1. **Destructuring Defaults:**
+   - Destructuring default values trigger **only when the property value is `undefined`** or missing.
+   - `active` is explicitly `undefined`, so its default `true` is evaluated and assigned.
+   - `retryCount` is `0`. Zero is a falsy value, but it is **not** `undefined`. Therefore, the default `3` is skipped, and `retryCount` remains `0`.
+   - `timeout` is missing on `record`, so its default `1000` is used.
+2. **JSON Serialization (`JSON.stringify`):**
+   - `JSON.stringify` strips any property whose value is `undefined`.
+   - Thus, `"active": undefined` is completely omitted from the resulting JSON string: `{"title":"API Gateway","retryCount":0}`.
+3. **`Object.keys(record)`:**
+   - `Object.keys()` returns all own enumerable string keys regardless of their value. Because `active` was explicitly defined on `record`, it is included in the array: `['title', 'active', 'retryCount']`.
+
+---
+
+### 3. Debugging: Diagnosing a shared-state mutation in an Express service
+
+```js
+const DEFAULT_USER_PERMISSIONS = {
+  roles: ["viewer"],
+  settings: { emailNotifications: true }
+};
+
+function createUserSession(username, customOverrides = {}) {
+  // Developer attempted a shallow merge
+  const session = {
+    username,
+    ...DEFAULT_USER_PERMISSIONS,
+    ...customOverrides
+  };
+
+  return session;
+}
+
+const session1 = createUserSession("alice");
+const session2 = createUserSession("bob");
+
+session1.roles.push("admin");
+session1.settings.emailNotifications = false;
+
+console.log("Bob roles:", session2.roles);
+console.log("Bob notifications:", session2.settings.emailNotifications);
+```
+
+**Question:** Bob was intended to be a standard user, but logs indicate Bob received `admin` privileges and had notifications disabled. Diagnose the issue and provide two fixes with their tradeoffs.
+
+**Answer:**
+**Diagnosis:**
+The spread operator (`...`) performs a **shallow copy**.
+- It duplicates top-level primitive properties, but for nested object/array references (`roles` array and `settings` object), it copies only the memory reference.
+- Both `session1` and `session2` point to the exact same `DEFAULT_USER_PERMISSIONS.roles` array and `DEFAULT_USER_PERMISSIONS.settings` object in memory.
+- Mutating `session1.roles` mutates the shared default object, corrupting all future user sessions.
+
+**Two Fixes:**
+1. **Native Deep Cloning with `structuredClone()` (Recommended):**
+   ```js
+   function createUserSession(username, customOverrides = {}) {
+     const base = structuredClone(DEFAULT_USER_PERMISSIONS);
+     return { username, ...base, ...structuredClone(customOverrides) };
+   }
+   ```
+   *Tradeoff:* Completely isolates nested structures, but incurs slight allocation overhead on every session creation.
+2. **Factory Function for Default State:**
+   ```js
+   const createDefaultPermissions = () => ({
+     roles: ["viewer"],
+     settings: { emailNotifications: true }
+   });
+
+   function createUserSession(username, customOverrides = {}) {
+     return { username, ...createDefaultPermissions(), ...customOverrides };
+   }
+   ```
+   *Tradeoff:* Fast and idiomatic, though nested properties inside `customOverrides` must still be cloned carefully if they contain objects.
+
+---
+
+### 4. Node.js Backend Scenario: Preventing Prototype Pollution in a Configuration Deep Merge
+
+**Question:** In a Node.js microservice accepting untrusted JSON configuration payloads from third parties, implement a secure recursive deep merge function that protects against Prototype Pollution while correctly merging nested objects.
+
+**Answer:**
+
+```js
+// Node.js code
+function secureDeepMerge(target, source) {
+  // Ensure both arguments are valid objects
+  if (!target || typeof target !== "object" || Array.isArray(target)) {
+    throw new TypeError("Target must be a non-null object");
+  }
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return target;
+  }
+
+  // Iterate over own enumerable properties of source
+  for (const key of Object.keys(source)) {
+    // 1. Prototype Pollution Defense: Block dangerous prototype traversal keys
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      console.warn(`SECURITY ALERT: Blocked attempted prototype pollution key '${key}'`);
+      continue;
+    }
+
+    const sourceVal = source[key];
+
+    // If source value is a nested object, recurse safely
+    if (sourceVal !== null && typeof sourceVal === "object" && !Array.isArray(sourceVal)) {
+      if (!Object.hasOwn(target, key) || typeof target[key] !== "object" || target[key] === null) {
+        // Initialize clean sub-object if missing
+        target[key] = {};
+      }
+      secureDeepMerge(target[key], sourceVal);
+    } else {
+      // Direct primitive or array assignment
+      target[key] = sourceVal;
+    }
+  }
+
+  return target;
+}
+
+// Example Security Verification:
+const baseConfig = { server: { port: 3000 } };
+const maliciousInput = JSON.parse('{"server": {"port": 8080}, "__proto__": {"isAdmin": true}}');
+
+secureDeepMerge(baseConfig, maliciousInput);
+
+console.log("Updated port:", baseConfig.server.port); // 8080
+console.log("Global pollution check:", ({}).isAdmin);  // undefined (Clean! ✅)
+```
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[← Day 08: Closures, Execution Context, and this](day-08-closures-execution-context-and-this.md) | [Roadmap](../javascript-roadmap.md) | [Day 10: Prototypes, Classes, and Inheritance →](day-10-prototypes-classes-and-inheritance.md)
+
+</nav>

@@ -1,295 +1,627 @@
-# Day 13: Destructuring, Spread, Rest, and Modern Operators
+# Day 13: Destructuring, Spread, and Modern Operators
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Arrays, Strings, Numbers, `Map`, `Set`, and JSON](day-12-built-in-data-structures-and-serialization.md) | [Roadmap](../javascript-roadmap.md) | [Next: Iterables, Iterators, Generators, and Symbols](day-14-iterables-iterators-generators-and-symbols.md)
+[← Day 12: Built-in Data Structures and Serialization](day-12-built-in-data-structures-and-serialization.md) | [Roadmap](../javascript-roadmap.md) | [Day 14: Iterables, Iterators, Generators, and Symbols →](day-14-iterables-iterators-generators-and-symbols.md)
 
 </nav>
 
-## Learning Outcomes
+---
+
+## What You Will Learn Today
 
 By the end of this lecture, you should be able to:
 
-- Read values with array and object destructuring.
-- Use defaults, renaming, nested patterns, rest, and spread.
-- Explain why spread creates shallow copies.
-- Use optional chaining and nullish coalescing without hiding bugs.
-- Preserve meaningful falsy values during input normalization.
-- Explain evaluation order and common invalid forms.
+- Extract data cleanly using Array Destructuring (positional) and Object Destructuring (key-based with renaming).
+- Avoid runtime crashes on missing nested structures using whole-parameter and nested defaults (`= {}`).
+- Explain why destructuring defaults trigger only for `undefined` and preserve meaningful falsy values (`0`, `false`, `""`).
+- Distinguish Rest syntax (collecting remaining values) from Spread syntax (expanding values).
+- Master modern nullish operators: Optional Chaining (`?.`), Nullish Coalescing (`??`), and Logical Assignment (`??=`, `||=`, `&&=`).
+- Avoid syntax errors when combining `??` with `&&` or `||` using explicit grouping parentheses.
+- Normalize untrusted API request payloads defensively without mutating source data or leaking prototype properties.
 
-## Prerequisites
+**Prerequisites:** [Day 04 – Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md) (truthiness vs. nullishness) and [Day 09 – Objects and Property Access](day-09-objects-and-property-access.md) (property lookup, shallow copies).  
+*Upcoming Connections:* [Day 14](day-14-iterables-iterators-generators-and-symbols.md) explores the Iterable protocol powering array destructuring and spread; [Day 16](day-16-symbols-reflection-and-proxies.md) covers metaprogramming and reflection.
 
-Read [Day 09: Objects and Property Access](day-09-objects-and-property-access.md), [Day 12: Built-in Data Structures and Serialization](day-12-built-in-data-structures-and-serialization.md), and [Day 04: Coercion, Equality, and Operators](day-04-coercion-equality-and-operators.md).
+---
 
-## Core Concepts
+## Quick Vocabulary Card
 
-### Array destructuring
+| Term | Definition |
+| :--- | :--- |
+| **Destructuring Assignment** | A JavaScript syntax expression that unpacks values from arrays or properties from objects into distinct local variables. |
+| **Positional Matching** | The array destructuring mechanism where variables are assigned values strictly based on their index order. |
+| **Property Renaming** | The object destructuring syntax (`{ oldKey: newVar }`) that extracts a property and binds it to a different local variable name. |
+| **Rest Syntax (`...rest`)** | A pattern that collects all remaining, unmatched properties or array elements into a new data structure. |
+| **Spread Syntax (`...spread`)** | A syntax that expands an iterable or object's enumerable own properties into a new array, object literal, or function argument list. |
+| **Optional Chaining (`?.`)** | An operator that short-circuits evaluation to `undefined` if the reference being dereferenced is nullish (`null` or `undefined`). |
+| **Nullish Coalescing (`??`)** | A logical operator that returns its right-hand operand only when its left-hand operand is `null` or `undefined`. |
+| **Logical Assignment** | Short-circuiting assignment operators (`??=`, `||=`, `&&=`) combining logical checks with variable reassignment. |
+
+---
+
+## 1. Array and Object Destructuring
+
+**Destructuring** is a syntax pattern that allows you to extract elements from arrays or properties from objects and bind them to local variables in a single declarative statement.
+
+### Array Destructuring: Positional Matching
+
+Array destructuring unpacks values based on **positional index**. Skipping elements is accomplished with an empty comma `,`.
 
 ```js
-const coordinates = [10, 20, 30];
-const [x, y] = coordinates;
-const [, , z] = coordinates;
-console.log(x, y, z); // 10 20 30
+// Node.js code
+const coordinates = [10, 20, 30, 40];
+
+// ✅ Extract by position, skip index 2, collect rest
+const [latitude, longitude, , altitude = 0, ...metadata] = coordinates;
+
+console.log(latitude, longitude, altitude); // 10 20 40
+console.log("Rest array:", metadata);       // []
+
+// ❌ Accessing out-of-bounds positions yields undefined without throwing
+const [first, , , , missing] = coordinates;
+console.log("Missing index:", missing);      // undefined
 ```
 
-Destructuring reads positions. A missing position produces `undefined`.
+### Object Destructuring: Key Matching and Renaming
 
-### Object destructuring
+Object destructuring extracts values by **property key**. You can rename the resulting local binding using the `{ sourceKey: targetVariable }` syntax.
 
 ```js
-const user = { name: "Asha", role: "admin" };
-const { name, role: accessLevel } = user;
-console.log(name, accessLevel); // "Asha" "admin"
+// Node.js code
+const serviceResponse = {
+  status: 200,
+  data: { userId: "usr_42" },
+  timestamp: 1700000000
+};
+
+// ✅ Property matching with renaming and nested extraction
+const {
+  status: httpStatus,
+  data: { userId },
+  version = "v1" // Default value for omitted property
+} = serviceResponse;
+
+console.log(httpStatus, userId, version); // 200 "usr_42" "v1"
+
+// ❌ Common Mistake: Confusing renaming with key-value assignment
+// { status: 200 } is NOT checking if status === 200; it creates a syntax error or binds variable named '200'!
 ```
 
-Object patterns use property names. Renaming changes the local binding, not the object property.
+---
 
-### Defaults apply only to `undefined`
+## 2. Default Values: Preserving Falsy Values
+
+Destructuring defaults trigger **only when the extracted property is missing or strictly `undefined`**.
+
+Unlike the logical OR operator (`||`), defaults do **not** replace other falsy values such as `0`, `false`, `""`, or `null`.
 
 ```js
-const input = { limit: null, offset: 0 };
-const { limit = 20, offset = 5 } = input;
-console.log(limit, offset); // null 0
+// Node.js code
+const userSettings = {
+  maxRetries: 0,        // 0 is a valid number, not undefined
+  notifications: false, // false is a valid boolean
+  nickname: "",         // empty string is valid
+  lastLogin: null       // null indicates intentional absence
+};
+
+// ✅ Destructuring defaults preserve valid falsy values
+const {
+  maxRetries = 3,
+  notifications = true,
+  nickname = "Anonymous",
+  lastLogin = Date.now(),
+  timeout = 5000 // missing on object -> triggers default!
+} = userSettings;
+
+console.log("maxRetries:", maxRetries);         // 0 (preserved!)
+console.log("notifications:", notifications);   // false (preserved!)
+console.log("nickname:", `"${nickname}"`);      // "" (preserved!)
+console.log("lastLogin:", lastLogin);           // null (null is NOT undefined!)
+console.log("timeout:", timeout);               // 5000 (applied default)
+
+// ❌ Contrast with logical OR (||): corrupts 0 and false!
+console.log("Broken OR fallback:", userSettings.maxRetries || 3); // 3 (corrupted 0!)
 ```
 
-Defaults do not replace `null`, `false`, `0`, or an empty string. This is useful when those values have meaning.
+### Call-Time Default Evaluation
 
-### Rest and spread
-
-Rest collects remaining values. Spread expands values into a new array, object, or argument list.
+Default expressions are evaluated **at call time**, only if the target property resolves to `undefined`. If the property exists, the default expression is never executed.
 
 ```js
-const [first, ...remaining] = [1, 2, 3];
-const copy = { ...{ name: "Asha" }, active: true };
-console.log(first, remaining); // 1 [2, 3]
-console.log(copy); // { name: "Asha", active: true }
+// Node.js code
+let counter = 0;
+const computeFallback = () => ++counter;
+
+const { valA = computeFallback(), valB = computeFallback() } = { valA: 100 };
+
+console.log(valA, valB); // 100 1
+console.log("Total computations:", counter); // 1 (computeFallback ran only for valB)
 ```
 
-Object spread copies enumerable own properties. It is shallow.
+---
 
-## Detailed Explanations and Traces
+## 3. Nested Destructuring and The Missing Parent Crash
 
-### Evaluation order and defaults
+Destructuring nested properties (e.g., `const { user: { address: { city } } } = data`) assumes that every intermediate parent object exists.
+
+If any intermediate property in the path is `null` or `undefined`, JavaScript attempts to destructure a nullish value and throws an immediate `TypeError`.
 
 ```js
-function readValue() {
-  console.log("default evaluated");
-  return 10;
+// Node.js code
+const payloadWithoutUser = {};
+
+// ❌ Fatal Crash: Cannot destructure property 'name' of undefined!
+try {
+  const { user: { name } } = payloadWithoutUser;
+} catch (err) {
+  console.log("❌ Nested crash:", err.name); // TypeError: Cannot destructure property 'name' of undefined or null
 }
 
-const { present = readValue(), missing = readValue() } = { present: 0 };
-console.log(present, missing); // 0 10
+// ✅ Safe Nested Destructuring with Whole-Parameter Defaults
+const { user: { name = "Guest" } = {} } = payloadWithoutUser;
+console.log("Safe nested name:", name); // "Guest"
 ```
 
-The default for `present` is not evaluated because `0` is not `undefined`. The default for `missing` is evaluated.
+> **Rule for API Endpoints:** When destructuring nested optional parameters in function signatures or request bodies, always supply a fallback `= {}` at every nested level: `function handle({ filters: { status } = {} } = {})`.
 
-### Nested destructuring needs safe input
+---
+
+## 4. Rest vs. Spread: Collecting vs. Expanding
+
+While both features use the ellipsis syntax (`...`), they operate in opposite directions depending on where they appear:
+- **Rest Syntax:** Appears on the **left-hand side** of an assignment (or in parameter lists) to **collect** remaining elements into a new array or object.
+- **Spread Syntax:** Appears on the **right-hand side** of an assignment (or in function calls) to **expand** elements into an array, object, or argument list.
 
 ```js
-const request = { user: { name: "Mina" } };
-const { user: { name } } = request;
-console.log(name); // "Mina"
+// Node.js code
+
+// 1. Rest syntax: Collecting properties
+const apiRequest = { id: "req_1", method: "POST", headers: { auth: true }, extra: 123 };
+const { id, method, ...restMetadata } = apiRequest;
+console.log("Rest metadata:", restMetadata); // { headers: { auth: true }, extra: 123 }
+
+// 2. Spread syntax: Expanding properties
+const baseConfig = { timeout: 1000, secure: true };
+const mergedConfig = { ...baseConfig, retries: 3, secure: false }; // 'secure' overwritten
+console.log("Merged config:", mergedConfig); // { timeout: 1000, secure: false, retries: 3 }
+
+// ⚠️ Remember: Object spread is strictly SHALLOW!
+const deepObj = { meta: { env: "prod" } };
+const clonedObj = { ...deepObj };
+clonedObj.meta.env = "staging";
+console.log("Original mutated:", deepObj.meta.env); // "staging" (Shared reference!)
 ```
 
-This throws if `request.user` is `null` or `undefined`. For external input, normalize first or use optional chaining where absence is allowed.
+---
 
-### Spread does not deep-copy
+## 5. Modern Operators: Optional Chaining (`?.`) and Nullish Coalescing (`??`)
+
+### Optional Chaining (`?.`)
+
+The optional chaining operator (`?.`) allows you to safely read properties, invoke methods, or access index elements without throwing an error if the base reference is `null` or `undefined`. If the base is nullish, evaluation **short-circuits** immediately and returns `undefined`.
 
 ```js
-const original = { options: { retries: 2 } };
-const copy = { ...original };
-copy.options.retries = 5;
-console.log(original.options.retries); // 5
+// Node.js code
+const client = {
+  profile: null,
+  getApiKey() { return "key_9988"; }
+};
+
+// 1. Property access
+console.log(client.profile?.settings?.theme); // undefined (does not throw!)
+
+// 2. Bracket dynamic key access
+const dynamicField = "avatarUrl";
+console.log(client.profile?.[dynamicField]);   // undefined
+
+// 3. Optional method invocation
+console.log(client.getApiKey?.());            // "key_9988"
+console.log(client.nonExistentMethod?.());    // undefined (does not throw!)
 ```
 
-The outer object is new, but `options` is the same nested object. Use a deliberate nested copy for known shapes.
+### Nullish Coalescing (`??`)
 
-### Optional chaining and nullish coalescing
+The nullish coalescing operator (`??`) returns its right-hand operand **only if** the left-hand operand is strictly `null` or `undefined`.
 
 ```js
-const response = { body: { count: 0 } };
-const count = response.body?.count ?? 10;
-console.log(count); // 0
+// Node.js code
+const serverConfig = {
+  port: 0,
+  enableLogs: false,
+  apiPrefix: ""
+};
+
+// ✅ ?? preserves valid falsy values
+console.log(serverConfig.port ?? 3000);        // 0
+console.log(serverConfig.enableLogs ?? true);   // false
+console.log(serverConfig.apiPrefix ?? "/api");  // ""
+
+// ❌ || overwrites all falsy values
+console.log(serverConfig.port || 3000);        // 3000 (Overwrote valid 0!)
 ```
 
-`?.` stops a property, call, or index operation when the value before it is `null` or `undefined`. `??` uses the fallback only for `null` or `undefined`; `||` also treats `0`, `false`, and `""` as missing.
+### Grammar Restriction: Combining `??` with `&&` or `||`
 
-Do not combine `??` with `||` or `&&` without parentheses because the grammar rejects ambiguous mixing.
+JavaScript grammar explicitly forbids mixing `??` directly with `&&` or `||` without explicit parentheses to prevent logical ambiguity.
 
 ```js
-const value = (input ?? fallback) || finalFallback;
+// Node.js code
+// ❌ SyntaxError: Cannot mix '??' and '||' without parentheses!
+// const result = a ?? b || c; // SyntaxError: Unexpected token '||'
+
+// ✅ Explicit grouping resolves grammar ambiguity
+const a = null, b = false, c = "fallback";
+const validResult = (a ?? b) || c;
+console.log("Grouped result:", validResult); // "fallback"
 ```
 
-### Logical assignment
+---
+
+## 6. Logical Assignment Operators (`??=`, `||=`, `&&=`)
+
+ES2021 introduced **Logical Assignment Operators**, combining logical short-circuiting checks with variable assignment:
+
+1. **`a ??= b` (Nullish assignment):** Assigns `b` to `a` **only if** `a` is `null` or `undefined`.
+2. **`a ||= b` (Logical OR assignment):** Assigns `b` to `a` **only if** `a` is falsy (`false`, `0`, `""`, `null`, `undefined`, `NaN`).
+3. **`a &&= b` (Logical AND assignment):** Assigns `b` to `a` **only if** `a` is truthy.
 
 ```js
-const settings = { retries: 0 };
-settings.retries ??= 3;
-settings.timeout ||= 1000;
-console.log(settings); // { retries: 0, timeout: 1000 }
+// Node.js code
+const session = {
+  requestCount: 0,
+  authToken: null,
+  activeUser: { name: "Alice" }
+};
+
+// ✅ ??= preserves 0, assigns only when null/undefined
+session.requestCount ??= 10;
+session.authToken ??= "bearer_token_xyz";
+console.log("requestCount:", session.requestCount); // 0 (Preserved!)
+console.log("authToken:", session.authToken);       // "bearer_token_xyz" (Assigned!)
+
+// ✅ &&= updates only when currently truthy
+session.activeUser &&= { name: "Alice", lastSeen: Date.now() };
+console.log("activeUser updated:", session.activeUser.name); // "Alice"
 ```
 
-`??=` preserves `0`; `||=` replaces it because `0` is falsy. Choose based on the meaning of the input.
-
-### Template literals are expressions
-
-```js
-const name = "Asha";
-const message = `Hello, ${name}!`;
-console.log(message); // "Hello, Asha!"
-```
-
-Interpolation evaluates an expression. Template literals do not automatically escape HTML, SQL, shell commands, or logs; output safety still belongs to the target context.
-
-## Examples and Traces
-
-### Normalizing request input
-
-```js
-function normalizeOptions(input = {}) {
-  const {
-    limit = 20,
-    offset = 0,
-    filters: { status = "all" } = {},
-  } = input;
-
-  return {
-    limit,
-    offset,
-    status,
-  };
-}
-
-console.log(normalizeOptions({ limit: 0, filters: {} }));
-// { limit: 0, offset: 0, status: "all" }
-```
-
-The nested default handles a missing `filters` object. Validation is still needed for negative limits or incorrect types.
-
-### Safe update with a computed key
-
-```js
-function updateField(record, field, value) {
-  return { ...record, [field]: value };
-}
-
-const original = { name: "Asha", active: true };
-const updated = updateField(original, "active", false);
-console.log(original.active, updated.active); // true false
-```
-
-This is a shallow immutable update. If `record` has nested mutable values, those nested references remain shared.
-
-## Compare & Recall
-
-| Concept A | Concept B | Key difference |
-|---|---|---|
-| Destructuring default `{ x = 10 }` | `||` fallback `x \|\| 10` | Destructuring default applies only when `x` is **`undefined`**. `||` applies for any falsy value (`0`, `false`, `""` too). |
-| Object rest `{ a, ...rest }` | Object spread `{ ...obj }` | Rest **collects** the remaining own properties into a new object. Spread **expands** an object's properties into a new object. Same `...` syntax, opposite directions. |
-| Array spread `[...a, ...b]` | `Array.concat(a, b)` | Both concatenate arrays. Spread works on any iterable; `.concat` is array-specific. They're equivalent for plain arrays. |
-| Optional chaining `?.` | Validation | `?.` stops the chain on `null`/`undefined` and returns `undefined` silently. It does **not** validate — it just avoids a throw. |
-| `??` (nullish) | `\|\|` (OR) | `??` gives the right side only for `null`/`undefined`. `||` gives the right side for any falsy value. Use `??` when `0`, `false`, or `""` are valid inputs. |
-| Shallow spread | Deep clone | `{ ...obj }` copies own enumerable properties one level. Nested objects are still shared references. |
-
-> **Cross-day links:** Types of values that are truthy/falsy are covered in [Day 04](day-04-coercion-equality-and-operators.md). Object ownership and spread behavior are in [Day 09](day-09-objects-and-property-access.md). The iteration protocol behind array spread is in [Day 14](day-14-iterables-iterators-generators-and-symbols.md).
-
-## Common Mistakes and Interview Traps
-
-- Thinking defaults replace every falsy value.
-- Calling nested destructuring on possibly null input.
-- Believing spread is a deep clone.
-- Using `||` for numeric settings where `0` is valid.
-- Forgetting parentheses when mixing `??` with `||` or `&&`.
-- Assuming optional chaining validates that a value exists.
-- Spreading untrusted objects into privileged configuration.
-- Confusing rest syntax with spread syntax; their position and direction differ.
+---
 
 ## Tricky Points
 
-- Destructuring assignment into existing variables needs parentheses because `{}` can be parsed as a block.
-- A default expression runs only when the matched value is `undefined`.
-- Optional chaining short-circuits one continuous chain; grouping can change behavior.
-- Object spread invokes property reads and can interact with getters.
+### 1. Destructuring Assignment Without `const`/`let` Requires Parentheses
+If you destructure an object into existing variables without declaring them, the leading curly brace `{` is interpreted by the parser as a block statement, throwing a `SyntaxError`. You must wrap the entire expression in parentheses:
+```js
+// Node.js code
+let a, b;
+// { a, b } = { a: 1, b: 2 }; // SyntaxError!
+({ a, b } = { a: 1, b: 2 });  // ✅ Wrapped in parentheses succeeds
+```
 
-## Practical Exercise
+### 2. Optional Chaining Does Not Mask Undeclared Variables
+`?.` handles nullish properties on declared objects, but accessing an undeclared identifier still throws a `ReferenceError`:
+```js
+// Node.js code
+// undeclaredVariable?.property; // ReferenceError: undeclaredVariable is not defined
+```
 
-**Goal:** Normalize search options.
+### 3. Destructuring Defaults Ignore `null`
+`const { timeout = 3000 } = { timeout: null }` results in `timeout === null`. If you need to guard against `null`, use the nullish coalescing operator: `const timeout = input.timeout ?? 3000`.
 
-**Inputs and outputs:** Accept optional `{ page, pageSize, filters, includeArchived }` and return validated, normalized values.
+### 4. Object Spread Invokes Getters
+When you spread an object `{ ...source }`, JavaScript executes any getter functions defined on `source` and copies the evaluated return values as data properties on the new object.
 
-**Constraints:** Preserve `page: 0` and `includeArchived: false` until validation rejects them if the domain disallows them. Do not mutate input.
+### 5. Nested Destructuring Defaults
+Setting a default for an inner property `{ user: { role = "guest" } = {} }` handles `user === undefined`. But if `user === null`, it still crashes! For complete safety against untrusted API payloads, check nullishness before deep destructuring.
 
-**Edge cases:** `null`, missing nested filters, empty strings, zero, false, and extra fields.
+---
 
-**Acceptance criteria:** Use destructuring and nullish operators deliberately, explain every default, and show that nested input is not accidentally mutated.
+## Hands-on Exercise
+
+### Scenario: Resilient API Request Query Normalizer
+
+You are developing an Express middleware utility that normalizes pagination, search filters, and sorting parameters from incoming HTTP requests (`req.query`).
+
+### Buggy Code
+
+```js
+// Node.js code (Buggy Implementation)
+function normalizeQueryParamsBuggy(query) {
+  // Bug 1: Crashes with TypeError if query is null/undefined
+  const { page = 1, limit = 10, filters: { status, tags } } = query;
+
+  // Bug 2: || overwrites page = 0 or limit = 0
+  const safePage = page || 1;
+  const safeLimit = limit || 10;
+
+  // Bug 3: Shallow spread retains references
+  return {
+    page: safePage,
+    limit: safeLimit,
+    status: status || "all"
+  };
+}
+```
+
+### Acceptance Criteria
+
+1. **Defensive Parameter Guard:** Safely handle `null`, `undefined`, or non-object query inputs without crashing.
+2. **Preserve Valid Zero Values:** Allow `page = 0` and `offset = 0` without overwriting them with defaults.
+3. **Safe Nested Extraction:** Safely extract nested `filters` with defaults (`status = "all"`, `tags = []`) even when `filters` is missing or `null`.
+4. **Logical Assignment:** Use `??=` to populate missing runtime defaults cleanly.
+
+### Solution
+
+```js
+// Node.js code
+function normalizeQueryParams(query = {}) {
+  // Guard against null or non-object input
+  const safeQuery = query && typeof query === "object" ? query : {};
+
+  // Extract pagination preserving 0
+  const page = safeQuery.page ?? 1;
+  const limit = safeQuery.limit ?? 20;
+
+  // Extract nested filters handling missing or null intermediate objects
+  const {
+    status = "all",
+    tags = []
+  } = (safeQuery.filters && typeof safeQuery.filters === "object") ? safeQuery.filters : {};
+
+  // Construct clean normalized configuration
+  const normalized = {
+    page: Number(page),
+    limit: Number(limit),
+    filters: {
+      status: String(status),
+      tags: Array.isArray(tags) ? [...tags] : []
+    },
+    // Extract remaining arbitrary query parameters safely
+    metadata: {}
+  };
+
+  // Populate optional tracking metadata using logical assignment
+  normalized.metadata.normalizedAt ??= Date.now();
+
+  return normalized;
+}
+
+// --- Verification Tests ---
+
+// Test 1: Empty input returns defaults
+const res1 = normalizeQueryParams();
+console.log("Test 1 Defaults:", res1.page, res1.limit, res1.filters.status); // 1 20 'all'
+
+// Test 2: Valid 0 values preserved
+const res2 = normalizeQueryParams({ page: 0, limit: 0, filters: { status: "active" } });
+console.log("Test 2 Zero values:", res2.page, res2.limit, res2.filters.status); // 0 0 'active'
+
+// Test 3: Null filters does not crash
+const res3 = normalizeQueryParams({ filters: null });
+console.log("Test 3 Null filters safe:", res3.filters.status); // 'all'
+
+// Test 4: Extracted tags are cloned, preventing external mutation
+const rawTags = ["tech", "node"];
+const res4 = normalizeQueryParams({ filters: { tags: rawTags } });
+rawTags.push("corrupted");
+console.log("Test 4 Array isolation:", res4.filters.tags); // [ 'tech', 'node' ] (Uncorrupted! ✅)
+```
+
+---
 
 ## Summary
 
-- Destructuring reads array positions or object properties into bindings.
-- Defaults apply only when the matched value is `undefined`.
-- Rest collects remaining values; spread expands values.
-- Spread copies only one level of object or array structure.
-- Optional chaining handles allowed nullish absence; it is not validation.
-- `??` preserves meaningful falsy values such as `0` and `false`.
-- Modern syntax remains subject to evaluation order and getter side effects.
+- **Array Destructuring:** Unpacks elements by index position; ignores missing slots unless given defaults.
+- **Object Destructuring:** Unpacks elements by property key name; supports renaming (`{ old: newVar }`).
+- **Defaults:** Trigger strictly on `undefined` (preserving `0`, `false`, `""`, and `null`).
+- **Rest vs. Spread:** Rest collects remaining properties into an object or array; Spread expands properties into a new structure (shallowly).
+- **Optional Chaining (`?.`):** Short-circuits property, index, or method lookups to `undefined` when the base reference is nullish.
+- **Nullish Coalescing (`??`):** Replaces only `null` and `undefined`, preventing accidental corruption of `0` and `false`.
+- **Logical Assignment (`??=`, `||=`, `&&=`):** Combines short-circuit boolean logic with assignment.
+
+---
 
 ## Cheat Sheet
 
-| Syntax | Main meaning |
-|---|---|
-| `const { name } = user` | Read object property |
-| `const { name: displayName }` | Rename local binding |
-| `{ limit = 20 }` | Default only for `undefined` |
-| `[first, ...rest]` | Collect remaining array values |
-| `{ ...record }` | Shallow object copy |
-| `value?.name` | Stop on nullish base |
-| `value ?? fallback` | Fallback only for null/undefined |
-| `value || fallback` | Fallback for any falsy value |
-| `value ??= fallback` | Nullish logical assignment |
+### Syntax & Operators Quick Reference
 
-**vs. quick reference**
+| Syntax | Name | Behavior |
+| :--- | :--- | :--- |
+| `const [a, , b] = arr` | Array Skip | Extracts index 0 and 2; skips index 1 |
+| `const { key: alias } = obj` | Renaming | Binds `obj.key` to local variable `alias` |
+| `const { k = def } = obj` | Default Value | Uses `def` only if `obj.k === undefined` |
+| `const { a: { b } = {} }`| Safe Nested | Prevents crash if intermediate `a` is missing |
+| `obj?.a?.b` | Optional Chaining | Short-circuits to `undefined` if nullish |
+| `val ?? fallback` | Nullish Coalescing | Returns `fallback` only if `val` is `null`/`undefined` |
+| `val ??= fallback` | Nullish Assignment | Assigns `fallback` only if `val` is `null`/`undefined` |
 
-| | `??` | `\|\|` | `?.` |
-|---|---|---|---|
-| Triggers on | `null` or `undefined` | Any falsy value | `null` or `undefined` |
-| Preserves `0`, `false`, `""` | ✓ Yes | ✗ No | N/A |
-| Returns right side | When left is nullish | When left is falsy | Returns `undefined` when left is nullish |
-| Use case | Safe defaults | Boolean-like defaults | Optional property access |
+### Common Pitfalls
 
-| Syntax | Packs or unpacks? |
-|---|---|
-| `const { name } = obj` | Unpacks (destructuring) |
-| `const result = { name }` | Packs (shorthand property) |
-| `const merged = { ...a, ...b }` | Expands/spreads |
-| `const { a, ...rest } = obj` | Collects remainder (rest) |
+- **Mixing `??` and `||` without parentheses** → throws `SyntaxError`. Group explicitly: `(a ?? b) || c`.
+- **Using `||` for numeric settings** → `0 || 10` evaluates to `10`, corrupting zero offsets and limits. Use `0 ?? 10`.
+- **Assuming spread is a deep clone** → nested objects remain shared references.
+- **Destructuring into undeclared variables** → `{ a, b } = obj` throws `SyntaxError`. Use `({ a, b } = obj)`.
+- **Expecting optional chaining to validate values** → `obj?.user` suppresses errors, but does not prove `user` is valid.
+
+---
 
 ## Interview Questions
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+### 1. What are the exact behavioral differences between `||` and `??`?
 
-1. **[Beginner] Definition:** Explain the difference between rest and spread with array and object examples.
-   - Expected answer: Rest collects remaining values in a pattern; spread expands an iterable or enumerable object into a new context.
-   - Follow-up: Why does object spread not copy inherited properties?
+**Question:** Compare the Logical OR (`||`) operator with the Nullish Coalescing (`??`) operator. When does each evaluate its right-hand operand, and why can using `||` cause severe production bugs in API configuration?
 
-2. **[Beginner] Trace:** Predict the output:
+**Answer:**
+1. **Evaluation Conditions:**
+   - **`a || b` (Falsy Check):** Evaluates and returns `b` if `a` is **any falsy value** (`false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, `NaN`).
+   - **`a ?? b` (Nullish Check):** Evaluates and returns `b` **only if** `a` is `null` or `undefined`. All other values (including `0`, `false`, `""`, and `NaN`) are treated as valid and returned.
+2. **Production Bug Scenario (API Pagination & Configuration):**
+   - In pagination APIs, callers frequently pass `offset: 0` or `page: 0` to request the very first page.
+   - If written as `const page = req.query.page || 1;`, passing `0` causes `0 || 1` to evaluate to `1`. The server silently overrides the user's explicit request for page 0, returning page 1 instead.
+   - Similarly, boolean feature flags like `enableCache: false` written as `enableCache || true` evaluate to `true`, making it impossible for clients to disable caching.
+   - Replacing `||` with `??` (`page ?? 1`, `enableCache ?? true`) preserves valid `0` and `false` inputs.
 
-   ```js
-   const value = { count: 0, name: "" };
-   const { count = 10, name = "unknown" } = value;
-   console.log(count, name);
-   ```
-   - Expected answer: `0 ""`; defaults are not used for defined falsy values.
-   - Follow-up: What would `value.count || 10` return?
+---
 
-3. **[Mid] Implementation:** Normalize a nested request without throwing when optional sections are absent.
-   - Expected answer: Use safe defaults, explicit validation, preserve valid falsy values, and avoid mutating or blindly spreading input.
-   - Follow-up: How would you prevent prototype-related keys from entering the result?
+### 2. Predict the Output: Destructuring evaluation order, defaults, and rest
 
-4. **[Mid] Debugging:** A spread-based update unexpectedly changes the old state. Find the alias and repair only the necessary level.
-   - Expected answer: Identify the shared nested reference and copy that nested object or use a chosen immutable update strategy.
-   - Follow-up: What is the cost of recursively copying the whole input?
+```js
+let executionCount = 0;
+const getDefault = () => ++executionCount;
 
-5. **[Senior] Design:** Review a configuration loader using `||` for every default. Explain production bugs it can cause and propose tests.
-   - Expected answer: Discuss false, zero, empty strings, nullish semantics, validation, compatibility, and table-driven tests.
-   - Follow-up: Which values should be rejected rather than defaulted?
+const input = {
+  a: null,
+  b: undefined,
+  c: 0
+};
 
+const {
+  a = getDefault(),
+  b = getDefault(),
+  c = getDefault(),
+  d = getDefault(),
+  ...rest
+} = input;
+
+console.log(a, b, c, d);
+console.log("Executions:", executionCount);
+console.log("Rest keys:", Object.keys(rest));
+```
+
+**Question:** Predict the values of `a`, `b`, `c`, `d`, the `executionCount`, and the keys in `rest`.
+
+**Answer:**
+**Output:**
+```text
+null 1 0 2
+Executions: 2
+Rest keys: []
+```
+
+**Explanation:**
+1. **Evaluation of `a`:** `input.a` is `null`. Destructuring defaults trigger **only on `undefined`**. `null` is a defined value, so `getDefault()` is skipped, and `a` evaluates to `null`.
+2. **Evaluation of `b`:** `input.b` is `undefined`. This triggers the default: `getDefault()` runs, `executionCount` becomes `1`, and `b` evaluates to `1`.
+3. **Evaluation of `c`:** `input.c` is `0`. Zero is not `undefined`, so `getDefault()` is skipped, and `c` evaluates to `0`.
+4. **Evaluation of `d`:** `d` is missing on `input` (evaluates to `undefined`). `getDefault()` runs, `executionCount` becomes `2`, and `d` evaluates to `2`.
+5. **`rest` Object:** Rest collects all remaining own properties of `input` that were not explicitly destructured. Because all keys of `input` (`a`, `b`, `c`) were extracted, `rest` is an empty object `{}` with zero keys.
+
+---
+
+### 3. Debugging: Diagnosing a runtime crash in an Express webhook handler
+
+```js
+app.post("/webhooks/stripe", (req, res) => {
+  const {
+    event: {
+      data: {
+        object: { customerId }
+      }
+    }
+  } = req.body;
+
+  res.json({ received: true, customerId });
+});
+```
+
+**Question:** In production, certain Stripe webhooks (e.g., ping events or account updates) cause this endpoint to crash with `TypeError: Cannot read properties of undefined (reading 'object')`, restarting the Node.js server. Explain the root cause and provide a defensive refactoring.
+
+**Answer:**
+**Diagnosis:**
+The handler uses deep nested destructuring without fallback defaults.
+When a webhook payload has an event shape where `data` is empty or lacks an `object` property (or if `req.body.event` is undefined), JavaScript attempts to destructure `undefined`, throwing an unhandled `TypeError` that crashes the Express request handler.
+
+**Defensive Refactoring:**
+```js
+// Node.js code
+app.post("/webhooks/stripe", (req, res) => {
+  // Option 1: Safe Optional Chaining (Cleanest for simple reads)
+  const customerId = req.body?.event?.data?.object?.customerId ?? null;
+
+  // Option 2: Safe Destructuring with nested whole-parameter fallbacks
+  const {
+    event: {
+      data: {
+        object: { customerId: destructuredId } = {}
+      } = {}
+    } = {}
+  } = req.body || {};
+
+  res.json({ received: true, customerId: customerId || destructuredId });
+});
+```
+
+---
+
+### 4. Node.js Backend Scenario: Normalizing Dynamic Microservice Environment Overrides
+
+**Question:** A Node.js backend loads default configuration and merges overrides from environment variables and user JSON input. Write a function, `buildServiceConfig(defaults, envOverrides, userOverrides)`, using modern operators and logical assignments, ensuring that:
+1. Environment variables override defaults.
+2. User overrides take highest precedence.
+3. Falsy values like `0` or `false` are preserved across layers.
+4. Input objects are not mutated.
+
+**Answer:**
+
+```js
+// Node.js code
+function buildServiceConfig(defaults = {}, envOverrides = {}, userOverrides = {}) {
+  // Deep clone defaults to avoid mutating source
+  const config = structuredClone(defaults);
+
+  // Helper to merge a layer preserving nullish semantics
+  function applyLayer(target, source) {
+    if (!source || typeof source !== "object") return;
+
+    for (const [key, value] of Object.entries(source)) {
+      if (value !== undefined) {
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          target[key] ??= {};
+          applyLayer(target[key], value);
+        } else {
+          // Direct assignment preserves 0, false, "", and null
+          target[key] = value;
+        }
+      }
+    }
+  }
+
+  // Apply environment layer, then user layer
+  applyLayer(config, envOverrides);
+  applyLayer(config, userOverrides);
+
+  // Populate runtime defaults using ??=
+  config.metadata ??= {};
+  config.metadata.builtAt ??= Date.now();
+  config.metadata.active ??= true;
+
+  return config;
+}
+
+// Example Usage:
+const defaultSettings = {
+  port: 8080,
+  debug: false,
+  metrics: { intervalSec: 60 }
+};
+
+const envSettings = {
+  port: 3000,
+  metrics: { intervalSec: 15 } // Overrides intervalSec to 15
+};
+
+const userSettings = {
+  debug: false // Preserves explicit false!
+};
+
+const finalConfig = buildServiceConfig(defaultSettings, envSettings, userSettings);
+console.log("Config Result:", finalConfig.port, finalConfig.debug, finalConfig.metrics.intervalSec);
+// Output: 3000 false 15
+```
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[← Day 12: Built-in Data Structures and Serialization](day-12-built-in-data-structures-and-serialization.md) | [Roadmap](../javascript-roadmap.md) | [Day 14: Iterables, Iterators, Generators, and Symbols →](day-14-iterables-iterators-generators-and-symbols.md)
+
+</nav>

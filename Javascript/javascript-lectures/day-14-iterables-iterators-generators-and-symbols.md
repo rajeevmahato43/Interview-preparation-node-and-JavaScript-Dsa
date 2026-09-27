@@ -2,314 +2,652 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Destructuring, Spread, Rest, and Modern Operators](day-13-destructuring-spread-and-modern-operators.md) | [Roadmap](../javascript-roadmap.md) | [Next: Regular Expressions and Text Processing](day-15-regular-expressions-and-text-processing.md)
+[← Day 13: Destructuring, Spread, and Modern Operators](day-13-destructuring-spread-and-modern-operators.md) | [Roadmap](../javascript-roadmap.md) | [Day 15: Regular Expressions and Text Processing →](day-15-regular-expressions-and-text-processing.md)
 
 </nav>
 
-## Learning Outcomes
+---
+
+## What You Will Learn Today
 
 By the end of this lecture, you should be able to:
 
-- Distinguish an iterable from an iterator.
-- Explain the `Symbol.iterator` protocol.
-- Build a custom iterable and a generator.
-- Trace `yield`, `next`, `return`, and `throw`.
-- Use lazy evaluation when all values should not be created at once.
-- Explain cleanup when iteration stops early.
+- Distinguish an **Iterable** (an object implementing `[Symbol.iterator]()`) from an **Iterator** (an object with a `next()` method).
+- Trace the step-by-step mechanics of the Iterable protocol under `for...of`, array spread (`[...iterable]`), and `Array.from()`.
+- Implement custom iterable objects that generate independent, reusable iterator instances.
+- Write generator functions (`function*`) and control execution suspension and resumption with `yield`.
+- Implement two-way data flow: sending values into generators using `generator.next(value)`.
+- Use `yield*` to delegate iteration to other iterables or sub-generators seamlessly.
+- Enforce resource cleanup during premature iteration exits (`break`, `return()`, `throw()`) using `try...finally`.
+- Build memory-efficient lazy pipelines for streaming large datasets and paginated API responses in Node.js.
 
-## Prerequisites
+**Prerequisites:** [Day 05 – Control Flow and Loops](day-05-control-flow-and-loops.md) (`for...of` loops), [Day 06 – Functions, Parameters, and Callbacks](day-06-functions-parameters-and-callbacks.md), and [Day 12 – Built-in Data Structures and Serialization](day-12-built-in-data-structures-and-serialization.md).  
+*Upcoming Connections:* [Day 16](day-16-symbols-reflection-and-proxies.md) expands well-known symbols and reflection; [Day 19](day-19-async-await-errors-and-cleanup.md) introduces asynchronous iteration (`for await...of` and `Symbol.asyncIterator`).
 
-Read [Day 05: Control Flow and Loops](day-05-control-flow-and-loops.md), [Day 06: Functions, Parameters, and Callbacks](day-06-functions-parameters-and-callbacks.md), [Day 12: Built-in Data Structures and Serialization](day-12-built-in-data-structures-and-serialization.md), and [Day 13: Destructuring, Spread, and Modern Operators](day-13-destructuring-spread-and-modern-operators.md).
+---
 
-## Core Concepts
+## Quick Vocabulary Card
 
-### Iterable versus iterator
+| Term | Definition |
+| :--- | :--- |
+| **Iterable Protocol** | An ECMAScript standard requiring an object to define a `[Symbol.iterator]` method that returns an iterator. |
+| **Iterator Protocol** | An ECMAScript standard requiring an object to implement a `next()` method returning `{ value: any, done: boolean }`. |
+| **`Symbol.iterator`** | A built-in well-known symbol used as the method key that specifies an object’s default iteration behavior. |
+| **Generator Function (`function*`)** | A special constructor-like function syntax that returns a `Generator` object and can be paused and resumed. |
+| **`yield` Keyword** | An operator used inside a generator to suspend execution and emit a value to the caller. |
+| **`yield*` Expression** | An operator that delegates iteration to another iterable or generator, yielding each of its elements sequentially. |
+| **Lazy Evaluation** | A computation strategy where values are calculated on-demand only when requested by the consumer, saving memory. |
+| **Iterator Return (`return()`)** | An optional iterator method invoked automatically when iteration terminates prematurely (e.g., via `break`). |
 
-An iterable is a value that can produce an iterator. An iterator is an object with a `next()` method that returns `{ value, done }`.
+---
+
+## 1. Iterable vs. Iterator: The Core Protocols
+
+JavaScript defines two distinct but complementary protocols that power all modern collection iteration: the **Iterable Protocol** and the **Iterator Protocol**.
+
+```
+                   The Iteration Architecture
+┌─────────────────────────┐
+│     Iterable Object     │
+│   (Array, Map, Set)     │
+│   [Symbol.iterator]()   │─── returns ───┐
+└─────────────────────────┘               │
+                                          ▼
+                             ┌─────────────────────────┐
+                             │     Iterator Object     │
+                             │   next()                │─── produces ───┐
+                             └─────────────────────────┘                │
+                                                                        ▼
+                                                           ┌─────────────────────────┐
+                                                           │     IteratorResult      │
+                                                           │   { value, done }       │
+                                                           └─────────────────────────┘
+```
+
+### The Iterable Protocol
+
+An object is **iterable** if it has a method keyed by `Symbol.iterator` that returns an iterator object without arguments:
+- Built-in iterables include: `Array`, `String`, `Map`, `Set`, `TypedArray`, and `arguments`.
+- Plain objects `{}` do **not** implement `[Symbol.iterator]` by default.
+
+### The Iterator Protocol
+
+An object is an **iterator** if it implements a **`next()`** method that takes zero or one argument and returns an **IteratorResult** object with two properties:
+1. **`value`**: The current yielded value.
+2. **`done`**: A boolean indicating whether iteration has finished (`true` when complete).
 
 ```js
-const numbers = [10, 20];
-const iterator = numbers[Symbol.iterator]();
+// Node.js code
+const colors = ["cyan", "magenta"];
 
-console.log(iterator.next()); // { value: 10, done: false }
-console.log(iterator.next()); // { value: 20, done: false }
+// 1. Obtain the iterator from the iterable array
+const iterator = colors[Symbol.iterator]();
+
+// 2. Consume items by calling next() manually
+console.log(iterator.next()); // { value: 'cyan', done: false }
+console.log(iterator.next()); // { value: 'magenta', done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+
+// Subsequent calls stay completed
 console.log(iterator.next()); // { value: undefined, done: true }
 ```
 
-Arrays are iterable. The iterator remembers its current position.
+### Language Consumers of the Iterable Protocol
 
-### `for...of` uses the protocol
+Whenever you use:
+- **`for...of` loops**
+- **Spread syntax (`[...iterable]`)**
+- **`Array.from(iterable)`**
+- **`Promise.all(iterable)` / `Promise.race(iterable)`**
+- **`new Set(iterable)` / `new Map(iterable)`**
+
+JavaScript automatically queries `iterable[Symbol.iterator]()` and consumes it using the Iterator protocol.
+
+---
+
+## 2. Implementing Custom Iterables
+
+To make any custom business object iterable, attach a method under the computed property key `[Symbol.iterator]`.
+
+> **Crucial Rule:** The iterable itself should **not** store iteration state directly. Each invocation of `[Symbol.iterator]()` must return a **fresh, independent iterator** so that multiple loops can iterate over the object concurrently without interfering with each other.
 
 ```js
-for (const number of [10, 20]) {
-  console.log(number); // 10, then 20
-}
-```
+// Node.js code
+class NumberRange {
+  constructor(start, end) {
+    this.start = start;
+    this.end = end;
+  }
 
-Conceptually, `for...of` gets an iterator and repeatedly calls `next()` until `done` is true. The actual specification includes cleanup behavior for abrupt exits.
-
-### Custom iterable
-
-```js
-const range = {
-  start: 2,
-  end: 4,
+  // ✅ Implement the Iterable Protocol
   [Symbol.iterator]() {
     let current = this.start;
+    const terminal = this.end;
+
+    // Return a fresh Iterator object
     return {
-      next: () => current <= this.end
-        ? { value: current++, done: false }
-        : { value: undefined, done: true },
+      next() {
+        if (current <= terminal) {
+          return { value: current++, done: false };
+        }
+        return { value: undefined, done: true };
+      }
     };
-  },
-};
-
-console.log([...range]); // [2, 3, 4]
-```
-
-The iterable creates a fresh iterator each time, so two loops start independently.
-
-## Detailed Explanations and Traces
-
-### Generators pause and resume
-
-A generator function uses `function*` and `yield`.
-
-```js
-function* steps() {
-  yield "first";
-  yield "second";
-  return "finished";
-}
-
-const generator = steps();
-console.log(generator.next()); // { value: "first", done: false }
-console.log(generator.next()); // { value: "second", done: false }
-console.log(generator.next()); // { value: "finished", done: true }
-console.log(generator.next()); // { value: undefined, done: true }
-```
-
-Calling the generator function does not run the body fully. Each `next()` runs until the next `yield` or completion.
-
-The final `return` value is observable through `next()`, but `for...of` ignores it.
-
-### Values can be sent into a generator
-
-```js
-function* conversation() {
-  const answer = yield "What is your name?";
-  return `Hello, ${answer}`;
-}
-
-const dialogue = conversation();
-console.log(dialogue.next().value); // "What is your name?"
-console.log(dialogue.next("Asha")); // { value: "Hello, Asha", done: true }
-```
-
-The first `next()` starts the generator; its argument is ignored. Later `next(value)` becomes the result of the paused `yield` expression.
-
-### `yield*` delegates
-
-```js
-function* combined() {
-  yield* [1, 2];
-  yield* [3, 4];
-}
-
-console.log([...combined()]); // [1, 2, 3, 4]
-```
-
-`yield*` forwards values and supports delegation of completion and errors.
-
-### Generator cleanup
-
-A generator can define `finally` cleanup. Closing it with `return()` runs the cleanup block.
-
-```js
-function* resourceValues() {
-  try {
-    yield "value";
-    yield "another value";
-  } finally {
-    console.log("cleanup");
   }
 }
 
-const values = resourceValues();
-console.log(values.next().value); // "value"
-values.return(); // logs "cleanup"
+const range = new NumberRange(1, 3);
+
+// Consumed via spread:
+console.log([...range]); // [ 1, 2, 3 ]
+
+// Multiple independent loops work concurrently:
+for (const x of range) {
+  for (const y of range) {
+    // Both inner and outer loops maintain independent iterators!
+  }
+}
 ```
 
-A `for...of` loop that exits early attempts iterator cleanup when the iterator provides `return`.
+---
 
-Errors can enter a paused generator through `throw()`. A `finally` block still owns cleanup:
+## 3. Generator Functions (`function*`) and `yield`
+
+Writing manual iterator objects requires boilerplate state tracking. **Generator functions (`function*`)** provide a powerful, declarative alternative.
+
+When invoked, a generator function does **not** execute its body immediately. Instead, it returns a **Generator object** that implements both the Iterable and Iterator protocols.
 
 ```js
-function* guardedValues() {
+// Node.js code
+function* sequenceGenerator() {
+  console.log("Starting sequence...");
+  yield "Step 1: Parse";
+  console.log("Resuming to Step 2...");
+  yield "Step 2: Validate";
+  console.log("Finishing...");
+  return "Completed";
+}
+
+const gen = sequenceGenerator(); // Body has NOT run yet!
+
+console.log(gen.next()); // logs "Starting sequence...", returns { value: 'Step 1: Parse', done: false }
+console.log(gen.next()); // logs "Resuming to Step 2...", returns { value: 'Step 2: Validate', done: false }
+console.log(gen.next()); // logs "Finishing...", returns { value: 'Completed', done: true }
+console.log(gen.next()); // returns { value: undefined, done: true }
+```
+
+### The Return Value Trap in Generators
+
+A generator's `return "Completed"` produces `{ value: "Completed", done: true }`.
+
+However, **standard iteration constructs (`for...of`, `[...gen]`, `Array.from()`) discard the return value when `done: true`**!
+
+```js
+// Node.js code
+function* returnExample() {
+  yield 1;
+  yield 2;
+  return 3; // ⚠️ Discarded by for...of!
+}
+
+console.log([...returnExample()]); // [ 1, 2 ] (Notice 3 is missing!)
+```
+
+> **Rule:** Use `yield` to emit all data intended for consumers. Use `return` only for early termination or metadata intended exclusively for manual `.next()` callers.
+
+---
+
+## 4. Two-Way Communication: Passing Values into Generators
+
+The `yield` expression is a two-way street: not only does it emit values to the caller, but it also evaluates to whatever argument is passed to the next call to `.next(arg)`.
+
+```js
+// Node.js code
+function* conversationFlow() {
+  // 1. Pauses here and yields the prompt
+  const user = yield "Enter your username:";
+  
+  // 2. 'user' holds the value passed in from the subsequent next() call
+  const role = yield `Welcome ${user}! Enter your role:`;
+
+  return `User ${user} granted ${role} permissions`;
+}
+
+const session = conversationFlow();
+
+// ⚠️ First next() call starts the generator; any argument passed here is IGNORED!
+const q1 = session.next(); 
+console.log(q1.value); // "Enter your username:"
+
+// Second next() sends "alice" into the first yielded pause
+const q2 = session.next("alice");
+console.log(q2.value); // "Welcome alice! Enter your role:"
+
+// Third next() sends "admin" into the second yielded pause
+const finalResult = session.next("admin");
+console.log(finalResult.value); // "User alice granted admin permissions"
+```
+
+---
+
+## 5. Delegation with `yield*`
+
+The **`yield*`** operator delegates iteration to another iterable object (an Array, a Set, or another generator), yielding each of its items as if they were emitted by the parent generator.
+
+```js
+// Node.js code
+function* subTask() {
+  yield "Subtask A";
+  yield "Subtask B";
+  return "Subtask Result"; // Can be captured by parent generator
+}
+
+function* mainWorkflow() {
+  yield "Init";
+  
+  // ✅ Delegate iteration to subTask generator
+  const subResult = yield* subTask();
+  console.log("Delegated return value captured:", subResult);
+
+  // ✅ Delegate iteration to built-in array
+  yield* [10, 20];
+
+  yield "Done";
+}
+
+console.log([...mainWorkflow()]);
+// Output: [ 'Init', 'Subtask A', 'Subtask B', 10, 20, 'Done' ]
+```
+
+---
+
+## 6. Generator Lifecycle and Cleanup: `return()` and `throw()`
+
+Generators can manage active system resources (file handles, database connections, socket streams). When a consumer stops iterating early (e.g., using `break`), the engine invokes the iterator's `.return()` method, triggering any enclosing `finally` blocks.
+
+```js
+// Node.js code
+function* openResourceStream() {
+  console.log("1. Allocating resource handle");
   try {
-    yield "ready";
-  } catch (error) {
-    yield `handled: ${error.message}`;
+    yield "Chunk 1";
+    yield "Chunk 2";
+    yield "Chunk 3";
   } finally {
-    console.log("released");
+    // ✅ Guaranteed cleanup runs on normal completion OR early exit!
+    console.log("2. Guaranteed cleanup: Closing resource handle");
   }
 }
 
-const guarded = guardedValues();
-console.log(guarded.next()); // { value: "ready", done: false }
-console.log(guarded.throw(new Error("stop"))); // handled value, then done: false
-console.log(guarded.return("closed")); // logs "released", then done: true
+// Scenario 1: Early loop break triggers finally cleanup automatically
+for (const chunk of openResourceStream()) {
+  console.log("Received:", chunk);
+  if (chunk === "Chunk 1") {
+    break; // Loop terminates early!
+  }
+}
+// Logs:
+// 1. Allocating resource handle
+// Received: Chunk 1
+// 2. Guaranteed cleanup: Closing resource handle
 ```
 
-The exact sequence is part of the iterator contract: `throw()` resumes at the suspended `yield`, while `return()` requests completion and runs `finally`.
+### Injecting Errors with `generator.throw()`
 
-### Lazy work and bounded generation
+You can inject an exception directly into a suspended generator at its paused `yield` position using `.throw(error)`:
 
 ```js
-function* positiveNumbers() {
-  let number = 1;
+// Node.js code
+function* resilientWorker() {
+  try {
+    yield "Working...";
+  } catch (err) {
+    yield `Recovered from: ${err.message}`;
+  }
+}
+
+const worker = resilientWorker();
+worker.next(); // Pauses at yield "Working..."
+
+// Inject exception into the generator's paused state
+const recovery = worker.throw(new Error("Network glitch"));
+console.log(recovery.value); // "Recovered from: Network glitch"
+```
+
+---
+
+## 7. Lazy Evaluation and Infinite Streams
+
+**Lazy evaluation** computes values on-demand only when requested. This enables generators to model infinite streams or large datasets without allocating massive arrays in RAM.
+
+```js
+// Node.js code
+// Infinite ID generator: uses zero memory for unrequested IDs
+function* idGenerator(prefix = "id") {
+  let counter = 1;
   while (true) {
-    yield number;
-    number += 1;
+    yield `${prefix}_${counter++}`;
   }
 }
 
-const firstThree = [];
-for (const number of positiveNumbers()) {
-  firstThree.push(number);
-  if (firstThree.length === 3) break;
-}
-console.log(firstThree); // [1, 2, 3]
+const gen = idGenerator("tx");
+
+// Take only what you need:
+console.log(gen.next().value); // "tx_1"
+console.log(gen.next().value); // "tx_2"
+console.log(gen.next().value); // "tx_3"
+
+// ❌ Never spread an infinite generator:
+// [...idGenerator()]; // Fatal crash: RangeError: Maximum call stack size or out of memory!
 ```
 
-The infinite generator is safe here because the loop stops. Spreading it without a limit would never finish.
-
-## Examples and Traces
-
-### A reusable page generator
-
-```js
-function* pages(items, pageSize) {
-  for (let index = 0; index < items.length; index += pageSize) {
-    yield items.slice(index, index + pageSize);
-  }
-}
-
-console.log([...pages([1, 2, 3, 4, 5], 2)]);
-// [[1, 2], [3, 4], [5]]
-```
-
-The generator creates one page when requested instead of building every intermediate result before the consumer starts.
-
-## Compare & Recall
-
-| Concept A | Concept B | Key difference |
-|---|---|---|
-| **Iterable** | **Iterator** | An iterable **can create** an iterator (it has `[Symbol.iterator]()`). An iterator **does the work** (it has `next()`). Arrays are iterable; calling `[Symbol.iterator]()` on them gives you an iterator. |
-| Generator function `function*` | Regular function | Regular function runs to completion and returns once. Generator function pauses at `yield`, returns a value, then resumes on the next `next()` call. |
-| `yield` | `return` | `yield` **pauses** and produces a value (done: false). `return` **ends** the generator (done: true). The final return value is visible only if you call `next()` after the last yield. |
-| `yield*` | Manually iterating | `yield*` delegates to another iterable, yielding each of its values as if they were your own. Equivalent to a `for...of` that yields each item. |
-| Lazy evaluation | Eager evaluation | Lazy (generators): compute the next value only when asked. Eager (arrays): compute all values up front. Lazy saves memory for large/infinite sequences. |
-| Synchronous iterator | Async iterator | Synchronous: `next()` returns `{ value, done }` synchronously. Async: `next()` returns a **Promise** of `{ value, done }`. Used with `for await...of` and `Symbol.asyncIterator`. |
-
-> **Cross-day links:** `for...of` and iteration over arrays/Maps/Sets are in [Day 05](day-05-control-flow-and-loops.md) and [Day 12](day-12-built-in-data-structures-and-serialization.md). Async iteration and `for await...of` are introduced in [Day 19](day-19-async-await-errors-and-cleanup.md).
-
-## Common Mistakes and Interview Traps
-
-- Calling an iterable itself as if it were an iterator.
-- Forgetting that `next()` returns an object, not just the value.
-- Passing a value to the first `next()` and expecting it to enter the first `yield`.
-- Spreading an infinite generator.
-- Confusing the generator's final return value with a yielded value.
-- Assuming a generator automatically runs concurrently.
-- Forgetting cleanup when a custom iterator owns resources.
+---
 
 ## Tricky Points
 
-- An iterable can create many independent iterators; an iterator is usually stateful.
-- `for...of` consumes values and ignores the final `return` value.
-- `yield` pauses the generator body, but it does not pause unrelated JavaScript execution globally.
-- Async iterables use `Symbol.asyncIterator` and `next()` results that resolve promises; that is introduced here only as a concept.
+### 1. `for...of` Discards Generator Return Value
+When a generator returns `{ value: "x", done: true }`, `for...of` and spread ignore `"x"`. Use `yield` to output values.
 
-## Practical Exercise
+### 2. Passing Arguments to the First `next()`
+The argument passed to the first call of `gen.next(arg)` is silently ignored because no `yield` expression is waiting to receive it.
 
-**Goal:** Create a lazy range and paginated iterator.
+### 3. Iterators are Single-Use; Iterables are Multi-Use
+An iterator maintains internal state and cannot be reset once exhausted. An iterable can be iterated repeatedly because each `[Symbol.iterator]()` call creates a fresh iterator.
 
-**Inputs and outputs:** Accept a start, end, and page size; produce values and pages only when requested.
+### 4. Generators are Synchronous Pauses
+A generator's `yield` suspends the generator function, but it does **not** pause the JavaScript event loop or block other asynchronous operations.
 
-**Constraints:** Do not allocate the full range. Stop safely when the consumer breaks early.
+### 5. Plain Objects are Not Iterables
+Attempting `for (const x of { a: 1 })` throws `TypeError: (intermediate value) is not iterable`. Use `Object.entries(obj)` or `Object.keys(obj)`.
 
-**Edge cases:** Start greater than end, zero or negative page size, and an extremely large end value.
+---
 
-**Acceptance criteria:** Show the `next()` trace, explain when computation happens, and demonstrate cleanup with a `finally` block.
+## Hands-on Exercise
+
+### Scenario: High-Volume Paginated Database Cursor
+
+You are building a database querying abstraction in Node.js. Large database queries must be fetched in batches (pages) to conserve server memory, but consumers must be able to iterate over individual records smoothly using `for...of`.
+
+### Buggy Code
+
+```js
+// Node.js code (Buggy Implementation)
+function* createDatabaseCursorBuggy(fetchPageFn, maxPages) {
+  // Bug 1: Loads all pages eagerly into memory at startup
+  const allRecords = [];
+  for (let p = 1; p <= maxPages; p++) {
+    allRecords.push(...fetchPageFn(p));
+  }
+
+  // Bug 2: Emits from massive array instead of lazy fetching
+  for (const item of allRecords) {
+    yield item;
+  }
+}
+```
+
+### Acceptance Criteria
+
+1. **Lazy Page Fetching:** Pages must be fetched from the database **only when** the consumer requests an item from that page.
+2. **Infinite or Bounded Stream:** Support iterating until the fetch function returns an empty batch or reaches `maxPages`.
+3. **Guaranteed Teardown:** Ensure database cursor cleanup executes using `try...finally` if the consumer breaks out of the loop early.
+4. **Zero Pre-Allocation:** Avoid accumulating records in an in-memory buffer.
+
+### Solution
+
+```js
+// Node.js code
+function* createDatabaseCursor(fetchPageFn, { pageSize = 2, maxPages = 5 } = {}) {
+  let currentPage = 1;
+  let cursorOpened = false;
+
+  try {
+    cursorOpened = true;
+    console.log("[DB] Cursor opened");
+
+    while (currentPage <= maxPages) {
+      // Lazy fetch: occurs only when needed
+      console.log(`[DB] Fetching page ${currentPage}...`);
+      const batch = fetchPageFn(currentPage, pageSize);
+
+      if (!batch || batch.length === 0) {
+        break; // No more records
+      }
+
+      // Yield each record individually from current batch
+      yield* batch;
+
+      currentPage++;
+    }
+  } finally {
+    // Guaranteed cleanup on completion or early break
+    if (cursorOpened) {
+      console.log("[DB] Cursor safely closed and connection released");
+    }
+  }
+}
+
+// --- Verification Tests ---
+
+// Mock database page fetcher
+function mockDb(page, size) {
+  if (page > 3) return []; // 3 pages total
+  return [
+    { id: `rec_${(page - 1) * size + 1}` },
+    { id: `rec_${(page - 1) * size + 2}` }
+  ];
+}
+
+// Test 1: Full consumption
+console.log("--- Test 1: Full Consumption ---");
+const cursor1 = createDatabaseCursor(mockDb, { pageSize: 2, maxPages: 5 });
+for (const record of cursor1) {
+  console.log("Processed:", record.id);
+}
+
+// Test 2: Early break triggers finally cleanup immediately
+console.log("\n--- Test 2: Early Termination ---");
+const cursor2 = createDatabaseCursor(mockDb, { pageSize: 2, maxPages: 5 });
+for (const record of cursor2) {
+  console.log("Processed early:", record.id);
+  if (record.id === "rec_2") {
+    console.log("Stopping early!");
+    break; // Breaks during first page!
+  }
+}
+```
+
+---
 
 ## Summary
 
-- An iterable can produce an iterator through `Symbol.iterator`.
-- An iterator exposes `next()` and returns `{ value, done }`.
-- Generators make iterator code easier to write and pause at `yield`.
-- `yield*` delegates to another iterable.
-- Generators are lazy, but unlimited generators must have bounded consumers.
-- Early termination should trigger cleanup when an iterator supports it.
+- **Iterable vs. Iterator:** An Iterable implements `[Symbol.iterator]()` to produce an Iterator. An Iterator implements `next()` returning `{ value, done }`.
+- **Custom Iterables:** Make custom domain objects iterable by implementing `[Symbol.iterator]()`, returning a fresh iterator instance per call.
+- **Generators (`function*`):** Declarative state machines that suspend execution at `yield` and resume on `.next()`.
+- **Two-Way Flow:** Pass data out via `yield value` and receive data in via `const input = yield`.
+- **Delegation with `yield*`:** Seamlessly delegates iteration to other iterables or child generators.
+- **Guaranteed Cleanup:** `try...finally` inside generators executes cleanup when iteration completes or when terminated early via `.return()`.
+- **Lazy Evaluation:** Yields items on demand, enabling unbounded streams and low-memory data pipelines.
+
+---
 
 ## Cheat Sheet
 
-| Term | Meaning |
-|---|---|
-| Iterable | Can produce an iterator |
-| Iterator | Has `next()` |
-| `Symbol.iterator` | Standard synchronous iteration hook |
-| `function*` | Generator function syntax |
-| `yield` | Produce a value and pause |
-| `yield*` | Delegate to another iterable |
-| `{ done: true }` | Iteration is complete |
-| `return()` | Request iterator cleanup/completion |
+### Protocols Quick Reference
 
-**vs. quick reference**
+| Entity | Required Method | Return Value | Example |
+| :--- | :--- | :--- | :--- |
+| **Iterable** | `[Symbol.iterator]()` | Iterator object | `Array`, `Map`, `Set`, `String` |
+| **Iterator** | `next(val)` | `{ value: any, done: boolean }` | Result of `arr[Symbol.iterator]()` |
+| **Generator** | Implements both! | Self-iterable Iterator | Result of `function*()` |
 
-| | `yield` | `return` (in generator) |
-|---|---|---|
-| `done` in result | `false` | `true` |
-| Visible to `for...of` | ✓ Yes | ✗ No |
-| Visible to `.next()` | ✓ Yes | ✓ Yes (last call) |
-| Pauses the function | ✓ | Ends the function |
+### Generator Methods
 
-| | Iterable | Iterator |
-|---|---|---|
-| Has `[Symbol.iterator]()` | ✓ | (may be its own iterator) |
-| Has `next()` | ✗ | ✓ |
-| Reusable (can iterate again) | Usually | Usually not |
-| Example | Array, Set, Map, String | Array iterator, generator object |
+| Method | Behavior |
+| :--- | :--- |
+| **`gen.next(value)`** | Resumes generator, evaluates current `yield` to `value`, runs to next `yield`. |
+| **`gen.return(value)`** | Terminates generator immediately, runs `finally` blocks, returns `{ value, done: true }`. |
+| **`gen.throw(error)`** | Injects `error` into generator at paused location; handled by generator's `try/catch`. |
+
+### Common Pitfalls
+
+- **Attempting to iterate plain objects with `for...of`** → throws `TypeError`. Use `Object.entries(obj)`.
+- **Spreading an infinite generator** → causes an Out-Of-Memory (OOM) crash.
+- **Relying on a generator's `return value` in `for...of`** → discarded by language iteration constructs.
+- **Passing an argument to the first `next()` call** → ignored by the engine.
+
+---
 
 ## Interview Questions
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+### 1. What is the difference between an Iterable and an Iterator?
 
-1. **[Mid] Definition:** Explain iterable and iterator with a custom object.
-   - Expected answer: State the separate responsibilities and show `Symbol.iterator`, `next`, `value`, and `done`.
-   - Follow-up: Why can the same iterable be consumed twice while an iterator often cannot?
+**Question:** Explain the difference between an Iterable and an Iterator in JavaScript. Why can an Array be iterated multiple times with `for...of`, whereas a Generator object often cannot?
 
-2. **[Beginner] Trace:** What does this print?
+**Answer:**
+1. **The Separation of Responsibilities:**
+   - **Iterable:** An object that adheres to the **Iterable protocol** by implementing a `[Symbol.iterator]()` method. Its sole responsibility is to act as a factory that manufactures iterator instances.
+   - **Iterator:** An object that adheres to the **Iterator protocol** by implementing a `next()` method that tracks stateful traversal and returns `{ value, done }`.
+2. **Why Arrays are Multi-Use:**
+   - An Array is an **Iterable**. Every time `for...of` or `[...arr]` runs, it invokes `arr[Symbol.iterator]()`, producing a **brand-new, independent iterator** initialized at index 0. Therefore, arrays can be iterated indefinitely.
+3. **Why Generators are Single-Use:**
+   - A Generator object is both an iterable and its own iterator (`gen[Symbol.iterator]() === gen`). It maintains internal execution state (the instruction pointer).
+   - Once a generator runs to completion (`done: true`), its execution context is finished. Calling `[Symbol.iterator]()` on an exhausted generator returns the same exhausted instance, meaning subsequent loops will terminate immediately.
 
-   ```js
-   function* values() {
-     yield 1;
-     return 2;
-   }
-   console.log([...values()]);
-   ```
-   - Expected answer: `[1]`; `for...of` and spread ignore the final return value.
-   - Follow-up: How can you observe `2`?
+---
 
-3. **[Senior] Implementation:** Build a lazy breadth-first traversal interface for a tree.
-   - Expected answer: Define node shape, queue state, yield timing, memory complexity, and early termination.
-   - Follow-up: How would an async source change the protocol?
+### 2. Predict the Output: Generator arguments, yields, and returns
 
-4. **[Mid] Debugging:** A generator-backed report hangs in production. Find the unbounded consumer and add a safe limit.
-   - Expected answer: Identify infinite generation or missing termination, add explicit bounds or cancellation, and test large inputs.
-   - Follow-up: How would you expose progress without materializing all results?
+```js
+function* taskFlow() {
+  const a = yield 10;
+  const b = yield a + 5;
+  return a + b;
+}
 
-5. **[Senior] Design:** Compare a generator pipeline with eager arrays for a large Node data flow.
-   - Expected answer: Discuss memory, latency, backpressure boundaries, cleanup, error handling, and observability.
-   - Follow-up: Which parts require async iteration rather than synchronous iteration?
+const runner = taskFlow();
+console.log(runner.next(100));
+console.log(runner.next(20));
+console.log(runner.next(5));
+console.log(runner.next());
+```
 
+**Question:** Predict the output of the four `.next()` calls and explain how values flow into the generator.
+
+**Answer:**
+**Output:**
+```text
+{ value: 10, done: false }
+{ value: 25, done: false }
+{ value: 25, done: true }
+{ value: undefined, done: true }
+```
+
+**Explanation:**
+1. **First `runner.next(100)`:** Starts the generator. The argument `100` is **ignored** because no `yield` is currently waiting for input. The generator runs until `yield 10`, returning `{ value: 10, done: false }`.
+2. **Second `runner.next(20)`:** Resumes execution. The first `yield` expression evaluates to `20`, assigning `a = 20`. It computes `a + 5` (`25`) and pauses at `yield 25`, returning `{ value: 25, done: false }`.
+3. **Third `runner.next(5)`:** Resumes execution. The second `yield` evaluates to `5`, assigning `b = 5`. It evaluates `return a + b` (`20 + 5 = 25`), terminating the generator and returning `{ value: 25, done: true }`.
+4. **Fourth `runner.next()`:** The generator is already exhausted. It returns `{ value: undefined, done: true }`.
+
+---
+
+### 3. Debugging: Diagnosing a memory leak and hang caused by an unbounded generator
+
+```js
+function* generateLogEvents() {
+  let seq = 1;
+  while (true) {
+    yield { seq: seq++, timestamp: Date.now() };
+  }
+}
+
+// Service Endpoint
+app.get("/logs/export", (req, res) => {
+  const events = [...generateLogEvents()]; // Server hangs and crashes!
+  res.json(events);
+});
+```
+
+**Question:** In production, calling `/logs/export` completely freezes the Node.js event loop and eventually crashes the process with `JavaScript heap out of memory`. Diagnose the issue and refactor the code to stream logs safely with bounds.
+
+**Answer:**
+**Diagnosis:**
+`generateLogEvents` is an **infinite generator** (`while (true)`).
+Using the array spread operator `[...generateLogEvents()]` forces JavaScript to consume the generator until `done: true`. Because `done` is never `true`, the loop runs infinitely, locking the single-threaded Node.js event loop, exhausting the V8 heap, and crashing the application.
+
+**Safe Refactoring:**
+```js
+// Node.js code
+function* generateBoundedLogEvents(limit = 100) {
+  let seq = 1;
+  while (seq <= limit) {
+    yield { seq: seq++, timestamp: Date.now() };
+  }
+}
+
+app.get("/logs/export", (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 1000);
+  const events = [...generateBoundedLogEvents(limit)];
+  res.json({ count: events.length, events });
+});
+```
+
+---
+
+### 4. Node.js Backend Scenario: Implementing an Observable File Chunking Stream
+
+**Question:** In a Node.js microservice handling large file uploads or CSV ingestion, implement a generator-based chunker that reads an array or stream of lines and yields batched chunks of size `N`. Ensure that if processing fails mid-stream, resources are cleaned up immediately.
+
+**Answer:**
+
+```js
+// Node.js code
+function* createBatchChunker(itemIterable, batchSize = 100) {
+  if (batchSize <= 0) throw new RangeError("batchSize must be greater than 0");
+
+  let batch = [];
+  let totalProcessed = 0;
+
+  try {
+    for (const item of itemIterable) {
+      batch.push(item);
+      totalProcessed++;
+
+      if (batch.length === batchSize) {
+        // Yield full batch and reset
+        yield batch;
+        batch = [];
+      }
+    }
+
+    // Yield any remaining trailing items
+    if (batch.length > 0) {
+      yield batch;
+    }
+  } finally {
+    // Guaranteed resource cleanup hook
+    console.log(`[Chunker] Stream finalized. Total items processed: ${totalProcessed}`);
+  }
+}
+
+// Example Verification:
+const mockRecords = ["user_1", "user_2", "user_3", "user_4", "user_5"];
+const chunker = createBatchChunker(mockRecords, 2);
+
+for (const batch of chunker) {
+  console.log("Processing batch:", batch);
+}
+// Logs:
+// Processing batch: [ 'user_1', 'user_2' ]
+// Processing batch: [ 'user_3', 'user_4' ]
+// Processing batch: [ 'user_5' ]
+// [Chunker] Stream finalized. Total items processed: 5
+```
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[← Day 13: Destructuring, Spread, and Modern Operators](day-13-destructuring-spread-and-modern-operators.md) | [Roadmap](../javascript-roadmap.md) | [Day 15: Regular Expressions and Text Processing →](day-15-regular-expressions-and-text-processing.md)
+
+</nav>

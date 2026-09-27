@@ -2,7 +2,7 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: `async`/`await` and Asynchronous Error Propagation](day-19-async-await-errors-and-cleanup.md) | [Roadmap](../javascript-roadmap.md) | [Next: Memory, Reachability, and Ownership](day-21-memory-reachability-and-garbage-collection.md)
+[← Previous Day: Day 19 - `async`/`await` and Asynchronous Error Propagation](day-19-async-await-errors-and-cleanup.md) | [Roadmap](../javascript-roadmap.md) | [Next Day: Day 21 - Memory, Reachability, and Ownership →](day-21-memory-reachability-and-garbage-collection.md)
 
 </nav>
 
@@ -10,249 +10,552 @@
 
 By the end of this lecture, you should be able to:
 
-- Explain the call stack and execution jobs at a useful level.
-- Predict ordering between synchronous code and promise reactions.
-- Use `queueMicrotask` deliberately.
-- Separate ECMAScript guarantees from timer and event-loop host behavior.
-- Recognize microtask starvation and its effect on Node latency.
-- Trace scheduling examples without copying browser explanations into Node blindly.
+- Deconstruct the ECMAScript Job queue model and separate language-level specifications from host environment event loops.
+- Accurately predict execution ordering across synchronous frames, `process.nextTick`, Promise reaction jobs, `queueMicrotask`, and host timers.
+- Explain the microtask queue drain cycle and diagnose event loop starvation scenarios.
+- Articulate the role of `setImmediate` vs. `setTimeout(fn, 0)` in libuv's phase transitions.
+- Implement cooperative scheduling and yielding strategies to chunk compute-intensive algorithms without blocking I/O latency.
+- Debug order-of-execution anomalies in mixed callback, promise, and async generator environments.
 
-## Prerequisites
+---
 
-Read [Day 05: Conditions, Loops, and Control Transfer](day-05-control-flow-and-loops.md), [Day 08: Closures, Execution Context, and `this`](day-08-closures-execution-context-and-this.md), [Day 18: Promises and Promise Composition](day-18-promises-and-composition.md), and [Day 19: `async`/`await` and Asynchronous Error Propagation](day-19-async-await-errors-and-cleanup.md).
+## Vocabulary Card
+
+| Term | Plain Definition | Everyday Analogy |
+| :--- | :--- | :--- |
+| **Job (ECMAScript)** | An engine-level abstraction representing a deferred computation unit scheduled to run once the current synchronous execution context stack empties. | A sticky note placed on your computer screen to handle immediately before walking away from your desk. |
+| **Microtask** | A high-priority deferred task (promise reactions, `queueMicrotask`) processed immediately following the current script and before any macrotask or I/O. | A fast-pass lane at an amusement park that is emptied completely before the main ride line moves forward. |
+| **Macrotask (Task)** | A discrete host-level task (timers, network I/O, UI events) scheduled in distinct event-loop phase queues. | A scheduled bus arrival; passengers board in planned cycles rather than on an instantaneous priority basis. |
+| **`process.nextTick`** | A Node.js-specific priority queue that executes before the standard ECMAScript microtask queue across synchronous boundaries. | An emergency intercom interrupt that takes precedence over even the fast-pass line. |
+| **Microtask Starvation** | A condition where recursive or continuous microtask scheduling prevents the event loop from ever advancing to timer, I/O, or close phases. | A bucket brigade passing endless buckets down the line, completely forgetting to stop and check if the fire alarm is ringing. |
+| **Event Loop Yielding** | Deliberately relinquishing the main thread using timers or `setImmediate` to allow pending I/O and network requests to process. | Pausing a long speech every 10 minutes to take audience questions and drink water. |
+
+---
 
 ## Core Concepts
 
-JavaScript executes synchronous code on a call stack. A function call adds a frame; returning removes it. A long synchronous loop keeps the stack busy and prevents other work from running.
+### 1. The Call Stack and Synchronous Execution
 
-Promise reactions, such as `.then` callbacks, run as jobs after the current synchronous job finishes. They do not run in the middle of the current function just because a promise is already fulfilled.
+JavaScript engines operate on a single main thread with a synchronous call stack. Every function invocation pushes a frame; returning pops it.
+- **Synchronous execution is non-preemptive:** A long-running `while(true)` or expensive computation blocks the stack entirely.
+- Deferred callbacks (whether microtasks or timers) **never interrupt running JavaScript**. They wait until the stack unwinds to zero.
 
-```js
-console.log("one");
-Promise.resolve().then(() => console.log("three"));
-console.log("two");
-```
+```javascript
+// Node.js code
+console.log("1. Synchronous frame start");
 
-Expected output:
-
-```text
-one
-two
-three
-```
-
-### `queueMicrotask`
-
-```js
-console.log("start");
-queueMicrotask(() => console.log("microtask"));
-console.log("end");
-```
-
-Expected output:
-
-```text
-start
-end
-microtask
-```
-
-Both promise reactions and `queueMicrotask` callbacks are microtask-like scheduling mechanisms in modern JavaScript hosts. The exact host event-loop integration is not the same as the ECMAScript language model.
-
-## Detailed Explanations and Traces
-
-### Nested microtasks
-
-```js
-console.log("A");
-Promise.resolve().then(() => {
-  console.log("B");
-  queueMicrotask(() => console.log("D"));
-});
-queueMicrotask(() => console.log("C"));
-console.log("E");
-```
-
-Expected output:
-
-```text
-A
-E
-B
-C
-D
-```
-
-Synchronous code finishes first. The microtask queue then processes `B`, `C`, and finally the microtask added by `B`.
-
-### `await` creates a later continuation
-
-```js
-async function show() {
-  console.log("inside 1");
-  await null;
-  console.log("inside 2");
-}
-
-console.log("outside 1");
-show();
-console.log("outside 2");
-```
-
-Expected output:
-
-```text
-outside 1
-inside 1
-outside 2
-inside 2
-```
-
-Even though `null` is not a promise, the continuation after `await` resumes later.
-
-### Timers are host behavior
-
-```js
-console.log("start");
-setTimeout(() => console.log("timer"), 0);
-Promise.resolve().then(() => console.log("promise"));
-console.log("end");
-```
-
-In common browser and Node environments the output is usually `start`, `end`, `promise`, `timer`, because the current job finishes and promise reactions are processed before the timer callback. Timer phases and exact ordering around other host APIs are runtime behavior; do not describe them as universal ECMAScript rules.
-
-### Microtask starvation
-
-```js
-let count = 0;
-function keepRunning() {
-  count += 1;
-  if (count < 3) {
-    queueMicrotask(keepRunning);
+function blockMainThread(durationMs) {
+  const start = Date.now();
+  while (Date.now() - start < durationMs) {
+    // Busy wait: Locks the entire process!
   }
 }
 
-queueMicrotask(keepRunning);
-console.log("scheduled");
+// Schedules a microtask:
+Promise.resolve().then(() => console.log("3. Microtask executed"));
+
+blockMainThread(50); // Locks execution for 50ms
+console.log("2. Synchronous frame end");
+
+// Output:
+// 1. Synchronous frame start
+// 2. Synchronous frame end
+// 3. Microtask executed
 ```
 
-This bounded example finishes. An unbounded chain can keep adding microtasks so that timers, I/O callbacks, or other host work wait for a very long time. A production design needs a bound, batching, or a yield point appropriate to the host.
+### 2. The Microtask Queue: `Promise.then` and `queueMicrotask`
 
-## Examples and Traces
+When a Promise fulfills or rejects, its `.then()`, `.catch()`, or `.finally()` callbacks are queued into the microtask queue.
+The browser and Node.js also expose `queueMicrotask(callback)` to schedule a microtask directly without allocating a Promise wrapper.
 
-### Separate guarantees from host behavior
+```javascript
+// Node.js code
+console.log("A");
 
-| Behavior | Language-level idea | Host-dependent part |
-|---|---|---|
-| Synchronous statements finish first | Yes | No |
-| Promise continuation is deferred | Yes | Integration details vary |
-| `queueMicrotask` exists | Modern platform feature | Availability/version matters |
-| `setTimeout` exists | No, it is a host API | Delay and event-loop phase |
-| Node timer versus I/O ordering | No | Node runtime behavior |
-| Browser rendering opportunity | No | Browser behavior |
+queueMicrotask(() => {
+  console.log("C (queueMicrotask)");
+});
 
-## Compare & Recall
+Promise.resolve().then(() => {
+  console.log("D (Promise.then)");
+});
 
-| Concept A | Concept B | Key difference |
-|---|---|---|
-| Synchronous code | Microtask (promise reaction) | Synchronous code always finishes first. Microtasks run **after** the current synchronous job completes, but **before** the next macrotask (timer, I/O). |
-| Microtask (`Promise.then`) | Macrotask (`setTimeout`) | Microtasks: run after current job, before any I/O/timer callbacks. Macrotasks: scheduled by the host (Node/browser) with their own delay. Promise reactions are microtasks; timers are macrotasks. |
-| `queueMicrotask(fn)` | `Promise.resolve().then(fn)` | Both schedule a microtask. They run at the same checkpoint and are effectively equivalent in ordering. `queueMicrotask` is more explicit. |
-| `await value` | Synchronous read | Even `await 5` defers continuation to a microtask. The function pauses and yields to the microtask queue, even for a non-async value. |
-| Starvation (microtask loop) | Starvation (sync loop) | Endless synchronous code blocks everything. Endless microtask chaining also starves timers/I/O because the queue is drained before moving to macrotasks. |
-| Event loop (Node) | Event loop (browser) | Same basic principle (call stack + queues), but different phases and APIs. Node has libuv phases (timers, I/O, check/setImmediate). Don't assume browser diagrams map exactly to Node. |
+console.log("B");
 
-> **Cross-day links:** Promises and their settlement are in [Day 18](day-18-promises-and-composition.md). `async/await` and how `await` defers are in [Day 19](day-19-async-await-errors-and-cleanup.md). Node-specific async patterns are in [Day 27](day-27-concurrency-and-resource-safe-async.md).
+// Output:
+// A
+// B
+// C (queueMicrotask)
+// D (Promise.then)
+```
 
-## Common Mistakes and Interview Traps
+`queueMicrotask` and `Promise.resolve().then()` share the **same FIFO microtask queue**. They execute in insertion order immediately after synchronous execution finishes.
 
-- Saying promise callbacks run immediately.
-- Treating `setTimeout(..., 0)` as "run next" with an exact universal guarantee.
-- Mixing browser event-loop diagrams with Node behavior.
-- Creating an unbounded microtask chain.
-- Confusing concurrency with parallel execution.
-- Assuming `await` makes CPU-heavy work non-blocking.
-- Ignoring synchronous work before the first await.
+### 3. Node.js Priority: `process.nextTick` vs. Microtasks
 
-## Tricky Points
+In Node.js, `process.nextTick()` does **not** use the standard ECMAScript microtask queue. It manages its own internal `nextTickQueue` that executes **before** standard Promise microtasks:
 
-- A fulfilled promise still schedules its reaction for later.
-- A microtask created by another microtask is processed after already queued microtasks according to the host's microtask checkpoint behavior.
-- `await` can resume later even for an ordinary value.
-- Microtasks do not create a new thread; CPU-heavy callbacks still run on the JavaScript thread.
+```javascript
+// Node.js code
+Promise.resolve().then(() => {
+  console.log("Microtask: Promise.then");
+});
 
-## Practical Exercise
+queueMicrotask(() => {
+  console.log("Microtask: queueMicrotask");
+});
 
-**Goal:** Trace and verify a mixed scheduling example.
+process.nextTick(() => {
+  console.log("High Priority: process.nextTick");
+});
 
-**Inputs and outputs:** Include synchronous logs, a promise reaction, `queueMicrotask`, and a timer; write the expected output order.
+// Output:
+// High Priority: process.nextTick
+// Microtask: Promise.then
+// Microtask: queueMicrotask
+```
 
-**Constraints:** Label which ordering is language-level and which depends on Node. Add a bounded microtask loop.
+### 4. Macrotasks: `setTimeout` and `setImmediate`
 
-**Edge cases:** A rejection callback, nested microtasks, a timer registered inside a microtask, and a large synchronous loop.
+Macrotasks belong to the host environment (libuv in Node.js) and are partitioned into distinct event-loop phases:
+1. **Timers Phase:** Executes callbacks scheduled by `setTimeout()` and `setInterval()`.
+2. **Poll / I/O Phase:** Retrieves incoming network traffic and file system read/write completions.
+3. **Check Phase:** Executes callbacks scheduled specifically by `setImmediate()`.
 
-**Acceptance criteria:** Produce a manual trace, run the example only on a stated runtime version, and explain any host-dependent result.
+Between every macrotask execution, the engine **drains the entire microtask queue to completion**.
+
+```javascript
+// Node.js code
+setTimeout(() => {
+  console.log("Timer callback (Macrotask 1)");
+  queueMicrotask(() => console.log("Microtask inside Timer"));
+}, 0);
+
+setImmediate(() => {
+  console.log("Check callback (Macrotask 2)");
+});
+
+// Output:
+// Timer callback (Macrotask 1)
+// Microtask inside Timer
+// Check callback (Macrotask 2)
+```
+
+### 5. Microtask Starvation
+
+Because the engine drains the microtask queue completely before advancing to the next event-loop phase, recursively enqueueing microtasks creates an infinite loop that starves the event loop of timers and I/O.
+
+```javascript
+// Node.js code
+// ❌ DANGEROUS: Recursive microtasks starve the event loop!
+let iterations = 0;
+
+function infiniteMicrotask() {
+  iterations++;
+  if (iterations < 100000) {
+    queueMicrotask(infiniteMicrotask);
+  }
+}
+
+setTimeout(() => {
+  console.log("Timer finally fired!"); // Delayed until all 100k microtasks drain!
+}, 0);
+
+infiniteMicrotask();
+```
+
+---
+
+## Detailed Explanations and Traces
+
+### Trace 1: The Unified Scheduling Ordering Trace
+
+Predict the exact console output of this classic interview challenge:
+
+```javascript
+// Node.js code
+console.log("1. Sync Main");
+
+setTimeout(() => {
+  console.log("8. Macrotask: setTimeout");
+}, 0);
+
+setImmediate(() => {
+  console.log("9. Macrotask: setImmediate");
+});
+
+process.nextTick(() => {
+  console.log("4. nextTick 1");
+  process.nextTick(() => {
+    console.log("5. Nested nextTick");
+  });
+});
+
+Promise.resolve().then(() => {
+  console.log("6. Promise microtask 1");
+  queueMicrotask(() => {
+    console.log("7. Nested queueMicrotask");
+  });
+});
+
+queueMicrotask(() => {
+  console.log("6.5. queueMicrotask sibling");
+});
+
+console.log("2. Sync End");
+```
+
+```
+Step-by-Step Scheduling Order:
+================================================================================
+Phase 0: Synchronous Script Execution
+  - Logs: "1. Sync Main"
+  - Schedules Timer (Macrotask)
+  - Schedules Immediate (Macrotask)
+  - Pushes callback to nextTickQueue
+  - Pushes callback to microtaskQueue
+  - Pushes callback to microtaskQueue
+  - Logs: "2. Sync End"
+  -> Synchronous stack is completely EMPTY.
+
+Phase 1: Process nextTickQueue
+  - Runs "4. nextTick 1". Queues "5. Nested nextTick" onto nextTickQueue.
+  - NextTick queue still has items! Runs "5. Nested nextTick".
+  -> nextTickQueue is now EMPTY.
+
+Phase 2: Drain ECMAScript Microtask Queue
+  - Runs "6. Promise microtask 1". Queues "7. Nested queueMicrotask" onto end of queue.
+  - Runs "6.5. queueMicrotask sibling".
+  - Runs "7. Nested queueMicrotask".
+  -> Microtask queue is now EMPTY.
+
+Phase 3: Libuv Event Loop Macrotasks
+  - Enters Timers phase: Runs "8. Macrotask: setTimeout".
+  - Enters Check phase: Runs "9. Macrotask: setImmediate".
+```
+
+---
+
+### Trace 2: `setTimeout(fn, 0)` vs. `setImmediate(fn)` Non-Determinism
+
+Consider running this at the top level of a Node.js script:
+
+```javascript
+// Node.js code
+setTimeout(() => console.log("timeout"), 0);
+setImmediate(() => console.log("immediate"));
+```
+
+**Why the output order varies:**
+1. At the process root, Node.js boots and enters the event loop.
+2. `setTimeout(fn, 0)` is internally normalized to `setTimeout(fn, 1)` because minimum timer granularity is 1ms.
+3. Depending on how long process initialization and file parsing took, the event loop may enter the Timers phase in `< 1ms` or `> 1ms`:
+   - If `< 1ms` has elapsed, the timer has not expired yet. The loop advances to the Check phase: prints `immediate`, then `timeout`.
+   - If `> 1ms` has elapsed, the timer has expired. The Timers phase executes first: prints `timeout`, then `immediate`.
+
+**Deterministic Inside an I/O Cycle:**
+When placed inside an I/O callback (e.g. `fs.readFile`), `setImmediate` is **guaranteed to run first** because the Check phase immediately follows the I/O Poll phase!
+
+---
+
+## Code Examples
+
+### 1. Non-Blocking Computation: Cooperative Event Loop Yielding
+
+Long CPU-intensive computations (e.g., parsing large arrays or cryptographic hashing) freeze HTTP server responsiveness. Yielding via `setImmediate` splits work into manageable slices:
+
+```javascript
+// Node.js code
+// ✅ DO: Yield control to the event loop periodically
+async function processLargeArrayNonBlocking(items, batchSize = 1000) {
+  let index = 0;
+
+  while (index < items.length) {
+    const end = Math.min(index + batchSize, items.length);
+
+    // Process slice synchronously
+    for (let i = index; i < end; i++) {
+      items[i] = items[i] * 2;
+    }
+
+    index = end;
+
+    // Yield control back to libuv to service I/O and timers!
+    if (index < items.length) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  }
+
+  return items;
+}
+
+// Verification:
+const dataset = Array.from({ length: 5000 }, (_, i) => i);
+processLargeArrayNonBlocking(dataset, 1000).then(() => {
+  console.log("Processed 5,000 items cooperatively without event loop freeze!");
+});
+```
+
+### 2. Ensuring Consistent Asynchrony (Zalgo Prevention)
+
+Functions that execute sometimes synchronously and sometimes asynchronously ("releasing Zalgo") cause unpredictable state mutations and race conditions:
+
+```javascript
+// Node.js code
+const cache = new Map();
+
+// ❌ ANTI-PATTERN: Inconsistent timing (Zalgo)
+function getUserDataUnsafe(id, callback) {
+  if (cache.has(id)) {
+    // Synchronous execution on cache hit!
+    callback(null, cache.get(id));
+  } else {
+    // Asynchronous execution on cache miss!
+    setTimeout(() => {
+      const data = { id, name: "Alice" };
+      cache.set(id, data);
+      callback(null, data);
+    }, 10);
+  }
+}
+
+// ✅ FIXED: Normalize execution using queueMicrotask
+function getUserDataSafe(id, callback) {
+  if (cache.has(id)) {
+    // Guarantees callback is always deferred asynchronously
+    queueMicrotask(() => callback(null, cache.get(id)));
+  } else {
+    setTimeout(() => {
+      const data = { id, name: "Alice" };
+      cache.set(id, data);
+      callback(null, data);
+    }, 10);
+  }
+}
+```
+
+---
+
+## Tricky Points and Gotchas
+
+### 1. `await` Always Defers (Even on Non-Promise Values!)
+
+Developers often assume `await 123` executes synchronously. In reality, `await` **always** yields execution to the microtask queue, wrapping the operand in `Promise.resolve()`:
+
+```javascript
+// Node.js code
+async function checkSuspension() {
+  console.log("Inside async 1");
+  await 123; // Defers to microtask queue!
+  console.log("Inside async 2");
+}
+
+console.log("Outer 1");
+checkSuspension();
+console.log("Outer 2");
+
+// Output:
+// Outer 1
+// Inside async 1
+// Outer 2
+// Inside async 2 (Resumes during microtask drain!)
+```
+
+### 2. Unhandled Rejection Timing
+
+Unhandled promise rejections do not trigger immediately when the promise rejects; the runtime allows other microtasks in the current turn to attach a `.catch()` handler before firing the `unhandledRejection` event.
+
+### 3. `setImmediate` vs. `process.nextTick`
+
+Despite its name, `process.nextTick()` runs **immediately** before microtasks, whereas `setImmediate()` runs **later** during the check phase of the event loop.
+
+---
+
+## Hands-on Exercise: Building a Fair-Share Batch Scheduler
+
+### Problem Statement
+
+You are building a background task scheduler in Node.js. It receives an array of 500 database aggregation tasks. If executed in one monolithic promise loop, incoming HTTP requests experience p99 latency spikes of over 500ms.
+
+### Buggy Implementation
+
+```javascript
+// Node.js code
+// ❌ BUGS:
+// 1. Drains array using recursive microtasks, starving I/O
+// 2. Blocks event loop check/poll phases
+async function runBackgroundQueue(tasks) {
+  while (tasks.length > 0) {
+    const task = tasks.shift();
+    task();
+    await Promise.resolve(); // Microtask does NOT yield to I/O!
+  }
+}
+```
+
+### Edge Cases to Address
+
+1. `Promise.resolve()` resumes in the *microtask queue*, preventing the event loop from servicing network sockets.
+2. The scheduler must yield to **macrotask** boundaries (`setImmediate`) every $N$ operations or after an elapsed budget (e.g. 16ms).
+
+### Verified Solution
+
+```javascript
+// Node.js code
+async function runFairShareScheduler(tasks, timeSliceBudgetMs = 15) {
+  let completed = 0;
+  let sliceStart = Date.now();
+
+  for (const task of tasks) {
+    task();
+    completed++;
+
+    // Check if time slice budget has been exceeded:
+    if (Date.now() - sliceStart >= timeSliceBudgetMs) {
+      // ✅ Yield to macrotask (Check Phase) so Node.js can service HTTP requests!
+      await new Promise((resolve) => setImmediate(resolve));
+      sliceStart = Date.now(); // Reset time budget for next batch
+    }
+  }
+
+  return completed;
+}
+
+// Verification:
+const mockTasks = Array.from({ length: 100 }, (_, i) => () => {
+  // Simulate small compute work
+  let sum = 0;
+  for (let j = 0; j < 10000; j++) sum += j;
+});
+
+runFairShareScheduler(mockTasks, 5).then((count) => {
+  console.log(`Successfully processed ${count} tasks with fair-share macrotask yielding!`);
+});
+```
+
+---
 
 ## Summary
 
-- Synchronous code runs before deferred promise reactions.
-- Promise reactions and microtasks run after the current job at a microtask checkpoint.
-- `await` resumes later, even for ordinary values.
-- Timers are host APIs, not ECMAScript guarantees.
-- Endless synchronous work or microtasks can starve other work.
-- Node-specific phase ordering must be checked against the supported runtime.
+- JavaScript synchronous execution runs on a single call stack and is strictly non-preemptive.
+- The ECMAScript Job queue model mandates that Promise reaction jobs and `queueMicrotask` callbacks run as soon as the synchronous call stack is empty.
+- In Node.js, `process.nextTick` has higher priority than the ECMAScript microtask queue.
+- Between every macrotask execution (timers, I/O, `setImmediate`), the engine drains the microtask queue completely.
+- Endless microtask recursion starves the event loop, blocking I/O and timers.
+- `await` on any value (including primitives) always yields to the microtask queue.
+- To prevent main-thread freezing during heavy CPU processing, yield execution cooperatively using `setImmediate`.
+
+---
 
 ## Cheat Sheet
 
-| Code | General ordering |
-|---|---|
-| Direct statement | Current synchronous job |
-| `Promise.resolve().then(fn)` | Later promise reaction |
-| `queueMicrotask(fn)` | Later microtask |
-| `await value` continuation | Later async continuation |
-| `setTimeout(fn, 0)` | Host timer callback, not exact universal timing |
-| Long loop | Blocks other JavaScript callbacks |
-| Endless microtask chain | Can starve host work |
+### Execution Queue Precedence Hierarchy (Node.js)
 
-**vs. quick reference**
+```
+[ 1. Call Stack (Synchronous Code) ]
+                |
+                v
+[ 2. process.nextTick Queue (Node.js internal) ]
+                |
+                v
+[ 3. Microtask Queue (Promise reactions, queueMicrotask) ]
+                |
+                v
+[ 4. Event Loop Phases (Macrotasks via libuv) ]
+     ├─ Timers (setTimeout, setInterval)
+     ├─ Pending Callbacks (OS I/O errors)
+     ├─ Poll Phase (I/O reading & network sockets)
+     ├─ Check Phase (setImmediate)
+     └─ Close Callbacks (socket.destroy())
+```
 
-| Queue type | Examples | Runs when |
-|---|---|---|
-| Current (synchronous) | Regular code, call stack | Immediately |
-| Microtask | `Promise.then`, `queueMicrotask`, `await` resume | After current sync job, before next macrotask |
-| Macrotask | `setTimeout`, `setInterval`, I/O callbacks | After all microtasks are drained |
-| Node-specific | `setImmediate` (check phase), `process.nextTick` | Phase-dependent; check Node docs |
+### Scheduling API Comparison
 
-> **Rule of thumb:** Promise reaction ≠ immediate. Timer ≠ exact delay. The only guarantees are: sync first, microtasks before macrotasks.
+| API | Queue Type | Timing / Phase | Primary Use Case |
+| :--- | :--- | :--- | :--- |
+| **`process.nextTick()`** | Node Priority | Immediate after sync code, before microtasks | Critical error propagation, internal protocol setup |
+| **`queueMicrotask()`** | Microtask | After sync code & nextTick, before macrotasks | Deferred asynchronous state normalization |
+| **`Promise.prototype.then()`** | Microtask | Same as `queueMicrotask` | Asynchronous reaction handling |
+| **`setImmediate()`** | Macrotask | Libuv Check phase (after I/O polling) | Event-loop yielding, chunked compute work |
+| **`setTimeout(fn, 0)`** | Macrotask | Libuv Timers phase (min ~1ms resolution) | Timed execution, browser cross-compatibility |
 
-## Interview Questions
+---
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+## Interview Questions & Deep Dives
 
-1. **[Beginner] Definition:** Explain why a promise callback does not run in the middle of the current synchronous function.
-   - Expected answer: The reaction is scheduled for a later job/microtask checkpoint after the current job completes.
-   - Follow-up: Does this create parallel JavaScript execution?
+### 1. Explain the exact difference between `process.nextTick()` and `setImmediate()` in Node.js.
 
-2. **[Mid] Trace:** Predict the output:
+**Question:** Why are their names considered historically inverted, and what are their respective execution phases?
 
-   ```js
-   console.log("a");
-   queueMicrotask(() => console.log("c"));
-   Promise.resolve().then(() => console.log("d"));
-   console.log("b");
-   ```
-   - Expected answer: `a`, `b`, then `c`, `d` in the queue order for this example.
-   - Follow-up: What if the first microtask queues another microtask?
+**Answer:**
+Their names are considered historically inverted because `process.nextTick()` actually executes *immediately* after the current synchronous frame (before any microtasks or event loop phases), whereas `setImmediate()` executes *later* in the Check phase of the libuv event loop after I/O callbacks.
 
-3. **[Senior] Implementation:** Build a batch processor that handles at most 100 items per microtask turn and yields between batches.
-   - Expected answer: Define queue state, progress, error handling, yield mechanism, fairness, and memory limits.
-   - Follow-up: Which yield mechanism is appropriate for the target host?
+- **`process.nextTick()`:** Manages an internal Node.js FIFO queue. It executes immediately after the current operation on the call stack unwinds, draining completely before standard ECMAScript Promise microtasks and before the event loop advances. Because it drains synchronously to completion, recursive calls to `process.nextTick()` can completely starve I/O.
+- **`setImmediate()`:** Schedules a macrotask in the Check phase of the libuv event loop. It executes after timers and the I/O Poll phase have processed. It is specifically designed to allow other pending I/O events, sockets, and timers to run between iterations.
 
-4. **[Mid] Debugging:** A Node server's timers and I/O callbacks are delayed even though no single promise is slow. Diagnose a microtask starvation pattern.
-   - Expected answer: Look for recursive promise/microtask scheduling, measure queue growth, add bounded batches and an appropriate yield, and test latency.
-   - Follow-up: How would you distinguish CPU blocking from microtask starvation?
+---
 
-5. **[Senior] Design:** Explain scheduling guarantees for a cross-platform library that must behave consistently in browsers and Node.
-   - Expected answer: Promise only language-level assumptions, avoid relying on timer/I/O order, document host adapters, test supported runtimes, and define fairness expectations.
-   - Follow-up: How would you handle a host without a desired scheduling API?
+### 2. What happens if a microtask schedules another microtask recursively, and how does this affect I/O polling in a Node.js server?
 
+**Question:** If an application contains `function loop() { queueMicrotask(loop); } loop();`, what happens to incoming HTTP connections?
+
+**Answer:**
+The Node.js server will suffer complete **event loop starvation**.
+
+The ECMAScript specification dictates that when the call stack clears, the engine must process all pending microtasks until the microtask queue is completely empty. If a microtask callback pushes another microtask onto the queue, the microtask queue continues to populate faster than or equal to its draining rate.
+
+Because the engine will not advance to the libuv event loop phases (such as the Poll phase where new TCP connections and incoming HTTP requests are received) until the microtask queue is empty, the server will **never process incoming HTTP requests, never fire timer callbacks, and never handle file system I/O**. The process appears completely locked despite CPU load being spent entirely on draining the microtask queue.
+
+---
+
+### 3. Inside an `fs.readFile` callback, why is `setImmediate` guaranteed to execute before `setTimeout(..., 0)`?
+
+**Question:** In the following code, explain why the output order is deterministic:
+```javascript
+fs.readFile(__filename, () => {
+  setTimeout(() => console.log("timeout"), 0);
+  setImmediate(() => console.log("immediate"));
+});
+```
+
+**Answer:**
+The order is deterministic because the callback executes during the **Poll phase** of the libuv event loop.
+
+1. When `fs.readFile` finishes reading from the disk, its callback is invoked in the Poll phase.
+2. Inside the callback, `setTimeout(..., 0)` schedules a timer callback in the Timers phase.
+3. `setImmediate(...)` schedules a callback in the Check phase.
+4. After completing the current Poll phase callback, the libuv event loop advances sequentially:
+   `Poll phase -> Check phase -> Close callbacks -> (Loop wrap-around) -> Timers phase`.
+5. Because the Check phase immediately follows the Poll phase, libuv executes `setImmediate` **first**.
+6. The timer callback in the Timers phase must wait for the event loop to complete its current iteration and wrap around to the Timers phase on the next tick.
+
+---
+
+### 4. What is "releasing Zalgo" in asynchronous JavaScript, and how do you protect against it?
+
+**Question:** What does the phrase "Don't release Zalgo" mean, and what bug does it cause in asynchronous architectures?
+
+**Answer:**
+"Releasing Zalgo" refers to designing an API that executes its callback **synchronously in some conditions and asynchronously in others** (e.g. executing synchronously when a value is cached, but asynchronously via I/O when not cached).
+
+**Why it causes severe bugs:**
+It destroys deterministic execution order. Consider:
+```javascript
+let count = 0;
+fetchData(id, () => {
+  console.log("Count:", count);
+});
+count = 1;
+```
+If `fetchData` is synchronous (cache hit), the callback runs *before* `count = 1`, printing `Count: 0`. If `fetchData` is asynchronous (cache miss), the callback runs *after* `count = 1`, printing `Count: 1`. This introduces subtle race conditions and unexpected state mutations.
+
+**The Fix:**
+Always ensure consistent timing. If an operation can complete synchronously (from memory cache), wrap the callback invocation in `queueMicrotask(callback)` or `process.nextTick(callback)` so that it is guaranteed to execute asynchronously after the caller's synchronous code finishes.
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[← Previous Day: Day 19 - `async`/`await` and Asynchronous Error Propagation](day-19-async-await-errors-and-cleanup.md) | [Roadmap](../javascript-roadmap.md) | [Next Day: Day 21 - Memory, Reachability, and Ownership →](day-21-memory-reachability-and-garbage-collection.md)
+
+</nav>

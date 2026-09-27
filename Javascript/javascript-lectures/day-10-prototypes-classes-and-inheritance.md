@@ -2,371 +2,833 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Objects and Property Access](day-09-objects-and-property-access.md) | [Roadmap](../javascript-roadmap.md) | [Next: Property Descriptors, Enumerability, and Immutability](day-11-property-descriptors-and-immutability.md)
+[← Day 09: Objects and Property Access](day-09-objects-and-property-access.md) | [Roadmap](../javascript-roadmap.md) | [Day 11: Property Descriptors, Enumerability, and Immutability →](day-11-property-descriptors-and-immutability.md)
 
 </nav>
 
-## Learning Outcomes
+---
+
+## What You Will Learn Today
 
 By the end of this lecture, you should be able to:
 
-- Explain how JavaScript looks up a property through a prototype chain.
-- Describe what `new` does step by step.
-- Explain how classes use prototypes internally.
-- Use instance methods, static methods, private fields, `extends`, and `super` correctly.
-- Compare inheritance with composition and choose deliberately.
+- Explain how JavaScript resolves property access along the prototype chain (`[[Prototype]]`).
+- Trace the exact 4-step execution algorithm of the `new` operator.
+- Demystify ES2015+ `class` syntax as declarative syntactic sugar over prototypal delegation.
+- Distinguish instance methods (on `Class.prototype`) from static methods (on `Class`) and public/private fields.
+- Use `extends` and `super` correctly, recognizing why `super()` must precede `this` in derived constructors.
+- Understand how constructor return values behave when returning objects vs. primitives.
+- Encapsulate internal state using truly private fields (`#field`) and explain how they differ from symbol or underscore conventions.
+- Evaluate the tradeoffs between Class Inheritance ("is-a") and Composition ("has-a") for Node.js backend services.
 
-## Prerequisites
+**Prerequisites:** [Day 08 – Closures, Execution Context, and this](day-08-closures-execution-context-and-this.md) (`this` binding rules, `new` binding) and [Day 09 – Objects and Property Access](day-09-objects-and-property-access.md) (own vs. inherited properties, `Object.create`).  
+*Upcoming Connections:* [Day 11](day-11-property-descriptors-and-immutability.md) explores property descriptors (`writable`, `enumerable`, `configurable`) and immutability; [Day 12](day-12-built-in-data-structures-and-serialization.md) covers built-in collections and JSON serialization.
 
-Read [Day 09: Objects and Property Access](day-09-objects-and-property-access.md). Day 9 introduced prototype lookup; this lecture explains that lookup in detail. Day 11 will explain the property descriptors used by these objects.
+---
 
-## Core Concepts
+## Quick Vocabulary Card
 
-### 1. Every ordinary object can have a prototype
+| Term | Definition |
+| :--- | :--- |
+| **`[[Prototype]]`** | The internal, hidden link present on every JavaScript object pointing to its parent prototype object or `null`. |
+| **`prototype` Property** | An ordinary object property present on regular functions and classes used as the blueprint for `[[Prototype]]` on instances created via `new`. |
+| **Constructor Function** | A regular function designed to be invoked with `new` to initialize and return a new object instance. |
+| **`new` Operator** | A language operator that creates a fresh object, links its prototype, executes the constructor with `this`, and returns the instance. |
+| **Prototypal Delegation** | A language design where objects delegate property lookups up a chain of prototype objects rather than copying behaviors. |
+| **Class** | An ES2015 syntax construct providing a clean, declarative syntax for constructor functions, prototype methods, and inheritance. |
+| **Instance Method** | A method defined on `Class.prototype` shared by all instances, receiving the instance as `this`. |
+| **Static Method** | A method defined directly on the class constructor itself, callable as `Class.method()` without creating an instance. |
+| **Private Field (`#field`)** | A class property prefixed with `#` whose access is strictly restricted by the engine to the class body. |
+| **`extends` Keyword** | A syntax keyword establishing inheritance links between subclass and superclass prototypes and constructors. |
+| **`super` Keyword** | A keyword used in derived classes to call the parent constructor (`super()`) or access parent methods (`super.method()`). |
+| **Composition** | An architectural pattern where complex functionality is achieved by assembling smaller, independent collaborators ("has-a") rather than inheriting ("is-a"). |
 
-A prototype is another object that JavaScript checks when the current object does not contain a property. This creates a lookup chain.
+---
+
+## 1. The Prototype Chain and `[[Prototype]]`
+
+In JavaScript, **inheritance is prototypal, not classical**. Every ordinary object possesses an internal pointer—referred to in the ECMAScript specification as **`[[Prototype]]`**—that points to another object or `null`.
+
+When you read a property on an object, JavaScript first inspects the object's **own properties**. If the property is absent, it follows `[[Prototype]]` to the parent object, continuing up the chain until it finds the property or reaches `null` (the end of the prototype chain).
+
+```
+                            The Prototype Chain
+┌────────────────────────┐
+│ dog instance           │
+│ own properties:        │
+│   name: "Rex"          │
+│ [[Prototype]]          │───┐
+└────────────────────────┘   │
+                             ▼
+                ┌────────────────────────┐
+                │ Animal.prototype       │
+                │ shared methods:        │
+                │   eat() { ... }        │
+                │ [[Prototype]]          │───┐
+                └────────────────────────┘   │
+                                             ▼
+                                ┌────────────────────────┐
+                                │ Object.prototype       │
+                                │ base methods:          │
+                                │   toString()           │
+                                │   valueOf()            │
+                                │ [[Prototype]] ──► null │
+                                └────────────────────────┘
+```
+
+### Inspecting and Setting Prototypes
+
+- **`Object.getPrototypeOf(obj)`:** The standard, safe way to read an object's prototype.
+- **`Object.setPrototypeOf(obj, newProto)`:** Mutates an object's prototype (use sparingly; this degrades engine JIT optimizations).
+- **`__proto__`:** A legacy accessor property exposed on `Object.prototype`. Standardized for web compatibility, but `Object.getPrototypeOf()` is preferred in modern code.
 
 ```js
-const animal = {
-  breathe() {
-    return "breathing";
-  },
+// Node.js code
+const baseWorker = {
+  role: "general",
+  performTask() {
+    return `${this.name} performing ${this.role} task`;
+  }
 };
 
-const dog = Object.create(animal);
-dog.name = "Milo";
+// Create an instance delegating to baseWorker
+const workerAlice = Object.create(baseWorker);
+workerAlice.name = "Alice";
 
-console.log(dog.name); // "Milo"
-console.log(dog.breathe()); // "breathing"
-console.log(Object.hasOwn(dog, "breathe")); // false
+console.log(workerAlice.name);          // "Alice" (own property)
+console.log(workerAlice.role);          // "general" (delegated to baseWorker)
+console.log(workerAlice.performTask()); // "Alice performing general task"
+
+// ✅ Inspecting prototypes standardly
+console.log(Object.getPrototypeOf(workerAlice) === baseWorker); // true
+console.log(Object.hasOwn(workerAlice, "role"));                // false
+console.log("role" in workerAlice);                             // true
 ```
 
-The `dog` object owns `name`. It does not own `breathe`; the method is found on its prototype.
+---
 
-The chain ends at `null`. If no object in the chain has the property, the result is usually `undefined`.
+## 2. Constructor Functions and the `new` Operator
 
-### 2. `[[Prototype]]` is an internal connection
+Before classes were introduced in ES2015, constructor functions were the primary mechanism for creating instances with shared prototype methods.
 
-The specification calls the internal prototype connection `[[Prototype]]`. You can inspect it with `Object.getPrototypeOf` and create objects with `Object.create`.
+### The 4-Step Algorithm of `new`
 
-```js
-const parent = { sharedValue: 10 };
-const child = Object.create(parent);
+When a function is called with the `new` keyword (e.g., `new DatabaseClient(config)`), the JavaScript engine executes the following steps:
 
-console.log(Object.getPrototypeOf(child) === parent); // true
-console.log(child.sharedValue); // 10
-```
-
-`__proto__` exists in many environments, but prefer standard APIs such as `Object.getPrototypeOf` and `Object.setPrototypeOf`. Changing prototypes repeatedly can also make engine optimization harder.
-
-### 3. Constructor functions and `new`
-
-Before class syntax, constructor functions were commonly used to create similar objects.
+1. **Creates a brand-new empty object:** A new plain object `{}` is allocated in memory.
+2. **Sets prototype linkage:** The new object’s internal `[[Prototype]]` is set to the constructor function’s `.prototype` property.
+3. **Executes the constructor:** The constructor function is executed with `this` bound to the newly created object.
+4. **Returns the instance:** If the constructor returns an object, that object is returned. Otherwise, the newly created object (`this`) is returned.
 
 ```js
-function User(name) {
+// Node.js code
+function User(name, email) {
+  // Step 3: 'this' points to the newly allocated object
   this.name = name;
+  this.email = email;
 }
 
-User.prototype.describe = function describe() {
-  return `User: ${this.name}`;
+// Attach shared methods to the function's .prototype property
+User.prototype.sendEmail = function(subject) {
+  return `Sending '${subject}' to ${this.email}`;
 };
 
-const user = new User("Asha");
-console.log(user.describe()); // "User: Asha"
-console.log(Object.getPrototypeOf(user) === User.prototype); // true
+// Instantiate via 'new'
+const user1 = new User("Alice", "alice@example.com");
+const user2 = new User("Bob", "bob@example.com");
+
+console.log(user1.sendEmail("Welcome!")); // "Sending 'Welcome!' to alice@example.com"
+
+// ✅ Shared prototype identity: methods are NOT duplicated in memory
+console.log(user1.sendEmail === user2.sendEmail); // true
+console.log(Object.getPrototypeOf(user1) === User.prototype); // true
+
+// ❌ Calling without 'new' in non-strict mode pollutes global; in strict mode throws TypeError
+// const brokenUser = User("Charlie", "charlie@example.com"); // TypeError in strict mode!
 ```
 
-A call using `new` roughly does these things:
+---
 
-1. Create a new empty object.
-2. Connect that object to `User.prototype`.
-3. Call `User` with `this` set to the new object.
-4. Return the new object, unless the constructor explicitly returns another object.
+## 3. ES2015+ Classes: Syntactic Sugar Over Prototypes
 
-This explains why methods placed on `User.prototype` are shared instead of being recreated for every user.
-
-### 4. Classes are clearer syntax over prototype behavior
+ES2015 introduced the **`class`** keyword. Classes do **not** introduce a new object-oriented inheritance model to JavaScript; under the hood, classes still compile directly to constructor functions and prototype delegation.
 
 ```js
-class User {
-  constructor(name) {
-    this.name = name;
+// Node.js code
+class CacheStore {
+  // Constructor: runs when 'new CacheStore()' is invoked
+  constructor(defaultTtl = 60) {
+    this.defaultTtl = defaultTtl;
+    this.store = new Map();
   }
 
-  describe() {
-    return `User: ${this.name}`;
+  // Instance method: stored on CacheStore.prototype
+  set(key, val) {
+    this.store.set(key, val);
   }
 
-  static category() {
-    return "account";
+  get(key) {
+    return this.store.get(key);
   }
 }
 
-const user = new User("Asha");
-console.log(user.describe()); // "User: Asha"
-console.log(User.category()); // "account"
-console.log(Object.hasOwn(user, "describe")); // false
-console.log(Object.hasOwn(User.prototype, "describe")); // true
+const cache = new CacheStore(300);
+cache.set("session_1", { userId: 42 });
+
+console.log(cache.get("session_1")); // { userId: 42 }
+console.log(typeof CacheStore);      // "function" (a class is still a function!)
+console.log(cache.get === CacheStore.prototype.get); // true (stored on prototype)
 ```
 
-An instance method belongs to the class prototype. A static method belongs to the class constructor itself. Static methods are called on `User`, not on `user`.
+### Key Differences Between Classes and Constructor Functions
 
-Class bodies run in strict mode. A class cannot be called without `new`.
+| Feature | Constructor Function | ES2015+ `class` |
+| :--- | :--- | :--- |
+| **Invocation without `new`** | Allowed in non-strict mode (pollutes `global`) | Throws `TypeError: Class constructor cannot be invoked without 'new'` |
+| **Hoisting** | Fully hoisted (callable before declaration) | Lives in the Temporal Dead Zone (TDZ); not hoisted |
+| **Execution Mode** | Can run in sloppy mode | Entire class body runs in **strict mode** automatically |
+| **Method Enumerability** | Prototype methods are enumerable by default | Prototype methods are **non-enumerable** by default |
+| **Syntax** | Verbose: `fn.prototype.method = ...` | Clean, consolidated declaration block |
 
-### 5. Inheritance and `super`
+---
 
-A subclass can inherit methods from a parent class.
+## 4. Class Elements: Instance, Static, and Private
+
+Modern ECMAScript provides distinct syntax for configuring instance properties, static class properties, and truly private fields.
 
 ```js
-class Employee {
-  constructor(name) {
-    this.name = name;
+// Node.js code
+class OrderService {
+  // 1. Static field: stored on OrderService constructor itself
+  static MAX_PENDING_ORDERS = 1000;
+
+  // 2. Private field (ES2022+): accessible ONLY within this class body
+  #encryptionKey;
+  #orderCount = 0;
+
+  constructor(encryptionKey) {
+    // 3. Public instance field
+    this.serviceName = "OrdersMicroservice";
+    this.#encryptionKey = encryptionKey;
   }
 
-  describe() {
-    return `${this.name} works here`;
+  // 4. Instance method: stored on OrderService.prototype
+  createOrder(item) {
+    this.#orderCount++;
+    return `Order for ${item} secured with key ${this.#encryptionKey.slice(0, 4)}***`;
+  }
+
+  // 5. Static method: called as OrderService.isOperational()
+  static isOperational() {
+    return true;
+  }
+
+  getOrderStats() {
+    return { count: this.#orderCount };
   }
 }
 
-class Manager extends Employee {
-  describe() {
-    return `${super.describe()} as a manager`;
-  }
-}
+const service = new OrderService("secret_production_key_9988");
 
-const manager = new Manager("Mina");
-console.log(manager.describe()); // "Mina works here as a manager"
-console.log(manager instanceof Manager); // true
-console.log(manager instanceof Employee); // true
+// ✅ Instance method access
+console.log(service.createOrder("Server Rack")); 
+// "Order for Server Rack secured with key secr***"
+
+// ✅ Static method access via constructor
+console.log("Operational:", OrderService.isOperational()); // true
+
+// ❌ Calling static method on instance returns undefined or throws TypeError
+// service.isOperational(); // TypeError: service.isOperational is not a function
+
+// ❌ Attempting to read private field outside class throws SyntaxError
+// console.log(service.#encryptionKey); // SyntaxError: Private field '#encryptionKey' must be declared in an enclosing class
 ```
 
-`extends` connects the subclass prototype to the parent prototype. `super.describe()` calls the parent method with the current receiver. In a derived constructor, `super()` must run before using `this`.
+### Why `#private` Fields Matter
 
-### 6. Private fields are truly private to the class
+Prior to `#private` syntax, developers relied on naming conventions (`_secret`) or Symbols. However:
+- `_secret` is merely a convention; external callers can still read or mutate it.
+- Symbols can be inspected and retrieved via `Object.getOwnPropertySymbols(instance)`.
+- `#field` is **hard privacy** enforced by the JavaScript engine: it cannot be inspected with `Object.keys()`, `Reflect.ownKeys()`, or dynamic bracket notation (`this[#field]`).
 
-A field beginning with `#` is a private class element.
+---
+
+## 5. Inheritance with `extends` and `super`
+
+The **`extends`** keyword creates a subclass, establishing two distinct prototype linkages:
+1. **Instance linkage:** `SubClass.prototype.__proto__ === SuperClass.prototype` (inherits instance methods).
+2. **Static linkage:** `SubClass.__proto__ === SuperClass` (inherits static methods and properties!).
+
+The **`super`** keyword has two usages:
+- In derived constructors: `super(...args)` invokes the parent class constructor.
+- In derived methods: `super.method()` delegates to the parent method while keeping `this` bound to the current instance.
 
 ```js
-class Counter {
-  #value = 0;
+// Node.js code
+class BaseTransport {
+  constructor(host, port) {
+    this.host = host;
+    this.port = port;
+  }
 
-  increment() {
-    this.#value += 1;
-    return this.#value;
+  connect() {
+    return `Connecting to ${this.host}:${this.port}`;
+  }
+
+  static getProtocol() {
+    return "tcp";
   }
 }
 
-const counter = new Counter();
-console.log(counter.increment()); // 1
-// counter.#value; // SyntaxError: private field access is not allowed here
+class HttpTransport extends BaseTransport {
+  constructor(host, port, secure = true) {
+    // ⚠️ MUST call super() before accessing 'this'!
+    super(host, port);
+    this.secure = secure;
+  }
+
+  // Override connect() method
+  connect() {
+    const baseConn = super.connect(); // Call parent implementation
+    return `${baseConn} via ${this.secure ? "HTTPS" : "HTTP"}`;
+  }
+}
+
+const client = new HttpTransport("api.service.local", 443);
+console.log(client.connect()); 
+// "Connecting to api.service.local:443 via HTTPS"
+
+// ✅ Static methods are inherited automatically via static prototype linkage
+console.log("Protocol:", HttpTransport.getProtocol()); // "tcp"
+
+// ✅ instanceof walks the prototype chain
+console.log(client instanceof HttpTransport); // true
+console.log(client instanceof BaseTransport); // true
+console.log(client instanceof Object);        // true
 ```
 
-Private fields are not ordinary string properties. They cannot be read with bracket notation, copied with object spread, or accessed by a subclass unless the subclass declares its own private field. Support is part of modern ECMAScript, but projects should still consider their supported runtime versions.
+### The `super()` Ordering Rule
 
-## Detailed Explanations and Traces
+In a derived class constructor, you **cannot use `this` before calling `super()`**. 
 
-### Prototype lookup is read-time behavior
+In classical engines, the derived class constructor does not initialize the instance's `this` binding; the base class constructor creates and initializes `this`. Calling `this` before `super()` throws `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+
+---
+
+## 6. Constructor Return Value Behavior
+
+A constructor usually returns the instance `this` implicitly. However, if an explicit `return` statement is written inside a constructor:
+
+- **Returning an Object / Function:** The explicitly returned object **replaces** `this`. The caller receives the returned object.
+- **Returning a Primitive (`number`, `string`, `boolean`, `null`, `undefined`):** The primitive is **ignored**, and `this` is returned normally.
 
 ```js
-const settings = { mode: "safe" };
-const request = Object.create(settings);
+// Node.js code
+class RegularClass {
+  constructor(id) {
+    this.id = id;
+    return "primitive_string"; // ⚠️ Ignored!
+  }
+}
 
-console.log(request.mode); // "safe"
-request.mode = "fast";
+class OverridingClass {
+  constructor(id) {
+    this.id = id;
+    // ⚠️ Explicit object replacement!
+    return { hijacked: true, customId: `custom_${id}` };
+  }
+}
 
-console.log(request.mode); // "fast"
-console.log(settings.mode); // "safe"
-console.log(Object.hasOwn(request, "mode")); // true
+const regular = new RegularClass(101);
+console.log("Regular return:", regular.id); // 101 (returned 'this')
+
+const overridden = new OverridingClass(202);
+console.log("Overridden return:", overridden); // { hijacked: true, customId: 'custom_202' }
+console.log("Is instance of OverridingClass?", overridden instanceof OverridingClass); // false!
 ```
 
-The first read finds `mode` on `settings`. Assignment normally creates an own property on `request`, so later reads stop there. Reading and writing are not simply the same operation on the same object.
+---
 
-### Method sharing and mutable state
+## 7. Composition vs. Inheritance
 
-Methods on a prototype are shared, but fields assigned in the constructor are normally separate.
+A fundamental software engineering design decision is choosing between **Class Inheritance** and **Object Composition**.
+
+```
+    Inheritance ("is-a")                      Composition ("has-a")
+┌───────────────────────────┐        ┌───────────────────────────────────┐
+│        BaseService        │        │          PaymentService           │
+└─────────────┬─────────────┘        ├───────────────────────────────────┤
+              │ extends              │ - validator: CardValidator        │
+              ▼                      │ - gateway: StripeGateway          │
+┌───────────────────────────┐        │ - logger: AuditLogger             │
+│       StripePayment       │        └───────────────────────────────────┘
+│ tightly coupled to base   │          Dependencies injected;
+│ hard to test in isolation │          easily mocked and replaced.
+└───────────────────────────┘
+```
+
+### Comparing the Two Models
+
+- **Inheritance ("is-a"):** Best when entities share a deep, fixed behavioral hierarchy with strict substitutability. Fragile when parent classes evolve or when subclasses require only a subset of parent functionality.
+- **Composition ("has-a"):** Assembles behavior from small, focused collaborator objects. Dependencies can be injected dynamically, making unit testing and swapping implementations trivial.
 
 ```js
-class Cart {
-  constructor() {
-    this.items = [];
-  }
+// Node.js code
+// ✅ COMPOSITION PATTERN (Recommended for Node.js services)
 
-  add(item) {
-    this.items.push(item);
+class EmailSender {
+  send(to, body) {
+    return `Email sent to ${to}: ${body}`;
   }
 }
 
-const firstCart = new Cart();
-const secondCart = new Cart();
-firstCart.add("book");
+class SmsSender {
+  send(to, body) {
+    return `SMS sent to ${to}: ${body}`;
+  }
+}
 
-console.log(firstCart.items); // ["book"]
-console.log(secondCart.items); // []
-console.log(firstCart.add === secondCart.add); // true
+class NotificationService {
+  // Collaborator is injected via constructor (Dependency Injection)
+  constructor(sender) {
+    this.sender = sender;
+  }
+
+  notifyUser(user, message) {
+    return this.sender.send(user.contact, message);
+  }
+}
+
+// Easily swap strategies at runtime without changing NotificationService:
+const emailService = new NotificationService(new EmailSender());
+console.log(emailService.notifyUser({ contact: "alice@test.com" }, "Order shipped"));
+
+const smsService = new NotificationService(new SmsSender());
+console.log(smsService.notifyUser({ contact: "+1234567890" }, "Your code is 1234"));
 ```
 
-Sharing a method is useful. Sharing a mutable array accidentally would be a bug. Put per-instance mutable state on `this`, not on the prototype.
-
-### Constructor return behavior
-
-```js
-class Example {
-  constructor() {
-    return { replacement: true };
-  }
-}
-
-const result = new Example();
-console.log(result); // { replacement: true }
-```
-
-An explicitly returned object can replace the automatically created instance. A primitive return value does not replace it. This is valid language behavior but is usually surprising, so avoid it unless there is a clear reason.
-
-### Composition versus inheritance
-
-Inheritance models an "is a" relationship. Composition builds an object by giving it smaller collaborators.
-
-```js
-class Logger {
-  log(message) {
-    return `[log] ${message}`;
-  }
-}
-
-class Service {
-  constructor(logger) {
-    this.logger = logger;
-  }
-
-  run() {
-    return this.logger.log("work completed");
-  }
-}
-
-const service = new Service(new Logger());
-console.log(service.run()); // "[log] work completed"
-```
-
-Composition makes the dependency explicit and easy to replace in a test. Inheritance can be useful when objects share a stable contract and substitutability is clear. It becomes risky when subclasses need to disable or contradict parent behavior.
-
-## Compare & Recall
-
-| Concept A | Concept B | Key difference |
-|---|---|---|
-| Class | Prototype chain | A `class` is cleaner syntax, but instance methods still live on `ClassName.prototype` — not on each instance. No magic happens; it's the same prototype lookup as always. |
-| Instance method | Static method | Instance method: called on an object (`user.describe()`), gets `this` = the instance. Static method: called on the class itself (`User.category()`), not available on instances. |
-| Inheritance (`extends`) | Composition | `extends` is an "is-a" relationship — subclass shares and overrides parent behavior. Composition is "has-a" — object delegates to a collaborator. Prefer composition for flexibility and testability. |
-| `super.method()` | Parent method call | `super.method()` calls the parent's version while keeping `this` as the current instance. It is not simply a function reference. |
-| Private field `#val` | Naming convention `_val` | `#val` is enforced by the language — truly inaccessible from outside the class. `_val` is just a name convention; anyone can still access it. |
-| `instanceof` | `typeof` | `instanceof` checks the prototype chain (`obj instanceof MyClass`). `typeof` only gives a broad type string (`"object"` for all objects, including arrays). |
-
-> **Cross-day links:** Property descriptors and `configurable`/`enumerable` are in [Day 11](day-11-property-descriptors-and-immutability.md). Object creation methods including `Object.create` are in [Day 09](day-09-objects-and-property-access.md). `this` binding rules are in [Day 08](day-08-closures-execution-context-and-this.md).
-
-## Common Mistakes and Interview Traps
-
-- Saying classes remove prototypes. They do not; class methods still live on prototypes.
-- Putting mutable arrays or objects on a prototype and accidentally sharing them.
-- Calling a static method on an instance.
-- Using `this` in a derived constructor before `super()`.
-- Assuming `instanceof` proves that an object came from the same application copy of a class. Multiple copies of a package can have different prototypes.
-- Treating `#private` fields as normal properties.
-- Choosing inheritance only to reuse a few lines of code.
-- Forgetting that a constructor can explicitly return an object.
+---
 
 ## Tricky Points
 
-- `Object.hasOwn(value, key)` checks only direct properties; `key in value` also checks prototypes.
-- A method can be shared while its `this` value changes depending on the call form.
-- `super` is not simply another variable. It performs a parent-method lookup while preserving the current receiver.
-- `instanceof` depends on prototype relationships and can be changed by custom prototype manipulation.
+### 1. Prototype Array Mutation Pitfall
+Placing a mutable array or object directly on a constructor’s prototype or class body shares that single reference across **all** instances.
+```js
+// Node.js code
+function Account(name) { this.name = name; }
+Account.prototype.transactions = []; // ❌ Bug: Shared across all instances!
 
-## Practical Exercise
+const a1 = new Account("Alice");
+const a2 = new Account("Bob");
+a1.transactions.push(100);
+console.log(a2.transactions); // [ 100 ] (Bob's account was mutated!)
 
-**Goal:** Model a notification service in two ways.
+// ✅ Fix: Always initialize mutable state inside the constructor (on 'this')
+function SafeAccount() { this.transactions = []; }
+```
 
-**Inputs and outputs:**
+### 2. Method Overriding Without Calling `super`
+If a subclass overrides a parent method and omits `super.method()`, the parent logic is completely skipped. Ensure omission is intentional.
 
-- Create a `Notification` base class and an `EmailNotification` subclass.
-- Create a second version using a `sender` collaborator through composition.
-- Each version should return a string for a supplied recipient and message.
+### 3. Calling `super()` in Derived Constructors
+Accessing `this` before `super()` in a derived class throws an immediate `ReferenceError`.
 
-**Constraints:**
+### 4. `instanceof` Fails Across Isolated Contexts
+`instanceof` checks if `Constructor.prototype` exists anywhere on the instance's prototype chain. If an object is created in a different Node.js `vm` context, worker thread, or duplicate npm package version, its prototype references a different memory address, causing `instanceof` to return `false`.
 
-- Keep per-instance data separate.
-- Share behavior through methods, not copied function values.
-- Include one test that replaces the sender with a fake object.
+### 5. Private Fields Cannot Be Accessed Dynamically
+You cannot access private fields using dynamic strings: `this[#field]` or `this["#field"]` throws a `SyntaxError`.
 
-**Edge cases:** Empty recipient, empty message, and a sender that throws an error.
+### 6. Static Methods are Not Inherited by Instances
+Static methods live on the constructor (`Class.method()`), not on `Class.prototype`. Calling `instance.staticMethod()` returns `undefined` or throws `TypeError`.
 
-**Acceptance criteria:** Explain the prototype chain, show which methods are shared, and justify which design is easier to test.
+---
+
+## Hands-on Exercise
+
+### Scenario: Refactoring Fragile Payment Processing with Composition
+
+You are maintaining a payment gateway integration in an Express service. The legacy system used deep inheritance, resulting in fragile base class bugs and testability issues.
+
+### Buggy Code
+
+```js
+// Node.js code (Buggy Legacy Architecture)
+class LegacyPaymentService {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.logs = []; // Shared mutation risk if on prototype
+  }
+
+  process(amount) {
+    if (!this.apiKey) throw new Error("Missing API Key");
+    this.logs.push(`Processing $${amount}`);
+    return { success: true, amount };
+  }
+}
+
+class CryptoPaymentService extends LegacyPaymentService {
+  constructor(apiKey, network) {
+    // Bug 1: Accessing 'this' before super()
+    this.network = network;
+    super(apiKey);
+  }
+
+  process(amount) {
+    // Bug 2: Returns primitive; hides parent validation
+    return "crypto-processed"; 
+  }
+}
+```
+
+### Acceptance Criteria
+
+1. **Fix Constructor Initialization:** Correct the derived class initialization order so `super()` runs before any `this` property assignments.
+2. **Refactor to Composition:** Replace the inheritance hierarchy with a `PaymentProcessor` class that accepts a pluggable `PaymentStrategy` collaborator (`StripeStrategy`, `CryptoStrategy`).
+3. **Encapsulate Secrets:** Secure API keys and private wallet credentials using ES2022 `#private` class fields.
+4. **Mockable Unit Testing:** Demonstrate testing the processor with a mock strategy that records payments without external calls.
+
+### Solution
+
+```js
+// Node.js code
+
+// 1. Payment Strategies (Collaborators)
+class StripeStrategy {
+  #apiKey;
+  constructor(apiKey) {
+    if (!apiKey) throw new Error("Stripe API key required");
+    this.#apiKey = apiKey;
+  }
+
+  executePayment(amount, recipient) {
+    return {
+      provider: "Stripe",
+      status: "COMPLETED",
+      txId: `ch_${Math.random().toString(36).substring(2, 9)}`,
+      amount,
+      recipient
+    };
+  }
+}
+
+class CryptoStrategy {
+  #walletKey;
+  constructor(walletKey, network = "Polygon") {
+    if (!walletKey) throw new Error("Wallet key required");
+    this.#walletKey = walletKey;
+    this.network = network;
+  }
+
+  executePayment(amount, recipient) {
+    return {
+      provider: `Crypto (${this.network})`,
+      status: "CONFIRMED",
+      txId: `0x${Math.random().toString(36).substring(2, 12)}`,
+      amount,
+      recipient
+    };
+  }
+}
+
+// 2. High-Level Service Built with Composition
+class PaymentProcessor {
+  #strategy;
+  #auditLog = [];
+
+  constructor(strategy) {
+    this.setStrategy(strategy);
+  }
+
+  setStrategy(strategy) {
+    if (!strategy || typeof strategy.executePayment !== "function") {
+      throw new TypeError("Strategy must implement executePayment()");
+    }
+    this.#strategy = strategy;
+  }
+
+  process(amount, recipient) {
+    if (typeof amount !== "number" || amount <= 0) {
+      throw new RangeError("Payment amount must be a positive number");
+    }
+
+    const receipt = this.#strategy.executePayment(amount, recipient);
+    this.#auditLog.push({ timestamp: Date.now(), txId: receipt.txId, amount });
+    return receipt;
+  }
+
+  getAuditLogs() {
+    // Return a shallow copy to prevent external mutation of audit log
+    return [...this.#auditLog];
+  }
+}
+
+// --- Verification & Testing ---
+
+// Test 1: Process Stripe Payment
+const stripeProcessor = new PaymentProcessor(new StripeStrategy("sk_live_12345"));
+const stripeTx = stripeProcessor.process(150, "merchant_99");
+console.log("Test 1 Result:", stripeTx.provider, stripeTx.status, stripeTx.txId);
+
+// Test 2: Swap strategy to Crypto
+stripeProcessor.setStrategy(new CryptoStrategy("priv_wallet_key_abc", "Ethereum"));
+const cryptoTx = stripeProcessor.process(2.5, "0xUserWalletAddress");
+console.log("Test 2 Result:", cryptoTx.provider, cryptoTx.status, cryptoTx.txId);
+
+// Test 3: Unit Testing with Mock Strategy (Zero external network dependencies)
+const mockStrategy = {
+  calls: [],
+  executePayment(amount, recipient) {
+    this.calls.push({ amount, recipient });
+    return { provider: "Mock", status: "MOCKED", txId: "mock_001" };
+  }
+};
+
+const testProcessor = new PaymentProcessor(mockStrategy);
+testProcessor.process(500, "test_recipient");
+console.log("Test 3 Mock Verification:", mockStrategy.calls.length === 1); // true
+console.log("Audit log count:", testProcessor.getAuditLogs().length);     // 1
+```
+
+---
 
 ## Summary
 
-- Objects can delegate property lookup to a prototype.
-- `new` creates an object, connects its prototype, calls the constructor, and usually returns the object.
-- Class syntax still uses prototypes for instance methods.
-- Static methods belong to the class itself.
-- `extends` connects prototype chains, and `super` calls parent behavior.
-- Private fields are not ordinary properties.
-- Composition often gives clearer dependencies than inheritance.
+- **Prototypes Under the Hood:** JavaScript objects inherit properties via the `[[Prototype]]` chain ending at `null`. Property reads traverse upward; property writes create own properties.
+- **The `new` Keyword Algorithm:** Creates an empty object, links its prototype to `Constructor.prototype`, executes the function with `this`, and returns the instance.
+- **Classes are Syntactic Sugar:** Classes compile to constructor functions and prototypes. They run in strict mode, cannot be called without `new`, and live in the TDZ.
+- **Instance vs. Static Methods:** Instance methods reside on `Class.prototype` and are shared by all instances. Static methods reside on the constructor function itself.
+- **Inheritance with `extends`:** Connects both instance prototypes and static constructor prototypes. `super()` must execute before accessing `this` in derived constructors.
+- **Hard Privacy with `#`:** Private fields (`#field`) are strictly isolated by the engine and cannot be accessed from outside the class body or through bracket notation.
+- **Favor Composition Over Inheritance:** Assembling services from small, injected collaborator objects creates resilient, testable Node.js architectures that avoid brittle inheritance hierarchies.
+
+---
 
 ## Cheat Sheet
 
-| Concept | Meaning |
-|---|---|
-| `Object.getPrototypeOf(value)` | Reads an object's prototype |
-| `Object.create(parent)` | Creates an object with a chosen prototype |
-| `new Constructor()` | Creates and initializes an instance |
-| Instance method | Usually stored on `Class.prototype` |
-| Static method | Stored on the class constructor |
-| `extends` | Creates subclass prototype relationships |
-| `super()` | Initializes a derived constructor |
-| `super.method()` | Calls inherited behavior with current receiver |
-| `#field` | Private class field |
+### Class Elements Quick Reference
 
-**vs. quick reference**
+| Element | Syntax | Stored On | Invocation / Access |
+| :--- | :--- | :--- | :--- |
+| **Instance Method** | `method() {}` | `Class.prototype` | `instance.method()` |
+| **Static Method** | `static method() {}` | `Class` constructor | `Class.method()` |
+| **Instance Field** | `prop = val;` | `instance` (own) | `instance.prop` |
+| **Private Field** | `#prop = val;` | Engine private slot | `this.#prop` (class body only) |
+| **Static Private Field** | `static #prop = val;` | Engine private slot | `Class.#prop` (class body only) |
 
-| | Instance method | Static method |
-|---|---|---|
-| Defined on | `Class.prototype` | Class constructor |
-| Called on | `new Class()` instance | Class itself (`Class.method()`) |
-| Has access to `this` | ✓ (the instance) | ✓ (the class) |
-| Available on instance | ✓ | ✗ |
+### Inheritance vs. Composition
 
-| Pattern | Best when |
-|---|---|
-| `extends` (inheritance) | Strong "is-a" contract; few overrides; stable parent |
-| Composition | Flexible, testable; dependency can change; no tight coupling |
+| Dimension | Inheritance (`extends`) | Composition |
+| :--- | :--- | :--- |
+| **Relationship** | "is-a" | "has-a" |
+| **Coupling** | Tight (subclass depends on base internals) | Loose (interacts via public API) |
+| **Runtime Swapping** | Difficult (class hierarchy fixed) | Trivial (swap collaborator instance) |
+| **Testability** | Harder (requires mocking base class) | Simple (inject mock stubs directly) |
+
+### Common Pitfalls
+
+- **Accessing `this` before `super()` in a subclass** → throws `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+- **Calling static methods on instances** → `instance.staticMethod()` is `undefined` because static methods live on the class constructor, not on `Class.prototype`.
+- **Storing mutable arrays on prototypes** → mutates state across all instances. Initialize arrays and objects inside the constructor.
+- **Assuming `class` creates a new object model** → `typeof Class === "function"`. Classes use standard prototype delegation.
+- **Forgetting constructor return rules** → returning an explicit object replaces `this`, while returning a primitive has no effect.
+
+---
 
 ## Interview Questions
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+### 1. What exact sequence of operations occurs when a function is called with the `new` keyword?
 
-1. **[Mid] Definition:** Explain the difference between an own property and an inherited property. Include a read trace and an assignment trace.
-   - Expected answer: Define the prototype chain, use `Object.hasOwn`, and explain why assignment usually creates an own property.
-   - Follow-up: How could changing the prototype affect `in` and `instanceof`?
+**Question:** Explain the step-by-step internal algorithm executed by JavaScript when the `new` operator is invoked with a constructor function.
 
-2. **[Beginner] Trace:** Predict the output and explain each lookup:
+**Answer:**
+When `new Constructor(...args)` is called, the JavaScript engine executes the following steps:
+1. **Object Allocation:** A new plain JavaScript object is created in memory (conceptually equivalent to `{}`).
+2. **Prototype Linkage:** The engine sets the new object’s internal `[[Prototype]]` property to point to `Constructor.prototype`. (If `Constructor.prototype` is not an object, it defaults to `Object.prototype`).
+3. **Execution with `this` Binding:** The `Constructor` function is invoked with its `this` context bound to the newly created object, passing along all provided arguments (`...args`).
+4. **Return Value Resolution:**
+   - If the constructor explicitly returns a non-primitive value (an `Object`, `Array`, or `Function`), that returned object becomes the result of the `new` expression, and the newly created `this` object is discarded.
+   - If the constructor returns a primitive value (like a `number`, `string`, `boolean`, `null`, or `undefined`), or has no return statement, the newly created `this` object is returned to the caller.
 
-   ```js
-   const parent = { value: 1 };
-   const child = Object.create(parent);
-   child.value += 2;
-   console.log(parent.value, child.value, Object.hasOwn(child, "value"));
-   ```
-   - Expected answer: `1 3 true`; the read finds the parent value, then assignment creates the child's own value.
-   - Follow-up: What changes if the inherited property is a setter?
+---
 
-3. **[Senior] Implementation:** Design a class hierarchy for payments without duplicating validation code.
-   - Expected answer: Show the stable parent contract, subclass responsibilities, composition alternatives, error behavior, and tests.
-   - Follow-up: When would a strategy object be safer than another subclass?
+### 2. Predict the Output: Prototype Shadowing and Constructor Return Overrides
 
-4. **[Mid] Debugging:** A subclass constructor throws `ReferenceError: Must call super constructor`. Explain the cause and repair it without hiding initialization errors.
-   - Expected answer: Derived constructors cannot use `this` before `super()`; call `super` first or redesign initialization.
-   - Follow-up: How do private fields change subclass design?
+```js
+function Vehicle(wheels) {
+  this.wheels = wheels;
+  return { customWheels: wheels * 2 };
+}
 
-5. **[Senior] Design:** A Node service has eight subclasses with many overridden methods and fragile parent assumptions. Recommend a redesign.
-   - Expected answer: Identify violated contracts, compare composition and inheritance, define interfaces, migration steps, testing, and operational risk.
-   - Follow-up: How would you detect behavior regressions during migration?
+Vehicle.prototype.getWheels = function() {
+  return this.wheels;
+};
 
+const v1 = new Vehicle(4);
+console.log(v1.wheels);
+console.log(v1.customWheels);
+console.log(v1 instanceof Vehicle);
+```
+
+**Question:** What does this code print to the console? Explain why `v1 instanceof Vehicle` evaluates to `false`.
+
+**Answer:**
+**Output:**
+```text
+undefined
+8
+false
+```
+
+**Explanation:**
+1. Inside `Vehicle`, `this.wheels` is initially assigned `4` on the newly created instance.
+2. However, the constructor explicitly returns an object: `{ customWheels: 4 * 2 }`.
+3. In accordance with the `new` operator algorithm, returning an object replaces the newly created `this` instance. `v1` is assigned the returned object literal `{ customWheels: 8 }`.
+4. As a result:
+   - `v1.wheels` is `undefined` because the returned object does not have a `wheels` property.
+   - `v1.customWheels` evaluates to `8`.
+   - `v1 instanceof Vehicle` checks whether `Vehicle.prototype` exists in `v1`'s prototype chain. Because `v1` is a plain object literal, its prototype is `Object.prototype`, not `Vehicle.prototype`. Thus, `instanceof` evaluates to `false`.
+
+---
+
+### 3. Debugging: Diagnosing a Subclass Constructor Crash and Shared Prototype State
+
+```js
+class CacheItem {
+  constructor(key) {
+    this.key = key;
+  }
+}
+
+class TimedCacheItem extends CacheItem {
+  constructor(key, ttl) {
+    this.ttl = ttl;
+    super(key);
+  }
+}
+
+TimedCacheItem.prototype.tags = [];
+
+const item1 = new TimedCacheItem("session", 60);
+const item2 = new TimedCacheItem("auth", 120);
+
+item1.tags.push("secure");
+console.log("Item 2 tags:", item2.tags);
+```
+
+**Question:** Running this code immediately throws a runtime error. If that error is resolved, a severe data corruption bug occurs. Identify both issues and provide the corrected code.
+
+**Answer:**
+**Issue 1 (Runtime Error):**
+In `TimedCacheItem`, `this.ttl = ttl` is evaluated before calling `super(key)`. In JavaScript derived classes, accessing `this` before `super()` throws `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+
+**Issue 2 (Shared State Mutation):**
+`TimedCacheItem.prototype.tags = []` defines the `tags` array on the prototype object rather than on instance objects. When `item1.tags.push("secure")` runs, it finds `tags` on the prototype and mutates the shared array, causing `item2.tags` to also reflect `["secure"]`.
+
+**Corrected Code:**
+```js
+// Node.js code
+class CacheItem {
+  constructor(key) {
+    this.key = key;
+  }
+}
+
+class TimedCacheItem extends CacheItem {
+  constructor(key, ttl) {
+    // 1. Call super() first
+    super(key);
+    this.ttl = ttl;
+    // 2. Initialize mutable state per instance
+    this.tags = [];
+  }
+}
+
+const item1 = new TimedCacheItem("session", 60);
+const item2 = new TimedCacheItem("auth", 120);
+
+item1.tags.push("secure");
+console.log("Item 1 tags:", item1.tags); // [ 'secure' ]
+console.log("Item 2 tags:", item2.tags); // [] (Completely isolated! ✅)
+```
+
+---
+
+### 4. Node.js Backend Scenario: Refactoring Deep Inheritance into Pluggable Composition
+
+**Question:** An enterprise Node.js microservice models database repositories using deep inheritance: `Repository` $\rightarrow$ `CachedRepository` $\rightarrow$ `AuditedRepository` $\rightarrow$ `PostgresAuditedRepository`. Explain why deep inheritance hierarchies become fragile in production services, and refactor this structure into a modular design using composition (Decorator or Strategy pattern).
+
+**Answer:**
+**Why Deep Inheritance Fails in Production:**
+1. **Fragile Base Class Problem:** Changes made to `Repository` or `CachedRepository` can inadvertently break assumptions and methods in `PostgresAuditedRepository`.
+2. **Combinatorial Explosion:** If a team later needs `MongoAuditedRepository` or `PostgresNonCachedRepository`, they must duplicate classes or build deeply convoluted inheritance trees.
+3. **Rigid Unit Testing:** Testing `PostgresAuditedRepository` requires setting up database connections, cache connections, and audit logging simultaneously.
+
+**Refactoring with Composition (Decorator Pattern):**
+
+```js
+// Node.js code
+
+// 1. Base Repository Contract / Implementation
+class PostgresUserRepository {
+  async findById(id) {
+    // Simulating database query
+    return { id, name: "Alice", role: "admin" };
+  }
+}
+
+// 2. Decorator 1: Caching Layer
+class CachedUserRepository {
+  constructor(innerRepository, cacheClient) {
+    this.inner = innerRepository;
+    this.cache = cacheClient;
+  }
+
+  async findById(id) {
+    const cacheKey = `user:${id}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
+
+    const data = await this.inner.findById(id);
+    this.cache.set(cacheKey, data);
+    return data;
+  }
+}
+
+// 3. Decorator 2: Audit Logging Layer
+class AuditedUserRepository {
+  constructor(innerRepository, logger) {
+    this.inner = innerRepository;
+    this.logger = logger;
+  }
+
+  async findById(id) {
+    this.logger.log(`AUDIT: Accessing user ${id}`);
+    const result = await this.inner.findById(id);
+    this.logger.log(`AUDIT: Successfully retrieved user ${id}`);
+    return result;
+  }
+}
+
+// --- Composing Layers Cleanly ---
+const baseRepo = new PostgresUserRepository();
+const memoryCache = new Map();
+const cachedRepo = new CachedUserRepository(baseRepo, memoryCache);
+const auditedCachedRepo = new AuditedUserRepository(cachedRepo, console);
+
+// Execution:
+auditedCachedRepo.findById(42).then(user => console.log("Retrieved:", user.name));
+```
+
+**Benefits:**
+- **Single Responsibility:** Each class has exactly one job (storage, caching, or auditing).
+- **Infinite Flexibility:** Layers can be assembled in any order or conditionally enabled based on environment flags (e.g., omitting cache in development).
+- **Effortless Mocking:** Each decorator can be tested in total isolation using lightweight mock objects.
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[← Day 09: Objects and Property Access](day-09-objects-and-property-access.md) | [Roadmap](../javascript-roadmap.md) | [Day 11: Property Descriptors, Enumerability, and Immutability →](day-11-property-descriptors-and-immutability.md)
+
+</nav>

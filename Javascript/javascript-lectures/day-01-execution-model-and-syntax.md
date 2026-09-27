@@ -722,99 +722,87 @@ For Node.js questions, state:
 3. Which behavior is guaranteed by ECMAScript.
 4. Which behavior is supplied by Node.js or another host.
 
-## Interview Questions
+## Interview Questions & Deep Dives
 
-> Difficulty guide: **[Beginner]** = entry-level, **[Mid]** = requires understanding of internals, **[Senior]** = design and tradeoff thinking expected.
+### 1. Explain the fundamental difference between ECMAScript, a JavaScript engine, and a host environment.
 
-### 1. Deep Definitions and Mental Models
+**Question:** How do ECMAScript, a JavaScript engine (like V8), and a host environment (like Node.js or Chrome) relate to each other? Provide concrete examples of APIs belonging to each layer.
 
-**[Mid] ECMAScript versus JavaScript runtime:** Explain the relationship among ECMAScript, a JavaScript engine, Node.js, and a browser. Your answer should classify at least five examples as language behavior or host behavior. Follow-up: How would your answer change when a transpiler transforms the source before the engine receives it?
+**Answer:**
+- **ECMAScript:** The formal language specification (ECMA-262) managed by TC39. It defines the grammar, syntax, core primitives, prototype inheritance, memory semantics, and standard built-in objects (`Object`, `Array`, `Promise`, `Map`, `Reflect`, `Proxy`, control flow keywords).
+- **JavaScript Engine (e.g. V8, SpiderMonkey, JavaScriptCore):** The software that parses source code text, compiles it to bytecode (via Ignition in V8), executes it on a call stack, optimizes hot code to machine instructions (via TurboFan), and manages the memory heap and garbage collector.
+- **Host Environment (e.g. Node.js, Chromium):** The embedding application providing the event loop, operating system interface, and platform-specific capabilities. 
 
-**Expected answer shape:** Define each layer, give concrete examples, and explain why the distinction affects debugging and portability.
+**Categorization Examples:**
+- *ECMAScript:* `const`, `class`, `async/await`, `Promise.all()`, `JSON.parse()`.
+- *Node.js Host APIs:* `node:fs`, `node:http`, `process.nextTick()`, `setImmediate()`, `Buffer`.
+- *Browser Host APIs:* `document.querySelector()`, `window.localStorage`, `fetch()` (historically), Web Workers.
 
-**Expression versus statement:** Define expressions, statements, declarations, and blocks. Explain why `const result = build();` contains both a declaration statement and an expression. Follow-up: Explain why "expressions return values and statements do not" is a useful beginner shortcut but not a complete interview answer.
+---
 
-**Expected answer shape:** Use grammar roles, show a short snippet, and discuss nested constructs and expression statements.
+### 2. What is Automatic Semicolon Insertion (ASI), and what restricted productions cause silent logic bugs?
 
-**Script versus module:** Explain how script and module grammar goals differ, why `export` cannot be treated as an ordinary statement, and why module status cannot always be inferred from the source text alone in Node.js. Follow-up: Separate module strictness from Node's CommonJS/ESM loading and interoperability rules.
-
-**Expected answer shape:** Cover grammar goal, strictness, top-level boundaries, and host configuration without treating Node behavior as ECMAScript behavior.
-
-### 2. Predict the Output and Trace Execution
-
-**[Beginner] Return line break:** What does this function return, and why?
-
-```js
-function readStatus() {
+**Question:** What is ASI in JavaScript, which specific keywords form "restricted productions", and what silent bug does the snippet below produce?
+```javascript
+function getConfiguration() {
   return
-  { ready: true };
+  {
+    status: "active"
+  };
 }
 ```
 
-Follow-up: Rewrite it in two unambiguous ways and classify the original behavior as a syntax error, runtime error, or incorrect result.
+**Answer:**
+Automatic Semicolon Insertion (ASI) is an ECMAScript grammar rule where the parser inserts virtual semicolons into the token stream when an unexpected token, end of input, or newline violates statement grammar.
 
-**Expected answer shape:** State `undefined`, explain the line terminator after `return`, and provide explicit rewrites.
+Certain grammatical statements are designated as **Restricted Productions**: no line terminator (newline) is permitted between the keyword and the following expression. The restricted keywords include: `return`, `throw`, `break`, `continue`, and `yield`.
 
-**[Mid] Leading bracket:** Analyze this source without running it:
+In the snippet above:
+1. The parser encounters `return` followed immediately by a newline.
+2. Because `return` is a restricted production, the parser triggers ASI and inserts a semicolon immediately after `return;`.
+3. The function returns `undefined` immediately.
+4. The subsequent block `{ status: "active" };` is parsed as an isolated code block containing an unused statement label `status:` and expression statement `"active"`, which is never reached.
 
-```js
-const value = 10
-[1, 2].forEach((item) => console.log(item))
-```
+**Fix:** Keep the opening brace on the same line as `return`: `return { status: "active" };`.
 
-Explain at least two plausible parser interpretations, what explicit semicolon changes, and what additional host assumption is needed to discuss `console.log`. Follow-up: Give a code-review rule that prevents this class of bug without claiming ASI itself is defective.
+---
 
-**Expected answer shape:** Explain continuation parsing, statement boundaries, possible runtime consequences, semicolon placement, and host API assumptions.
+### 3. How does ECMAScript distinguish scripts from modules at the parsing and execution level?
 
-**[Beginner] Block or object:** What is the grammatical role of `{ mode: "test" }` at statement start? Compare it with `const config = { mode: "test" };`. Follow-up: How does this affect a function that intends to return an object?
+**Question:** How does an ECMAScript Module (ESM) differ from a classical Script in terms of lexical scoping, strict mode, and parser grammar goals?
 
-**Expected answer shape:** Explain statement context, labeled-statement/block parsing, expression context, and return formatting.
+**Answer:**
+The ECMAScript specification parses source text according to distinct top-level **Grammar Goals**:
+1. **Module Grammar Goal:**
+   - **Strict Mode:** Executed in strict mode (`"use strict"`) automatically and permanently; cannot be disabled.
+   - **Lexical Isolation:** Top-level declarations (`const`, `let`, `var`, `function`) are scoped strictly to the module file; they do NOT pollute the global object.
+   - **Top-Level `this`:** Evaluates strictly to `undefined` (unlike scripts where `this` refers to `globalThis` or `window`).
+   - **Keywords:** `import` and `export` statements are only syntactically valid in a Module grammar goal; using them in a Script throws a `SyntaxError: Cannot use import statement outside a module`.
+2. **Script Grammar Goal:**
+   - Defaults to sloppy mode unless `"use strict"` is explicitly declared.
+   - Top-level `var` and `function` declarations pollute the global object (`window` or `global`).
+   - Top-level `this` refers to the global object.
 
-### 3. Implementation Exercises
+---
 
-**[Senior] Source classifier:** Design a small static-analysis rule that flags a newline immediately after `return` when the following token begins a likely object literal. State the inputs, false positives, false negatives, and whether your rule operates on raw text or tokens. Follow-up: Why is a regular expression alone a fragile implementation?
+### 4. What is the difference between an Expression Statement and a Block statement in ambiguous grammar positions?
 
-**Expected answer shape:** Describe tokenization/parsing, limits of text matching, examples, and a conservative review strategy.
+**Question:** Why does `{ test: 1 }` behave completely differently depending on whether it appears as a statement at the start of a line versus inside parentheses `({ test: 1 })`?
 
-**[Senior] Unambiguous source transformation:** Design a formatter rule set that reduces ASI hazards while preserving program meaning. Include leading continuation tokens, restricted productions, comments, and object returns. Follow-up: What must the formatter do when source cannot be parsed, and how would you test semantic preservation?
+**Answer:**
+JavaScript grammar is context-sensitive regarding curly braces `{}`:
+- At the start of a statement, an opening brace `{` is parsed as a **Block statement**, not an object literal. In `{ test: 1 }`, `test:` is parsed as a statement label (like in a loop), and `1` is parsed as an expression statement.
+- When enclosed in parentheses `({ test: 1 })`, the parentheses force an **Expression context**. Inside an expression context, `{ test: 1 }` is parsed as an object literal with key `test` and value `1`.
 
-**Expected answer shape:** Explain parse-first transformation, explicit boundaries, invalid-source handling, differential tests, and known limitations.
+This ambiguity is the primary reason why arrow functions returning an object literal must wrap the object in parentheses:
+- `() => { count: 1 }`: Parsed as a block with a label `count:`, returning `undefined`!
+- `() => ({ count: 1 })`: Parsed as an expression returning an object `{ count: 1 }`.
 
-### 4. Debugging and Failure Analysis
+---
 
-**[Mid] Module syntax failure:** A Node process reports an error near `export`. The file contains valid-looking module syntax. Describe your debugging sequence. Follow-up: Which conclusions can you make from ECMAScript alone, and which require inspecting Node configuration and version?
+<nav aria-label="Lecture navigation">
 
-**Expected answer shape:** Check grammar goal, package/file configuration, loader, transformed output, runtime version, and the actual file executed.
+Previous | [Roadmap](../javascript-roadmap.md) | [Next: Variables, Declarations, and Scope Foundations](day-02-variables-scope-and-hoisting.md)
 
-**[Beginner] Error classification:** A service starts successfully but later throws when calling a method on `null`. Contrast this with an invalid declaration that prevents startup. Follow-up: Why can a function with a `return` line break be more difficult to detect than either error?
-
-**Expected answer shape:** Distinguish parse/early failure, runtime failure, and valid-but-wrong behavior; include observability and tests.
-
-**[Mid] Reported location is misleading:** A parser reports an unexpected token near the end of a 300-line file. Give a bounded debugging method using lexical and grammatical boundaries. Follow-up: How can an unterminated block comment, string, or template literal shift the reported location?
-
-**Expected answer shape:** Check unmatched delimiters and lexical terminators backward from the location, reduce to a minimal reproduction, and verify the exact source after tooling transformations.
-
-### 5. Design and Tradeoff Questions
-
-**[Mid] Semicolon policy:** Should a backend team require semicolons? Give a defensible policy that considers formatter configuration, code review, ASI hazards, generated code, and team consistency. Follow-up: Why is "always use semicolons" a policy choice rather than proof that ASI is not part of the language?
-
-**Expected answer shape:** State assumptions, identify risk reduction, explain consistency and tooling, and acknowledge valid alternative styles.
-
-**[Senior] Host boundary in a shared library:** Design the source boundary for a library intended to run in Node.js and browser hosts. Decide what belongs to ECMAScript-only code, what belongs behind adapters, and how module publishing assumptions should be documented. Follow-up: How would you test grammar and host compatibility without claiming universal behavior?
-
-**Expected answer shape:** Separate pure language code from host APIs, define module/build targets, document assumptions, and use environment-specific tests.
-
-### 6. Senior Follow-ups: Scale, Reliability, Security, and Operations
-
-**[Senior] Source integrity in production:** A production service runs transformed JavaScript, while stack traces point to generated files. Design a process for diagnosing a syntax or ASI-related regression across source, formatter, transpiler, and runtime. Follow-up: What artifacts and version information should be retained for reliable reproduction?
-
-**Expected answer shape:** Cover source maps, exact generated artifacts, runtime/toolchain versions, reproducible builds, minimal reproduction, deployment metadata, and validation gates.
-
-**[Senior] Unicode identifiers and review risk:** A security-sensitive codebase permits Unicode identifiers. Assess the maintainability and security risks and propose a policy. Follow-up: How would you distinguish a real language limitation from a team policy or tooling limitation?
-
-**Expected answer shape:** Discuss confusable characters, normalization/review/tooling concerns, restricted naming policy, linting, and the ECMAScript-versus-process boundary.
-
-**[Senior] Syntax validation in a deployment pipeline:** Design a validation stage that catches invalid source, module/script mismatches, and selected ASI hazards before deployment. Follow-up: Which defects can only be found with runtime or integration tests even when parsing succeeds?
-
-**Expected answer shape:** Include parser checks, target-runtime checks, module configuration, formatter/linter policy, focused behavior tests, and the distinction between syntax validity and semantic correctness.
+</nav>
 
