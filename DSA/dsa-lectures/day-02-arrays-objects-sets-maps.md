@@ -2,666 +2,530 @@
 
 <nav aria-label="Lecture navigation">
 
-[← Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Day 03: Strings and Text Patterns →](day-03-strings-and-text-patterns.md)
+[Previous: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Strings and Text Patterns](day-03-strings-and-text-patterns.md)
 
 </nav>
 
----
+## Learning Outcomes
 
-## What You Will Learn Today
+By the end of this lecture, you should be able to:
 
-By the end of this lecture you should be able to:
-
-- Explain in plain words what an Array, Object, `Map`, and `Set` each do.
-- Know **which one to reach for** given a problem's constraints.
-- Explain why reading from an array by position is instant, but removing the first item is slow.
-- Spot and fix the two most common traps: the **object prototype trap** and the **Set reference equality trap**.
-- Solve the classic **Two Sum** interview problem in a single pass using a `Map`.
+- Distinguish the asymptotic performance and memory characteristics of JavaScript's core collection types: Array, plain Object, `Map`, and `Set`.
+- Choose the optimal data structure given algorithmic constraints (order, lookup speed, uniqueness, key typing).
+- Explain V8 internal array representations: Packed vs Holey elements, and Fast vs Dictionary-mode elements.
+- Avoid critical JavaScript interview traps: the Object prototype collision trap, non-string key coercion, and the Reference Equality trap in Sets and Maps.
+- Solve the classic **Two Sum** problem in a single $O(n)$ pass using a hash complement map.
+- Implement efficient queues without introducing $O(n)$ `Array.prototype.shift()` event-loop bottlenecks in Node.js.
 
 ---
 
 ## Prerequisites
 
-- [DSA Day 01 – Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — you need to understand O(1) and O(n) before this lecture makes sense.
-- **JavaScript background** — the sections below link to the JS lecture series whenever a JavaScript concept needs deeper coverage. Read those links if anything feels unfamiliar.
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Complexity classes ($O(1)$, $O(n)$, $O(n^2)$) and asymptotic analysis.
+- [JS Day 09: Objects and Property Access](../../Javascript/javascript-lectures/day-09-objects-and-property-access.md) — Prototype chains and property descriptors.
+- [JS Day 12: Built-in Data Structures](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md) — ES2015 `Map` and `Set` specifications.
 
 ---
 
 ## Quick Vocabulary Card
 
-These words will appear throughout the lecture. Read this first so nothing blindsides you.
-
-| Word | Plain meaning |
-| :--- | :--- |
-| **Data structure** | A way of organising data in memory so you can find and change it efficiently. |
-| **Index** | The number you use to point at a position in an array. The first position is index `0`. |
-| **Key** | The name you use to look up a value in an object or Map. Like a word in a dictionary. |
-| **Value** | The thing stored at a given index or key. |
-| **Lookup** | Finding a value — asking "what is stored here?". |
-| **O(1) — constant time** | Takes the same time no matter how large the data is. |
-| **O(n) — linear time** | Takes longer as the data grows; roughly proportional to size. |
-| **Prototype** | A hidden parent object that every plain `{}` object inherits built-in properties from. Explained fully in [JS Day 10](../../Javascript/javascript-lectures/day-10-prototypes-classes-and-inheritance.md). |
-| **Hash function** | An internal formula that turns a key into a memory slot number. JavaScript's `Map` and `Set` use this internally to give you O(1) lookups. |
-| **Amortized** | "On average over many operations." For example, `push` is usually O(1) but occasionally O(n) when the array must grow its internal buffer — amortized it works out to O(1) per operation. |
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **Contiguous Memory** | Memory allocated in an unbroken physical block where element addresses can be calculated via index offsets: $\text{Base} + i \times \text{Size}$. | Enables $O(1)$ constant-time random access by index in JavaScript arrays. |
+| **Packed vs Holey Arrays** | V8 array optimizations: Packed arrays have elements at every index; Holey arrays contain unassigned gaps (`[1, , 3]`). | Accessing holey arrays forces V8 to traverse the prototype chain, causing 10x slower access times. |
+| **Prototype Pollution Trap** | The hazard where plain `{}` objects inherit built-in properties (`toString`, `valueOf`, `constructor`) from `Object.prototype`. | Causes counter bugs when data keys collide with built-in names unless `Map` or `Object.create(null)` is used. |
+| **Reference Equality** | The JavaScript equality model where two objects or arrays are equal (`===`) only if they reference the identical memory pointer. | In Sets and Maps, `set.has([1, 2])` always returns `false` for new array instances regardless of identical contents. |
+| **Amortized Append** | Appending to a dynamic array takes $O(1)$ time on average, despite occasional $O(n)$ buffer reallocation and copying. | Explains why `arr.push()` is scalable, whereas `arr.unshift()` is permanently $O(n)$. |
 
 ---
 
-## 1. Arrays — An Ordered List You Access by Position
-
-### What is an Array?
-
-An array is the simplest way to store a list of things **in order**. Think of it like a row of numbered boxes:
+## Core Concepts
 
 ```
-Index:  0       1        2
-      +--------+--------+----------+
-      | "cat"  | "dog"  | "rabbit" |
-      +--------+--------+----------+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          JAVASCRIPT CORE COLLECTIONS TAXONOMY                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  1. ARRAY (Ordered, Positional)
+     [ 0: "cat" | 1: "dog" | 2: "rabbit" ]
+     • Read by index: O(1)
+     • Push/Pop (tail): O(1) amortized
+     • Shift/Unshift (head): O(n) ⚠️ (Forces elements to shift memory offsets)
+
+  2. PLAIN OBJECT (String-Keyed Record)
+     { "name": "Alice", "role": "admin" }
+     • Read/Write by key: O(1) average
+     • Keys: Coerced to Strings / Symbols only
+     • Trap: Inherits Object.prototype properties!
+
+  3. MAP (Key-Value Hash Table)
+     Map( [42 => "answer"], [{id:1} => "user"] )
+     • Read/Write by key: O(1) average
+     • Keys: Any type (primitives, objects, functions)
+     • Safe: Zero prototype inheritance; O(1) .size property
+
+  4. SET (Unique Value Collection)
+     Set( 1, 2, 3 )
+     • Add/Has/Delete: O(1) average
+     • Enforces uniqueness; ignores duplicates
+     • Compares objects by reference address, not value!
 ```
 
-Each box has a fixed address (the index). To read box 2 you write `animals[2]`. JavaScript goes directly to that address — it does **not** scan through the list. That is why reads are O(1).
-
-```js
-// JavaScript (works in Node.js and the browser)
-const animals = ["cat", "dog", "rabbit"];
-
-console.log(animals[0]); // "cat"    — instant, O(1)
-console.log(animals[2]); // "rabbit" — instant, O(1)
-console.log(animals.length); // 3
-```
-
-> **Further reading on arrays:** [JS Day 12 – Built-in Data Structures](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md) covers `Array` methods in depth.
-
-### What operations are fast and what are slow?
-
-| Operation | Method | Time | Why |
-| :--- | :--- | :--- | :--- |
-| Read by index | `arr[i]` | **O(1)** | Direct address lookup |
-| Add to the end | `arr.push(x)` | **O(1)** amortized | Writes to the next empty slot |
-| Remove from the end | `arr.pop()` | **O(1)** | Just decrements the length counter |
-| Add to the front | `arr.unshift(x)` | **O(n)** | Every existing item must shift one slot to the right |
-| Remove from the front | `arr.shift()` | **O(n)** | Every remaining item must shift one slot to the left |
-| Find a value (no index) | `arr.includes(x)` | **O(n)** | Must scan from the beginning until it finds the value |
-
-### Why is removing from the front slow?
-
-Imagine the numbered boxes again. When you take out box 0, boxes 1, 2, 3, … must all slide left to fill the gap and keep their index numbers correct. If you have 10 000 items, every removal causes 9 999 moves.
-
-```
-Before shift():
-  Index:  0     1     2     3
-        [ "A" | "B" | "C" | "D" ]
-
-After shift():
-  Index:  0     1     2
-        [ "B" | "C" | "D" ]
-  B moved from slot 1 to 0, C from 2 to 1, D from 3 to 2. All three moved!
-```
-
-> [!WARNING]
-> Never call `arr.shift()` inside a loop. If your loop runs n times and each `shift()` is O(n), you end up doing O(n x n) = O(n²) work — that will time out for large inputs in an interview.
-
----
-
-## 2. Objects — A Dictionary with String Labels
-
-### What is a plain Object?
-
-A plain object `{}` stores **key-value pairs** where the keys are always strings (or Symbols). Think of it like a physical dictionary: you look up a word (the key) to find its definition (the value).
-
-```js
-const user = {
-  name: "Priya",
-  age: 28,
-  city: "Mumbai",
-};
-
-console.log(user.name);    // "Priya"  — O(1) lookup by key
-console.log(user["age"]);  // 28       — same thing, bracket syntax
-```
-
-> **Further reading on objects:** [JS Day 09 – Objects and Property Access](../../Javascript/javascript-lectures/day-09-objects-and-property-access.md) covers dot vs bracket notation, property descriptors, and more.
-
-### The Prototype Trap — why it matters in interviews
-
-Every plain object secretly inherits a set of built-in properties from something called `Object.prototype`. These hidden properties include names like `toString`, `constructor`, and `hasOwnProperty`.
-
-Most of the time this is harmless. But it causes a real bug when you use an object as a **counter or lookup table** and one of your data values happens to match one of those hidden names.
-
-```js
-const wordCount = {};
-
-// Works fine for normal words:
-wordCount["hello"] = (wordCount["hello"] || 0) + 1;
-console.log(wordCount["hello"]); // 1 — correct
-
-// Breaks for "toString":
-wordCount["toString"] = (wordCount["toString"] || 0) + 1;
-// wordCount["toString"] starts as [Function: toString], not undefined.
-// ([Function: toString] || 0) evaluates to the function (truthy),
-// then function + 1 = "[Function: toString]1" — wrong!
-console.log(wordCount["toString"]); // "[Function: toString]1" — wrong!
-```
-
-**Fix 1 — use a `Map` instead** (covered in the next section; this is the cleanest fix).
-
-**Fix 2 — use `Object.create(null)`** to create an object that has no hidden parent at all:
-```js
-const safeCount = Object.create(null); // No built-in properties
-safeCount["toString"] = (safeCount["toString"] || 0) + 1;
-console.log(safeCount["toString"]); // 1 — correct now
-```
-
-> **Further reading on prototypes:** [JS Day 10 – Prototypes, Classes, and Inheritance](../../Javascript/javascript-lectures/day-10-prototypes-classes-and-inheritance.md).
-
----
-
-## 3. Map — A Smarter Key-Value Store
-
-### What is a Map?
-
-A `Map` does the same job as a plain object — it stores key-value pairs — but it fixes several limitations:
-
-- **Any type of key** is allowed: numbers, booleans, objects, anything.
-- **No hidden properties** — it starts completely empty.
-- **`.size` is instant O(1)** — you do not need to count manually.
-- **Keys always stay in the order you added them** — no surprises.
-
-```js
-const map = new Map();
-
-// Add entries with .set(key, value)
-map.set("name", "Arjun");
-map.set(42, "the answer");     // number key — plain objects cannot do this cleanly
-map.set(true, "boolean key");  // boolean key
-
-// Read with .get(key)
-console.log(map.get("name")); // "Arjun"
-console.log(map.get(42));     // "the answer"
-
-// Check if a key exists — O(1)
-console.log(map.has(true));   // true
-
-// Count entries — O(1)
-console.log(map.size);        // 3
-
-// Remove with .delete(key)
-map.delete(42);
-console.log(map.size);        // 2
-```
-
-### Object vs Map — side-by-side
-
-| | Plain Object `{}` | `Map` |
-| :--- | :--- | :--- |
-| **Allowed key types** | Strings and Symbols only | Any type |
-| **Hidden built-in keys** | Yes (prototype) | No |
-| **Get size** | `Object.keys(obj).length` — O(n) | `map.size` — O(1) |
-| **Key order** | Integer keys sorted first, then insertion order | Strict insertion order always |
-| **Best for** | Simple, fixed-shape records; JSON payloads | Dynamic counters, lookups, caches |
-
-> **Further reading:** [JS Day 12 – Built-in Data Structures](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md) covers `Map` iteration, conversion to/from arrays, and serialisation.
-
----
-
-## 4. Set — A List That Never Has Duplicates
-
-### What is a Set?
-
-A `Set` stores a **collection of unique values**. If you add a value that is already in the Set, nothing happens — the duplicate is silently ignored.
-
-Think of it as a guest list with a rule: the same person can only appear once. If you try to add the same name twice, the second attempt is ignored.
-
-```js
-const guestList = new Set();
-
-guestList.add("Alice");
-guestList.add("Bob");
-guestList.add("Alice"); // duplicate — silently ignored
-
-console.log(guestList.size);       // 2  (not 3)
-console.log(guestList.has("Bob")); // true  — O(1) check
-console.log(guestList.has("Eve")); // false — O(1) check
-```
-
-### Deduplicating an array in one line
-
-```js
-const scores = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3];
-const unique = [...new Set(scores)];
-// unique = [3, 1, 4, 5, 9, 2, 6]
-```
-
-What happens: `new Set(scores)` builds a Set (duplicates are dropped), then the spread operator `...` converts it back into a regular array. O(n) time, O(n) space.
-
----
-
-## 5. How to Choose the Right Structure
-
-When you see a problem, ask these questions in order:
-
-```
-1. Do you need items in a fixed order, accessed by position (index 0, 1, 2...)?
-   Yes → Array
-
-2. Do you need to quickly check "have I seen this before?" or guarantee no duplicates?
-   Yes → Set
-
-3. Do you need to store (key → value) pairs?
-   3a. Do your keys need to be non-string types, or could they collide with
-       built-in names like "constructor"?
-       Yes → Map
-   3b. Are the keys always safe, known strings and you need JSON output?
-       Yes → Plain Object
-
-Still unsure? → Map  (it is the safest default for dynamic lookups)
-```
-
----
-
-## 6. The Reference Equality Trap in Set and Map
-
-This behaviour surprises many developers.
-
-`Set` and `Map` compare **objects and arrays by memory address**, not by their contents. Two arrays that look identical but were created separately are treated as two different items.
-
-```js
-const seen = new Set();
-
-const arr1 = [1, 2, 3];
-const arr2 = [1, 2, 3]; // same content, but a separate object in memory
-
-seen.add(arr1);
-seen.add(arr2); // arr2 is stored at a different memory address, so it is added
-
-console.log(seen.size); // 2  — not 1!
-
-// Compare: primitive values ARE compared by content
-const nums = new Set();
-nums.add(5);
-nums.add(5); // same primitive value
-console.log(nums.size); // 1  — works as expected
-```
-
-**Rule of thumb:** `Set` and `Map` work perfectly for numbers, strings, and booleans. For objects and arrays, if you want content-based uniqueness you need to convert them to a string first (e.g. `JSON.stringify(arr)`) and store that string instead.
-
----
-
-## Worked Examples
-
-### Example 1 — Two Sum (the most common hash-map interview problem)
-
-#### The Problem
-
-Given an array of numbers and a target number, return the **indices** (positions) of the two numbers that add up to the target. Assume exactly one answer exists.
-
-```
-Input:  nums = [2, 7, 11, 15],  target = 9
-Output: [0, 1]   (because nums[0] + nums[1] = 2 + 7 = 9)
-```
-
-#### Slow Solution — O(n²)
-
-Check every possible pair using two nested loops:
-
-```js
-function twoSumSlow(nums, target) {
-  for (let i = 0; i < nums.length; i++) {
-    for (let j = i + 1; j < nums.length; j++) {
-      if (nums[i] + nums[j] === target) {
-        return [i, j];
-      }
-    }
+### 1. Arrays — Positional Storage and V8 Element Kinds
+
+A JavaScript Array is an ordered collection of elements accessible by numeric indices.
+
+In low-level runtimes (like V8), JavaScript arrays are optimized into **Elements Kinds**:
+1. **PACKED_SMI_ELEMENTS:** Arrays containing only Small Integers without holes. Fastest access.
+2. **PACKED_DOUBLE_ELEMENTS:** Arrays containing floating-point numbers.
+3. **HOLEY_ELEMENTS:** Arrays created with empty slots (e.g., `const a = []; a[100] = 1;`). When reading an unassigned index, V8 cannot return `undefined` immediately; it must perform an expensive walk up the prototype chain to verify `Object.prototype` did not define that property.
+4. **Dictionary Elements (Slow Mode):** If you delete elements or create massive index gaps ($> 10,000$), V8 downgrades the array from contiguous memory into a slow hash map dictionary.
+
+| Operation | Method / Syntax | Time Complexity | Engine Mechanism |
+|---|---|---|---|
+| **Read by Index** | `arr[i]` | **$O(1)$** | Direct memory offset computation: $\text{Base} + i \times \text{Size}$ |
+| **Append (Tail)** | `arr.push(val)` | **$O(1)$ amortized** | Writes to next allocated buffer slot |
+| **Pop (Tail)** | `arr.pop()` | **$O(1)$** | Decrements internal length pointer |
+| **Prepend (Head)** | `arr.unshift(val)` | **$O(n)$** | Every element in memory must shift 1 index to the right |
+| **Remove (Head)** | `arr.shift()` | **$O(n)$** | Every remaining element must shift 1 index to the left |
+| **Value Search** | `arr.indexOf(val)` | **$O(n)$** | Scans sequentially from index 0 |
+
+```javascript
+// Node.js code
+// ❌ ANTI-PATTERN: Using arr.shift() inside a loop (O(n^2) total!)
+function processQueueSlow(tasks) {
+  const processed = [];
+  while (tasks.length > 0) {
+    // shift() forces all remaining n elements to copy 1 index to the left!
+    // For 50,000 items: 50,000 * 25,000 = ~1.25 billion memory copies!
+    const task = tasks.shift();
+    processed.push(task * 2);
   }
+  return processed;
+}
+
+// ✅ PATTERN: Using a head pointer or reverse array pop (O(n) total!)
+function processQueueFast(tasks) {
+  const processed = [];
+  let head = 0;
+  while (head < tasks.length) {
+    const task = tasks[head++]; // O(1) read + index increment!
+    processed.push(task * 2);
+  }
+  return processed;
+}
+```
+
+---
+
+### 2. Plain Objects vs ES2015 Maps
+
+A plain object (`{}`) is a record storing key-value pairs where keys are restricted to Strings and Symbols. A `Map` is an explicit hash map data structure supporting arbitrary keys and predictable ordering.
+
+```javascript
+// Node.js code
+// ❌ THE PROTOTYPE INHERITANCE TRAP IN PLAIN OBJECTS:
+const frequency = {};
+const words = ['hello', 'world', 'toString', 'hello'];
+
+for (const w of words) {
+  // toString already exists on Object.prototype!
+  // frequency['toString'] is initially: function toString() { [native code] }
+  // (function || 0) evaluates to truthy function!
+  // Result becomes: "[object Function]1" -> CORRUPT DATA!
+  frequency[w] = (frequency[w] || 0) + 1;
+}
+console.log(frequency['toString']); // Output: "[Function: toString]1" (Bug!)
+
+// ✅ FIX 1: Using Map (Guaranteed clean state, arbitrary keys)
+const safeMap = new Map();
+for (const w of words) {
+  safeMap.set(w, (safeMap.get(w) || 0) + 1);
+}
+console.log(safeMap.get('toString')); // Output: 1 (Correct!)
+
+// ✅ FIX 2: Using Object.create(null) (No prototype chain)
+const nullProtoObj = Object.create(null);
+for (const w of words) {
+  nullProtoObj[w] = (nullProtoObj[w] || 0) + 1;
+}
+console.log(nullProtoObj['toString']); // Output: 1 (Correct!)
+```
+
+#### The Key Coercion Trap in Plain Objects
+Plain objects coerce all non-string keys into strings:
+```javascript
+// Node.js code
+const obj = {};
+const keyA = { id: 1 };
+const keyB = { id: 2 };
+
+obj[keyA] = 'Data A';
+// keyA is converted to "[object Object]"
+obj[keyB] = 'Data B';
+// keyB is ALSO converted to "[object Object]" -> OVERWRITES Data A!
+
+console.log(obj[keyA]); // Output: "Data B" ❌ (Silent Data Loss!)
+
+// In Map: Keys are compared by identity, preserving independent entries
+const safeKeyMap = new Map();
+safeKeyMap.set(keyA, 'Data A');
+safeKeyMap.set(keyB, 'Data B');
+console.log(safeKeyMap.get(keyA)); // Output: "Data A" ✅
+```
+
+| Feature | Plain Object `{}` | ES2015 `Map` |
+|---|---|---|
+| **Key Types** | Strings and Symbols only | **Any value** (Numbers, Objects, Functions, Primitives) |
+| **Prototype Poisoning** | Susceptible (`toString`, `constructor`) | **Immune** (Contains no default keys) |
+| **Size Computation** | $O(n)$ via `Object.keys(obj).length` | **$O(1)$** via `map.size` |
+| **Iteration Order** | Integer keys sorted first, then string keys | **Strict insertion order** always |
+| **Garbage Collection** | Strong reference to keys/values | Strong reference (use `WeakMap` for weak references) |
+| **JSON Serialization** | Direct via `JSON.stringify(obj)` | Requires custom array serialization |
+
+---
+
+### 3. Sets — Unique Value Collections
+
+A `Set` is an ordered collection of unique values where duplicate insertions are silently ignored.
+
+```javascript
+// Node.js code
+const set = new Set();
+set.add(10);
+set.add(20);
+set.add(10); // Duplicate: ignored
+
+console.log(set.size);      // 2
+console.log(set.has(20));    // true (O(1) average lookup)
+console.log(set.delete(10)); // true (O(1) deletion)
+```
+
+#### The Reference Equality Trap in Sets and Maps
+JavaScript evaluates equality between objects and arrays by **memory reference address**, never by structural content:
+
+```javascript
+// Node.js code
+const visitedCoordinates = new Set();
+
+const coord1 = [10, 20];
+const coord2 = [10, 20]; // Identical values, distinct memory address!
+
+visitedCoordinates.add(coord1);
+visitedCoordinates.add(coord2);
+
+console.log(visitedCoordinates.size); // Output: 2 ❌ (Both stored!)
+console.log(visitedCoordinates.has([10, 20])); // Output: false ❌ (New array instance!)
+
+// ✅ PATTERN: Serialize objects to composite strings for Set uniqueness
+const serializedSet = new Set();
+const serializeCoord = (x, y) => `${x},${y}`;
+
+serializedSet.add(serializeCoord(10, 20));
+serializedSet.add(serializeCoord(10, 20));
+
+console.log(serializedSet.size); // Output: 1 ✅
+console.log(serializedSet.has(serializeCoord(10, 20))); // Output: true ✅
+```
+
+---
+
+## Detailed Explanations and Traces
+
+### The Two Sum Pattern: Brute Force vs Hash Complement
+
+Given an array of integers `nums` and an integer `target`, return indices of the two numbers that add up to `target`. Assume exactly one solution exists.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          TWO SUM COMPLEMENT HASH LOOKUP TRACE                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Input: nums = [2, 11, 7, 15],  target = 9
+  Complement Formula: complement = target - nums[i]
+
+  Step 1 (i = 0): num = 2
+  • Complement needed: 9 - 2 = 7
+  • Is 7 in Map? NO.
+  • Store in Map: Map { 2 => 0 }
+
+  Step 2 (i = 1): num = 11
+  • Complement needed: 9 - 11 = -2
+  • Is -2 in Map? NO.
+  • Store in Map: Map { 2 => 0, 11 => 1 }
+
+  Step 3 (i = 2): num = 7
+  • Complement needed: 9 - 7 = 2
+  • Is 2 in Map? YES! Index = 0.
+  • MATCH FOUND! Return [0, 2] in O(n) single pass!
+```
+
+```javascript
+// Node.js code
+// Time Complexity: O(n) | Auxiliary Space: O(n)
+export function twoSum(nums, target) {
+  const complementMap = new Map(); // Stores: value => index
+
+  for (let i = 0; i < nums.length; i++) {
+    const current = nums[i];
+    const complement = target - current;
+
+    // O(1) average lookup
+    if (complementMap.has(complement)) {
+      return [complementMap.get(complement), i];
+    }
+
+    complementMap.set(current, i);
+  }
+
   return [];
 }
 ```
 
-For 10 000 numbers this runs roughly 50 million comparisons. Too slow for an interview.
+---
 
-#### Fast Solution — O(n) using a Map
+## Tricky Points & Edge Cases
 
-The key insight: instead of looking **forward** for a pair, look **backward** using a Map.
+### 1. Modifying Arrays While Iterating
+Mutating an array (`splice`, `shift`, `pop`) inside a forward `for` loop changes the indices of subsequent elements, leading to skipped items:
+```javascript
+// Node.js code
+// ❌ WRONG: Removing items alters iteration index
+const nums = [1, 2, 2, 3];
+for (let i = 0; i < nums.length; i++) {
+  if (nums[i] === 2) {
+    nums.splice(i, 1); // Mutates array! nums becomes [1, 2, 3], but i advances to 2!
+    // The second 2 is skipped completely!
+  }
+}
+console.log(nums); // Output: [1, 2, 3] (Bug!)
 
-For each number, ask: "Have I already seen the number that would complete this pair?" The number that would complete the pair is called the **complement**: `complement = target - currentNumber`.
+// ✅ CORRECT: Iterate backwards or use Array.prototype.filter()
+const filtered = nums.filter(x => x !== 2); // [1, 3]
+```
 
-Store each number you have already visited in a Map mapped to its index. When you find the complement already in the Map, you are done.
+### 2. Iterating Maps and Sets
+In JavaScript, `Map.prototype.forEach` and `for...of` iterate in **exact insertion order**. However, plain `{}` objects iterate non-negative integer keys in numerical sorted order first, followed by string keys in insertion order. When interviewers ask for strict FIFO key iteration, always use `Map`.
 
-```js
-// JavaScript (Node.js / browser)
-function twoSum(nums, target) {
-  // seen maps: number -> index of where we saw it
-  const seen = new Map();
+---
 
-  for (let i = 0; i < nums.length; i++) {
-    const current = nums[i];
-    const complement = target - current; // the number we need to complete the pair
+## Hands-On Exercise: Implementing an LRU Cache Eviction Simulator
 
-    if (seen.has(complement)) {
-      // We already saw the complement earlier — return both indices
-      return [seen.get(complement), i];
+### Scenario
+
+You are implementing a memory-efficient cache eviction mechanism for a high-traffic microservice.
+The initial implementation uses an array, causing $O(n)$ search and eviction overhead that degrades API throughput.
+
+### Buggy Code
+
+```javascript
+// Node.js code
+// ❌ Inefficient O(n) implementation with memory leaks
+export class BuggyCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.items = []; // Array of { key, value }
+  }
+
+  get(key) {
+    // BUG 1: O(n) linear search
+    const index = this.items.findIndex(item => item.key === key);
+    if (index === -1) return null;
+    const item = this.items[index];
+    // BUG 2: O(n) splice and push
+    this.items.splice(index, 1);
+    this.items.push(item);
+    return item.value;
+  }
+
+  put(key, value) {
+    const index = this.items.findIndex(item => item.key === key);
+    if (index !== -1) {
+      this.items.splice(index, 1);
+    } else if (this.items.length >= this.capacity) {
+      // BUG 3: O(n) shift operation
+      this.items.shift();
+    }
+    this.items.push({ key, value });
+  }
+}
+```
+
+### Acceptance Criteria
+
+1. Implement `OptimizedLRUCache` providing **$O(1)$ average time** for both `get(key)` and `put(key, value)`.
+2. Exploit JavaScript's native `Map` insertion-order iteration property to move accessed items to the tail.
+3. Automatically evict the least recently used (oldest) key when capacity is exceeded.
+4. Verify using native assertions.
+
+### Solution Code
+
+```javascript
+// Node.js code
+import assert from 'node:assert/strict';
+
+/**
+ * High-Performance O(1) LRU Cache exploiting Map insertion-order mechanics
+ */
+export class OptimizedLRUCache {
+  /**
+   * @param {number} capacity
+   */
+  constructor(capacity) {
+    if (capacity <= 0) throw new Error('Capacity must be positive');
+    this.capacity = capacity;
+    this.cache = new Map();
+  }
+
+  /**
+   * Retrieves value and marks key as most recently used
+   * @param {*} key
+   * @returns {*}
+   */
+  get(key) {
+    if (!this.cache.has(key)) {
+      return null;
     }
 
-    // No pair found yet — record this number and move on
-    seen.set(current, i);
+    // Refresh key to the tail (most recently used)
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
   }
 
-  return []; // no solution found
-}
-```
-
-#### Step-by-step trace for `nums = [2, 7, 11, 15], target = 9`
-
-| Step | `i` | `current` | `complement` | `seen` contents | Action |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | 0 | 2 | 7 | (empty) | `seen` does not have 7. Store `2 → 0`. |
-| 2 | 1 | 7 | 2 | `{2 → 0}` | `seen` **has** 2! Return `[seen.get(2), 1]` = **`[0, 1]`** |
-
-Solved in two steps instead of nested loops. The `seen.has()` check is O(1), so the whole function is O(n).
-
----
-
-### Example 2 — First Unique Character
-
-#### The Problem
-
-Find the first character in a string that appears only once. Return its index, or `-1` if none exists.
-
-```
-Input:  "interview"
-Output: 0   ("i" appears only once, at index 0)
-```
-
-```js
-// JavaScript (Node.js / browser)
-function firstUniqueChar(str) {
-  const freq = new Map(); // character -> how many times it appears
-
-  // Pass 1: count how often each character appears
-  for (const char of str) {
-    freq.set(char, (freq.get(char) || 0) + 1);
-  }
-
-  // Pass 2: find the first character with a count of 1
-  for (let i = 0; i < str.length; i++) {
-    if (freq.get(str[i]) === 1) {
-      return i;
+  /**
+   * Inserts or updates key, evicting oldest item if capacity is exceeded
+   * @param {*} key
+   * @param {*} value
+   */
+  put(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.capacity) {
+      // Evict least recently used (first key in insertion order)
+      // Map.prototype.keys().next().value is O(1)
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
     }
+
+    this.cache.set(key, value);
   }
-
-  return -1;
 }
 
-console.log(firstUniqueChar("interview")); // 0  ("i" appears once)
-console.log(firstUniqueChar("aabb"));      // -1 (no unique character)
+// Verification Tests
+const lru = new OptimizedLRUCache(2);
+lru.put('a', 1);
+lru.put('b', 2);
+assert.equal(lru.get('a'), 1); // Access 'a' -> 'b' is now least recently used
+
+lru.put('c', 3); // Capacity exceeded: 'b' should be evicted!
+assert.equal(lru.get('b'), null); // 'b' was evicted
+assert.equal(lru.get('a'), 1);    // 'a' remains
+assert.equal(lru.get('c'), 3);    // 'c' remains
+
+console.log('✅ LRU Cache tests passed with O(1) performance.');
 ```
 
-**Complexity:** O(n) time — two passes through the string. O(k) space where k is the number of distinct characters (at most 26 for lowercase English letters).
+### Solution Explanation
 
----
-
-## Common Mistakes
-
-### 1. Object keys are always strings — even when they look like numbers
-
-```js
-const obj = {};
-obj[1] = "one";
-obj[2] = "two";
-console.log(Object.keys(obj)); // ["1", "2"]  — strings, not numbers
-```
-
-If you store an object as a key, it converts to the string `"[object Object]"`. Two different objects produce the same key and overwrite each other:
-
-```js
-const map = {};
-const a = { id: 1 };
-const b = { id: 2 };
-map[a] = "Alpha";
-map[b] = "Beta";  // both keys become "[object Object]", so this overwrites
-console.log(map[a]); // "Beta"  — not "Alpha"!
-```
-
-Fix: use a `Map`.
-
-### 2. Using `arr.includes()` inside a loop
-
-```js
-// Slow — O(n) search inside an O(n) loop = O(n²) total
-for (const item of items) {
-  if (bigArray.includes(item)) { ... }
-}
-
-// Fast — convert to a Set once O(n), then each check is O(1)
-const bigSet = new Set(bigArray);
-for (const item of items) {
-  if (bigSet.has(item)) { ... }
-}
-```
-
-### 3. Spreading a Set to check membership
-
-```js
-// Bad — creates a new array on every check, O(n) each time
-if ([...mySet].includes(x)) { ... }
-
-// Good — O(1)
-if (mySet.has(x)) { ... }
-```
-
----
-
-## Tricky Points
-
-### Prototype trap with object counters
-
-Covered in Section 2 above. Short version: if your keys could ever be `"constructor"`, `"toString"`, `"hasOwnProperty"`, or similar, use a `Map` or `Object.create(null)`.
-
-### Reference vs value equality in Set/Map
-
-Covered in Section 6 above. Primitives (numbers, strings, booleans) are compared by value. Objects and arrays are compared by memory address.
-
----
-
-## Practical Exercise
-
-Write a function `countWords(sentence)` that:
-1. Takes a string like `"The dog saw the cat"`.
-2. Returns a `Map` where each key is a **lowercase** word and the value is how many times it appears.
-3. Ignores case — `"The"` and `"the"` both count as `"the"`.
-
-**Expected output for `"The dog saw the cat"`:**
-```
-Map { "the" => 2, "dog" => 1, "saw" => 1, "cat" => 1 }
-```
-
-**Acceptance criteria:**
-- Must use a `Map`, not a plain object.
-- Must handle any number of spaces between words.
-- Time complexity should be O(n) where n is the number of characters in the input.
-
-> **Hint:** `sentence.toLowerCase().split(/\s+/)` splits a string on any whitespace and gives you an array of words. `\s+` means "one or more whitespace characters".
+1. **Map Insertion-Order Exploitation:** In JavaScript, a `Map` iterates keys in the exact order they were inserted. Deleting a key and immediately setting it again (`this.cache.delete(key); this.cache.set(key, val);`) moves that key to the very end (tail) of the Map in $O(1)$ time.
+2. **Instant $O(1)$ Eviction:** Calling `this.cache.keys().next().value` retrieves the oldest key (the head of the Map) in $O(1)$ time without scanning or shifting an array.
 
 ---
 
 ## Summary
 
-- **Array** — ordered list, indexed by number. Reading by index is O(1). Adding or removing at the front (`unshift`/`shift`) is O(n) because all items must shift positions. Never call `shift` inside a loop.
-- **Plain Object** — string-keyed dictionary. Simple and JSON-friendly, but has a hidden prototype that can cause bugs when data keys collide with built-in names like `"toString"`.
-- **Map** — like an object but safer: any key type, no prototype, instant `.size`. Prefer it for dynamic counters and lookup tables.
-- **Set** — a collection where every value is unique. Membership check (`.has`) is O(1). Objects inside a Set are compared by memory address, not by content.
-- **The pattern:** convert an O(n²) nested-loop search into an O(n) single-pass solution by using a Map or Set to record what you have already seen.
+- **Arrays** offer $O(1)$ index access and $O(1)$ tail operations (`push`/`pop`), but head operations (`shift`/`unshift`) are $O(n)$ memory shifts.
+- **Plain Objects (`{}`)** coerce keys to strings and suffer from prototype inheritance collisions (`toString`); use `Map` or `Object.create(null)` for dynamic data dictionaries.
+- **ES2015 Maps** support arbitrary key types, protect against prototype pollution, preserve strict insertion order, and provide $O(1)$ `.size`.
+- **Sets** store unique values in $O(1)$ time, but compare non-primitives by reference address, requiring serialization for object uniqueness.
+- The **Two Sum Hash Complement** pattern reduces $O(n^2)$ nested pair scans to a single $O(n)$ pass.
 
 ---
 
 ## Cheat Sheet
 
-### Operation Complexity
-
-| Structure | Read | Insert | Delete | Membership check |
-| :--- | :--- | :--- | :--- | :--- |
-| **Array** (by index) | O(1) | End: O(1) · Front: O(n) | End: O(1) · Front: O(n) | O(n) with `.includes` |
-| **Object** (by key) | O(1) avg | O(1) avg | O(1) avg | O(1) with `key in obj` |
-| **Map** | O(1) avg | O(1) with `.set` | O(1) with `.delete` | O(1) with `.has` |
-| **Set** | — | O(1) with `.add` | O(1) with `.delete` | O(1) with `.has` |
-
-### Quick API Reference
-
-```js
-// Array
-arr.push(x)      // add to end       O(1)
-arr.pop()        // remove from end  O(1)
-arr.unshift(x)   // add to front     O(n) — avoid inside loops!
-arr.shift()      // remove from front  O(n) — avoid inside loops!
-arr[i]           // read by index    O(1)
-
-// Map
-const m = new Map();
-m.set(key, value)  // add/update
-m.get(key)         // read
-m.has(key)         // true/false  O(1)
-m.delete(key)      // remove
-m.size             // count  O(1)
-
-// Set
-const s = new Set();
-s.add(value)       // add (duplicate ignored)
-s.has(value)       // true/false  O(1)
-s.delete(value)    // remove
-s.size             // count  O(1)
-[...new Set(arr)]  // deduplicate an array  O(n)
-```
-
-### Decision Guide
-
-| Situation | Use |
-| :--- | :--- |
-| Ordered list, accessed by position | **Array** |
-| Check if something was seen before | **Set** |
-| Remove duplicates from a list | **Set** |
-| Count how often each item appears | **Map** |
-| Key-value pairs, keys are not plain strings | **Map** |
-| Simple config / JSON payload with known string keys | **Plain Object** |
-| Not sure? | **Map** (safest default) |
-
-### Pattern Template — O(n) lookup with Map
-
-Use this pattern whenever a problem asks for pairs, complements, or "have I seen X before?":
-
-```js
-function solvePairProblem(nums, target) {
-  const seen = new Map(); // stores: value -> index (or whatever info you need)
-
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i]; // what we are searching for
-    if (seen.has(complement)) {
-      return [seen.get(complement), i];  // found the pair
-    }
-    seen.set(nums[i], i);               // record current item for future lookups
-  }
-
-  return []; // no solution
-}
-```
+| Data Structure | Best Used For | Fast Operations ($O(1)$) | Slow Operations ($O(n)$) | Critical Trap |
+|---|---|---|---|---|
+| **Array** | Ordered lists, numeric index lookups | `arr[i]`, `push()`, `pop()` | `shift()`, `unshift()`, `indexOf()` | `shift()` in loops causes $O(n^2)$ event-loop freezes |
+| **Object (`{}`)** | Static JSON payloads, known fixed keys | Property access (`obj.key`) | `Object.keys()`, `delete obj.key` | Inherits `Object.prototype.toString` |
+| **Map** | Dynamic key-value lookups, non-string keys | `get()`, `set()`, `has()`, `delete()`, `size` | Iterating all entries ($O(n)$) | Not directly serializable to JSON |
+| **Set** | Deduplication, fast membership checks | `add()`, `has()`, `delete()`, `size` | Iterating all elements ($O(n)$) | `set.has([1, 2])` checks pointer, not value |
 
 ---
 
 ## Interview Questions
 
-### 1. Concept Check
+### 1. What are the key differences between a plain JavaScript object and an ES2015 `Map`, and when should each be used?
 
-**Question:** What are three practical differences between a plain JavaScript object and a `Map`?
+**Question:** Compare plain JavaScript objects (`{}`) with ES2015 `Map` instances across key typing, prototype safety, size complexity, and performance.
 
-**Expected answer:** (1) **Key types** — objects only accept strings and Symbols as keys; `Map` accepts any type. (2) **Prototype safety** — plain objects inherit built-in properties like `toString` from `Object.prototype`, which can cause bugs when data keys collide with them; `Map` has no such inheritance. (3) **Size** — `Object.keys(obj).length` is O(n); `map.size` is O(1).
+**Answer:** 
+1. **Key Types:** Plain objects restrict keys strictly to Strings and Symbols; any other type (numbers, objects, booleans) is implicitly coerced to a string (`{ [1]: 'val' }` stores `"1"`). A `Map` accepts any value as a key, including numbers, functions, and object references without coercion.
+2. **Prototype Safety:** Plain objects inherit built-in properties from `Object.prototype` (`toString`, `valueOf`, `constructor`). If user-controlled data matches these names, it causes silent bugs or prototype pollution. A `Map` contains zero default keys.
+3. **Size Complexity:** Obtaining the number of entries in a plain object requires `Object.keys(obj).length`, which executes in $O(n)$ time. A `Map` exposes `.size` in $O(1)$ constant time.
+4. **Key Order:** A plain object iterates non-negative integer keys in ascending numerical order first, followed by strings in insertion order. A `Map` guarantees strict insertion order across all keys.
+- **Usage Recommendation:** Use plain objects for static configuration, DTOs, and JSON payloads. Use `Map` for dynamic dictionaries, frequency counters, caches, and when keys are added/removed frequently.
 
 ---
 
-### 2. Predict the Output
+### 2. What is the Reference Equality trap in JavaScript Sets and Maps, and how do you resolve it when storing composite data like coordinates?
 
-**Question:** What does this print, and why?
-```js
-const map = {};
-const a = { id: 1 };
-const b = { id: 2 };
-map[a] = "Alpha";
-map[b] = "Beta";
-console.log(map[a]);
+**Question:** Why does `new Set([[1, 2]]).has([1, 2])` return `false`, and how do you store unique 2D coordinates in a `Set`?
+
+**Answer:** JavaScript evaluates non-primitive types (objects, arrays, functions) by **reference equality** (memory address identity), not by structural content. When you write:
+```javascript
+const set = new Set();
+set.add([1, 2]);
+set.has([1, 2]); // returns false!
 ```
+The array literal `[1, 2]` passed to `set.has()` allocates a brand-new array instance at a distinct memory address from the array instance passed to `set.add()`. Because the memory pointers differ, the `Set` does not match them.
 
-**Expected answer:** `"Beta"`. Plain objects coerce non-string keys to strings. Both `a` and `b` convert to `"[object Object]"`, so `map[b] = "Beta"` overwrites the entry set by `map[a]`. Reading `map[a]` then returns `"Beta"`.
+**Resolution:** Convert the composite data into a canonical primitive string representation before storing:
+```javascript
+// Node.js code
+const set = new Set();
+const serialize = (x, y) => `${x},${y}`;
 
----
-
-### 3. Implement It
-
-**Question:** Implement `intersection(nums1, nums2)` that returns an array of **unique** numbers present in both arrays. Must run in O(n + m) time where n and m are the lengths of the two arrays.
-
-**Expected answer:**
-```js
-function intersection(nums1, nums2) {
-  const set1 = new Set(nums1);  // O(n) to build
-  const result = new Set();
-
-  for (const num of nums2) {    // O(m) to scan
-    if (set1.has(num)) {        // O(1) per check
-      result.add(num);          // add() ignores duplicates automatically
-    }
-  }
-
-  return [...result];
-}
-
-// intersection([1, 2, 2, 3], [2, 3, 4])  ->  [2, 3]
+set.add(serialize(1, 2));
+console.log(set.has(serialize(1, 2))); // true!
 ```
+Alternatively, for complex objects, sort object keys and serialize via `JSON.stringify()`, or use an in-memory Trie/spatial map structure.
 
 ---
 
-### 4. Debug a Bug
+### 3. Why is using `Array.prototype.shift()` inside a loop an anti-pattern in Node.js, and how does it degrade server throughput?
 
-**Question:** A word counter crashes when given the word `"toString"`. Reproduce and fix the bug.
+**Question:** What is the asymptotic time complexity of building a queue using `arr.push()` and `arr.shift()`, and how does it affect the Node.js event loop?
 
-**Expected answer:**
-```js
-// Buggy version — uses a plain object as a counter:
-const counts = {};
-counts["toString"] = (counts["toString"] || 0) + 1;
-// counts["toString"] starts as the built-in function [Function: toString],
-// not undefined. The || 0 does not help because the function is truthy.
-// Result: "[Function: toString]" + 1 = "[Function: toString]1" — wrong!
+**Answer:** A JavaScript array is allocated as a contiguous block of memory. While `arr.push()` appends an item to the end in $O(1)$ amortized time, `arr.shift()` removes the element at index 0. To maintain zero-based contiguous indexing, the JavaScript engine must copy and shift every remaining element in the array one index position to the left. Therefore, `arr.shift()` is an **$O(n)$ linear operation**.
 
-// Fix 1 — Map (cleanest):
-const counts = new Map();
-counts.set("toString", (counts.get("toString") || 0) + 1); // 1 — correct
+If an application dequeues $n$ tasks using `while (queue.length) queue.shift()`, each dequeue takes $O(n)$ time, resulting in **$O(n^2)$ total operations**. For a batch of 50,000 tasks, this triggers over 1.25 billion memory copies. Because Node.js runs JavaScript on a single thread, this synchronous CPU loop completely freezes the libuv event loop for seconds, blocking concurrent HTTP request handling and triggering health check failures.
 
-// Fix 2 — prototype-free object:
-const counts = Object.create(null);
-counts["toString"] = (counts["toString"] || 0) + 1; // undefined || 0 = 0, then + 1 = 1 — correct
-```
+**Fix:** Maintain an index pointer (`head = 0; queue[head++]`) to achieve true $O(1)$ dequeues, or use a proper Doubly Linked List queue structure.
 
 ---
 
-### 5. Design and Trade-off
+### 4. Given an array of integers, how do you find two numbers that sum to a target value in a single $O(n)$ pass, and what are the trade-offs compared to the two-pointer approach?
 
-**Question:** When would you use a `Set` instead of an Array to store user IDs?
+**Question:** Explain the single-pass Hash Complement approach for Two Sum and compare its time and space trade-offs against the sorted Two-Pointer technique.
 
-**Expected answer:** Use a `Set` when you frequently need to check whether an ID already exists. `set.has(id)` is O(1); `arr.includes(id)` is O(n). A `Set` also prevents duplicate IDs automatically. Use an Array when you need the IDs in a specific order or need to access them by position.
+**Answer:** The **Hash Complement approach** uses a `Map` (or `Set`) to store elements as they are visited. On each iteration $i$, it computes the required complement: $\text{complement} = \text{target} - \text{nums}[i]$.
+1. Check if `complement` exists in the `Map` ($O(1)$ average time).
+2. If yes, the pair is found and their indices are returned immediately.
+3. If no, store `nums[i] => i` in the `Map` and proceed.
+- **Complexity:** $O(n)$ time, $O(n)$ auxiliary space.
 
----
-
-### 6. Senior Follow-up — Node.js Server
-
-**Question:** A developer uses an array as a task queue: `queue.push()` to add tasks and `queue.shift()` to dequeue them. At 50 000 tasks the Node.js server starts lagging badly. Why? How do you fix it?
-
-**Expected answer:** `queue.shift()` is O(n). Every time a task is dequeued, all remaining tasks must slide one position forward. Calling it 50 000 times produces roughly 1.25 billion memory copy operations in total. Because Node.js runs JavaScript on a **single thread**, this blocks the event loop and prevents it from handling incoming requests.
-
-Two fixes:
-1. **Head pointer** — instead of shifting, keep a `head` index and increment it: `queue[head++]`. No copying happens at all. Memory for old slots is wasted but all operations are O(1).
-2. **Linked list queue** — a proper queue backed by a linked list gives true O(1) enqueue and dequeue with no wasted space. See [DSA Day 19 – Queue and Deque](day-19-queue-circular-queue-and-deque.md) for the full implementation.
+**Trade-off Comparison:**
+- **Hash Complement:** Runs in $O(n)$ time on unsorted arrays, but consumes $O(n)$ auxiliary memory to store the hash map.
+- **Two-Pointer Approach:** Requires the array to be sorted first. Sorting takes $O(n \log n)$ time, followed by an $O(n)$ two-pointer inward scan (`left` and `right`).
+  - *Advantage:* If the input array is already sorted, the two-pointer approach runs in $O(n)$ time with **$O(1)$ auxiliary space**, saving memory. If modifying or sorting the original array is prohibited, preserving original indices requires creating an index-tuple array, eliminating the space advantage.
 
 ---
 
 <nav aria-label="Lecture navigation">
 
-[← Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Day 03: Strings and Text Patterns →](day-03-strings-and-text-patterns.md)
+[Previous: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Strings and Text Patterns](day-03-strings-and-text-patterns.md)
 
 </nav>

@@ -1,71 +1,95 @@
 # Day 53: Trie Construction and Prefix Search
 
-## 1. Learning Outcomes
-- Master the **Trie (Prefix Tree)** data structure and its tree node representation.
-- Implement core Trie operations: `insert`, `search`, and `startsWith` in $O(L)$ time ($L$ = word length).
-- Compare child storage representations in JavaScript: **Hash Map** vs. **Fixed 26-Element Array**.
-- Solve **Word Search II** combining Trie pruning with 2D Grid Backtracking.
-- Connect Tries to real-world high-performance HTTP routers (Fastify radix tree) and search autocomplete in Node.js.
+<nav aria-label="Lecture navigation">
+  <a href="day-52-greedy-traversal-jump-game-gas-station.md">◀ Day 52: Greedy Traversal: Jump Game and Gas Station</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-54-union-find-disjoint-set-union.md">Day 54: Union-Find: Disjoint Set Union (DSU) ▶</a>
+</nav>
 
 ---
 
-## 2. Prerequisites & Navigation
-- **Prerequisites**: Day 03 (Strings & Text Patterns), Day 25 (Grid Backtracking), Day 31 (Tree Fundamentals).
-- **Navigation**:
-  - [Previous: Day 52 - Greedy Traversal: Jump Game & Gas Station](day-52-greedy-traversal-jump-game-gas-station.md)
-  - [Roadmap](../javascript-dsa-roadmap.md)
-  - [Next: Day 54 - Union-Find: Disjoint Set Union (DSU)](day-54-union-find-disjoint-set-union.md)
+## Learning Outcomes
+
+- Master the **Trie (Prefix Tree)** data structure and its node-and-pointer mechanical hierarchy.
+- Implement core Trie operations—`insert`, `search`, and `startsWith`—in $O(L)$ time, where $L$ is the string length.
+- Contrast child pointer storage trade-offs in JavaScript: **`Map` / Plain Object** versus **Fixed 26-Element Array**.
+- Solve **Word Search II** by coupling Trie prefix pruning with 2D Grid Backtracking.
+- Understand how Radix Trees (compressed Tries) power URL routing in high-performance Node.js frameworks like Fastify and Hono.
+- Build search-as-you-type autocomplete engines and IP routing tables with sub-millisecond retrieval latency.
 
 ---
 
-## 3. Core Concepts & Mental Models
-A **Trie** (derived from "re**trie**val") is a tree where each node represents a character of a string. All descendants of a node share the common string prefix associated with that node.
+## Prerequisites
+
+- [Day 03: String Manipulation and Two Pointers](day-03-string-manipulation-and-two-pointers.md) — Character encoding, strings, and prefix matching.
+- [Day 25: Grid Backtracking and N-Queens](day-25-grid-backtracking-and-n-queens.md) — 2D matrix exploration and backtracking state restoration.
+- [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Tree nodes, recursive traversal, and pointer navigation.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+| :--- | :--- | :--- |
+| **Trie (Prefix Tree)** | An $N$-ary tree where each node represents a character, and the path from root to node represents a common prefix. | Enables $O(L)$ lookups and prefix matching independent of total dictionary size. |
+| **`isEndOfWord`** | A boolean flag marking whether a specific node corresponds to the termination of a complete valid word. | Distinguishes between standalone words and mere prefixes (e.g., `"app"` vs. `"apple"`). |
+| **Radix Tree / Patricia Trie** | A space-optimized Trie where every node with only one child is merged with its child. | The exact internal routing mechanism behind Fastify, Express routers, and Linux routing tables. |
+| **Alphabet Indexing** | Mapping `'a'` through `'z'` to indices $0 \dots 25$ using `char.charCodeAt(0) - 97`. | Provides constant-time indexing and contiguous memory locality in V8 engines. |
+| **Prefix Pruning** | Abandoning recursive search branches immediately when the current character sequence does not exist in the Trie. | Reduces Word Search II from exponential $O(M \cdot N \cdot 4^L)$ to microseconds. |
+
+---
+
+## Core Concepts & Mechanical Architecture
+
+### 1. Trie Anatomy and Prefix Sharing
+
+A **Trie** organizes a set of strings hierarchically:
+- The **Root Node** is an empty sentinel containing no character.
+- Each descendant edge represents a character.
+- Words with common prefixes share the same chain of ancestor nodes.
 
 ```text
-Trie containing: ["app", "apple", "beer", "bat"]:
-                    (root)
-                   /      \
-                 'a'      'b'
-                 /        /  \
-               'p'      'e'  'a'
-               /        /      \
-          [ 'p' ]*    'e'     [ 't' ]*
-            /         /
-          'l'     [ 'r' ]*
+Trie Structure for Words: ["app", "apple", "beer", "bat"]:
+
+                    ( Root )
+                   /        \
+                 'a'        'b'
+                 /          / \
+               'p'        'e' 'a'
+               /          /     \
+          [ 'p' ]*      'e'    [ 't' ]*
+            /           /
+          'l'       [ 'r' ]*
           /
        [ 'e' ]*
 
 * indicates isEndOfWord = true.
-Shared Prefixes: "app" and "apple" share 3 nodes ('a' -> 'p' -> 'p').
-Prefix Search: Checking if any word starts with "be" takes only 2 character hops!
+Notice:
+- "app" and "apple" share nodes 'a' -> 'p' -> 'p'.
+- Querying startsWith("be") stops at node 'e' and returns true in 2 hops!
 ```
 
 ---
 
-## 4. Detailed Technical Explanations
+### 2. Node Implementation: Map vs. Fixed Array
 
-### 4.1 Node Representation: Map vs. Array
-1. **Object / `Map`**: `children = new Map()`. Flexible, supports full Unicode / ASCII characters with zero wasted memory for sparse nodes.
-2. **Fixed 26-Element Array**: `children = new Array(26)`. Index derived via `char.charCodeAt(0) - 97`. Provides instant array access with optimal V8 hidden-class optimizations for lowercase English letters.
+```text
+Child Storage Comparison:
+Option A: Fixed 26-Array                       Option B: JavaScript Map
+Node {                                         Node {
+  children: [null, Node('b'), ...null] (x26)     children: Map('b' => Node('b'))
+  isEndOfWord: false                             isEndOfWord: false
+}                                              }
+Pros: O(1) index arithmetic, fast V8 hidden    Pros: Compact for sparse trees,
+classes for lowercase English letters.         supports Unicode, emojis, digits.
+```
 
-### 4.2 Time and Space Complexity
-- **Insertion**: $O(L)$ time, $O(L)$ space in worst case (where $L$ is word length).
-- **Search (Exact Match)**: $O(L)$ time, $O(1)$ space.
-- **Prefix Match (`startsWith`)**: $O(L)$ time, $O(1)$ space.
-- **Lookup Independence**: Lookup time depends *only* on the length of the query string, completely independent of how many millions of words are stored in the Trie!
-
-### 4.3 Node.js Relevance: Fastify URL Routing & Autocomplete
-Standard web frameworks (Express) match routes using linear regex arrays ($O(N)$ routes). High-performance Node.js frameworks (e.g., **Fastify**, **Hono**) use a Radix Tree (compact Trie) to route incoming HTTP requests. A request for `/api/users/:id` navigates prefix branches in $O(L)$ character comparisons, ensuring route dispatching takes sub-microseconds regardless of API route count.
-
----
-
-## 5. JavaScript Implementation & Step-by-Step Traces
-
-### 5.1 Production Trie Implementation (LeetCode 208)
 ```javascript
+// Node.js code: Production Trie Implementation
 class TrieNode {
   constructor() {
-    this.children = {}; // or new Map()
+    /** @type {Map<string, TrieNode>} */
+    this.children = new Map();
     this.isEndOfWord = false;
   }
 }
@@ -76,104 +100,152 @@ class Trie {
   }
 
   /**
-   * Inserts a word into the trie.
-   * Time Complexity: O(L), Space: O(L)
+   * Inserts a word into the Trie.
+   * Time Complexity: O(L) where L = word.length
+   * Space Complexity: O(L)
+   * @param {string} word
    */
   insert(word) {
     let curr = this.root;
-
-    for (const char of word) {
-      if (!curr.children[char]) {
-        curr.children[char] = new TrieNode();
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      if (!curr.children.has(ch)) {
+        curr.children.set(ch, new TrieNode());
       }
-      curr = curr.children[char];
+      curr = curr.children.get(ch);
     }
-
     curr.isEndOfWord = true;
   }
 
   /**
-   * Returns true if the exact word is in the trie.
-   * Time Complexity: O(L), Space: O(1)
+   * Returns true if the word is in the Trie.
+   * Time Complexity: O(L)
+   * @param {string} word
+   * @returns {boolean}
    */
   search(word) {
-    const node = this._traverse(word);
-    return node !== null && node.isEndOfWord === true;
+    let curr = this.root;
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      if (!curr.children.has(ch)) return false;
+      curr = curr.children.get(ch);
+    }
+    return curr.isEndOfWord;
   }
 
   /**
-   * Returns true if there is any word in the trie that starts with prefix.
-   * Time Complexity: O(L), Space: O(1)
+   * Returns true if there is any word in the Trie that starts with the given prefix.
+   * Time Complexity: O(L)
+   * @param {string} prefix
+   * @returns {boolean}
    */
   startsWith(prefix) {
-    return this._traverse(prefix) !== null;
-  }
-
-  _traverse(str) {
     let curr = this.root;
-    for (const char of str) {
-      if (!curr.children[char]) {
-        return null;
-      }
-      curr = curr.children[char];
+    for (let i = 0; i < prefix.length; i++) {
+      const ch = prefix[i];
+      if (!curr.children.has(ch)) return false;
+      curr = curr.children.get(ch);
     }
-    return curr;
+    return true; // Reached prefix node successfully
   }
 }
+
+// Verification
+const trie = new Trie();
+trie.insert('apple');
+console.log('Search "apple":', trie.search('apple'));   // true
+console.log('Search "app":', trie.search('app'));       // false
+console.log('StartsWith "app":', trie.startsWith('app')); // true
+trie.insert('app');
+console.log('Search "app" after insert:', trie.search('app')); // true
 ```
 
-### 5.2 Word Search II (Trie + 2D Backtracking - LeetCode 212)
+---
+
+### 3. Word Search II: Trie Pruning with 2D Backtracking
+
+In **Word Search II** (LeetCode 212), given an $M \times N$ board of characters and a dictionary `words`, find all words on the board.
+- Naive search: Run 2D backtracking for every word independently $\implies O(K \cdot M \cdot N \cdot 4^L)$, which times out.
+- **Trie Optimization**: Insert all dictionary words into a Trie. Walk the grid once, advancing in the Trie simultaneously. If the current grid character path does **not** exist in the Trie, terminate that backtracking branch immediately (**prefix pruning**)!
+
+```text
+Word Search II Pruning Mechanics:
+Grid:
+[ ['o', 'a', 'a', 'n'],
+  ['e', 't', 'a', 'e'],
+  ['i', 'h', 'k', 'r'],
+  ['i', 'f', 'l', 'v'] ]
+Trie has: ["oath", "pea", "eat", "rain"]
+
+Step 1: Cell (0, 0) is 'o'. Trie has child 'o'! Continue.
+Step 2: Neighbor (0, 1) is 'a'. Trie path 'o' -> 'a' exists! Continue.
+Step 3: Neighbor (1, 1) is 't'. Trie path 'o' -> 'a' -> 't' exists! Continue.
+Step 4: Neighbor (2, 1) is 'h'. Trie path 'o' -> 'a' -> 't' -> 'h' matches word "oath"!
+        Record "oath". Set word = null to prevent duplicate reporting.
+        Prune leaf nodes to accelerate future searches!
+```
+
 ```javascript
+// Node.js code: Word Search II with Trie Pruning
 /**
- * Finds all words from a dictionary present in a 2D board.
+ * @param {character[][]} board
+ * @param {string[]} words
+ * @returns {string[]}
  */
 function findWords(board, words) {
-  const root = new TrieNode();
-
-  // 1. Build Trie from words dictionary
-  for (const word of words) {
+  // 1. Build Trie
+  const root = { children: new Map(), word: null };
+  for (const w of words) {
     let curr = root;
-    for (const char of word) {
-      if (!curr.children[char]) curr.children[char] = new TrieNode();
-      curr = curr.children[char];
+    for (const ch of w) {
+      if (!curr.children.has(ch)) {
+        curr.children.set(ch, { children: new Map(), word: null });
+      }
+      curr = curr.children.get(ch);
     }
-    curr.word = word; // Store full word at leaf for O(1) collection
+    curr.word = w; // Store full word at terminal node
   }
 
-  const result = [];
   const rows = board.length;
   const cols = board[0].length;
+  const result = [];
 
   function dfs(r, c, parentNode) {
-    const char = board[r][c];
-    const currNode = parentNode.children[char];
-    if (!currNode) return; // Trie pruning: prefix does not exist
+    const ch = board[r][c];
+    const currNode = parentNode.children.get(ch);
+    if (!currNode) return; // Pruned: prefix does not exist!
 
-    // Match found!
-    if (currNode.word) {
+    // Check if word matched
+    if (currNode.word !== null) {
       result.push(currNode.word);
-      currNode.word = null; // Avoid duplicate collection
+      currNode.word = null; // Prevent duplicate additions
     }
 
-    // Backtrack on grid
-    board[r][c] = '#'; // Mark visited
+    // In-place visited marker
+    board[r][c] = '#';
 
-    if (r > 0 && board[r - 1][c] !== '#') dfs(r - 1, c, currNode);
-    if (r < rows - 1 && board[r + 1][c] !== '#') dfs(r + 1, c, currNode);
-    if (c > 0 && board[r][c - 1] !== '#') dfs(r, c - 1, currNode);
-    if (c < cols - 1 && board[r][c + 1] !== '#') dfs(r, c + 1, currNode);
+    // Explore 4 neighbors
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of DIRS) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] !== '#') {
+        dfs(nr, nc, currNode);
+      }
+    }
 
-    board[r][c] = char; // Restore original character
+    // Backtrack restore
+    board[r][c] = ch;
 
-    // Optimization: prune leaf nodes to speed up subsequent searches
-    if (Object.keys(currNode.children).length === 0) {
-      delete parentNode.children[char];
+    // Leaf node pruning optimization: delete empty branches
+    if (currNode.children.size === 0 && currNode.word === null) {
+      parentNode.children.delete(ch);
     }
   }
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (root.children[board[r][c]]) {
+      if (root.children.has(board[r][c])) {
         dfs(r, c, root);
       }
     }
@@ -181,108 +253,261 @@ function findWords(board, words) {
 
   return result;
 }
+
+const testBoard = [
+  ['o','a','a','n'],
+  ['e','t','a','e'],
+  ['i','h','k','r'],
+  ['i','f','l','v']
+];
+console.log('Found words:', findWords(testBoard, ['oath','pea','eat','rain'])); // ['oath', 'eat']
 ```
 
-### 5.3 Execution Trace: Trie Search on "app" vs. "apple"
+---
+
+## Detailed Node.js Relevance
+
+### Fastify URL Routing and Radix Trees
+
+In high-performance Node.js HTTP frameworks (Fastify, Hono, Find-My-Way):
+
 ```text
-Trie contains: "apple" (isEndOfWord = true at 'e')
-Query 1: search("app")
-  Traverse: 'a' -> 'p' -> 'p'. Node reached!
-  Check node.isEndOfWord: false (only a prefix, not an inserted word).
-  Return FALSE.
-
-Query 2: startsWith("app")
-  Traverse: 'a' -> 'p' -> 'p'. Node reached!
-  Return TRUE.
-
-Query 3: search("apple")
-  Traverse: 'a' -> 'p' -> 'p' -> 'l' -> 'e'. Node reached!
-  Check node.isEndOfWord: true.
-  Return TRUE.
+Fastify HTTP Radix Tree Routing:
+                       ( /api/v1/ )
+                      /            \
+                 "users"          "orders"
+                /       \             \
+             "/:id"    "/search"     "/:orderId"
 ```
 
----
-
-## 6. Common Mistakes & Anti-Patterns
-- **Confusing `search` with `startsWith`**: `search` requires `node.isEndOfWord === true`. Calling `startsWith` only verifies that the prefix path exists in the tree.
-- **Redundant Word Backtracking in Word Search II**: Searching each dictionary word independently on the grid takes $O(W \cdot M \cdot N \cdot 4^L)$. Using a Trie searches all words concurrently, pruning branches the moment a prefix fails.
-- **Collecting Duplicate Words in Grid Backtracking**: Multiple paths on the grid can spell the same word. Setting `currNode.word = null` immediately upon adding to results prevents duplicate entries.
+1. **Why Express Degrades on 100+ Routes**: Traditional Express routes are stored in a flat array of regular expressions. Matching a route requires checking every regex in sequence ($O(N)$ regex evaluations).
+2. **Sub-Microsecond Radix Routing**: Fastify compiles routes into a Radix Tree. Incoming URLs are evaluated character-by-character along prefix branches in $O(L)$ time, completely independent of whether the API has 10 routes or 10,000 routes!
 
 ---
 
-## 7. Tricky Points & Edge Cases
-- **Empty String**: Inserting `""` sets `root.isEndOfWord = true`.
-- **Character Case Sensitivity**: Ensure inputs are normalized (e.g., `.toLowerCase()`) if case-insensitive matching is expected.
-- **Radix Tree (Compressed Trie)**: In production routers, single-child chains (e.g., `'a' -> 'p' -> 'i'`) are compressed into a single edge `"api"` to save pointer allocations.
+## Tricky Points & Edge Cases
+
+1. **Duplicate Words in Word Search II**:
+   Multiple distinct grid paths can spell the exact same word. To prevent returning duplicates, either store results in a `Set` or set `currNode.word = null` immediately after capturing it.
+2. **Prefix vs. Complete Word**:
+   In `search("app")`, if the Trie contains `"apple"`, the node for `'p'` exists, but its `isEndOfWord` flag is `false`. A common bug is returning `true` simply because the node exists. Only `startsWith()` returns `true` on non-terminal nodes.
+3. **Empty String Query**:
+   `search("")` should return `true` only if an empty string was explicitly inserted (`root.isEndOfWord === true`).
+4. **Pruning Leaf Nodes**:
+   In Word Search II, deleting leaf nodes from the Trie as words are matched (`parentNode.children.delete(ch)`) dramatically prunes future traversal branches, speeding up execution by up to $10\times$.
 
 ---
 
-## 8. Practical Engineering Exercises
-1. Implement an **Autocomplete System** that returns the Top 5 most frequent search queries matching a given prefix.
-2. Implement **Map Sum Pairs** (LeetCode 677) summing values of all keys starting with a given prefix.
+## Hands-On Exercise
 
----
+### Scenario
+You are developing a live type-ahead autocomplete service in Node.js for an e-commerce search bar. You receive an array of product titles.
+Implement `AutocompleteEngine`:
+1. `insert(word)`: Adds a product name to the dictionary.
+2. `getSuggestions(prefix, maxResults)`: Returns an array of up to `maxResults` complete words starting with `prefix`, sorted alphabetically.
+3. If no words match the prefix, return `[]`.
+4. Ensure lookups do not traverse the entire dictionary.
 
-## 9. Key Takeaways & Summary
-- Tries provide $O(L)$ string insertion, search, and prefix matching regardless of dictionary size.
-- Shared prefixes are represented by shared node paths, making Tries memory-efficient for related word sets.
-- In Word Search II, a Trie enables simultaneous multi-word search with early prefix pruning.
-- Fastify and high-performance Node.js routers utilize Radix Trees for $O(L)$ HTTP request routing.
-
----
-
-## 10. Quick Reference Cheat Sheet
-| Operation | Method | Time Complexity | Auxiliary Space |
-| :--- | :--- | :--- | :--- |
-| **Insert** | Walk/Create characters, set `isEndOfWord = true` | $O(L)$ | $O(L)$ |
-| **Search** | Walk characters, return `Boolean(node?.isEndOfWord)` | $O(L)$ | $O(1)$ |
-| **Prefix Check** | Walk characters, return `node !== null` | $O(L)$ | $O(1)$ |
-
----
-
-## 11. Interview Questions & Expected Answers
-
-### 1. Conceptual
-**Question**: Compare the lookup time and space characteristics of a Trie versus a Hash Map for prefix lookups (`startsWith`).  
-**Hint**: How does a Hash Map handle prefix queries?  
-**Expected Answer Shape**: A Hash Map provides $O(L)$ exact lookups, but to check whether *any* word starts with prefix $P$, a Hash Map must scan all $N$ keys ($O(N \cdot L)$ time), or pre-store all possible prefixes of all words, causing massive memory bloat. A Trie naturally structures words by common prefix, resolving `startsWith` in strictly $O(|P|)$ time with zero full dictionary scanning and optimal shared prefix memory.
-
-### 2. Code-Writing
-**Question**: Add a `delete(word)` method to the `Trie` class that removes a word and deallocates unused nodes.  
-**Hint**: Use post-order recursion; delete child if it has no other children and is not end of another word.  
-**Expected Answer Shape**: Write recursive `_delete(node, word, depth)`. Base: at word end, set `node.isEndOfWord = false`. If `node` has no children, return true to signal parent to delete this child key (`delete parent.children[char]`). If child has other children or is another word's ending, preserve it.
-
-### 3. Debugging
-**Question**: Spot the memory leak in this Trie autocomplete cache in Node.js:  
+### Buggy Code
 ```javascript
-class AutoCompleteTrie {
+class AutocompleteEngine {
   constructor() {
-    this.root = {};
+    this.words = [];
   }
-  addQuery(q) {
-    let curr = this.root;
-    for (const c of q) {
-      curr[c] = curr[c] || { suggestions: [] };
-      curr[c].suggestions.push(q);
-      curr = curr[c];
-    }
+
+  insert(word) {
+    this.words.push(word);
+  }
+
+  getSuggestions(prefix, maxResults) {
+    // BUG: Full dictionary scan takes O(N * L) time on every keystroke!
+    const matches = this.words.filter(w => w.startsWith(prefix));
+    return matches.sort().slice(0, maxResults);
   }
 }
-```  
-**Hint**: What happens to `suggestions` arrays on common prefixes over millions of queries?  
-**Expected Answer Shape**: Over millions of searches, pushing every full query string into every ancestor node's `suggestions` array causes massive unbounded duplicate string storage. Ancestors for common prefixes (like `'s'`) accumulate millions of strings in V8 heap memory. Bounded heaps (e.g., keeping only the top 5 suggestions) or storing query IDs with TTLs are required to keep memory bounded.
+```
 
-### 4. System Design / Tradeoff
-**Question**: Why does Fastify choose a Radix Tree (compact Trie) for URL routing rather than an array of regular expressions like Express?  
-**Hint**: Route count scaling and regex execution overhead.  
-**Expected Answer Shape**: Express tests routes sequentially using regex ($O(N)$ where $N$ is route count). In an enterprise API with 500 endpoints, every incoming request executes dozens of regex matches, consuming event loop CPU time. Fastify's Radix Tree routes requests in $O(L)$ where $L$ is URL path character length, completely independent of how many routes exist, yielding over $3\times$ higher request throughput.
+### Acceptance Criteria
+- Use a Trie to navigate directly to the prefix node in $O(\text{prefix.length})$ time.
+- Collect all descendant words using DFS starting exclusively from the prefix node.
+- Return at most `maxResults` suggestions sorted alphabetically.
+- Handle non-matching prefixes gracefully without crashing.
 
-### 5. Tricky / Edge Case
-**Question**: In Word Search II, why is leaf node pruning (`delete parentNode.children[char]`) critical to avoid Time Limit Exceeded?  
-**Hint**: What happens after all words in a branch have been discovered?  
-**Expected Answer Shape**: Once a leaf word (e.g., "apple") is found and has no other children, subsequent grid traversals visiting that same cell area will continue traversing down to the dead-end leaf repeatedly. By deleting the leaf node from the parent's children map when its word is found and it has no remaining sub-branches, the Trie actively shrinks during execution, dramatically pruning future grid backtracking branches.
+### Solution Code
+```javascript
+const assert = require('assert');
 
-### 6. Real-World Node.js Context
-**Question**: How does a Node.js CIDR IP address filter (like checking if a request IP is within a banned subnet) use a Binary Trie?  
-**Hint**: Bitwise representation of IPv4 addresses.  
-**Expected Answer Shape**: An IPv4 address is a 32-bit integer. Subnets (e.g., `192.168.1.0/24`) represent bit prefixes. A Binary Trie stores bits (0 or 1) along each edge up to the subnet prefix length. When an incoming HTTP request IP arrives, the Node.js security middleware traverses the 32 bits through the Binary Trie in $O(1)$ time ($\le 32$ steps) to instantly match against thousands of banned CIDR blocks.
+// Node.js code: Production Trie Autocomplete Engine
+class AutoNode {
+  constructor() {
+    this.children = new Map();
+    this.isEndOfWord = false;
+  }
+}
+
+class AutocompleteEngine {
+  constructor() {
+    this.root = new AutoNode();
+  }
+
+  insert(word) {
+    let curr = this.root;
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      if (!curr.children.has(ch)) {
+        curr.children.set(ch, new AutoNode());
+      }
+      curr = curr.children.get(ch);
+    }
+    curr.isEndOfWord = true;
+  }
+
+  /**
+   * @param {string} prefix
+   * @param {number} [maxResults=5]
+   * @returns {string[]}
+   */
+  getSuggestions(prefix, maxResults = 5) {
+    let curr = this.root;
+
+    // 1. Navigate to the prefix node in O(prefix.length)
+    for (let i = 0; i < prefix.length; i++) {
+      const ch = prefix[i];
+      if (!curr.children.has(ch)) {
+        return []; // Prefix does not exist
+      }
+      curr = curr.children.get(ch);
+    }
+
+    const suggestions = [];
+
+    // 2. DFS to collect words under prefix node
+    function dfsCollect(node, currentWord) {
+      if (suggestions.length >= maxResults) return;
+
+      if (node.isEndOfWord) {
+        suggestions.push(currentWord);
+      }
+
+      // Sort child characters alphabetically to guarantee sorted output
+      const sortedKeys = Array.from(node.children.keys()).sort();
+      for (const ch of sortedKeys) {
+        dfsCollect(node.children.get(ch), currentWord + ch);
+        if (suggestions.length >= maxResults) break;
+      }
+    }
+
+    dfsCollect(curr, prefix);
+    return suggestions;
+  }
+}
+
+// Verification & Automated Unit Tests
+const engine = new AutocompleteEngine();
+engine.insert('apple');
+engine.insert('app');
+engine.insert('application');
+engine.insert('applet');
+engine.insert('banana');
+engine.insert('apply');
+
+// Suggestions for "app" (max 3)
+const res1 = engine.getSuggestions('app', 3);
+assert.deepStrictEqual(res1, ['app', 'apple', 'applet']);
+
+// Suggestions for "app" (max 5)
+const res2 = engine.getSuggestions('app', 5);
+assert.deepStrictEqual(res2, ['app', 'apple', 'applet', 'application', 'apply']);
+
+// Non-matching prefix
+assert.deepStrictEqual(engine.getSuggestions('xyz', 3), []);
+
+// Suggestions for "ban"
+assert.deepStrictEqual(engine.getSuggestions('ban', 3), ['banana']);
+
+console.log('✅ All AutocompleteEngine assertions passed successfully!');
+```
+
+### Solution Explanation
+1. **Direct Prefix Navigation**: Instead of scanning millions of words, the algorithm jumps straight down the Trie in $O(\text{prefix.length})$ steps.
+2. **Subtree DFS Scoping**: DFS only explores branches under the target prefix node, ignoring the rest of the dictionary.
+3. **Sorted Traversal**: Iterating sorted children keys produces lexicographically sorted results on the fly without post-sorting.
+
+---
+
+## Summary
+
+- A **Trie** is a specialized tree data structure designed for efficient string retrieval, prefix querying, and autocomplete.
+- Core operations (`insert`, `search`, `startsWith`) run in $O(L)$ time where $L$ is word length, independent of dictionary size.
+- **Word Search II** combines Trie prefix pruning with 2D grid backtracking to avoid exploring invalid character branches.
+- High-performance Node.js frameworks (Fastify) utilize Radix Trees (compressed Tries) to achieve sub-microsecond HTTP route dispatching.
+
+---
+
+## Cheat Sheet & Common Pitfalls
+
+| Operation | Time Complexity | Auxiliary Space | Key Invariant |
+| :--- | :--- | :--- | :--- |
+| **`insert(word)`** | $O(L)$ | $O(L)$ new nodes | Set `isEndOfWord = true` at final node |
+| **`search(word)`** | $O(L)$ | $O(1)$ | Must verify `curr.isEndOfWord === true` |
+| **`startsWith(p)`** | $O(L)$ | $O(1)$ | Return `true` if all characters exist |
+| **Word Search II** | $O(M \cdot N \cdot 4^L)$ | $O(\sum L)$ | Prune Trie leaf nodes upon word match |
+
+---
+
+## Interview Questions
+
+### 1. What are the space and time advantages of a Trie compared to a Hash Table for string lookups?
+**Question:** Compare a Trie with a Hash Table (such as a JavaScript `Set` or `Map`) for string storage and prefix operations.
+
+**Answer:**
+- **Exact Lookups**:
+  - Hash Table: $O(L)$ to compute the hash function and compare strings on collision.
+  - Trie: $O(L)$ to traverse character pointers.
+- **Prefix Matching (`startsWith`)**:
+  - Hash Table: $O(N \cdot L)$ because it must scan all $N$ keys and evaluate `str.startsWith(p)`.
+  - Trie: $O(L)$ because it simply follows prefix pointers and returns true if the node exists.
+- **Memory Consumption**:
+  - Hash Table: Stores full duplicate string keys, leading to redundant memory when words share large prefixes.
+  - Trie: Common prefixes share nodes, but each node has pointer overhead (`Map` or array of 26 pointers). A Trie uses less memory for dense prefix dictionaries and more memory for sparse, non-overlapping strings.
+
+---
+
+### 2. How does a Radix Tree (Compact Trie) optimize standard Trie memory?
+**Question:** Explain how a Radix Tree (Patricia Trie) eliminates redundant nodes in a standard Trie, and how Fastify uses it for HTTP routing.
+
+**Answer:**
+1. In a standard Trie, each node represents a single character. If a chain of nodes has only one child and no terminal words (e.g., `'u'` $\to$ `'s'` $\to$ `'e'` $\to$ `'r'`), it allocates 4 distinct node objects.
+2. A **Radix Tree** compresses single-child chains into a single edge labeled with the composite string: `"/user"`.
+3. This reduces tree height from the number of characters to the number of route divergence points.
+4. **Fastify Routing**: Fastify compiles registered route URLs (like `/api/v1/users/:id` and `/api/v1/orders/:id`) into a Radix Tree. Matching an incoming URL requires only navigating shared string chunks and parameter segments in $O(\text{URL.length})$ time, eliminating regex scanning.
+
+---
+
+### 3. How do you implement prefix pruning in Word Search II to achieve top runtime performance?
+**Question:** In LeetCode 212, what optimization prevents redundant traversals after a word has already been discovered?
+
+**Answer:**
+1. **Word Consumed Sentinel**: When a word is found during DFS, record it in the results and immediately set `node.word = null`. This prevents finding the same word again from another grid path.
+2. **Leaf Node Removal**: After returning from recursive DFS calls on child nodes, check if the current child node has become a leaf (`childNode.children.size === 0 && childNode.word === null`).
+3. If it is an empty leaf, delete it from the parent: `parentNode.children.delete(char)`.
+4. This iteratively prunes branches of words that have already been discovered, pruning future grid traversals from ever visiting those paths again.
+
+---
+
+### 4. What happens when storing non-ASCII or Unicode characters in a fixed 26-element array Trie?
+**Question:** What failure occurs if you use a fixed 26-element array `children = new Array(26)` for a Trie that receives Unicode characters or capital letters?
+
+**Answer:**
+1. A fixed 26-element array relies on the arithmetic indexing formula `char.charCodeAt(0) - 97`, which maps lowercase English `'a'` (code 97) to 0 and `'z'` (code 122) to 25.
+2. If the input contains uppercase letters (e.g., `'A'`, code 65), the formula produces negative numbers (`65 - 97 = -32`), creating out-of-bounds array properties in JavaScript (`arr[-32]`), causing silent bugs or `TypeError`.
+3. If the input contains emojis, Cyrillic, or accents, values exceed 25, creating sparse properties on the array object that break V8 contiguous array optimizations.
+4. **Fix**: Use a JavaScript `Map` (`this.children = new Map()`) whenever input strings are not strictly guaranteed to be lowercase English letters.
+
+---
+
+<nav aria-label="Lecture navigation">
+  <a href="day-52-greedy-traversal-jump-game-gas-station.md">◀ Day 52: Greedy Traversal: Jump Game and Gas Station</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-54-union-find-disjoint-set-union.md">Day 54: Union-Find: Disjoint Set Union (DSU) ▶</a>
+</nav>

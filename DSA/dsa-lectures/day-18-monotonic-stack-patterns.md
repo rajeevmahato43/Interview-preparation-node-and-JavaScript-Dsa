@@ -10,47 +10,72 @@
 
 By the end of this lecture, you should be able to:
 
-- Identify the **Monotonic Stack Pattern** for finding the "next greater" or "previous smaller" element.
-- Explain why maintaining strict monotonic order guarantees $O(n)$ total time across all operations.
-- Solve **Daily Temperatures** using a monotonic decreasing stack storing indices.
-- Handle circular arrays in **Next Greater Element II** using modulo indexing ($2n - 1$).
-- Solve **Largest Rectangle in Histogram** in $O(n)$ time using monotonic boundaries.
+- Identify the **Monotonic Stack Pattern** for solving "Next Greater Element" and "Previous Smaller Element" problems.
+- Prove why maintaining strict monotonic order guarantees an aggregate $O(n)$ runtime despite nested loops ($2n$ total operations).
+- Explain why storing **indices rather than values** is mandatory for distance calculations and output lookups.
+- Solve **Daily Temperatures** and **Online Stock Span** using monotonic stacks.
+- Process circular arrays in **Next Greater Element II** using modulo indexing ($2n - 1$) and single-pass push invariants.
+- Solve **Largest Rectangle in Histogram** in $O(n)$ time using boundary limits and sentinel values.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md)
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Amortized analysis and complexity bounds.
+- [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO primitives and array stack mechanics.
+- [Day 17: Valid Parentheses and Expression Parsing](day-17-valid-parentheses-and-expressions.md) — Invariant-based stack state management.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **Monotonic Stack** | A stack whose elements are maintained in strictly increasing or strictly decreasing order. | Solves range lookups (e.g., next greater element) in $O(n)$ time rather than $O(n^2)$ pairwise scans. |
+| **Monotonic Decreasing Stack** | A stack where elements decrease from bottom to top; popped by elements strictly greater than the top. | Identifies the Next Greater Element for all popped values in real time. |
+| **Monotonic Increasing Stack** | A stack where elements increase from bottom to top; popped by elements strictly smaller than the top. | Identifies the Next Smaller Element or boundaries in histogram problems. |
+| **Amortized Stack Bound** | The property that each of $n$ elements enters the stack once and exits at most once. | Proves that nested `while` loops execute at most $2n$ total operations across the entire algorithm. |
+| **Sentinel Element** | A dummy value (e.g., height `0` or index `-1`) appended to an array to flush remaining stack elements. | Eliminates cleanup loops and prevents elements from being stranded on monotonic stacks. |
 
 ---
 
 ## Core Concepts
 
-### 1. What is a Monotonic Stack?
-
-A **Monotonic Stack** is a stack whose elements are always sorted in a single direction (strictly increasing or strictly decreasing):
-- **Monotonic Decreasing Stack**: Elements decrease from bottom to top (`[100, 80, 60, 40]`).
-  - Used to find the **Next Greater Element**.
-- **Monotonic Increasing Stack**: Elements increase from bottom to top (`[10, 20, 40, 80]`).
-  - Used to find the **Next Smaller Element**.
-
-```text
-Incoming Element: 75
-Current Stack (Decreasing): [ 100, 80, 60, 40 ]
-                                        ▲   ▲
-                                      Smaller than 75!
-
-To preserve decreasing order:
-Pop 40 -> 75 is the NEXT GREATER ELEMENT for 40!
-Pop 60 -> 75 is the NEXT GREATER ELEMENT for 60!
-Push 75 -> Stack is now: [ 100, 80, 75 ]
 ```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            MONOTONIC DECREASING STACK MECHANICS                             │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Incoming Element: 75
+  Current Stack (Values decrease bottom-to-top): [ 100, 80, 60, 40 ]
+                                                            ▲   ▲
+                                                Smaller than incoming 75!
+
+  To maintain decreasing order upon inserting 75:
+  1. Pop 40 ──> 75 is the NEXT GREATER ELEMENT for 40!
+  2. Pop 60 ──> 75 is the NEXT GREATER ELEMENT for 60!
+  3. Stop at 80 (80 > 75).
+  4. Push 75 ──> New Stack State: [ 100, 80, 75 ]
+```
+
+### 1. Monotonic Stack Ordering and Classification
+
+A Monotonic Stack maintains sorted ordering among its elements:
+1. **Monotonic Decreasing Stack (Bottom to Top):**
+   - Stores elements in descending order (`[100, 80, 60, 40]`).
+   - An incoming element that is *larger* pops smaller elements from the stack.
+   - **Solves:** Next Greater Element, Daily Temperatures, Stock Span.
+2. **Monotonic Increasing Stack (Bottom to Top):**
+   - Stores elements in ascending order (`[10, 20, 30, 40]`).
+   - An incoming element that is *smaller* pops larger elements from the stack.
+   - **Solves:** Next Smaller Element, Largest Rectangle in Histogram, Final Prices.
 
 ---
 
-### 2. Why is Monotonic Stack $O(n)$ and Not $O(n^2)$?
+### 2. The Amortized $O(n)$ Proof
 
-A nested while-loop inside a for-loop looks like $O(n^2)$ at first glance:
-```js
+Monotonic stack code features a `while` loop nested inside a `for` loop:
+```javascript
 for (let i = 0; i < n; i++) {
   while (stack.length > 0 && arr[i] > arr[stack[stack.length - 1]]) {
     stack.pop();
@@ -58,36 +83,27 @@ for (let i = 0; i < n; i++) {
   stack.push(i);
 }
 ```
-**Amortized Analysis**:
-- Every element is pushed onto the stack **exactly once**.
-- Every element can be popped from the stack **at most once**.
-- Total push operations: $n$. Total pop operations: at most $n$.
-- Total operations: $2n \to \mathbf{O(n)}$ **linear time!**
+
+#### Why this is strictly $O(n)$, not $O(n^2)$:
+- Each element $i$ is pushed onto the stack **exactly once** during the outer loop ($n$ pushes).
+- An element can only be popped from the stack if it is currently inside it. Once popped, it is gone forever ($ \le n$ pops).
+- **Total stack operations:** At most $n \text{ pushes} + n \text{ pops} = 2n$ operations.
+- The average time spent per element is $O(1)$, proving an aggregate runtime of **$O(n)$**.
 
 ---
 
-## Detailed Explanations & Node.js Relevance
+### 3. Store Indices, Never Values
 
-### Storing Indices Instead of Values
+In almost all monotonic stack problems, **always store indices `i` on the stack instead of values `arr[i]`**:
+1. You can always retrieve the value from the index: `arr[stackTop]`.
+2. You can compute index distances: `distance = i - stackTop` (e.g., days waited).
+3. You can write directly to arbitrary positions in the result array: `result[stackTop] = ...`.
 
-In almost all monotonic stack problems (Daily Temperatures, Stock Span, Histogram), **always push the index `i` rather than the value `arr[i]` onto the stack**.
-Why?
-- From the index, you can always read the value: `arr[i]`.
-- You can compute distances: `daysWaited = currentIndex - stack.pop()`.
-- You can look up positions in the output array in $O(1)$ time.
+```javascript
+// Node.js code
+"use strict";
 
-### Node.js Relevance: Timeseries Anomaly Detection
-In Node.js timeseries processing (e.g. tracking microservice CPU usage or memory spikes), a monotonic stack detects the duration until the next threshold breach in a single streaming pass without re-scanning historical windows.
-
----
-
-## JavaScript Implementation & Tracing
-
-### 1. Daily Temperatures (LeetCode 739)
-
-Given an array of integers `temperatures`, return an array `answer` such that `answer[i]` is the number of days you have to wait after the $i$-th day to get a warmer temperature. If there is no future day for which this is possible, keep `answer[i] == 0`.
-
-```js
+// Daily Temperatures (LeetCode 739)
 function dailyTemperatures(temperatures) {
   const n = temperatures.length;
   const result = new Array(n).fill(0);
@@ -96,10 +112,10 @@ function dailyTemperatures(temperatures) {
   for (let i = 0; i < n; i++) {
     const currentTemp = temperatures[i];
 
-    // While current day is warmer than the day at the top of stack
+    // While current temperature is warmer than the temperature at the top of stack
     while (stack.length > 0 && currentTemp > temperatures[stack[stack.length - 1]]) {
       const prevIndex = stack.pop();
-      result[prevIndex] = i - prevIndex; // Distance in days
+      result[prevIndex] = i - prevIndex; // Calculate day distance
     }
 
     stack.push(i);
@@ -107,42 +123,15 @@ function dailyTemperatures(temperatures) {
 
   return result;
 }
+
+console.log("Daily Temperatures:", dailyTemperatures([73, 74, 75, 71, 69, 72, 76, 73]));
+// [ 1, 1, 4, 2, 1, 1, 0, 0 ]
 ```
 
-### 2. Next Greater Element II (Circular Array) (LeetCode 503)
+#### Trace: `dailyTemperatures([73, 74, 75, 71, 69, 72, 76, 73])`
 
-In a circular array, search through the array twice by looping up to $2n - 1$ using index `i % n`:
-
-```js
-function nextGreaterElements(nums) {
-  const n = nums.length;
-  const result = new Array(n).fill(-1);
-  const stack = []; // Stores indices
-
-  // Loop twice through the array
-  for (let i = 0; i < 2 * n; i++) {
-    const currentIndex = i % n;
-    const currentVal = nums[currentIndex];
-
-    while (stack.length > 0 && currentVal > nums[stack[stack.length - 1]]) {
-      const prevIndex = stack.pop();
-      result[prevIndex] = currentVal;
-    }
-
-    // Only push indices during the first pass
-    if (i < n) {
-      stack.push(currentIndex);
-    }
-  }
-
-  return result;
-}
-```
-
-### Trace: `dailyTemperatures([73, 74, 75, 71, 69, 72, 76, 73])`
-
-| Day `i` | `Temp` | Stack Action | Resolved Days | `stack` State (Indices) |
-| :--- | :--- | :--- | :--- | :--- |
+| Day `i` | `Temp` | Stack Action | Resolved Wait Days | `stack` State (Indices) |
+|---|---|---|---|---|
 | `0` | 73 | Push 0 | — | `[0 (73)]` |
 | `1` | 74 | $74 > 73 \to$ Pop 0 | `res[0] = 1 - 0 = 1` | `[1 (74)]` |
 | `2` | 75 | $75 > 74 \to$ Pop 1 | `res[1] = 2 - 1 = 1` | `[2 (75)]` |
@@ -152,56 +141,153 @@ function nextGreaterElements(nums) {
 | `6` | 76 | $76 > 72 \to$ Pop 5<br>$76 > 75 \to$ Pop 2 | `res[5] = 6 - 5 = 1`<br>`res[2] = 6 - 2 = 4` | `[6 (76)]` |
 | `7` | 73 | Push 7 | — | `[6 (76), 7 (73)]` |
 
-Final result: `[1, 1, 4, 2, 1, 1, 0, 0]`.
-- **Time Complexity**: $O(n)$ where $n$ is `temperatures.length`.
-- **Auxiliary Space**: $O(n)$ to hold indices in the stack.
+---
+
+### 4. Circular Arrays: Next Greater Element II
+
+In a circular array, elements wrap around from the end back to index 0.
+
+#### The Modulo Loop Technique:
+Simulate two full cycles by iterating from $0$ to $2n - 1$ using `currentIndex = i % n`.
+- **Push Invariant:** Only push indices during the **first pass** (`i < n`). Pushing during the second pass is redundant and corrupts indices.
+
+```javascript
+// Node.js code
+function nextGreaterElements(nums) {
+  const n = nums.length;
+  const result = new Array(n).fill(-1);
+  const stack = []; // Monotonic decreasing stack storing indices
+
+  // Loop twice through the virtual concatenated array
+  for (let i = 0; i < 2 * n; i++) {
+    const currentIndex = i % n;
+    const currentVal = nums[currentIndex];
+
+    while (stack.length > 0 && currentVal > nums[stack[stack.length - 1]]) {
+      const prevIndex = stack.pop();
+      result[prevIndex] = currentVal;
+    }
+
+    // Only push indices during the first cycle
+    if (i < n) {
+      stack.push(currentIndex);
+    }
+  }
+
+  return result;
+}
+
+console.log("Next Greater Circular:", nextGreaterElements([1, 2, 1])); // [ 2, -1, 2 ]
+```
 
 ---
 
-## Common Mistakes & Interview Traps
+## Tricky Points and Edge Cases
 
-1. **Pushing Values instead of Indices**:
-   If you store values on the stack, you cannot compute distance (`i - prevIndex`) or update the output array at specific indices. Always store indices!
-2. **Pushing in Circular Array during Second Pass**:
-   In Next Greater Element II, if you push indices during the second pass ($i \ge n$), you will cause redundant calculations and overwrite valid results. Only push when `i < n`.
-3. **Strictly Greater vs Greater-or-Equal**:
-   Carefully verify the problem statement: does a temperature with the *same* value count as warmer? (`>` vs `>=`). For "strictly greater", use `currentTemp > temperatures[top]`.
+### 1. The Stranded Elements Trap in Histograms
+In monotonic stacks, calculations are triggered only when a smaller/larger element pops previous values.
+If input data is **strictly increasing** (`[1, 2, 3, 4]`), elements are pushed continuously and **never popped**.
+- **Fix (Sentinel Element):** Append a sentinel height `0` to the end of the array (`heights.push(0)`). The final zero forces every single bar off the stack before the loop terminates.
 
----
-
-## Tricky Points & Edge Cases
-
-- **Elements With No Greater Element**:
-  Elements left on the stack at the end of the loop never find a greater element. Initializing the result array with `0` or `-1` handles them automatically.
-- **Monotonically Decreasing Input**:
-  `[50, 40, 30, 20]`: No popping occurs during the loop; all elements are pushed. Runtime remains $O(n)$.
+### 2. Strictly Greater vs Greater-or-Equal
+Always verify problem wording:
+- *"Next Greater"* means strictly greater: `currentVal > arr[top]`.
+- *"Next Greater or Equal"* includes ties: `currentVal >= arr[top]`.
 
 ---
 
-## Practical Exercise
+## Hands-On Exercise
 
-Implement **Online Stock Span** (LeetCode 901):
-Design a class `StockSpanner` which collects daily price quotes for some stock and returns the span of that stock's price for the current day:
-- The span of the stock's price today is the maximum number of consecutive days (starting from today and going backward) for which the price was less than or equal to today's price.
-- **Acceptance Criterion**: `next(price)` must run in amortized $O(1)$ time using a monotonic stack storing `[price, span]` pairs.
+### Scenario
+You are developing an analytics visualizer for image processing. You are given an array of integers `heights` representing the histogram's bar heights where each bar has width 1. You must find the area of the **Largest Rectangle in the Histogram** (LeetCode 84).
+
+### Buggy Code
+```javascript
+// Node.js code
+function largestRectangleAreaBuggy(heights) {
+  let maxArea = 0;
+  // ❌ Bug 1: Brute-force nested loops take O(n^2) time!
+  // ❌ Bug 2: Fails on arrays with 100,000 elements.
+  for (let i = 0; i < heights.length; i++) {
+    let minHeight = heights[i];
+    for (let j = i; j < heights.length; j++) {
+      minHeight = Math.min(minHeight, heights[j]);
+      maxArea = Math.max(maxArea, minHeight * (j - i + 1));
+    }
+  }
+  return maxArea;
+}
+```
+
+### Acceptance Criteria
+1. Execute in strictly $O(n)$ time using a monotonic increasing stack.
+2. Auxiliary memory must be $O(n)$ for the stack.
+3. Correctly handle strictly increasing bars (`[1, 2, 3]`), strictly decreasing bars (`[3, 2, 1]`), and uniform bars (`[2, 2, 2]`).
+
+### Solution Code
+
+```javascript
+// Node.js code
+import assert from "node:assert/strict";
+
+function largestRectangleArea(heights) {
+  // Append sentinel height 0 to force all remaining bars off the stack at termination
+  const h = [...heights, 0];
+  const stack = []; // Monotonic increasing stack storing indices
+  let maxArea = 0;
+
+  for (let i = 0; i < h.length; i++) {
+    // While current bar is shorter than the bar at stack top
+    while (stack.length > 0 && h[i] < h[stack[stack.length - 1]]) {
+      const height = h[stack.pop()];
+
+      // Width calculation:
+      // If stack is empty, height spans all the way from index 0 to i
+      // Otherwise, width spans between current index i and new stack top
+      const width = stack.length === 0 ? i : (i - stack[stack.length - 1] - 1);
+
+      maxArea = Math.max(maxArea, height * width);
+    }
+
+    stack.push(i);
+  }
+
+  return maxArea;
+}
+
+// Verification Tests
+assert.equal(largestRectangleArea([2, 1, 5, 6, 2, 3]), 10); // Bars 5 and 6 form area 5 * 2 = 10
+assert.equal(largestRectangleArea([2, 4]), 4);
+assert.equal(largestRectangleArea([1, 2, 3, 4]), 6);          // Bars 3 and 4 form area 3 * 2 = 6
+assert.equal(largestRectangleArea([2, 2, 2]), 6);
+
+console.log("✅ All Largest Rectangle in Histogram assertions passed successfully!");
+```
+
+### Solution Explanation
+
+1. **Monotonic Increasing Boundary:** A bar popped at index $k$ has its right boundary defined by the current shorter bar at index $i$, and its left boundary defined by the bar beneath it in the stack.
+2. **Sentinel Invariant:** The appended `0` guarantees the stack is empty when the algorithm finishes, avoiding secondary cleanup loops.
 
 ---
 
 ## Summary
 
-- Monotonic stacks maintain sorted elements to solve "next greater" or "previous smaller" problems in $O(n)$ time.
-- Storing indices on the stack allows calculating distances and updating arbitrary positions in the output.
-- Amortized analysis proves linear runtime because each element is pushed and popped at most once.
-- Circular array problems are simulated by looping up to $2n$ using modulo indexing (`i % n`).
+- Monotonic stacks maintain sorted ordering to find next/previous greater/smaller elements in $O(n)$ time.
+- Amortized analysis proves linear runtime because each element enters and exits the stack at most once.
+- Storing indices on the stack allows computing distances and updating output arrays directly.
+- Circular arrays are solved using a virtual $2n$ loop with `i % n`, pushing indices only during the first cycle ($i < n$).
+- Sentinel elements (e.g., height `0`) flush remaining items on monotonic stacks, preventing stranded values.
 
 ---
 
 ## Cheat Sheet
 
 ### Next Greater Element Blueprint
-```js
+```javascript
 const result = new Array(n).fill(-1);
 const stack = []; // indices
+
 for (let i = 0; i < n; i++) {
   while (stack.length > 0 && nums[i] > nums[stack[stack.length - 1]]) {
     const prev = stack.pop();
@@ -209,20 +295,41 @@ for (let i = 0; i < n; i++) {
   }
   stack.push(i);
 }
+
 return result;
 ```
+
+### Common Pitfalls
+- **Storing Values Instead of Indices:** Prevents distance calculations and arbitrary result writes.
+- **Pushing during the Second Circular Pass:** Pushing when $i \ge n$ corrupts indices and duplicates work.
+- **Missing Histogram Sentinel:** Omitting sentinel `0` leaves strictly increasing bars un-evaluated.
+- **Strict vs Non-Strict Inequalities:** Conflating `>` with `>=` breaks tie-handling requirements.
 
 ---
 
 ## Interview Questions
 
-### 1. Deep Definitions and Mental Models
-**Question:** Prove that an algorithm with a while loop inside a for loop runs in $O(n)$ time for a monotonic stack.
-- **Expected answer shape:** Runtime is governed by the total number of operations performed on the stack, not the maximum iterations of a single while-loop step. An element enters the stack at most once via `push` ($n$ total pushes) and leaves at most once via `pop` (at most $n$ total pops). Therefore, the inner while loop executes at most $n$ times across the entire lifetime of the program, proving an aggregate runtime of $O(2n) = O(n)$.
+### 1. How does aggregate analysis prove that a monotonic stack runs in $O(n)$ time despite nested loops?
 
-### 2. Predict the Output and Trace Execution
-**Question:** What does this function return for `nums = [2, 1, 2, 4, 3]`?
-```js
+**Question:** Explain how aggregate analysis proves that monotonic stack algorithms achieve $O(n)$ time complexity despite nested iteration.
+
+**Answer:** 
+In algorithmic analysis, the total execution time of an algorithm is determined by the total number of fundamental operations executed across the entire program lifecycle:
+1. The outer `for` loop executes exactly $n$ iterations (from $i = 0$ to $n - 1$).
+2. During each iteration of the outer loop, exactly one `stack.push(i)` operation is performed. Therefore, across all iterations, there are **at most $n$ total push operations**.
+3. The inner `while` loop executes only when elements are popped from the stack via `stack.pop()`.
+4. An element can only be popped if it was previously pushed. Once an element is popped, it is permanently removed from the stack and cannot be popped again.
+5. Therefore, the total number of `pop()` operations executed across all iterations combined is **at most $n$**.
+6. Summing all operations:
+   $$\text{Total Stack Operations} = \text{Total Pushes} + \text{Total Pops} \le n + n = 2n$$
+Because $2n = O(n)$, the algorithm runs in guaranteed **amortized linear time**.
+
+---
+
+### 2. What does this function return for `nums = [2, 1, 2, 4, 3]`, and what is the step-by-step trace?
+
+**Question:** Trace the execution and output of the following function:
+```javascript
 function test(nums) {
   const res = new Array(nums.length).fill(-1);
   const stack = [];
@@ -235,41 +342,82 @@ function test(nums) {
   return res;
 }
 ```
-- **Expected answer shape:** Returns `[4, 2, 4, -1, -1]`.
-- For `2` (idx 0), next greater is `4` (idx 3).
-- For `1` (idx 1), next greater is `2` (idx 2).
-- For `2` (idx 2), next greater is `4` (idx 3).
-- For `4` and `3`, no greater future elements exist, so they retain default `-1`.
 
-### 3. Implementation Exercise
-**Question:** Implement `finalPrices(prices)` (LeetCode 1475) where you receive a discount equal to the next smaller or equal price to the right: $O(n)$ time using a monotonic increasing stack.
-- **Expected answer shape:**
-```js
-function finalPrices(prices) {
-  const result = [...prices];
-  const stack = []; // indices
-  for (let i = 0; i < prices.length; i++) {
-    while (stack.length > 0 && prices[i] <= prices[stack[stack.length - 1]]) {
-      const prev = stack.pop();
-      result[prev] -= prices[i];
-    }
-    stack.push(i);
+**Answer:**
+The function returns: `[ 4, 2, 4, -1, -1 ]`.
+
+**Trace:**
+1. **`i = 0` (val 2):** Stack empty $\to$ Push index 0. Stack: `[0 (val 2)]`.
+2. **`i = 1` (val 1):** $1 \not> 2 \to$ Push index 1. Stack: `[0 (val 2), 1 (val 1)]`.
+3. **`i = 2` (val 2):**
+   - $2 > 1 \to$ Pop index 1. `res[1] = 2`.
+   - $2 \not> 2 \to$ Stop. Push index 2. Stack: `[0 (val 2), 2 (val 2)]`.
+4. **`i = 3` (val 4):**
+   - $4 > 2 \to$ Pop index 2. `res[2] = 4`.
+   - $4 > 2 \to$ Pop index 0. `res[0] = 4`.
+   - Stack empty $\to$ Push index 3. Stack: `[3 (val 4)]`.
+5. **`i = 4` (val 3):** $3 \not> 4 \to$ Push index 4. Stack: `[3 (val 4), 4 (val 3)]`.
+6. Loop ends. Indices 3 and 4 remain in stack with no greater elements, preserving initial `-1`.
+- Final `res`: `[4, 2, 4, -1, -1]`.
+
+---
+
+### 3. How does Online Stock Span calculate price spans in amortized $O(1)$ time per query?
+
+**Question:** Implement the `StockSpanner` class and explain why storing `[price, span]` pairs on a monotonic stack is optimal.
+
+**Answer:** 
+The problem requires returning the number of consecutive days prior to today where prices were $\le$ today's price.
+Instead of scanning backward through historical arrays on each query, maintain a **monotonic decreasing stack of pairs: `[price, span]`**:
+
+```javascript
+// Node.js code
+class StockSpanner {
+  constructor() {
+    this.stack = []; // [price, span]
   }
-  return result;
+
+  next(price) {
+    let span = 1;
+
+    // While current price is greater than or equal to top price, absorb its span
+    while (this.stack.length > 0 && this.stack[this.stack.length - 1][0] <= price) {
+      span += this.stack.pop()[1];
+    }
+
+    this.stack.push([price, span]);
+    return span;
+  }
 }
 ```
+**Why this is optimal:**
+By absorbing the spans of smaller previous prices (`span += poppedSpan`), previous smaller records are eliminated from future consideration. Each price enters the stack once and is absorbed at most once, yielding an **amortized $O(1)$ time** per `next()` invocation.
 
-### 4. Debugging and Failure Analysis
-**Question:** A candidate solves Largest Rectangle in Histogram using a monotonic stack. When input is strictly increasing `[1, 2, 3, 4]`, the function returns 0. Why?
-- **Expected answer shape:** In strictly increasing input, elements are continuously pushed onto the stack and never popped because no smaller element arrives to trigger the calculation. To fix: append a sentinel `0` to the end of the array (`heights.push(0)`), which forces all remaining bars to be popped and evaluated before the loop finishes.
+---
 
-### 5. Design and Tradeoff Questions
-**Question:** How does a monotonic stack compare to a segment tree for answering range maximum queries?
-- **Expected answer shape:** A monotonic stack finds the next greater element in static arrays in $O(n)$ time and $O(n)$ space, but cannot handle dynamic element updates. A Segment Tree supports dynamic point updates and range queries in $O(\log n)$ time, but requires $O(4n)$ space and complex tree mechanics.
+### 4. How would you architect a real-time anomaly detection stream in Node.js that warns whenever a sensor temperature exceeds all readings in the previous 10 minutes?
 
-### 6. Senior Follow-ups: Node.js Stream Telemetry
-**Question:** How would you implement a streaming service that logs a warning whenever an incoming temperature reading is higher than all readings in the previous 10 minutes?
-- **Expected answer shape:** Use a monotonic decreasing deque storing timestamps and temperature readings. As new telemetry arrives: (1) evict readings older than 10 minutes from the front, (2) check if incoming reading is larger than all elements in the window (if deque is empty or reading $>$ deque front), (3) maintain decreasing order by popping smaller elements from the back before inserting the current reading.
+**Question:** Design an in-memory streaming detector for a Node.js microservice using monotonic deque concepts.
+
+**Answer:** 
+**Architecture Design:**
+1. **Monotonic Decreasing Deque:**
+   Maintain an in-memory deque storing tuples: `{ timestamp, value }`.
+   The deque is kept in **strictly decreasing order** of values.
+2. **On Each Telemetry Event Arrival:**
+   - **Step 1 (Evict Expired Telemetry):**
+     While deque is non-empty and `deque.front.timestamp < (currentTimestamp - 10 * 60 * 1000)`, remove it from the front (`shift` or index advance).
+   - **Step 2 (Anomaly Assessment):**
+     Because the deque is monotonically decreasing, the **front element is the global maximum** of the active 10-minute window.
+     If the deque is empty OR `incomingValue > deque.front.value`:
+     Emit an immediate anomaly alert (this reading is the highest in the last 10 minutes).
+   - **Step 3 (Maintain Monotonic Decreasing Order):**
+     While deque is non-empty and `incomingValue >= deque.back.value`, pop from the back.
+     Push `{ timestamp: currentTimestamp, value: incomingValue }` to the back.
+3. **Efficiency:**
+   Operates in $O(1)$ amortized time per telemetry event, with memory bounded strictly to readings within the 10-minute sliding window.
+
+---
 
 <nav aria-label="Lecture navigation">
 

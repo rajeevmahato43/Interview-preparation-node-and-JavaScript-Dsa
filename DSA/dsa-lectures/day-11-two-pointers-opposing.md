@@ -2,7 +2,7 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Sorting Deep Dive: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md)
+[Previous: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md)
 
 </nav>
 
@@ -10,115 +10,125 @@
 
 By the end of this lecture, you should be able to:
 
-- Explain why sorted data allows opposing pointers to eliminate an entire row of candidates in $O(1)$ time.
-- Implement **Two Sum II (Sorted Array)** with $O(1)$ auxiliary space.
-- Solve **3Sum** by combining sorting with the two-pointer approach while rigorously avoiding duplicate triplets.
-- Prove why the **Container With Most Water** greedy pointer shrinkage invariant is correct.
-- Apply two-pointer string scanning for **Valid Palindrome** (handling non-alphanumeric characters and character skips).
+- Explain how monotonic sorted data allows opposing pointers (`left` and `right`) to eliminate an entire row of candidates in $O(1)$ time.
+- Implement **Two Sum II (Sorted Array)** in $O(n)$ time with strictly $O(1)$ auxiliary space.
+- Derive and prove the greedy shrinkage invariant in **Container With Most Water**.
+- Implement **3Sum** ($O(n^2)$) and generalize to $K$-Sum, systematically eliminating duplicate tuples across all pointer boundaries.
+- Solve **Valid Palindrome** and **Valid Palindrome II** using inward two-pointer scans with character skips.
+- Prevent V8 garbage collection latency spikes in high-throughput Node.js microservices by leveraging zero-allocation stack pointers.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md)
-- [Day 07: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md)
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
+- [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Sorting arrays with numeric comparators.
+- [Day 07: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md) — Pair matching and complement logic.
+- [Day 10: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) — Sorting in-place and partitioning.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **Opposing Two Pointers** | An algorithmic technique where two index markers start at opposite ends of a sequence and converge inward. | Reduces $O(n^2)$ pair searches to $O(n)$ linear scans on sorted or symmetric collections. |
+| **Monotonicity Invariant** | A property where elements strictly increase or decrease along an index trajectory. | Guarantees that moving `left++` only increases sums, and moving `right--` only decreases sums. |
+| **Greedy Pruning** | Discarding a set of candidates without explicit evaluation because a mathematical bound proves none can beat the current optimum. | Enables solving Container With Most Water in $O(n)$ time without testing all $O(n^2)$ coordinate pairs. |
+| **Duplicate Pruning** | Advancing pointers past identical values to prevent redundant combinations or duplicate output tuples. | Essential in 3Sum and 4Sum to guarantee strictly unique output sets without allocating secondary Hash Sets. |
+| **Zero-Allocation Scan** | An algorithm that manipulates primitive number variables on the call stack without creating heap objects. | Prevents V8 garbage collection scavenges, keeping 99th-percentile (p99) API latency flat in Node.js. |
 
 ---
 
 ## Core Concepts
 
-### 1. Opposing Pointers on Monotonic Data
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            OPPOSING POINTER CONVERGENCE PIPELINE                            │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 
-When elements are sorted in ascending order, moving from left to right increases values, while moving from right to left decreases values.
-By placing `left = 0` and `right = n - 1`, every comparison makes a decisive pruning decision:
+  Sorted Array: [ 1 , 3 , 5 , 8 , 11 , 15 ],  Target = 13
+                  ▲                     ▲
+                left                  right
 
-```text
-Sorted Array: [ 1 , 3 , 5 , 8 , 11 , 15 ],  Target = 13
-                ▲                     ▲
-              left                  right
+  Step 1: sum = 1 + 15 = 16. (16 > 13: Too large!)
+          Because the array is sorted, 15 paired with ANY element after 1 (3, 5, 8, 11)
+          will be strictly > 16. We safely prune 15 from all future checks: right--.
 
-Step 1: sum = 1 + 15 = 16. Sum is too large (16 > 13).
-        Since the array is sorted, 15 paired with ANY element after 1 will also be > 13.
-        We can safely prune 15 from all future consideration: right--.
+  Step 2: sum = 1 + 11 = 12. (12 < 13: Too small!)
+          1 paired with ANY element before 11 (1, 3, 5, 8) will be strictly < 12.
+          We safely prune 1 from all future checks: left++.
 
-Step 2: sum = 1 + 11 = 12. Sum is too small (12 < 13).
-        1 paired with ANY element before 11 will be even smaller!
-        We can safely prune 1 from all future consideration: left++.
+  Step 3: sum = 3 + 11 = 14. (14 > 13) -> right--.
+  Step 4: sum = 3 + 8  = 11. (11 < 13) -> left++.
+  Step 5: sum = 5 + 8  = 13. MATCH! Return indices [ 2, 3 ].
 ```
 
-Instead of checking $O(n^2)$ pairs, the pointers converge in at most $n$ steps: **$O(n)$ Time and $O(1)$ Space**.
+### 1. Opposing Pointers on Monotonic Sequences
 
----
+When an array is sorted in ascending order, the array possesses **monotonicity**:
+- Incrementing `left` strictly increases or maintains the sum of `arr[left] + arr[right]`.
+- Decrementing `right` strictly decreases or maintains the sum of `arr[left] + arr[right]`.
 
-### 2. The Container With Most Water Invariant
+By placing `left = 0` and `right = arr.length - 1`, every comparison between `arr[left] + arr[right]` and `target` eliminates an entire row or column of potential pairs without inspecting them.
 
-Problem: Given array `height`, find two lines that hold the most water:
-$$\text{Area} = \min(\text{height}[L], \text{height}[R]) \times (R - L)$$
+```javascript
+// Node.js code
+"use strict";
 
-```text
-   8 |   |                   |
-   7 |   |                   |       |
-   6 |   |   |               |       |
-     +---+---+---+---+---+---+---+---+
-       L=1                         R=7
-         <---------- Width ---------->
-```
-
-**The Greedy Invariant**:
-The area is bottlenecked by the **shorter line**.
-If `height[L] < height[R]`, what happens if we move `R` inward?
-- Width decreases by 1.
-- Height can never exceed `height[L]`.
-- Therefore, any pair involving `L` and an interior `R` is **guaranteed to have a smaller area**.
-- We can safely discard `L`: **`L++`**.
-
----
-
-## Detailed Explanations & Node.js Relevance
-
-### 3Sum: Reducing $O(n^3)$ to $O(n^2)$
-
-To find all unique triplets `[nums[i], nums[j], nums[k]]` summing to 0:
-1. Sort `nums` in ascending order: $O(n \log n)$.
-2. Loop index `i` from $0$ to $n - 3$.
-3. For each `i`, run Two Sum II on the subarray to the right (`left = i + 1, right = n - 1`) targeting `-nums[i]`.
-4. **Duplicate Avoidance Trap**:
-   - Skip duplicate values of `nums[i]` when `nums[i] === nums[i - 1]`.
-   - After finding a valid triplet, advance `left` past identical numbers (`while (nums[left] === nums[left+1]) left++`).
-
-### Node.js Relevance: In-Memory Financial Range Matching
-When building Node.js matching engines (e.g. order-book crossing or currency arbitrage), transactions are already maintained in sorted in-memory ring buffers. Using two-pointer convergence matches orders in $O(n)$ time with zero garbage collection allocations.
-
----
-
-## JavaScript Implementation & Tracing
-
-### 1. Two Sum II - Input Array Is Sorted (LeetCode 167)
-
-```js
+// Two Sum II: Input Array Is Sorted (LeetCode 167)
+// Returns 1-based indices as per classic specification
 function twoSumSorted(numbers, target) {
   let left = 0;
   let right = numbers.length - 1;
 
   while (left < right) {
-    const sum = numbers[left] + numbers[right];
+    const currentSum = numbers[left] + numbers[right];
 
-    if (sum === target) {
-      // 1-indexed response convention for LeetCode 167
-      return [left + 1, right + 1];
-    } else if (sum < target) {
-      left++; // Need a larger sum
+    if (currentSum === target) {
+      return [left + 1, right + 1]; // Found target pair (1-based)
+    } else if (currentSum < target) {
+      left++; // Sum too small: advance left boundary
     } else {
-      right--; // Need a smaller sum
+      right--; // Sum too large: decrement right boundary
     }
   }
 
   return [];
 }
+
+console.log("Two Sum Sorted:", twoSumSorted([2, 7, 11, 15], 9)); // [1, 2]
+```
+- **Time Complexity:** $O(n)$ — at each iteration, either `left` advances or `right` decrements.
+- **Auxiliary Space:** $O(1)$ — only two integer pointer variables on the stack.
+
+---
+
+### 2. Container With Most Water: The Greedy Pruning Proof
+
+Given an array of non-negative integers `height` where each represents a vertical line:
+$$\text{Area}(L, R) = \min(\text{height}[L], \text{height}[R]) \times (R - L)$$
+
+```
+    8 |   |                   |
+    7 |   |                   |       |
+    6 |   |   |               |       |
+      +---+---+---+---+---+---+---+---+
+        L=1                         R=7
+          <---------- Width ---------->
 ```
 
-### 2. Container With Most Water (LeetCode 11)
+#### The Invariant Proof:
+At any state $(L, R)$, the water container capacity is bounded by the **shorter line**:
+Suppose $\text{height}[L] < \text{height}[R]$.
+- If we move $R$ inward to $R - 1$, the width decreases by $1$.
+- The new height can never exceed $\text{height}[L]$ because the formula takes the minimum.
+- Therefore, for all interior points $k \in [L + 1, R - 1]$, the area with line $L$ is bounded by:
+  $$\text{Area}(L, k) \le \text{height}[L] \times (k - L) < \text{height}[L] \times (R - L) = \text{Area}(L, R)$$
+- None of the interior lines can form a larger container with $L$. We can safely prune line $L$ by moving **`left++`**.
 
-```js
+```javascript
+// Node.js code
 function maxArea(height) {
   let left = 0;
   let right = height.length - 1;
@@ -133,7 +143,7 @@ function maxArea(height) {
       maxWater = currentArea;
     }
 
-    // Advance the pointer pointing to the shorter wall
+    // Discard the shorter boundary line
     if (height[left] < height[right]) {
       left++;
     } else {
@@ -143,65 +153,199 @@ function maxArea(height) {
 
   return maxWater;
 }
+
+console.log("Max Water:", maxArea([1, 8, 6, 2, 5, 4, 8, 3, 7])); // 49
 ```
 
-### Trace: `maxArea([1, 8, 6, 2, 5, 4, 8, 3, 7])`
+---
 
-| `L` | `R` | `h[L]` | `h[R]` | `Width` | `MinHeight` | `Area` | `maxWater` | Action |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 0 | 8 | 1 | 7 | 8 | 1 | 8 | 8 | `h[0] < h[8]` $\to$ `L++` |
-| 1 | 8 | 8 | 7 | 7 | 7 | 49 | **49** | `h[8] < h[1]` $\to$ `R--` |
-| 1 | 7 | 8 | 3 | 6 | 3 | 18 | 49 | `h[7] < h[1]` $\to$ `R--` |
-| 1 | 6 | 8 | 8 | 5 | 8 | 40 | 49 | `h[1] === h[6]` $\to$ `R--` |
+### 3. 3Sum: Reducing $O(n^3)$ to $O(n^2)$ with Duplicate Pruning
 
-- **Time Complexity**: $O(n)$ — every iteration increments `left` or decrements `right`.
-- **Auxiliary Space**: $O(1)$ — only primitive index pointers stored.
+Given an array `nums`, find all unique triplets `[nums[i], nums[j], nums[k]]` such that $i \ne j \ne k$ and $\text{nums}[i] + \text{nums}[j] + \text{nums}[k] = 0$.
+
+```javascript
+// Node.js code
+function threeSum(nums) {
+  // Step 1: Sort ascending (O(n log n))
+  nums.sort((a, b) => a - b);
+  const result = [];
+
+  for (let i = 0; i < nums.length - 2; i++) {
+    // Early exit: if the smallest number is > 0, three positive numbers cannot sum to 0
+    if (nums[i] > 0) break;
+
+    // Duplicate Pruning 1: Skip identical base elements
+    if (i > 0 && nums[i] === nums[i - 1]) continue;
+
+    let left = i + 1;
+    let right = nums.length - 1;
+    const target = -nums[i];
+
+    while (left < right) {
+      const sum = nums[left] + nums[right];
+
+      if (sum === target) {
+        result.push([nums[i], nums[left], nums[right]]);
+
+        // Duplicate Pruning 2: Skip identical adjacent left/right values
+        while (left < right && nums[left] === nums[left + 1]) left++;
+        while (left < right && nums[right] === nums[right - 1]) right--;
+
+        left++;
+        right--;
+      } else if (sum < target) {
+        left++;
+      } else {
+        right--;
+      }
+    }
+  }
+
+  return result;
+}
+
+console.log("3Sum:", threeSum([-1, 0, 1, 2, -1, -4]));
+// [ [ -1, -1, 2 ], [ -1, 0, 1 ] ]
+```
+- **Time Complexity:** $O(n^2)$ — sorting takes $O(n \log n)$, and the outer loop runs $n$ Two Sum scans ($n \times O(n)$).
+- **Auxiliary Space:** $O(1)$ (or $O(\log n)$ for sorting call stack) excluding output storage.
 
 ---
 
-## Common Mistakes & Interview Traps
+### 4. Zero-Allocation In-Memory Financial Order Matching in Node.js
 
-1. **Applying Two Pointers to Unsorted Arrays**:
-   Two-pointer convergence relies entirely on monotonicity. If the array is unsorted, `left++` might decrease the sum!
-2. **Infinite Loops in 3Sum Duplicate Skipping**:
-   ```js
-   // WRONG: Advancing left without boundary check:
-   while (nums[left] === nums[left + 1]) left++; // Can exceed right!
-   // CORRECT:
-   while (left < right && nums[left] === nums[left + 1]) left++;
-   ```
-3. **Using `<=` instead of `<` in `while (left < right)`**:
-   In two-sum and container problems, an element cannot pair with itself. Using `left <= right` causes redundant checks when `left === right`.
+In high-frequency trading or matching engines, transactions are stored in pre-sorted ring buffers or arrays. Using two-pointer convergence to match buy and sell orders avoids allocating intermediate objects or arrays, completely eliminating V8 Garbage Collection pauses on the main thread:
+
+```javascript
+// Node.js code
+// Match buy and sell orders that sum to target clearing price
+function matchOrdersInPlace(buyOrders, sellOrders, clearingPrice) {
+  let buyIdx = 0; // Sorted ascending
+  let sellIdx = sellOrders.length - 1; // Sorted ascending
+  const matches = [];
+
+  while (buyIdx < buyOrders.length && sellIdx >= 0) {
+    const combined = buyOrders[buyIdx].price + sellOrders[sellIdx].price;
+
+    if (combined === clearingPrice) {
+      matches.push({ buyId: buyOrders[buyIdx].id, sellId: sellOrders[sellIdx].id });
+      buyIdx++;
+      sellIdx--;
+    } else if (combined < clearingPrice) {
+      buyIdx++;
+    } else {
+      sellIdx--;
+    }
+  }
+
+  return matches;
+}
+```
 
 ---
 
-## Tricky Points & Edge Cases
+## Tricky Points and Edge Cases
 
-- **Ties in Container With Most Water**:
-  If `height[left] === height[right]`, moving either pointer (or both) is mathematically correct because neither wall can support a larger area with a smaller width.
-- **Valid Palindrome with Non-Alphanumeric Characters**:
-  Advance pointers past punctuation and spaces before comparing:
-  ```js
-  while (left < right && !isAlphaNumeric(s[left])) left++;
-  ```
+### 1. Opposing Pointers on Unsorted Arrays
+Attempting to run opposing two pointers on unsorted data produces incorrect answers. Moving `left++` on unsorted data does not guarantee the sum will increase. If the problem forbids sorting (e.g., original array indices must be preserved without extra memory), use the Hash Complement pattern ($O(n)$ space).
+
+### 2. Missing Boundary Checks in Duplicate Skips
+When advancing pointers past duplicates in 3Sum:
+```javascript
+// ❌ BUG: Pointer can increment past 'right', causing out-of-bounds reads
+while (nums[left] === nums[left + 1]) left++;
+
+// ✅ FIX: Bound check must precede value comparison
+while (left < right && nums[left] === nums[left + 1]) left++;
+```
+
+### 3. Loop Boundary: `left < right` vs `left <= right`
+In Two Sum and Container With Most Water, an element cannot be paired with itself. Using `left <= right` causes a redundant comparison when `left === right` (where width is 0). Use `left < right`.
 
 ---
 
-## Practical Exercise
+## Hands-On Exercise
 
-Implement **Valid Palindrome II** (LeetCode 680):
-Given a string `s`, return `true` if the string can be a palindrome after deleting **at most one** character from it.
-- **Hint**: When `s[left] !== s[right]`, test whether the substring with `left` skipped OR `right` skipped is a palindrome.
-- **Acceptance Criterion**: Must run in $O(n)$ time and $O(1)$ auxiliary space.
+### Scenario
+You are developing a string sanitizer for an authentication service. A candidate username must be checked for palindrome validity. You are asked to implement **Valid Palindrome II**: determine if a string can be a palindrome after deleting **at most one** character.
+
+### Buggy Code
+```javascript
+// Node.js code
+function validPalindromeIIBuggy(s) {
+  // ❌ Bug: Slices and allocates multiple new strings on every character test!
+  // Triggers O(n^2) time complexity, timing out on strings with length 50,000.
+  for (let i = 0; i < s.length; i++) {
+    const candidate = s.slice(0, i) + s.slice(i + 1);
+    if (candidate === candidate.split("").reverse().join("")) {
+      return true;
+    }
+  }
+  return false;
+}
+```
+
+### Acceptance Criteria
+1. The algorithm must execute in strictly $O(n)$ time.
+2. Auxiliary memory must be strictly $O(1)$ without allocating reversed strings.
+3. Pass edge cases: strings that are already palindromes (`"aba"`), strings requiring one deletion (`"abca"`), and strings that cannot be made palindromes (`"abc"`).
+
+### Solution Code
+
+```javascript
+// Node.js code
+import assert from "node:assert/strict";
+
+function validPalindrome(s) {
+  let left = 0;
+  let right = s.length - 1;
+
+  // Helper to verify standard palindrome in O(n) time, O(1) space
+  function isSubPalindrome(l, r) {
+    while (l < r) {
+      if (s[l] !== s[r]) return false;
+      l++;
+      r--;
+    }
+    return true;
+  }
+
+  while (left < right) {
+    if (s[left] !== s[right]) {
+      // Upon encountering the first mismatch, test skipping either left or right character
+      return isSubPalindrome(left + 1, right) || isSubPalindrome(left, right - 1);
+    }
+    left++;
+    right--;
+  }
+
+  return true; // Already a valid palindrome without any deletions
+}
+
+// Verification Tests
+assert.equal(validPalindrome("aba"), true);   // Already palindrome
+assert.equal(validPalindrome("abca"), true);  // Delete 'c' or 'b'
+assert.equal(validPalindrome("abc"), false);  // Requires 2 deletions
+assert.equal(validPalindrome("deeee"), true); // Delete 'd'
+assert.equal(validPalindrome("eeeed"), true); // Delete 'd'
+
+console.log("✅ All Valid Palindrome II tests passed successfully!");
+```
+
+### Solution Explanation
+
+1. **Greedy Single-Skip Verification:** As long as `s[left] === s[right]`, characters are matched. The first mismatch at indices $(L, R)$ requires deleting either $s[L]$ or $s[R]$.
+2. **Strict $O(n)$ Bound:** `isSubPalindrome()` scans the remaining inner window at most twice, guaranteeing at most $2n$ comparisons and $O(1)$ stack allocations.
 
 ---
 
 ## Summary
 
-- Opposing two pointers converge inward on sorted arrays in $O(n)$ time with $O(1)$ memory.
-- In Two Sum II, the sum dictates whether to discard `left` (too small) or `right` (too large).
-- In Container With Most Water, we discard the shorter wall because it cannot support a larger area with decreasing width.
-- 3Sum sorts the array first, fixes one element, and runs Two Sum II on the remaining suffix, skipping duplicates at all three pointer positions.
+- Opposing two pointers converge inward on sorted arrays in $O(n)$ time and $O(1)$ auxiliary space.
+- In **Two Sum II**, monotonic ordering dictates whether to increment `left` (sum too small) or decrement `right` (sum too large).
+- In **Container With Most Water**, greedy shrinkage discards the shorter boundary line because its area cannot be improved with smaller widths.
+- **3Sum** fixes one element and runs Two Sum II on the remaining suffix ($O(n^2)$), requiring duplicate skipping at all pointer positions.
+- Using primitive stack pointers avoids heap allocations, preventing V8 garbage collection pauses and stabilizing p99 latency in Node.js.
 
 ---
 
@@ -209,23 +353,41 @@ Given a string `s`, return `true` if the string can be a palindrome after deleti
 
 ### Decision Rules
 | Problem Condition | Pointer Action | Why It Works |
-| :--- | :--- | :--- |
-| `sum < target` | `left++` | Array is sorted; all pairs with current `left` are too small |
-| `sum > target` | `right--` | Array is sorted; all pairs with current `right` are too large |
-| `height[L] < height[R]` | `left++` | `L` is the bottleneck; smaller widths cannot beat current area |
-| `s[L] === s[R]` (Palindrome) | `left++, right--` | Outer characters match; check inner substring |
+|---|---|---|
+| `sum < target` | `left++` | Array is sorted; all pairs with current `left` are strictly too small |
+| `sum > target` | `right--` | Array is sorted; all pairs with current `right` are strictly too large |
+| `height[L] < height[R]` | `left++` | Line $L$ bottlenecks capacity; interior widths cannot yield larger areas |
+| `s[L] === s[R]` (Palindrome) | `left++, right--` | Outer characters match; test remaining inner substring |
+
+### Common Pitfalls
+- **Sorting Unnecessarily when Indices Matter:** Pre-sorting unsorted arrays destroys initial index positions.
+- **Missing Boundary Guard in Duplicate Skips:** Writing `while (nums[left] === nums[left+1])` without `left < right`.
+- **Using `<=` for Pair Matching:** Allowing `left === right` permits an element to match with itself.
+- **Allocating Strings in Palindrome Checks:** Using `str.split('').reverse().join('')` instead of index pointers.
 
 ---
 
 ## Interview Questions
 
-### 1. Deep Definitions and Mental Models
-**Question:** Why does sorting an array before running Two Pointers take $O(n \log n)$ time, and why is this often preferable to an $O(n)$ hash map?
-- **Expected answer shape:** Sorting dominates the runtime with $O(n \log n)$, whereas a hash map is $O(n)$. However, Two Pointers requires $O(1)$ auxiliary space compared to $O(n)$ space for a hash map. When memory is constrained or the data is already sorted, Two Pointers is strictly superior.
+### 1. Why does sorting an array before running Two Pointers take $O(n \log n)$ time, and why is this often preferable to an $O(n)$ hash map?
 
-### 2. Predict the Output and Trace Execution
-**Question:** What does this function return for `height = [1, 1]`?
-```js
+**Question:** Compare the time, memory, and operational trade-offs between sorting with Two Pointers versus using a Hash Map for pair finding.
+
+**Answer:** 
+- **Asymptotic Comparison:**
+  - Hash Map runs in $O(n)$ average time and consumes **$O(n)$ auxiliary memory**.
+  - Sorting takes $O(n \log n)$ time, followed by an $O(n)$ two-pointer scan, taking $O(n \log n)$ overall time and **$O(1)$ auxiliary space** (if sorted in place).
+- **Why Two Pointers is Often Preferred:**
+  1. **Zero Garbage Collection Overhead:** In high-throughput Node.js microservices, allocating a hash map with 500,000 entries generates thousands of heap objects, triggering V8 garbage collector scavenges and spiking p99 latency. Two-pointer convergence uses two integer registers on the stack with zero heap allocations.
+  2. **Memory-Constrained Environments:** In containerized environments with strict memory limits (e.g., 64 MB), an $O(n)$ hash map risks an Out-Of-Memory (OOM) crash, whereas Two Pointers operates with zero additional RAM.
+  3. **Multi-Target Queries:** If the dataset is already sorted (e.g., stored in a sorted table or indexed stream), Two Pointers runs in $O(n)$ time with $O(1)$ space, beating the hash map on all metrics.
+
+---
+
+### 2. What does this code return for `height = [1, 1]`, and what is the exact execution trace?
+
+**Question:** Walk through the execution of `maxArea` on `height = [1, 1]` and explain why the while loop terminates.
+```javascript
 function maxArea(height) {
   let l = 0, r = height.length - 1, ans = 0;
   while (l < r) {
@@ -236,40 +398,88 @@ function maxArea(height) {
   return ans;
 }
 ```
-- **Expected answer shape:** Returns `1`. Initial: `l = 0, r = 1`. `Width = 1 - 0 = 1`. `Height = min(1, 1) = 1`. `Area = 1 * 1 = 1`. `r` decrements to 0. Loop terminates (`l < r` is false).
 
-### 3. Implementation Exercise
-**Question:** Write `isPalindrome(s)` ignoring case and non-alphanumeric characters in $O(n)$ time and $O(1)$ space.
-- **Expected answer shape:**
-```js
-function isPalindrome(s) {
-  let l = 0, r = s.length - 1;
-  const isAlphaNum = c => /[a-z0-9]/i.test(c);
-  while (l < r) {
-    while (l < r && !isAlphaNum(s[l])) l++;
-    while (l < r && !isAlphaNum(s[r])) r--;
-    if (s[l].toLowerCase() !== s[r].toLowerCase()) return false;
-    l++;
-    r--;
+**Answer:**
+The function returns `1`.
+
+**Execution Trace:**
+1. **Initialization:** `l = 0`, `r = 1`, `ans = 0`.
+2. **Iteration 1:**
+   - Loop condition `l < r` ($0 < 1$) evaluates to `true`.
+   - `width = r - l = 1 - 0 = 1`.
+   - `currentHeight = Math.min(height[0], height[1]) = Math.min(1, 1) = 1`.
+   - `area = 1 * 1 = 1`.
+   - `ans = Math.max(0, 1) = 1`.
+   - Evaluation of `height[l] < height[r]` ($1 < 1$) is `false`, entering the `else` branch: `r--` decrements `r` to `0`.
+3. **Termination:**
+   - Next iteration checks `l < r` ($0 < 0$), which evaluates to `false`.
+   - Loop terminates immediately, returning `ans = 1`.
+
+---
+
+### 3. How do you implement 3Sum while guaranteeing no duplicate triplets appear in the output, without using a `Set`?
+
+**Question:** Explain the duplicate pruning logic in 3Sum and implement it cleanly in JavaScript.
+
+**Answer:** 
+To guarantee unique triplets without spending extra memory on a `Set`, the array is sorted first, and duplicates are skipped at all three pointer locations:
+
+```javascript
+// Node.js code
+function threeSum(nums) {
+  nums.sort((a, b) => a - b);
+  const result = [];
+
+  for (let i = 0; i < nums.length - 2; i++) {
+    if (nums[i] > 0) break; // Smallest number > 0 cannot sum to 0
+    // Skip duplicate anchor elements
+    if (i > 0 && nums[i] === nums[i - 1]) continue;
+
+    let left = i + 1;
+    let right = nums.length - 1;
+    const target = -nums[i];
+
+    while (left < right) {
+      const sum = nums[left] + nums[right];
+
+      if (sum === target) {
+        result.push([nums[i], nums[left], nums[right]]);
+        // Skip duplicate left and right elements
+        while (left < right && nums[left] === nums[left + 1]) left++;
+        while (left < right && nums[right] === nums[right - 1]) right--;
+        left++;
+        right--;
+      } else if (sum < target) {
+        left++;
+      } else {
+        right--;
+      }
+    }
   }
-  return true;
+
+  return result;
 }
 ```
+- **Anchor Pruning:** `if (i > 0 && nums[i] === nums[i - 1]) continue` prevents processing the same first value more than once.
+- **Converging Pruning:** Once a valid sum is found, advancing past all identical adjacent values guarantees that neither `left` nor `right` re-uses the same number for the fixed anchor.
 
-### 4. Debugging and Failure Analysis
-**Question:** A candidate's 3Sum solution produces duplicate triplets like `[[-1, 0, 1], [-1, 0, 1]]`. Where is the bug?
-- **Expected answer shape:** The candidate forgot duplicate pruning. After finding a triplet `nums[i] + nums[l] + nums[r] === 0`, both `l` and `r` must skip identical adjacent numbers: `while (l < r && nums[l] === nums[l+1]) l++` and `while (l < r && nums[r] === nums[r-1]) r--`, and the outer loop must skip `if (i > 0 && nums[i] === nums[i-1]) continue`.
+---
 
-### 5. Design and Tradeoff Questions
-**Question:** Can Two Pointers be used to solve 4Sum? What is the resulting time complexity?
-- **Expected answer shape:** Yes. 4Sum uses two nested loops for the first two elements ($O(n^2)$) and Two Pointers for the remaining two elements ($O(n)$), yielding $O(n^3)$ overall time and $O(1)$ space. In general, $K$-Sum on a sorted array runs in $O(n^{K-1})$ time.
+### 4. Can the opposing two-pointer technique be generalized to 4Sum and $K$-Sum, and what are the resulting time complexities?
 
-### 6. Senior Follow-ups: V8 In-Place Operations
-**Question:** Why does an $O(1)$ auxiliary space algorithm like Two Pointers avoid triggering Node.js garbage collection, and why does this matter for 99th percentile (p99) latency?
-- **Expected answer shape:** Algorithms that allocate $O(n)$ objects or arrays (like hash maps) allocate memory on the V8 Young Generation heap, eventually triggering minor or major GC scavenges. GC pauses pause all execution on the Node.js event loop. Two-pointer algorithms only reassign primitive integer variables on the stack, generating zero heap allocations and ensuring flat, predictable p99 latency.
+**Question:** Explain how Two Pointers generalizes to 4Sum and arbitrary $K$-Sum on a sorted array.
+
+**Answer:** 
+Yes. The two-pointer technique forms the base case ($K = 2$) for a recursive divide-and-conquer generalization to arbitrary $K$-Sum:
+- For $K = 2$ (Two Sum II): Use opposing two pointers on the sorted array in $O(n)$ time.
+- For $K = 3$ (3Sum): Loop over the first element ($O(n)$) and invoke Two Sum II on the remainder, yielding $O(n^2)$ time.
+- For $K = 4$ (4Sum): Use two nested loops to fix the first two elements ($O(n^2)$) and invoke Two Sum II on the remainder, yielding $O(n^3)$ time.
+- **Generalization:** For arbitrary $K \ge 2$, sorting takes $O(n \log n)$, followed by $K - 2$ nested loops wrapping the final Two-Pointer scan. The asymptotic time complexity is **$O(n^{K - 1})$** with $O(1)$ auxiliary space (excluding recursion stack of depth $K$).
+
+---
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Sorting Deep Dive: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md)
+[Previous: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md)
 
 </nav>

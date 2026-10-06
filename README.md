@@ -17,13 +17,15 @@ Most interview preparation materials focus on rote memorization or surface-level
 
 ## 📚 Curriculum Tracks Overview
 
-The workspace is organized into three progressive, day-wise learning tracks with comprehensive roadmaps and standalone lecture files:
+The workspace is organized into progressive, day-wise learning tracks with comprehensive roadmaps and standalone lecture files:
 
 | Track | Scope | Days | Roadmap | Lecture Directory |
 | :--- | :--- | :--- | :--- | :--- |
 | **Track 1: JavaScript Mastery** | Language internals, memory, event loop, prototypes, closures, and async patterns | 28 Days | [javascript-roadmap.md](Javascript/javascript-roadmap.md) | [Javascript/javascript-lectures/](Javascript/javascript-lectures/) |
 | **Track 2: Node.js Backend & Architecture** | Node runtime, libuv, Express APIs, MongoDB, PostgreSQL, queues, caching, and system design | 42 Days | [node-roadmap.md](Node/node-roadmap.md) | [Node/node-lectures/](Node/node-lectures/) |
 | **Track 3: Data Structures & Algorithms** | Algorithmic patterns, Big O, linear and non-linear structures, dynamic programming, and backend use cases | 60 Days | [javascript-dsa-roadmap.md](DSA/javascript-dsa-roadmap.md) | [DSA/dsa-lectures/](DSA/dsa-lectures/) |
+| **Track 4: System Design** | Requirements, estimation, data, distributed systems, reliability, operations, and interview case studies | 42 Days | [system-design-roadmap.md](SystemDesign/system-design-roadmap.md) | [system-design-lectures/](SystemDesign/system-design-lectures/) |
+| **Quick interview prep** | Six independent, high-yield one-week interview sprints | 7 Days per track | [Quick-prep index](Quick-prep/README.md) | [Quick-prep lectures](Quick-prep/) |
 
 ---
 
@@ -72,11 +74,34 @@ The workspace is organized into three progressive, day-wise learning tracks with
 👉 **View full roadmap:** [DSA/javascript-dsa-roadmap.md](DSA/javascript-dsa-roadmap.md)  
 📁 **Lectures:** [DSA/dsa-lectures/](DSA/dsa-lectures/)
 
+### 4. System Design (42 Days)
+*Focus: Beginner-to-advanced backend architecture, distributed systems trade-offs, reliability, operations, and system design interviews.*
+
+- **Days 01–07: Foundations and Design Method** — Requirements, estimation, latency, networking, diagrams, and a repeatable interview process.
+- **Days 08–14: Core System Building Blocks** — APIs, data models, indexes, caches, load balancing, queues, object storage, and content delivery.
+- **Days 15–21: Data, Scaling, and Consistency** — Replication, sharding, transactions, consistency, search, recovery, and multi-region design.
+- **Days 22–28: Distributed Reliability and Security** — Deadlines, retries, idempotency, ordering, resilience patterns, workflows, observability, and threat modeling.
+- **Days 29–35: Architecture and Production Operations** — Service boundaries, communication, evolution, deployment, SLOs, capacity, cost, and disaster recovery.
+- **Days 36–42: Design Cases and Interview Capstones** — URL shortener, rate limiter, notifications, social feed, messaging, file sharing, and a timed capstone.
+
+👉 **View full roadmap:** [SystemDesign/system-design-roadmap.md](SystemDesign/system-design-roadmap.md)  
+📁 **Lectures:** [SystemDesign/system-design-lectures/](SystemDesign/system-design-lectures/)
+
+### 5. Quick Interview Prep (7 Days per Track)
+*Focus: A compact interview sprint for candidates who have prior exposure and need the most important concepts and traps without repeating a full course.*
+
+- **JavaScript, Node.js, DSA, and System Design:** advanced interview refresh tracks.
+- **React and Angular:** backend-developer working fluency, terminology, and ordinary feature-level understanding; not framework mastery.
+- **Node.js includes:** only high-yield MongoDB and PostgreSQL application fundamentals.
+
+👉 **Choose a one-week track:** [Quick-prep/README.md](Quick-prep/README.md)  
+📋 **Quick-prep content rules:** [DOCS/quick-prep-rules.md](DOCS/quick-prep-rules.md)
+
 ---
 
-## 📖 Lecture Structure Standard
+## 📖 Lecture Structure Standards
 
-Every lecture in this repository adheres to a strict pedagogical format defined in the workspace documentation:
+Comprehensive-course lectures follow the full format defined in the workspace documentation:
 
 1. **Title & Learning Outcomes**: Explicit technical capabilities acquired upon completion.
 2. **Prerequisites**: Clear conceptual dependencies linking back to earlier lecture days.
@@ -89,6 +114,8 @@ Every lecture in this repository adheres to a strict pedagogical format defined 
 9. **Summary**: High-level synthesis of all major takeaways.
 10. **Cheat Sheet**: High-density reference tables and rules for rapid pre-interview revision.
 11. **Interview Questions & Follow-ups**: Senior-level situational and conceptual questions with model talking points.
+
+The independent [Quick-prep tracks](Quick-prep/README.md) intentionally use a shorter format: **Know cold**, **Tricky points**, **Quick practice**, short **Interview check** answer cues, and optional deeper links. See [their dedicated rules](DOCS/quick-prep-rules.md).
 
 ---
 
@@ -104,11 +131,16 @@ Follow the natural dependency order across all three tracks:
 4. Advance through **Node.js Days 21–32** (Databases: MongoDB & PostgreSQL).
 5. Advance through **DSA Days 31–60** (Trees, Graphs, and Dynamic Programming).
 6. Complete **Node.js Days 33–42** and **JavaScript Days 22–28** (Architecture, Reliability & Security).
+7. Work through the **System Design roadmap** as a dedicated architecture and interview track, applying Node.js and database knowledge where useful.
 
 #### Pathway B: Pre-Interview Sprint (Revision Focus)
 - Review the **Cheat Sheet** and **Tricky Points** sections in each lecture file.
 - Practice answering the **Interview Questions** aloud before reading the model answers.
 - Review Days 57–60 of the DSA curriculum for live coding strategy and pattern identification.
+
+#### Pathway C: One-Week Targeted Interview Prep
+- Choose one track in [Quick-prep](Quick-prep/README.md) and complete its seven short lessons in order.
+- Use each lesson's optional deeper links only to close a specific knowledge gap; the quick-prep course stands alone.
 
 ---
 
@@ -130,6 +162,16 @@ Follow the natural dependency order across all three tracks:
 ├── Node/
 │   ├── node-roadmap.md        # 42-Day Node.js backend roadmap
 │   └── node-lectures/         # Day 01 to Day 42 Markdown lectures
+├── SystemDesign/
+│   └── system-design-roadmap.md # 42-Day system design roadmap
+├── Quick-prep/
+│   ├── README.md                # Index of six independent one-week interview sprints
+│   ├── javascript/              # JavaScript quick-prep roadmap and lectures
+│   ├── node/                    # Node.js, MongoDB, and PostgreSQL quick prep
+│   ├── dsa/                     # DSA quick-prep roadmap and lectures
+│   ├── system-design/           # System-design quick-prep roadmap and lectures
+│   ├── react/                   # React working-fluency quick prep
+│   └── angular/                 # Angular working-fluency quick prep
 └── DSA/
     ├── javascript-dsa-roadmap.md # 60-Day JavaScript DSA roadmap
     └── dsa-lectures/          # Day 01 to Day 60 Markdown lectures
@@ -142,6 +184,7 @@ Follow the natural dependency order across all three tracks:
 This workspace is maintained under strict content, example, and architectural guidelines:
 - [Workspace Boundaries & Agent Guidelines](AGENTS.md)
 - [Instruction System Index](DOCS/README.md)
+- [Portable LLM Workspace Instructions](LLM-INSTRUCTIONS.md)
 - [Content Architecture & Lecture Standards](DOCS/content-rules.md)
 - [Interview Question & Tradeoff Rules](DOCS/interview-rules.md)
 - [Code Example & Security Rules](DOCS/example-rules.md)

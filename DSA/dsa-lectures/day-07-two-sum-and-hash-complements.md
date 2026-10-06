@@ -1,4 +1,4 @@
-# Day 07: Two Sum and Hash Map Complements
+# Day 07: Two Sum and Hash Complements
 
 <nav aria-label="Lecture navigation">
 
@@ -10,240 +10,442 @@
 
 By the end of this lecture, you should be able to:
 
-- Master the **Complement Lookup Pattern** ($target - current$) to eliminate nested loops.
+- Master the **Hash Complement Pattern** ($\text{complement} = \text{target} - \text{current}$) to eliminate quadratic nested loops ($O(n^2) \to O(n)$).
 - Implement the canonical **Two Sum** in a single pass in $O(n)$ time and $O(n)$ auxiliary space.
-- Handle tricky duplicate numbers without overwriting required indices in the hash table.
-- Solve Two Sum variations: returning values vs indices, counting total pairs, and handling unsorted vs sorted arrays.
-- Understand how cache lookups in Node.js mirror the complement pattern for fast relational matching.
+- Distinguish between single-pass and two-pass hash table strategies, preventing self-pairing and duplicate overwrites.
+- Solve Two Sum variations: returning original indices vs values, counting total pairs, and handling pre-sorted arrays with Two Pointers.
+- Apply hash-indexed in-memory joins in Node.js microservices to merge detached dataset streams without blocking the event loop.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md)
-- [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md)
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic complexity and memory scaling.
+- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — JavaScript `Map` operations and key typing.
+- [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Hash bucket indexing and collision resolution.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **Hash Complement** | The calculated difference ($\text{target} - x$) required to satisfy a sum equality with value $x$. | Inverts forward pair searches into instantaneous $O(1)$ historical lookups. |
+| **Self-Pairing Trap** | A bug where an element pairs with itself because the hash table is pre-populated with all indices. | Occurs in naive two-pass algorithms when testing numbers whose complement equals themselves ($6 - 3 = 3$). |
+| **Single-Pass Hash Map** | An algorithm that checks for the complement before inserting the current element into the map. | Naturally prevents self-pairing, correctly handles duplicate numbers, and enables early termination. |
+| **Falsy Index Bug** | Evaluating index existence via `if (map[key])` which evaluates index `0` as `false`. | Causes silent lookups failures when an answer index is `0`; resolved via `map.has(key)` or `map[key] !== undefined`. |
+| **In-Memory Hash Join** | Indexing one relational dataset into a hash map by foreign key to join with another dataset in $O(n + m)$ time. | Replaces quadratic nested loops in Node.js backends when combining disparate microservice payloads. |
 
 ---
 
 ## Core Concepts
 
-### 1. The Complement Insight
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           THE TWO SUM HASH COMPLEMENT PIPELINE                              │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 
-Suppose we are given `nums = [2, 7, 11, 15]` and `target = 9`.
-The naive approach tests every pair `(nums[i], nums[j])` with nested loops:
-```text
-For i = 0 (2): compare with 7 (sum=9 -> match!)
-Operations: (n * (n - 1)) / 2 = O(n^2) time
+  Array: [ 3, 2, 4 ], Target = 6
+
+  Iteration 0:
+    Current: 3 | Complement = 6 - 3 = 3
+    Check: seen.has(3)? No.
+    Store: seen.set(3, index 0) ──> Map: { 3 => 0 }
+
+  Iteration 1:
+    Current: 2 | Complement = 6 - 2 = 4
+    Check: seen.has(4)? No.
+    Store: seen.set(2, index 1) ──> Map: { 3 => 0, 2 => 1 }
+
+  Iteration 2:
+    Current: 4 | Complement = 6 - 4 = 2
+    Check: seen.has(2)? YES! -> Found at index 1.
+    RETURN: [ seen.get(2), 2 ] ──> [ 1, 2 ]
 ```
 
-Instead of asking *"Does any future number add up to target?"*, invert the question:
-> **"For this number $x$, does its complement ($target - x$) already exist in our history?"**
+### 1. Inverting Search: The Complement Insight
 
-```text
-Formula: complement = target - nums[i]
+Given an array `nums = [2, 7, 11, 15]` and a target sum `target = 9`.
 
-i=0: num = 2, complement = 9 - 2 = 7. Has 7 been seen? No. Store { 2: index 0 }
-i=1: num = 7, complement = 9 - 7 = 2. Has 2 been seen? YES! (at index 0)
-Match found: [0, 1] in O(n) time!
-```
+A brute-force solution checks every pair $(i, j)$ using nested loops:
+$$\frac{n(n - 1)}{2} \text{ comparisons} = O(n^2) \text{ time}$$
+
+Instead of searching forward into the array for each element's partner, we record what we have already visited and invert the question:
+> *"For my current number $x$, does its complement ($\text{target} - x$) exist in our previously observed history?"*
+
+Because hash map lookups take $O(1)$ average time, checking history for each of the $n$ elements yields an optimal **$O(n)$ overall runtime**.
 
 ---
 
-### 2. Single-Pass vs Two-Pass Hash Map
+### 2. Single-Pass vs Two-Pass Hash Map Architectures
 
-- **Two-Pass Hash Map**:
-  1. Pass 1: Insert all `num -> index` into the map ($O(n)$).
-  2. Pass 2: For each element, look up `map.get(target - num)`.
-  *Hazard*: You must ensure `map.get(target - num) !== currentIndex` so an element cannot pair with itself (e.g. `target = 6, nums = [3]` must not return `[0, 0]`).
-- **Single-Pass Hash Map (Optimal)**:
-  Look up the complement *before* inserting the current element into the map. This automatically prevents an element from matching with itself and stops early the moment a pair is discovered.
+#### The Two-Pass Flaw and the Self-Pairing Bug
+In a two-pass approach:
+1. Pass 1 inserts all `num => index` pairs into the map.
+2. Pass 2 iterates through `nums` and checks `map.has(target - num)`.
 
-```text
-Array: [3, 2, 4], Target = 6
+If `nums = [3, 1]` and `target = 6`, at index `0` the complement is $6 - 3 = 3$. The map already contains `3` at index `0`. Without an explicit inequality guard (`map.get(complement) !== i`), the algorithm erroneously matches index `0` with itself, returning `[0, 0]`.
 
-Step 1: num = 3. complement = 3. Map is empty. Insert { 3: 0 }.
-Step 2: num = 2. complement = 4. Map has {3}. Insert { 2: 1 }.
-Step 3: num = 4. complement = 2. Map HAS 2 (index 1)! Return [1, 2].
-```
+#### The Single-Pass Invariant (Optimal)
+In a single-pass hash map:
+- We check if the complement exists in the map **before** inserting the current element.
+- Since the current element is not yet in the map, it can never match with itself.
+- If duplicate numbers exist (e.g., `nums = [3, 3]`, `target = 6`), the first `3` is stored at index `0`. When the second `3` arrives at index `1`, its complement `3` is found in the map at index `0`, immediately returning `[0, 1]`.
 
----
+```javascript
+// Node.js code
+"use strict";
 
-## Detailed Explanations & Node.js Relevance
+// ❌ ANTI-PATTERN: Brute-Force Nested Loops (O(n^2) time, O(1) space)
+function twoSumBruteForce(nums, target) {
+  for (let i = 0; i < nums.length; i++) {
+    for (let j = i + 1; j < nums.length; j++) {
+      if (nums[i] + nums[j] === target) {
+        return [i, j];
+      }
+    }
+  }
+  return [];
+}
 
-### Index Caching with `Map` in JavaScript
-
-In JavaScript, arrays can contain negative numbers, zeros, and numbers up to `Number.MAX_SAFE_INTEGER`.
-When storing numbers as keys:
-- Plain objects coerce all keys to strings: `{ 2: 0 }` stores property `"2"`.
-- `new Map()` preserves numbers as primitive integer keys without string conversion overhead:
-  ```js
-  const seen = new Map(); // key: number, value: index
-  seen.set(nums[i], i);
-  ```
-
-### Backend Relevance: In-Memory Joins
-In Node.js backend development, you often fetch two disparate data sets from separate microservices or database tables (e.g. `Orders` and `Users`) without a direct SQL `JOIN`.
-Nested looping through `orders` and `users` to match `order.userId === user.id` is an $O(n \times m)$ performance killer that blocks the event loop.
-Using a hash map to index `users` by `id` reduces the join to $O(n + m)$ time.
-
----
-
-## JavaScript Implementation & Tracing
-
-### Problem: Two Sum (LeetCode 1)
-
-Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`. Exactly one solution exists; you may not use the same element twice.
-
-```js
-function twoSum(nums, target) {
-  // Map stores: key = number, value = its index in nums
-  const seen = new Map();
+// ✅ PATTERN: Single-Pass Hash Map (O(n) time, O(n) space)
+function twoSumSinglePass(nums, target) {
+  const seen = new Map(); // Key: number, Value: original index
 
   for (let i = 0; i < nums.length; i++) {
-    const currentNum = nums[i];
-    const complement = target - currentNum;
+    const current = nums[i];
+    const complement = target - current;
 
-    // Check if the complement was already seen in prior steps
+    // Check history prior to insertion (eliminates self-pairing)
     if (seen.has(complement)) {
       return [seen.get(complement), i];
     }
 
-    // Record current number and its index
-    seen.set(currentNum, i);
+    seen.set(current, i);
   }
 
-  return []; // Fallback if no pair exists
+  return [];
+}
+
+console.log("Single-pass result:", twoSumSinglePass([3, 2, 4], 6)); // [1, 2]
+```
+
+---
+
+### 3. Asymptotic Trade-Offs: Hash Map vs Sorted Two Pointers
+
+| Technique | Time Complexity | Auxiliary Space | Index Preservation | Best Scenario |
+|---|---|---|---|---|
+| **Brute Force** | $O(n^2)$ | $O(1)$ | Preserves original indices | Tiny arrays ($n < 20$) |
+| **Single-Pass Hash Map** | **$O(n)$** | **$O(n)$** | Preserves original indices | Unsorted arrays where indices are required |
+| **Two-Pointer (Pre-Sorted)** | $O(n)$ | $O(1)$ | Lost unless index tuples tracked | Arrays that are already sorted |
+| **Sort + Two-Pointer** | $O(n \log n)$ | $O(n)$ or $O(1)$ | Lost unless index tuples tracked | When values are required and memory is capped |
+
+#### Two Sum II: Two-Pointer Approach on Sorted Inputs
+If the problem guarantees that the array is already sorted, the two-pointer inward scan finds the pair in $O(n)$ time with zero extra memory:
+
+```javascript
+// Node.js code
+function twoSumSorted(numbers, target) {
+  let left = 0;
+  let right = numbers.length - 1;
+
+  while (left < right) {
+    const currentSum = numbers[left] + numbers[right];
+
+    if (currentSum === target) {
+      return [left, right]; // Matched
+    } else if (currentSum < target) {
+      left++; // Need a larger sum
+    } else {
+      right--; // Need a smaller sum
+    }
+  }
+
+  return [];
+}
+
+console.log("Sorted two-pointer result:", twoSumSorted([2, 7, 11, 15], 9)); // [0, 1]
+```
+
+---
+
+### 4. Node.js Backend Application: In-Memory Relational Hash Join
+
+In microservice architectures, an API aggregator service often retrieves related data from different backend services (e.g., an array of `orders` from an order service and an array of `users` from an auth service).
+
+Joining these two arrays without SQL requires matching `order.userId === user.id`.
+
+```javascript
+// Node.js code
+// ❌ ANTI-PATTERN: Nested loop join runs in O(n * m) time!
+// For 10,000 orders and 10,000 users = 100,000,000 checks, stalling the event loop!
+function joinOrdersSlow(orders, users) {
+  return orders.map(order => {
+    const user = users.find(u => u.id === order.userId);
+    return { ...order, user };
+  });
+}
+
+// ✅ PATTERN: Hash Map Join runs in O(n + m) time!
+function joinOrdersFast(orders, users) {
+  // Step 1: Index users by ID in O(m) time
+  const userMap = new Map();
+  for (const user of users) {
+    userMap.set(user.id, user);
+  }
+
+  // Step 2: Join orders with instant O(1) lookups in O(n) time
+  return orders.map(order => ({
+    ...order,
+    user: userMap.get(order.userId) || null
+  }));
 }
 ```
 
-### Step-by-Step Execution Trace
+---
 
-Input: `nums = [3, 2, 4]`, `target = 6`
+## Tricky Points and Edge Cases
 
-| Step `i` | `currentNum` | `complement = 6 - num` | `seen.has(complement)?` | `seen` Map State (After Step) |
-| :--- | :--- | :--- | :--- | :--- |
-| `i = 0` | `3` | `3` | `false` | `{ 3 => 0 }` |
-| `i = 1` | `2` | `4` | `false` | `{ 3 => 0, 2 => 1 }` |
-| `i = 2` | `4` | `2` | **`true`** (index 1) | **Return `[1, 2]`** |
+### 1. The Falsy Index Zero Trap in JavaScript
+When using a plain object or relying on truthiness to check index existence:
 
-- **Time Complexity**: $O(n)$ where $n$ is `nums.length`. We perform at most $n$ lookups and insertions, each taking $O(1)$ average time.
-- **Auxiliary Space**: $O(n)$ extra space to store up to $n$ entries in `seen`.
+```javascript
+// Node.js code
+const seen = {};
+seen[5] = 0; // Number 5 is at index 0
+
+// ❌ BUG: 0 is falsy in JavaScript!
+if (seen[5]) {
+  console.log("Found!"); // Never runs because seen[5] === 0, which is falsy!
+}
+
+// ✅ FIX: Strict undefined comparison or Map.has()
+if (seen[5] !== undefined) {
+  console.log("Correctly identified index 0 via object property check");
+}
+```
+
+### 2. Negative Targets and Operands
+The complement formula $\text{target} - \text{current}$ handles negative integers and zeros without modification:
+- `nums = [-3, 4, 3, 90]`, `target = 0`: At `-3`, complement is $0 - (-3) = 3$. At `3`, complement is $0 - 3 = -3$, successfully matching `[-3, 3]`.
+- `nums = [-5, -2, -8]`, `target = -7`: At `-5`, complement is $-7 - (-5) = -2$, successfully matching `[-5, -2]`.
 
 ---
 
-## Common Mistakes & Interview Traps
+## Hands-On Exercise
 
-1. **Self-Pairing Trap**:
-   ```js
-   // WRONG: In a two-pass approach without an index check:
-   for (let i = 0; i < nums.length; i++) {
-     if (seen.has(target - nums[i])) return [i, seen.get(target - nums[i])];
-   }
-   // If nums = [3, 1], target = 6, 6 - 3 = 3 is found in the map at index 0 -> returns [0, 0]!
-   ```
-   *Fix*: Use single-pass insertion or check `seen.get(complement) !== i`.
-2. **Handling Identical Values**:
-   If `nums = [3, 3]`, `target = 6`:
-   At `i = 0`, map is empty; `seen.set(3, 0)`.
-   At `i = 1`, `complement = 3` is found in the map at index `0`. Returns `[0, 1]`. The single-pass approach handles duplicate numbers effortlessly.
-3. **Sorting Unnecessarily**:
-   Sorting an array first takes $O(n \log n)$ time and invalidates the original indices unless pairs are bundled with their original positions. If indices are requested, a hash map ($O(n)$) is superior.
+### Scenario
+You are building a peer-to-peer cryptocurrency order book matcher. You receive an array of trade amounts `trades`. You must find the total count of distinct trade pairs $(i, j)$ with $i < j$ whose combined volume equals a required settlement `target`.
 
----
+Duplicate amounts may appear multiple times (e.g., three separate orders of `10`).
 
-## Tricky Points & Edge Cases
+### Buggy Code
+```javascript
+// Node.js code
+function countPairCombinationsBuggy(trades, target) {
+  let count = 0;
+  const seen = new Set();
 
-- **Negative Numbers and Zeroes**:
-  `nums = [-1, -2, -3, -4, -5]`, `target = -8`:
-  Complement: `-8 - (-3) = -5`. Arithmetic works identically with negative numbers.
-- **Very Large Arrays in Node.js**:
-  For an array of $10^6$ elements, `new Map()` will allocate ~40 MB of heap memory. This is completely safe in Node.js, whereas an $O(n^2)$ loop over $10^6$ elements would take days to complete.
+  for (let i = 0; i < trades.length; i++) {
+    const complement = target - trades[i];
+    // ❌ Bug 1: A Set only tracks boolean existence, ignoring multiple identical trades!
+    // ❌ Bug 2: Fails when multiple pairs share the same numerical value.
+    if (seen.has(complement)) {
+      count++;
+    }
+    seen.add(trades[i]);
+  }
 
----
+  return count;
+}
+```
 
-## Practical Exercise
+### Acceptance Criteria
+1. Return the exact count of valid index pairs $(i, j)$ with $i < j$ summing to `target`.
+2. Must run in $O(n)$ time using a single frequency map pass.
+3. Correctly calculate combinations for repeated elements (e.g., `[2, 2, 2]`, `target = 4` has 3 pairs).
 
-Implement `countPairsWithSum(nums, target)` which counts the total number of distinct pairs $(i, j)$ with $i < j$ such that `nums[i] + nums[j] === target`.
-- **Constraint**: Array can have duplicates (e.g. `[1, 1, 1, 1]`, `target = 2` should return `6`).
-- **Acceptance Criterion**: Must run in $O(n)$ time using a frequency map without nested loops.
+### Solution Code
+
+```javascript
+// Node.js code
+import assert from "node:assert/strict";
+
+function countPairCombinations(trades, target) {
+  const freq = new Map();
+  let totalPairs = 0;
+
+  for (const trade of trades) {
+    const complement = target - trade;
+
+    // If complement exists in history, current trade pairs with ALL previous instances
+    if (freq.has(complement)) {
+      totalPairs += freq.get(complement);
+    }
+
+    // Record or increment current trade frequency
+    freq.set(trade, (freq.get(trade) || 0) + 1);
+  }
+
+  return totalPairs;
+}
+
+// Verification Tests
+// Test 1: Simple distinct pairs
+assert.equal(countPairCombinations([1, 2, 3, 4, 3], 6), 2); // (2, 4) and (3, 3)
+
+// Test 2: Identical numbers: 4 items of value 1. Combinations = 4 * 3 / 2 = 6 pairs
+assert.equal(countPairCombinations([1, 1, 1, 1], 2), 6);
+
+// Test 3: No valid pairs
+assert.equal(countPairCombinations([1, 5, 9], 100), 0);
+
+// Test 4: Negative numbers and zeros
+assert.equal(countPairCombinations([0, 0, 0], 0), 3); // (0,1), (0,2), (1,2)
+assert.equal(countPairCombinations([-2, 5, -3, 8], 3), 2); // (-2, 5) and (-5 doesn't exist, etc.)
+
+console.log("✅ All Two Sum pair frequency tests passed successfully!");
+```
+
+### Solution Explanation
+
+1. **Cumulative Frequency Addition:** For each incoming number `trade`, every previously seen instance of `complement` forms a distinct valid pair $(i, j)$ where $i < j$. Therefore, we add `freq.get(complement)` directly to `totalPairs`.
+2. **Strict $O(n)$ Time:** A single linear pass updates the frequency counter and tallies combinations in $O(1)$ average time per entry.
 
 ---
 
 ## Summary
 
-- The Complement pattern transforms pair-matching problems from $O(n^2)$ brute force to $O(n)$ linear time.
-- Single-pass hash map searches previous elements before inserting the current one, naturally eliminating self-pairing and handling duplicates.
-- JavaScript `Map` handles numerical keys cleanly without string conversion overhead.
-- In backend services, building an in-memory index to join collections simulates the complement pattern and keeps event-loop latency minimal.
+- The **Hash Complement Pattern** transforms $O(n^2)$ pair searches into $O(n)$ linear algorithms by querying previously observed values.
+- **Single-Pass Hash Maps** check for the complement prior to inserting the current element, avoiding self-pairing and resolving duplicate keys.
+- If data is already sorted, the **Two-Pointer technique** finds pair sums in $O(n)$ time with $O(1)$ auxiliary space.
+- In Node.js, `new Map()` avoids string coercion and prototype pollution when storing numerical keys.
+- The hash complement pattern forms the algorithmic basis for in-memory relational joins between microservice datasets.
 
 ---
 
 ## Cheat Sheet
 
-### Two Sum Comparison
-| Approach | Time Complexity | Auxiliary Space | Preserves Indices? |
-| :--- | :--- | :--- | :--- |
-| Brute Force (Nested Loops) | $O(n^2)$ | $O(1)$ | Yes |
-| Two-Pointer (Sort First) | $O(n \log n)$ | $O(1)$ (or $O(n)$ to copy) | Requires index tracking |
-| **Single-Pass Hash Map** | **$O(n)$** | **$O(n)$** | **Yes (Direct)** |
+### Complexity Matrix
+| Approach | Time | Space | Prerequisite | Notes |
+|---|---|---|---|---|
+| Brute Force | $O(n^2)$ | $O(1)$ | None | Quadratic; unsuitable for large datasets |
+| Single-Pass `Map` | $O(n)$ | $O(n)$ | None | Best general-purpose approach for unsorted data |
+| Two Pointers | $O(n)$ | $O(1)$ | Pre-sorted | Best for memory-constrained environments on sorted inputs |
+| Sort + Two Pointers | $O(n \log n)$ | $O(1)$ or $O(n)$ | None | Useful when values are needed and memory is strictly limited |
 
-### Core Algorithm Blueprint
-```js
-const seen = new Map();
-for (let i = 0; i < nums.length; i++) {
-  const comp = target - nums[i];
-  if (seen.has(comp)) return [seen.get(comp), i];
-  seen.set(nums[i], i);
-}
-```
+### Common Pitfalls
+- **Self-Pairing Bug:** Testing the complement against an already populated map containing the current element's index.
+- **Falsy Index 0:** Checking `if (map[key])` instead of `if (map.has(key))` causes lookups for index `0` to fail.
+- **Premature Sorting:** Sorting an array just to run two pointers destroys original index positions unless wrapped in index-value tuples.
+- **Quadratic In-Memory Joins:** Using `.find()` inside a `.map()` to join collections in Node.js instead of building a hash index map.
 
 ---
 
 ## Interview Questions
 
-### 1. Deep Definitions and Mental Models
-**Question:** Explain the difference in trade-offs between solving Two Sum using a Hash Map versus using a Two-Pointer approach on a sorted array.
-- **Expected answer shape:** A Hash Map solves Two Sum in $O(n)$ time and $O(n)$ space on unsorted data while naturally preserving original array indices. The Two-Pointer approach requires $O(n \log n)$ time to sort first, but runs with $O(1)$ extra memory. If the array is already sorted, Two-Pointer wins with $O(n)$ time and $O(1)$ auxiliary space.
+### 1. What are the key algorithmic trade-offs between solving Two Sum with a Hash Map versus the Two-Pointer approach on a sorted array?
 
-### 2. Predict the Output and Trace Execution
-**Question:** What does this function return for `nums = [3, 2, 4]` and `target = 6`?
-```js
-function test(nums, target) {
+**Question:** Compare time complexity, space complexity, input preconditions, and index preservation between the Hash Map and Two-Pointer approaches for Two Sum.
+
+**Answer:** 
+1. **Hash Map Approach:**
+   - **Time Complexity:** $O(n)$ average time on unsorted data.
+   - **Space Complexity:** $O(n)$ auxiliary space to store elements in the hash table.
+   - **Index Preservation:** Naturally preserves the original indices of the elements.
+   - **Best used when:** The array is unsorted and index positions must be returned.
+2. **Two-Pointer Approach:**
+   - **Time Complexity:** $O(n)$ if the array is already sorted; $O(n \log n)$ if sorting is required beforehand.
+   - **Space Complexity:** $O(1)$ auxiliary space if the array is sorted in place.
+   - **Index Preservation:** Sorting reorders elements, destroying the original index mappings unless extra memory is spent storing `[value, originalIndex]` tuples ($O(n)$ space).
+   - **Best used when:** The input array is already sorted or when auxiliary memory is strictly constrained ($O(1)$ memory requirement).
+
+---
+
+### 2. What does this code return for `nums = [3, 2, 4]` and `target = 6`, and why does it fail?
+
+**Question:** Identify the bug in the following implementation and explain how to fix it:
+```javascript
+function twoSumBuggy(nums, target) {
   const map = new Map();
-  nums.forEach((n, i) => map.set(n, i));
+  nums.forEach((val, idx) => map.set(val, idx));
+
   for (let i = 0; i < nums.length; i++) {
-    const diff = target - nums[i];
-    if (map.has(diff)) return [i, map.get(diff)];
+    const complement = target - nums[i];
+    if (map.has(complement)) {
+      return [i, map.get(complement)];
+    }
   }
 }
 ```
-- **Expected answer shape:** It incorrectly returns `[0, 0]`. At `i = 0`, `diff = 6 - 3 = 3`. Because the map already contains all numbers, `map.has(3)` is true, returning index 0 paired with itself. A check `map.get(diff) !== i` is required to fix it.
 
-### 3. Implementation Exercise
-**Question:** Implement `twoSumValues(nums, target)` that returns the two *values* (not indices) that sum to target, returning `null` if none exist. Optimize space by using a `Set`.
-- **Expected answer shape:**
-```js
+**Answer:**
+The function returns `[0, 0]`, which is incorrect.
+
+**Explanation:**
+This is the **Self-Pairing Trap** inherent to naive two-pass implementations. The first pass populates the map with all elements: `{ 3 => 0, 2 => 1, 4 => 2 }`.
+When the loop begins at `i = 0`, `nums[0] = 3`. The complement is $6 - 3 = 3$. The function queries `map.has(3)`, which returns `true` because `3` was inserted during the first pass at index `0`. The function immediately returns `[0, 0]`, matching index `0` with itself.
+
+**Fix:** Either add an index guard (`map.get(complement) !== i`), or switch to a **single-pass** approach where elements are inserted into the map only *after* checking for the complement.
+
+---
+
+### 3. How do you implement `twoSumValues(nums, target)` returning the two numbers (not indices) while minimizing memory overhead?
+
+**Question:** Write an optimal JavaScript function that returns the two values that sum to `target` using a `Set` instead of a `Map`.
+
+**Answer:** When only the values are required rather than the indices, storing values in an ES2015 `Set` reduces memory overhead compared to a `Map` (since keys and values do not need to be stored separately):
+
+```javascript
+// Node.js code
 function twoSumValues(nums, target) {
   const seen = new Set();
+
   for (const num of nums) {
     const complement = target - num;
-    if (seen.has(complement)) return [complement, num];
+
+    if (seen.has(complement)) {
+      return [complement, num]; // Found matching pair
+    }
+
     seen.add(num);
   }
-  return null;
+
+  return null; // No pair found
 }
+
+console.log(twoSumValues([10, 15, 3, 7], 17)); // [10, 7]
 ```
+- **Time Complexity:** $O(n)$ average time.
+- **Auxiliary Space:** $O(n)$ space within a compact `Set`.
 
-### 4. Debugging and Failure Analysis
-**Question:** A junior developer uses an object `const seen = {}` for Two Sum: `seen[target - num] = i`. When testing with numbers like `0` or negative values, they write `if (seen[num]) return [seen[num], i]`. Why does this fail for index 0?
-- **Expected answer shape:** In JavaScript, index `0` is falsy. If the complement was stored at index `0`, `seen[num]` evaluates to `0`, causing `if (0)` to evaluate as false. The check must be `if (seen[num] !== undefined)` or use `seen.has(num)` with a `Map`.
+---
 
-### 5. Design and Tradeoff Questions
-**Question:** If `nums` contains 50 million integers and memory is capped at 50 MB, why can you not use the Hash Map approach, and how would you solve it?
-- **Expected answer shape:** Storing 50 million entries in a JavaScript `Map` requires over 2 GB of RAM, causing an out-of-memory crash under a 50 MB limit. Instead, use an external sorting algorithm (disk-based merge sort) to sort the integers, and then stream through the sorted file using two pointers from both ends with $O(1)$ memory.
+### 4. If an unsorted dataset contains 50 million integers and memory is strictly capped at 50 MB, why does the Hash Map approach fail, and how do you solve it?
 
-### 6. Senior Follow-ups: Node.js Concurrency
-**Question:** In a Node.js microservice handling 5,000 requests/sec, an endpoint performs an in-memory Two Sum matching IDs from two payloads. How do you prevent event-loop latency spikes?
-- **Expected answer shape:** Ensure payload sizes are capped ($N \le 1,000$). At $N \le 1,000$, an $O(n)$ hash map executes in $< 0.1$ ms on the V8 main thread. If payloads can be large ($N \ge 100,000$), offload the computation to a worker thread (`worker_threads`) so CPU-bound array hashing does not stall incoming HTTP connections.
+**Question:** Analyze the memory limits of solving Two Sum on 50 million integers in Node.js and describe an architecture that adheres to a 50 MB RAM budget.
+
+**Answer:** 
+**Why Hash Map Fails:**
+In V8, each entry in a `Map` or `Set` consumes approximately 40 to 64 bytes of heap overhead (including hash bucket pointers and object wrappers). Storing 50 million entries requires:
+$$50{,}000{,}000 \times 48\text{ bytes} \approx 2.4\text{ GB of RAM}$$
+In an environment capped at 50 MB of memory, attempting to build this `Map` causes an Out-Of-Memory (OOM) crash.
+
+**Architecture for 50 MB RAM (External Sort + Two Pointers):**
+1. **Phase 1: External Merge Sort:**
+   - Stream the 50 million integers from disk in 10 MB chunks.
+   - Sort each chunk in memory using `arr.sort((a, b) => a - b)` and write the sorted runs to temporary files on disk.
+   - Perform a K-way merge using streams and a small Min-Heap, producing a single, sorted 50-million-number file on disk.
+2. **Phase 2: Streaming Two-Pointer Scan:**
+   - Open two streaming readers on the sorted file: one at the start of the file (`left`) and one at the end of the file (`right`).
+   - Read numbers sequentially from both ends:
+     - If $\text{leftVal} + \text{rightVal} === \text{target}$, return the pair.
+     - If $\text{leftVal} + \text{rightVal} < \text{target}$, advance the `left` file pointer forward.
+     - If $\text{leftVal} + \text{rightVal} > \text{target}$, advance the `right` file pointer backward.
+3. Total memory consumption remains bounded under **$O(1)$** buffer frames ($< 5\text{ MB}$), well within the 50 MB budget.
+
+---
 
 <nav aria-label="Lecture navigation">
 

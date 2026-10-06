@@ -1,68 +1,128 @@
 # Day 29: Singly and Doubly Linked Lists
 
-## 1. Learning Outcomes
-- Understand pointer-based dynamic node structures versus contiguous array layouts in V8 memory.
-- Implement Singly Linked List and Doubly Linked List with core operations ($O(1)$ head/tail mutation, $O(n)$ access).
+<nav aria-label="Lecture navigation">
+
+[Previous: Binary Search on Solution Space](day-28-binary-search-on-solution-space.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Linked List Fast & Slow Pointers and Reversals](day-30-linked-list-fast-slow-and-reversals.md)
+
+</nav>
+
+## Learning Outcomes
+
+By the end of this lecture, you should be able to:
+
+- Contrast heap-allocated dynamic node structures with contiguous array layouts in V8 engine memory.
+- Implement Singly and Doubly Linked Lists with $O(1)$ head/tail mutations and understand $O(n)$ access limitations.
 - Master the **Dummy Head (Sentinel) Pattern** to eliminate head-boundary null pointer exceptions.
-- Implement in-place list reversal ($O(n)$ time, $O(1)$ auxiliary space) without allocating new nodes.
-- Solve the two-pointer offset technique: removing the $N$-th node from the end of a list in a single pass.
-- Analyze Node.js backend tradeoffs: pointer chasing cache misses vs. array element shifting in high-throughput buffer queues.
+- Implement in-place list reversal ($O(n)$ time, $O(1)$ space) without allocating new nodes.
+- Solve the two-pointer offset window pattern: removing the $N$-th node from the end in a single pass.
+- Evaluate Node.js backend performance trade-offs: pointer chasing cache misses vs array shifts in LRU caches and connection pools.
 
 ---
 
-## 2. Prerequisites & Navigation
-- **Prerequisites**: Day 02 (Arrays & Object References), Day 11 (Two Pointers), Day 26–28 (Binary Search).
-- **Navigation**:
-  - [Previous: Day 28 - Binary Search on Solution Space](day-28-binary-search-on-solution-space.md)
-  - [Roadmap](../javascript-dsa-roadmap.md)
-  - [Next: Day 30 - Linked List Fast & Slow Pointers and Reversals](day-30-linked-list-fast-slow-and-reversals.md)
+## Prerequisites
+
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Reference vs value semantics and memory.
+- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Contiguous array allocations in V8.
+- [Day 11: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md) — Multi-pointer movement patterns.
 
 ---
 
-## 3. Core Concepts & Mental Models
-An Array allocates contiguous memory slots; accessing `arr[i]` requires instant arithmetic indexing (`base + i * size`), but `unshift()` shifts $n$ items ($O(n)$). In contrast, a **Linked List** links disconnected heap object nodes via reference pointers.
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+| :--- | :--- | :--- |
+| **Singly Linked List** | A linear data structure composed of distinct heap nodes where each node contains a value and a forward reference pointer (`next`). | Enables $O(1)$ insertions and deletions at known pointer locations without shifting elements. |
+| **Doubly Linked List** | A linked node structure where each node maintains two pointer references: one to its predecessor (`prev`) and one to its successor (`next`). | Enables $O(1)$ arbitrary node deletion and bi-directional traversal, forming the backbone of LRU caches. |
+| **Sentinel (Dummy Head)** | An auxiliary node prepended before the actual head node whose value is arbitrary and never read. | Unifies edge-case operations by ensuring that every valid node—including the real head—always possesses a valid predecessor. |
+| **Pointer Chasing** | Iteratively dereferencing scattered memory addresses across the heap to traverse a linked structure. | Induces CPU L1/L2 cache misses, making linked lists substantially slower than flat arrays for sequential iteration. |
+| **Offset Window** | Maintaining two pointers separated by an invariant distance of $k$ nodes. | Allows locating elements positioned relative to the end of a list in a single pass without knowing list length. |
+
+---
+
+## Core Concepts
+
+### 1. Pointer-Based Dynamic Structures vs Contiguous Arrays in V8
+
+A **Linked List** is a linear collection of data elements whose order is not dictated by physical memory placement, but rather by explicit reference links stored within each independent node object.
+
+In contrast, JavaScript arrays allocate contiguous backing stores in V8 memory:
+- **Array**: `arr[i]` computes memory addresses instantly via direct arithmetic: $\text{Base} + i \times \text{ElementSize}$ in $O(1)$ time. However, prepending an element via `unshift()` forces the engine to shift all $n$ subsequent elements in memory ($O(n)$).
+- **Linked List**: Prepending a node is an $O(1)$ pointer assignment (`newNode.next = head; head = newNode`). However, accessing the $i$-th element requires sequentially chasing $i$ object reference pointers across the heap ($O(n)$).
 
 ```text
-Singly Linked List:
-[Head: 10] ---> [Node: 20] ---> [Node: 30] ---> null
+Contiguous Array in V8 Memory:
+[ Index 0 (10) ][ Index 1 (20) ][ Index 2 (30) ] -> Contiguous cache line (Fast!)
 
-Doubly Linked List:
-null <--- [Node: 10] <=====> [Node: 20] <=====> [Node: 30] ---> null
-             (prev/next)         (prev/next)        (prev/next)
-
-Dummy Head Technique (Sentinel Node):
-[Dummy (val:0)] ---> [Head: 10] ---> [Node: 20] ---> null
-  ^ sentinel pointer simplifies deletion of first node
+Singly Linked List in V8 Heap Memory:
+Node at 0x1A04 { val: 10, next: 0x4F88 }
+                    │
+                    ▼ (Pointer chase across heap)
+Node at 0x4F88 { val: 20, next: 0x9B12 }
+                    │
+                    ▼ (Pointer chase across heap)
+Node at 0x9B12 { val: 30, next: null }
 ```
 
-### V8 Engine Memory Implication
-Each JavaScript object node `{ val, next }` requires V8 heap allocation (~32–48 bytes due to object header, hidden class pointer, and field slots). Iterating through linked lists causes CPU L1/L2 cache misses ("pointer chasing") compared to flat typed arrays. However, linked lists provide guaranteed $O(1)$ insertions/deletions once a node pointer is held.
+#### V8 Memory Overhead Comparison
+
+In Node.js, each JavaScript object `{ val, next }` consumes ~32–48 bytes due to object headers, hidden class (map) pointers, and property slots. A linked list of 1,000,000 integers consumes ~40 MB of memory and creates 1,000,000 heap objects, stressing V8 mark-and-sweep garbage collection. A typed array (`Int32Array`) of 1,000,000 integers allocates a single contiguous 4 MB buffer with zero GC traversal overhead.
 
 ---
 
-## 4. Detailed Technical Explanations
+### 2. The Sentinel (Dummy Head) Pattern
 
-### 4.1 The Sentinel (Dummy Head) Pattern
-When deleting or inserting the head node, normal code requires conditional checks (`if (head === target)`). A dummy head initialized before the real head (`dummy.next = head`) standardizes operations so the target node always has a non-null predecessor (`curr.next = curr.next.next`).
+When modifying a linked list, operations at the `head` node frequently require conditional branches (`if (head === target)`) because the head has no predecessor.
+A **Dummy Head (Sentinel Node)** is an artificial node created prior to the real head (`dummy.next = head`).
 
-### 4.2 Singly vs. Doubly Linked List Tradeoffs
-| Metric | Array | Singly Linked List | Doubly Linked List |
-| :--- | :--- | :--- | :--- |
-| **Index Access** | $O(1)$ | $O(n)$ | $O(n)$ |
-| **Insert/Delete at Head** | $O(n)$ | $O(1)$ | $O(1)$ |
-| **Insert/Delete at Tail** | $O(1)$ amortized | $O(1)$ (with tail pointer) | $O(1)$ |
-| **Delete Arbitrary Node** | $O(n)$ | $O(n)$ (need predecessor) | $O(1)$ (if node given) |
-| **Memory per Element** | Compact contiguous | 1 pointer overhead | 2 pointer overhead |
+By prepending a sentinel node:
+1. Every valid list node (including the initial head) is guaranteed to have a non-null predecessor.
+2. Deleting or inserting the head node uses the exact same pointer assignment logic as any interior node: `prev.next = curr.next`.
+3. Returning the updated list is standardized: `return dummy.next;`.
 
-### 4.3 Node.js Relevance: Connection Pools & LRU Caches
-Node.js core libraries (such as `lib/internal/priority_queue.js` or LRU caches) rely on Doubly Linked Lists combined with hash maps. When a network socket or cached database record is accessed, removing and re-attaching it to the head of the list must execute in strictly deterministic $O(1)$ time without reindexing arrays on the event loop.
+```text
+Deleting Head Node (Node 10) Without Dummy:
+Must check: if (head.val === 10) head = head.next;
+
+Deleting Head Node With Dummy:
+[ Dummy: 0 ] ──────► [ Node: 10 ] ──────► [ Node: 20 ] ──────► null
+     ▲                     ▲
+    prev                  curr
+
+curr.val === 10 -> prev.next = curr.next ([Dummy].next = [Node 20])
+Return dummy.next -> [Node 20] cleanly returned!
+```
 
 ---
 
-## 5. JavaScript Implementation & Step-by-Step Traces
+### 3. In-Place Reversal of a Singly Linked List (LeetCode 206)
 
-### 5.1 ListNode Definition & In-Place Reversal
+Given the head of a singly linked list, reverse the list in-place and return the new head.
+
+Reversal requires a **three-pointer coordination dance**:
+- `prev`: Tracks the node behind `curr` (initially `null`).
+- `curr`: The node currently being redirected.
+- `nextTemp`: Caches the forward link before it is overwritten.
+
+```text
+Reversal Pointer Lifecycle:
+Initial:  null    [ 1 ] ───► [ 2 ] ───► [ 3 ] ───► null
+           ▲        ▲
+          prev     curr
+
+Step 1: Cache next:      nextTemp = curr.next ([2])
+Step 2: Reverse link:    curr.next = prev (null)
+Step 3: Advance prev:    prev = curr ([1])
+Step 4: Advance curr:    curr = nextTemp ([2])
+
+State after 1 step:
+null ◄─── [ 1 ]   [ 2 ] ───► [ 3 ] ───► null
+            ▲       ▲
+          prev    curr
+```
+
 ```javascript
+// Node.js code: In-Place Singly Linked List Reversal
+
 class ListNode {
   constructor(val = 0, next = null) {
     this.val = val;
@@ -70,44 +130,80 @@ class ListNode {
   }
 }
 
-/**
- * Reverses a singly linked list in-place.
- * Time Complexity: O(n) - visits each node once.
- * Space Complexity: O(1) - auxiliary pointers only.
- */
+// ❌ WRONG: Overwriting curr.next before caching nextTemp severs the list!
+function brokenReverse(head) {
+  let prev = null;
+  let curr = head;
+  while (curr !== null) {
+    curr.next = prev; // FATAL: Rest of the list is lost forever!
+    prev = curr;
+    curr = curr.next; // Moves curr back to prev (null)!
+  }
+  return prev;
+}
+
+// ✅ CORRECT: Cache forward link before pointer redirection
 function reverseList(head) {
   let prev = null;
   let curr = head;
 
   while (curr !== null) {
-    const nextTemp = curr.next; // 1. Preserve forward reference
-    curr.next = prev;           // 2. Reverse pointer direction
-    prev = curr;                // 3. Advance prev
-    curr = nextTemp;            // 4. Advance curr
+    const nextTemp = curr.next; // 1. Cache forward pointer
+    curr.next = prev;           // 2. Reverse link
+    prev = curr;                // 3. Step prev forward
+    curr = nextTemp;            // 4. Step curr forward
   }
 
   return prev; // New head of reversed list
 }
 ```
 
-### 5.2 Remove N-th Node From End (One-Pass Fast/Slow Window)
+---
+
+### 4. The Two-Pointer Offset Window: Remove N-th Node From End (LeetCode 19)
+
+Given the head of a linked list, remove the $n$-th node from the end of the list and return its head in a single pass.
+
+#### The Offset Invariant
+1. Create a `dummy` node pointing to `head`.
+2. Initialize two pointers: `fast = dummy` and `slow = dummy`.
+3. Advance `fast` forward by **$n + 1$ steps**.
+4. Advance both `fast` and `slow` together at identical $1\times$ speed until `fast === null`.
+5. Because `fast` is exactly $n + 1$ nodes ahead, when `fast` reaches `null`, `slow` stops **immediately before the target node to be deleted**!
+6. Unlink the target: `slow.next = slow.next.next`.
+
+```text
+List: [Dummy] -> [ 1 ] -> [ 2 ] -> [ 3 ] -> [ 4 ] -> [ 5 ] -> null, n = 2
+Target from end: Node 4
+
+1. Advance fast n + 1 = 3 steps:
+   [Dummy] -> [ 1 ] -> [ 2 ] -> [ 3 ] -> [ 4 ] -> [ 5 ] -> null
+      ▲                           ▲
+    slow                         fast
+
+2. Advance fast and slow in tandem until fast reaches null:
+   fast at [4], slow at [1]
+   fast at [5], slow at [2]
+   fast at null, slow at [3]
+
+3. Unlink: slow.next = slow.next.next ([3].next = [5])
+Result: [ 1 ] -> [ 2 ] -> [ 3 ] -> [ 5 ] -> null
+```
+
 ```javascript
-/**
- * Removes the nth node from the end of the list using a dummy head.
- * Time Complexity: O(n) single pass
- * Space Complexity: O(1)
- */
+// Node.js code: Remove N-th Node From End
+
 function removeNthFromEnd(head, n) {
   const dummy = new ListNode(0, head);
   let fast = dummy;
   let slow = dummy;
 
-  // Advance fast pointer by n + 1 steps
+  // Advance fast pointer by n + 1 positions
   for (let i = 0; i <= n; i++) {
     fast = fast.next;
   }
 
-  // Move both until fast hits end; slow stops right before target node
+  // Move both until fast passes the tail
   while (fast !== null) {
     fast = fast.next;
     slow = slow.next;
@@ -120,94 +216,313 @@ function removeNthFromEnd(head, n) {
 }
 ```
 
-### 5.3 Execution Trace: `removeNthFromEnd([1, 2, 3, 4, 5], 2)`
-```text
-List: [dummy:0] -> [1] -> [2] -> [3] -> [4] -> [5] -> null
-Target: 2nd from end (node '4')
+---
 
-Step 1: Move fast n+1 = 3 steps -> fast is at [3].
-Step 2: Advance fast and slow in tandem:
-  fast at [4], slow at [1]
-  fast at [5], slow at [2]
-  fast at null, slow at [3]
-Step 3: slow.next = slow.next.next ([3].next = [5]). Node [4] unlinked.
-Result: [1] -> [2] -> [3] -> [5] -> null.
+## Detailed Node.js Relevance: LRU Caches & Connection Pool Schedulers
+
+In high-concurrency Node.js infrastructure, Doubly Linked Lists paired with Hash Maps form the foundation of **Least Recently Used (LRU) Caches** and **Database Connection Pools**:
+
+```text
+LRU Cache Architecture:
+HashMap: Key -> DoublyLinkedList Node Pointer (O(1) Access)
+
+Doubly Linked List (Ordering):
+[ Head Sentinel ] <===> [ Most Recent ] <===> [ ... ] <===> [ Least Recent ] <===> [ Tail Sentinel ]
 ```
 
----
-
-## 6. Common Mistakes & Anti-Patterns
-- **Losing the Next Reference**: Setting `curr.next = prev` before capturing `const nextTemp = curr.next` severs the remaining chain, causing memory leaks and infinite loops.
-- **Null Reference on Empty or Single-Node Lists**: Forgetting to check `head === null || head.next === null` before accessing `head.next.val`.
-- **Failing to Update Tail in Doubly Linked List**: Updating `next` pointers while omitting `prev` pointers or forgetting `node.prev.next = node.next`.
+- **Why Arrays Fail for LRU Caches**:
+  Evicting an element from the front of an Array or splicing an element to move it to the tail requires $O(n)$ element copying. In a cache storing 50,000 database records, $O(n)$ shifts on every cache hit block the Node.js event loop.
+- **Why Doubly Linked Lists Succeed**:
+  With a Doubly Linked List, unlinking any node and prepending it to the head requires updating exactly 4 pointer references (`node.prev.next = node.next; node.next.prev = node.prev; ...`), running in **strictly deterministic $O(1)$ constant time** with zero event-loop blocking.
 
 ---
 
-## 7. Tricky Points & Edge Cases
-- **Deleting the Head Node**: Handled cleanly with `dummy = new ListNode(0, head); return dummy.next;`.
-- **$N$ Equals List Length**: When removing the 1st element of length $N$, `fast` reaches null right after the initial loop; dummy head cleanly unlinks `dummy.next = dummy.next.next`.
-- **Circular Reference Garbage Collection**: While modern V8 mark-and-sweep cleans up isolated circular linked lists, active closures retaining any single node will keep the entire chain alive in heap memory.
+## Tricky Points & Edge Cases
+
+1. **Deleting a Node Given Only Direct Node Reference**:
+   In LeetCode 237, you are given only `node` (no `head`). You cannot delete it by modifying predecessor pointers. Instead, copy the next node's data over:
+   `node.val = node.next.val; node.next = node.next.next;`. Note: This technique cannot delete the tail node.
+2. **Deleting the Head Node When $N = \text{Length}$**:
+   Without a dummy node, removing the head requires special handling. With `dummy = new ListNode(0, head)`, removing the head is handled identically to interior nodes.
+3. **Circular Reference Closure Leaks**:
+   In Node.js, if closures hold active references to a node in a doubly linked list, V8 cannot garbage collect the node or any adjacent nodes connected via `prev` and `next`, creating subtle memory leaks. Always set unlinked node pointers (`node.prev = null; node.next = null;`) to assist garbage collection.
 
 ---
 
-## 8. Practical Engineering Exercises
-1. Implement a `DoublyLinkedList` class with `insertHead(val)`, `removeNode(node)`, and `moveToHead(node)` methods.
-2. Given two sorted linked lists, implement `mergeTwoLists(l1, l2)` iteratively using a sentinel node in $O(n + m)$ time and $O(1)$ space.
+## Hands-On Exercise
+
+### Scenario: LRU Cache Doubly Linked List Engine
+
+Build a bare-metal `DoublyLinkedList` container supporting $O(1)$ operations: `addToHead(node)`, `removeNode(node)`, and `removeTail()`. The container must use Sentinel Head and Sentinel Tail nodes to eliminate all null checks.
+
+### Buggy Code
+
+```javascript
+// ❌ BUGGY: Missing sentinels causes null pointer exceptions on empty lists
+class BuggyDoublyList {
+  constructor() {
+    this.head = null;
+    this.tail = null;
+  }
+
+  addToHead(node) {
+    // BUG: Fails when list is empty!
+    node.next = this.head;
+    this.head.prev = node;
+    this.head = node;
+  }
+
+  removeNode(node) {
+    // BUG: Throws TypeError if node is head or tail!
+    node.prev.next = node.next;
+    node.next.prev = node.prev;
+  }
+}
+```
+
+### Acceptance Criteria
+
+1. Initializes sentinel `head` and sentinel `tail` nodes connected to each other.
+2. Implements `addToHead(node)` in $O(1)$ time.
+3. Implements `removeNode(node)` in $O(1)$ time without conditional null checks.
+4. Implements `removeTail()` returning the evicted node.
+5. Verified with strict Node.js assertions testing empty lists, additions, and removals.
+
+### Solution Code
+
+```javascript
+// Node.js code: Sentinel Doubly Linked List for LRU Cache
+const assert = require("assert");
+
+class DNode {
+  constructor(key = 0, val = 0) {
+    this.key = key;
+    this.val = val;
+    this.prev = null;
+    this.next = null;
+  }
+}
+
+class DoublyLinkedList {
+  constructor() {
+    // Initialize dummy head and dummy tail sentinels
+    this.head = new DNode();
+    this.tail = new DNode();
+    this.head.next = this.tail;
+    this.tail.prev = this.head;
+    this.size = 0;
+  }
+
+  addToHead(node) {
+    node.next = this.head.next;
+    node.prev = this.head;
+    this.head.next.prev = node;
+    this.head.next = node;
+    this.size++;
+  }
+
+  removeNode(node) {
+    node.prev.next = node.next;
+    node.next.prev = node.prev;
+    this.size--;
+    // Clear references to prevent memory retention
+    node.prev = null;
+    node.next = null;
+    return node;
+  }
+
+  removeTail() {
+    if (this.size === 0) return null;
+    // The least recently used node is immediately before the tail sentinel
+    return this.removeNode(this.tail.prev);
+  }
+}
+
+// Verification Tests
+const list = new DoublyLinkedList();
+const n1 = new DNode(1, 100);
+const n2 = new DNode(2, 200);
+
+list.addToHead(n1);
+list.addToHead(n2);
+assert.strictEqual(list.size, 2);
+
+// Head's next should be n2 (most recently added)
+assert.strictEqual(list.head.next, n2);
+assert.strictEqual(list.head.next.next, n1);
+
+// Remove specific node n2
+list.removeNode(n2);
+assert.strictEqual(list.size, 1);
+assert.strictEqual(list.head.next, n1);
+
+// Remove tail
+const evicted = list.removeTail();
+assert.strictEqual(evicted.key, 1);
+assert.strictEqual(list.size, 0);
+assert.strictEqual(list.head.next, list.tail);
+
+console.log("✅ All Doubly Linked List assertions passed successfully.");
+```
+
+### Solution Explanation
+
+1. **Sentinels**: `head` and `tail` sentinels eliminate all special-case branch logic for empty lists, single-node lists, or boundary mutations.
+2. **Zero-Allocation Dereferencing**: `removeNode` unlinks nodes by reassignment alone, guaranteeing $O(1)$ performance and consistent V8 memory usage.
 
 ---
 
-## 9. Key Takeaways & Summary
-- Arrays offer $O(1)$ index access but costly $O(n)$ front insertions; linked lists offer $O(1)$ pointer rewiring at any known location.
-- Always employ a Sentinel (Dummy) Head node whenever list operations might delete or mutate the head reference.
-- In-place reversal requires three tracking pointers: `prev`, `curr`, and `nextTemp`.
-- Two-pointer offset ($n + 1$ gap) allows single-pass identification of the $N$-th node from the end.
+## Summary
+
+- **Array vs Linked List**: Arrays offer $O(1)$ index access; Linked Lists offer $O(1)$ pointer insertion/deletion at known nodes.
+- **V8 Cache Realities**: Linked lists suffer from pointer chasing cache misses and consume 32–48 bytes per node, while contiguous arrays maximize CPU cache utilization.
+- **Dummy Head Pattern**: Always prepend a sentinel node to standardize head mutations and eliminate null boundary bugs.
+- **In-Place Reversal**: Cache `nextTemp = curr.next` before redirecting `curr.next = prev`, walking `prev` and `curr` forward.
+- **Two-Pointer Offset**: An offset gap of $n + 1$ between `fast` and `slow` locates the predecessor of the $N$-th node from the end in a single pass.
 
 ---
 
-## 10. Quick Reference Cheat Sheet
-| Operation | Singly Linked List | Doubly Linked List | Standard Array |
-| :--- | :--- | :--- | :--- |
-| Prepend (`unshift`) | $O(1)$ | $O(1)$ | $O(n)$ |
-| Append (`push`) | $O(1)$ (with tail pointer) | $O(1)$ | $O(1)$ amortized |
-| Remove Head (`shift`) | $O(1)$ | $O(1)$ | $O(n)$ |
-| Remove Given Node | $O(n)$ (needs prev) | $O(1)$ | $O(n)$ |
-| Memory Locality | Low (Pointer chasing) | Low (Two pointers) | High (Contiguous cache) |
+## Cheat Sheet & Common Pitfalls
+
+### Linked List Core Patterns
+```javascript
+// In-Place Reversal
+let prev = null, curr = head;
+while (curr) {
+  const next = curr.next;
+  curr.next = prev;
+  prev = curr;
+  curr = next;
+}
+return prev;
+
+// Remove N-th from End
+const dummy = new ListNode(0, head);
+let fast = dummy, slow = dummy;
+for (let i = 0; i <= n; i++) fast = fast.next;
+while (fast) { fast = fast.next; slow = slow.next; }
+slow.next = slow.next.next;
+return dummy.next;
+```
+
+### Common Pitfalls
+
+| Mistake | Consequence | Correct Pattern |
+| :--- | :--- | :--- |
+| **Overwriting `curr.next` early** | Severs remaining list; causes infinite loop. | Cache `const next = curr.next` first. |
+| **No dummy head on head deletion** | Requires complex edge-case `if` statements. | Prepend `dummy = new ListNode(0, head)`. |
+| **Reassigning parameter in deleteNode** | Only modifies local variable; list unchanged. | Copy next node value and skip over it. |
+| **Array `shift()` in LRU caches** | $O(n)$ event loop blocking on high cache hits. | Use Doubly Linked List with $O(1)$ pointer unlinking. |
 
 ---
 
-## 11. Interview Questions & Expected Answers
+## Interview Questions
 
-### 1. Conceptual
-**Question**: Why would you use a Doubly Linked List over an Array in building an LRU Cache in Node.js?  
-**Hint**: Focus on node eviction and repositioning time complexities.  
-**Expected Answer Shape**: In an LRU Cache, accessing an item requires moving it to the most-recently-used position, and inserting at capacity requires evicting the least-recently-used item. With an Array, removing or shifting an element is $O(n)$ due to reindexing. With a Doubly Linked List paired with a `Map` storing node references, unlinking any node and appending to head/tail is strictly $O(1)$ pointer manipulation.
+### 1. Why would you use a Doubly Linked List over an Array in building an LRU Cache in Node.js?
 
-### 2. Code-Writing
-**Question**: Write a function to reverse a singly linked list between positions `left` and `right` (1-indexed) in a single pass.  
-**Hint**: Locate the node immediately preceding `left`, then iteratively move subsequent nodes to `left`'s position.  
-**Expected Answer Shape**: Use a dummy node. Walk `prev` to node `left - 1`. Set `curr = prev.next`. Over `right - left` iterations: save `next = curr.next`, rewire `curr.next = next.next`, `next.next = prev.next`, `prev.next = next`. Return `dummy.next`.
+**Question:** In designing an LRU Cache for a Node.js microservice, explain why a Doubly Linked List combined with a Hash Map is preferred over a standard JavaScript Array.
 
-### 3. Debugging
-**Question**: Identify the bug in this code attempting to delete a node given only a direct reference to it (not head):  
+**Answer:** 
+An LRU (Least Recently Used) cache requires two primary operations:
+1. `get(key)`: Access a cached value and promote it to the most-recently-used position.
+2. `put(key, value)`: Insert a new key-value pair, evicting the least-recently-used item if capacity is exceeded.
+
+**Using an Array:**
+- Moving an accessed item to the head/tail requires locating it and splicing: `arr.splice(index, 1); arr.push(item);`.
+- Splicing requires shifting elements in memory, costing $O(n)$ time.
+- For a cache holding 100,000 items, repeated $O(n)$ shifts under high request concurrency block the single-threaded Node.js event loop, causing severe latency spikes.
+
+**Using a Doubly Linked List + Map:**
+- The `Map` maps `key` directly to a Doubly Linked List `Node` pointer ($O(1)$ lookup).
+- With a direct node reference, unlinking the node from its current position and prepending it to the head sentinel requires updating exactly 4 pointer references (`prev.next` and `next.prev`), executing in strictly deterministic $O(1)$ time.
+- Evicting the tail item is also $O(1)$ (`removeNode(tail.prev)`).
+- This guarantees $O(1)$ worst-case time for both reads and writes, keeping event loop latency flat.
+
+---
+
+### 2. How do you reverse a singly linked list between positions `left` and `right` in a single pass?
+
+**Question:** Write a function to reverse a singly linked list between positions `left` and `right` (1-indexed, LeetCode 92) in a single pass.
+
+**Answer:** 
+
+```javascript
+// Node.js code
+function reverseBetween(head, left, right) {
+  if (!head || left === right) return head;
+
+  const dummy = new ListNode(0, head);
+  let prev = dummy;
+
+  // Step 1: Reach node at position left - 1
+  for (let i = 1; i < left; i++) {
+    prev = prev.next;
+  }
+
+  // curr points to the start of the sublist to reverse
+  const curr = prev.next;
+
+  // Step 2: Iteratively insert subsequent nodes directly after prev
+  for (let i = 0; i < right - left; i++) {
+    const next = curr.next;
+    curr.next = next.next;
+    next.next = prev.next;
+    prev.next = next;
+  }
+
+  return dummy.next;
+}
+```
+
+**Complexity:**
+- **Time Complexity**: $O(n)$ single pass.
+- **Space Complexity**: $O(1)$ auxiliary pointers.
+
+---
+
+### 3. What is the bug in this attempt to delete a node given only a direct reference to it?
+
+**Question:** Identify the flaw in this code attempting to delete a node from a singly linked list when given only a direct reference to that node:
 ```javascript
 function deleteNode(node) {
   node = node.next;
 }
-```  
-**Hint**: Reassigning a local variable in JavaScript does not alter the caller's linked list structure.  
-**Expected Answer Shape**: In JavaScript, arguments are passed by value of reference. Reassigning `node` only changes local pointer scope. To delete the node without the predecessor: copy the next node's value and bridge over it: `node.val = node.next.val; node.next = node.next.next;` (cannot delete if `node` is the tail).
+```
 
-### 4. System Design / Tradeoff
-**Question**: What are the performance and GC implications of managing 1,000,000 items in a JavaScript Linked List versus a TypedArray in Node.js?  
-**Hint**: Consider V8 object headers, hidden classes, and GC mark-and-sweep traversal.  
-**Expected Answer Shape**: 1,000,000 linked list nodes create 1,000,000 separate V8 heap objects, consuming 32–48MB+ with significant object overhead. During garbage collection, the mark-and-sweep collector must traverse 1,000,000 pointers, inducing latency spikes. A `Float64Array` or `Int32Array` allocates a single contiguous buffer outside the primary GC traversal path with zero per-element pointer overhead and optimal CPU cache prefetching.
+**Answer:** 
+In JavaScript, object references are passed by value of reference. Reassigning `node = node.next` merely rebinds the local parameter variable `node` inside the function scope to point to the next node object in memory. It makes zero modifications to the actual linked list structure on the heap. The predecessor node still points to the target node.
 
-### 5. Tricky / Edge Case
-**Question**: How do you detect if a singly linked list has a cycle without modifying node values or using auxiliary hash sets?  
-**Hint**: Think of two runners moving at different speeds on a circular track.  
-**Expected Answer Shape**: Floyd's Cycle-Finding Algorithm (Tortoise and Hare). Initialize `slow = head` and `fast = head`. Advance `slow` by 1 step and `fast` by 2 steps. If `fast` or `fast.next` is null, there is no cycle ($O(n)$ time, $O(1)$ space). If `slow === fast`, a cycle exists.
+**Correct Solution:**
+Because we do not have a reference to the predecessor node, we cannot unlink the target node directly. Instead, we copy the value from the subsequent node into the current node, and unlink the subsequent node:
+```javascript
+function deleteNode(node) {
+  node.val = node.next.val;
+  node.next = node.next.next;
+}
+```
+*Limitation*: This technique cannot delete the tail node, as `node.next` would be `null`.
 
-### 6. Real-World Node.js Context
-**Question**: How does Node.js's internal timer list (`setTimeout` / `setInterval`) manage millions of active timers without degrading event loop performance?  
-**Hint**: Timers with the exact same timeout duration can be bucketed.  
-**Expected Answer Shape**: Node.js groups timers with identical timeouts into linked lists (`TimersList`) indexed by expiration time in a hash table. When a timer fires or is cancelled via `clearTimeout`, removing it from the doubly linked list is $O(1)$. New timers with the same duration are appended to the tail in $O(1)$.
+---
+
+### 4. What are the memory and Garbage Collection implications of storing 1,000,000 items in a Linked List versus a TypedArray in Node.js?
+
+**Question:** Analyze the memory layout and V8 Garbage Collector impact of managing 1,000,000 data items in a Linked List versus an `Int32Array` in a production Node.js service.
+
+**Answer:** 
+1. **Memory Footprint**:
+   - **Linked List**: Each node is an independent JavaScript object containing a value, a pointer reference, an object header, and a hidden class (map) descriptor. In 64-bit V8, each node consumes approximately 32 to 48 bytes. Storing 1,000,000 items consumes ~40 MB to 48 MB of RAM.
+   - **TypedArray (`Int32Array`)**: Allocates raw binary memory. Each 32-bit integer consumes exactly 4 bytes. Storing 1,000,000 items consumes exactly 4 MB of memory ($10\times$ less memory).
+2. **Garbage Collection (GC) Pressure**:
+   - **Linked List**: Creates 1,000,000 individual heap objects. During V8's Mark-and-Sweep garbage collection cycles, the GC engine must traverse 1,000,000 distinct object pointers to assess reachability, causing major Garbage Collection pauses that stall the event loop.
+   - **TypedArray**: Represents a single contiguous ArrayBuffer object. The GC marks a single buffer pointer, reducing GC pause times to sub-millisecond durations.
+3. **CPU Cache Locality**:
+   - Linked list nodes are scattered across the heap, triggering CPU L1/L2 cache misses on iteration ("pointer chasing").
+   - TypedArrays are stored contiguously in memory, maximizing hardware CPU prefetching.
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[Previous: Binary Search on Solution Space](day-28-binary-search-on-solution-space.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Linked List Fast & Slow Pointers and Reversals](day-30-linked-list-fast-slow-and-reversals.md)
+
+</nav>

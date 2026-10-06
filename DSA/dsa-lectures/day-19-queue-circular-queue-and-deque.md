@@ -10,125 +10,175 @@
 
 By the end of this lecture, you should be able to:
 
-- Explain the **First-In, First-Out (FIFO)** processing principle.
-- Identify why JavaScript's native `Array.prototype.shift()` is an $O(n)$ hazard and avoid it in high-throughput systems.
-- Implement an efficient $O(1)$ Queue using a head index pointer.
-- Design a **Circular Queue** with fixed capacity using modulo arithmetic.
-- Implement a **Double-Ended Queue (Deque)** supporting $O(1)$ push/pop at both ends.
+- Explain the **First-In, First-Out (FIFO)** processing principle and its core operations (`enqueue`, `dequeue`, `peek`).
+- Identify why JavaScript's native `Array.prototype.shift()` introduces an $O(n)$ memory shift penalty, degrading BFS algorithms to $O(V^2)$.
+- Implement an optimal $O(1)$ amortized Queue using an array with a `head` index pointer and dead-space compaction.
+- Design a fixed-capacity **Circular Queue (Ring Buffer)** using modulo wrap-around arithmetic.
+- Implement a **Double-Ended Queue (Deque)** supporting strict $O(1)$ push and pop operations at both boundaries.
+- Architect asynchronous job queues in Node.js to level traffic bursts and protect database connection pools.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md)
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and amortized time.
+- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Contiguous array allocations and pointer offsets.
+- [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO vs FIFO mechanical trade-offs.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **FIFO (First-In, First-Out)** | An access protocol where the first element enqueued is the first element dequeued. | Dictates task scheduling, message broker processing, and Breadth-First Search (BFS). |
+| **Array Shift Trap** | The $O(n)$ memory penalty incurred when removing the head element (`arr.shift()`), forcing all remaining items to copy leftward. | Turns linear algorithms into $O(n^2)$ bottlenecks, locking the Node.js event loop during high-throughput workloads. |
+| **Head Pointer Queue** | A queue pattern that advances a numeric index pointer `head` rather than shifting elements in memory. | Yields $O(1)$ dequeues on native arrays without external linked list node allocation overhead. |
+| **Circular Ring Buffer** | A fixed-capacity array where head and tail pointers wrap around cyclically via modulo arithmetic ($idx \pmod C$). | Provides zero-allocation, garbage-collection-free queue storage in streaming audio, network sockets, and OS kernels. |
+| **Deque (Double-Ended Queue)** | A generalized queue data structure allowing $O(1)$ insertions and deletions at both the front and rear. | Required for sliding window maximum algorithms, work-stealing schedulers, and palindrome checks. |
 
 ---
 
 ## Core Concepts
 
-### 1. The FIFO Principle
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            FIFO QUEUE VS CIRCULAR RING BUFFER                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 
-A **Queue** models a real-world checkout line: the first person to join the line is the first person served.
+  1. LINEAR FIFO QUEUE (Head Pointer Tracking)
+     Enqueue: appends to tail (O(1))
+     Dequeue: advances head pointer (O(1))
+     [ dead_space | dead_space | 10 (Head) | 20 | 30 (Tail) ]
+                                    ▲              ▲
+                                   head           tail
 
-```text
-Enqueue(10) -> [ 10 ]               <- Back
-Enqueue(20) -> [ 10, 20 ]           <- 10 is FRONT, 20 is BACK
-Enqueue(30) -> [ 10, 20, 30 ]
-Dequeue()   -> removes 10 (Front)   <- Front is now 20
+  2. CIRCULAR RING BUFFER (Capacity = 4)
+     Modulo arithmetic wraps pointers: index = (index + 1) % Capacity
+            [ 40 ] (Index 3)
+           ↗      ↖
+     [ 10 ]        [ 30 ]
+           ↘      ↗
+            [ 20 ]
+     • Zero memory allocations; eliminates unbounded array growth!
 ```
 
-- **`enqueue(x)`**: Add to the back $\to O(1)$
-- **`dequeue()`**: Remove and return from the front $\to O(1)$
-- **`peek()`**: Inspect front item without removing $\to O(1)$
-- **`isEmpty()`**: Check if empty $\to O(1)$
+### 1. The FIFO Principle and Queue Primitives
+
+A **Queue** models a physical queue: elements enter at the rear (tail) and exit from the front (head).
+
+All fundamental queue operations operate in **$O(1)$ constant time**:
+- **`enqueue(x)`**: Inserts `x` at the rear ($O(1)$).
+- **`dequeue()`**: Removes and returns the front element ($O(1)$).
+- **`peek()` / `front()`**: Reads the front element without mutating the queue ($O(1)$).
+- **`isEmpty()`**: Checks if the queue contains zero elements ($O(1)$).
+- **`size()`**: Returns the count of active elements ($O(1)$).
 
 ---
 
-### 2. The JavaScript `arr.shift()` Performance Trap
+### 2. The JavaScript `arr.shift()` Hazard
 
-Many developers implement a queue in JavaScript like this:
-```js
+A common mistake in JavaScript is implementing a queue using native array methods:
+```javascript
+// ❌ ANTI-PATTERN: Dangerous O(n) dequeue!
 class BadQueue {
   constructor() { this.items = []; }
-  enqueue(x) { this.items.push(x); } // O(1)
-  dequeue()  { return this.items.shift(); } // O(n) DANGEROUS!
+  enqueue(x) { this.items.push(x); }        // O(1)
+  dequeue()  { return this.items.shift(); } // O(n) MEMORY SHIFT!
 }
 ```
-**Why `shift()` is slow**:
-An array is a contiguous memory buffer. When element 0 is removed, the JavaScript engine must shift all remaining $n - 1$ elements one index to the left in memory.
-Over $n$ operations, total time is:
-$$\sum_{i=1}^n i = O(n^2)$$
 
-#### Solution 1: Head Pointer Queue ($O(1)$ Amortized)
-Instead of shifting memory, simply advance an index pointer `head`:
-```js
+#### Why `arr.shift()` is Dangerous:
+JavaScript arrays are contiguous memory buffers. Deleting index 0 forces the V8 engine to copy all remaining $n - 1$ elements one index to the left in memory.
+Over $n$ dequeues, total work equals:
+$$\sum_{i=1}^{n} i = \frac{n(n + 1)}{2} = O(n^2) \text{ operations}$$
+In Breadth-First Search (BFS) over a graph with 50,000 vertices, using `arr.shift()` degrades search performance from $O(V + E)$ to **$O(V^2 + E)$**, freezing the event loop for seconds.
+
+#### The Head Pointer Solution ($O(1)$ Amortized):
+Advance a `head` integer index. Periodically compact dead memory space when `head` exceeds a threshold:
+
+```javascript
+// Node.js code
+"use strict";
+
+// ✅ PATTERN: Fast Head-Pointer Queue (O(1) amortized dequeue)
 class FastQueue {
   constructor() {
     this.items = [];
     this.head = 0;
   }
-  enqueue(x) { this.items.push(x); }
+
+  enqueue(x) {
+    this.items.push(x);
+  }
+
   dequeue() {
     if (this.isEmpty()) return null;
+
     const val = this.items[this.head];
     this.head++;
-    // Periodically garbage collect dead space when head is large
+
+    // Periodic dead space compaction to prevent unbounded memory growth
     if (this.head > 1000 && this.head > this.items.length / 2) {
       this.items = this.items.slice(this.head);
       this.head = 0;
     }
+
     return val;
   }
-  isEmpty() { return this.head === this.items.length; }
+
+  peek() {
+    return this.isEmpty() ? null : this.items[this.head];
+  }
+
+  isEmpty() {
+    return this.head === this.items.length;
+  }
+
+  size() {
+    return this.items.length - this.head;
+  }
 }
+
+const q = new FastQueue();
+q.enqueue(10);
+q.enqueue(20);
+console.log("Dequeued:", q.dequeue()); // 10
+console.log("Front item:", q.peek());  // 20
 ```
 
 ---
 
-## Detailed Explanations & Node.js Relevance
+### 3. Design Circular Queue (Ring Buffer)
 
-### Circular Buffer (Ring Buffer)
+In streaming systems, network sockets, and OS kernel device drivers, unbounded queues risk Out-Of-Memory crashes. A **Circular Queue** pre-allocates an array of fixed capacity $k$ and wraps pointers using modulo arithmetic:
+$$\text{nextIndex} = (\text{currentIndex} + 1) \pmod k$$
 
-In low-level networking, audio streaming, and high-frequency Node.js message queues, fixed-capacity **Circular Queues** are standard.
-Instead of an unbounded array that grows infinitely, a circular queue uses a fixed array of size $C$ and wraps indices using modulo arithmetic:
-$$\text{nextIndex} = (\text{currentIndex} + 1) \pmod C$$
-
-```text
-Capacity C = 5
-Indices: 0, 1, 2, 3, 4
-When index reaches 4, next index is (4 + 1) % 5 = 0 (wraps back to start!)
-```
-
-### Node.js Backend Relevance: Asynchronous Job Queues
-In Node.js backend architectures (e.g. BullMQ, Celery workers, webhook handlers), tasks arrive faster than worker processes can execute them.
-Queues provide **load leveling** (rate smoothing), buffering requests in FIFO order to prevent downstream databases from crashing during traffic spikes.
-
----
-
-## JavaScript Implementation & Tracing
-
-### 1. Design Circular Queue (LeetCode 622)
-
-```js
+```javascript
+// Node.js code
+// Circular Queue (LeetCode 622)
 class MyCircularQueue {
   constructor(k) {
     this.capacity = k;
     this.queue = new Array(k);
     this.head = 0;
-    this.tail = 0;
+    this.tail = 0; // Points to the next available insertion slot
     this.size = 0;
   }
 
   enQueue(value) {
     if (this.isFull()) return false;
+
     this.queue[this.tail] = value;
-    this.tail = (this.tail + 1) % this.capacity;
+    this.tail = (this.tail + 1) % this.capacity; // Wrap around
     this.size++;
     return true;
   }
 
   deQueue() {
     if (this.isEmpty()) return false;
-    this.head = (this.head + 1) % this.capacity;
+
+    this.head = (this.head + 1) % this.capacity; // Wrap around
     this.size--;
     return true;
   }
@@ -139,7 +189,7 @@ class MyCircularQueue {
 
   Rear() {
     if (this.isEmpty()) return -1;
-    // Tail points to next empty slot; rear is (tail - 1 + capacity) % capacity
+    // Tail points to next empty slot; rear is the element right before tail
     const rearIndex = (this.tail - 1 + this.capacity) % this.capacity;
     return this.queue[rearIndex];
   }
@@ -154,11 +204,27 @@ class MyCircularQueue {
 }
 ```
 
-### 2. Double-Ended Queue (Deque) using Doubly Linked List
+#### Trace: Circular Queue with Capacity 3
 
-A **Deque** allows $O(1)$ push and pop from both the front and the back.
+| Operation | Array Buffer | `head` | `tail` | `size` | Return Value | Notes |
+|---|---|---|---|---|---|---|
+| `enQueue(1)` | `[1, _, _]` | 0 | 1 | 1 | `true` | Added at index 0 |
+| `enQueue(2)` | `[1, 2, _]` | 0 | 2 | 2 | `true` | Added at index 1 |
+| `enQueue(3)` | `[1, 2, 3]` | 0 | 0 | 3 | `true` | Tail wraps to index 0 |
+| `enQueue(4)` | `[1, 2, 3]` | 0 | 0 | 3 | `false` | Queue is full |
+| `deQueue()` | `[_, 2, 3]` | 1 | 0 | 2 | `true` | Head advances to index 1 |
+| `enQueue(4)` | `[4, 2, 3]` | 1 | 1 | 3 | `true` | Added at wrapped index 0! |
 
-```js
+---
+
+### 4. Double-Ended Queue (Deque) using a Doubly Linked List
+
+A **Deque** allows insertions and deletions at both ends in strict $O(1)$ time:
+- `pushFront()`, `popFront()`
+- `pushBack()`, `popBack()`
+
+```javascript
+// Node.js code
 class DequeNode {
   constructor(val) {
     this.val = val;
@@ -169,6 +235,7 @@ class DequeNode {
 
 class Deque {
   constructor() {
+    // Sentinel dummy nodes eliminate null checks during head/tail updates
     this.dummyHead = new DequeNode(null);
     this.dummyTail = new DequeNode(null);
     this.dummyHead.next = this.dummyTail;
@@ -179,6 +246,7 @@ class Deque {
   pushBack(val) {
     const node = new DequeNode(val);
     const last = this.dummyTail.prev;
+
     last.next = node;
     node.prev = last;
     node.next = this.dummyTail;
@@ -188,129 +256,239 @@ class Deque {
 
   popFront() {
     if (this.length === 0) return null;
+
     const first = this.dummyHead.next;
     this.dummyHead.next = first.next;
     first.next.prev = this.dummyHead;
     this.length--;
     return first.val;
   }
+
+  peekFront() {
+    return this.length === 0 ? null : this.dummyHead.next.val;
+  }
+
+  peekBack() {
+    return this.length === 0 ? null : this.dummyTail.prev.val;
+  }
 }
 ```
 
-### Trace: Circular Queue with Capacity 3
+---
 
-| Operation | `queue` Array | `head` | `tail` | `size` | Return Value |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `enQueue(1)` | `[1, _, _]` | 0 | 1 | 1 | `true` |
-| `enQueue(2)` | `[1, 2, _]` | 0 | 2 | 2 | `true` |
-| `enQueue(3)` | `[1, 2, 3]` | 0 | 0 (wrapped) | 3 | `true` |
-| `enQueue(4)` | `[1, 2, 3]` | 0 | 0 | 3 | `false` (isFull) |
-| `deQueue()` | `[_, 2, 3]` | 1 | 0 | 2 | `true` |
-| `enQueue(4)` | `[4, 2, 3]` | 1 | 1 | 3 | `true` (wrapped) |
+## Tricky Points and Edge Cases
 
-- **Time Complexity**: $O(1)$ strictly for all operations (`enQueue`, `deQueue`, `Front`, `Rear`).
-- **Auxiliary Space**: $O(k)$ preallocated fixed memory buffer.
+### 1. Circular Queue Rear Index Calculation
+Because `tail` points to the *next empty insertion slot*, reading the rear element requires inspecting index `tail - 1`.
+If `tail === 0` (due to wrap-around), evaluating `tail - 1` evaluates to `-1` (invalid in JavaScript).
+Always use the positive modulo formula:
+$$\text{rearIndex} = (\text{tail} - 1 + \text{capacity}) \pmod{\text{capacity}}$$
+
+### 2. Full vs Empty Ambiguity in Ring Buffers
+If you do not maintain an explicit `size` counter, both a completely empty circular buffer and a completely full circular buffer satisfy `head === tail`. Always track an integer `size` variable to eliminate state ambiguity.
 
 ---
 
-## Common Mistakes & Interview Traps
+## Hands-On Exercise
 
-1. **Calculating Rear in Circular Queue**:
-   ```js
-   // WRONG: this.queue[this.tail - 1]
-   // When tail is at index 0 (after wrapping), tail - 1 is -1 (invalid array index!)
-   // CORRECT: (this.tail - 1 + this.capacity) % this.capacity
-   ```
-2. **Using `arr.shift()` in BFS algorithms**:
-   In graph and tree traversal, breadth-first search uses a queue. Using `queue.shift()` degrades BFS from $O(V + E)$ to $O(V^2 + E)$. Always use a head pointer or linked queue!
-3. **Memory Leaks in Head Pointer Queues**:
-   If a head pointer queue runs forever without trimming `items`, dead elements before `head` remain referenced, causing a slow memory leak in Node.js.
+### Scenario
+You are developing an API rate-limiting tracker for an Express.js gateway. You must design a class `RecentCounter` that counts incoming request pings occurring within the past 3,000 milliseconds (LeetCode 933: Number of Recent Calls).
 
----
+Every call to `ping(t)` adds a request at timestamp `t` (in milliseconds) and returns the number of requests that occurred in the inclusive time window $[t - 3000, t]$. Timestamps are guaranteed to be strictly increasing.
 
-## Tricky Points & Edge Cases
+### Buggy Code
+```javascript
+// Node.js code
+class RecentCounterBuggy {
+  constructor() {
+    this.requests = [];
+  }
 
-- **Queue of Size 1**:
-  When `k = 1`, `head` and `tail` point to the same index. The `size` variable prevents ambiguity between full and empty states.
-- **Differentiating Empty vs Full in Ring Buffers without `size`**:
-  If `size` is not tracked, `head === tail` can mean either completely empty or completely full. Tracking `size` explicitly eliminates this ambiguity cleanly.
+  ping(t) {
+    this.requests.push(t);
+    // ❌ Bug: shift() in a loop triggers an O(n^2) memory copy penalty!
+    // Under heavy traffic, API response times degrade exponentially.
+    while (this.requests[0] < t - 3000) {
+      this.requests.shift();
+    }
+    return this.requests.length;
+  }
+}
+```
 
----
+### Acceptance Criteria
+1. Execute `ping(t)` in amortized $O(1)$ time.
+2. Auxiliary memory must scale with $O(W)$ where $W$ is requests within the 3,000 ms window.
+3. Eliminate `Array.prototype.shift()` using an index pointer with compaction.
 
-## Practical Exercise
+### Solution Code
 
-Implement **Number of Recent Calls** (LeetCode 933):
-Design a class `RecentCounter` that counts the number of recent requests within a certain time frame:
-- `ping(t)`: Adds a new request at time `t` (in milliseconds) and returns the number of requests that have happened in the past 3000 milliseconds (i.e. in the range $[t - 3000, t]$).
-- **Acceptance Criterion**: Must run in $O(1)$ amortized time using a fast FIFO queue.
+```javascript
+// Node.js code
+import assert from "node:assert/strict";
 
----
-
-## Summary
-
-- A Queue maintains FIFO order supporting $O(1)$ enqueue and dequeue.
-- JavaScript's `arr.shift()` is an $O(n)$ operation that must never be used in performance-critical queues or BFS loops.
-- Head pointer queues provide simple $O(1)$ operations on arrays with periodic compaction.
-- Fixed circular buffers use modulo arithmetic to achieve strict $O(1)$ operations with zero memory allocations.
-
----
-
-## Cheat Sheet
-
-### Queue Mechanics Comparison
-| Implementation | Enqueue | Dequeue | Space Overhead | Best For |
-| :--- | :--- | :--- | :--- | :--- |
-| `arr.push()` + `arr.shift()` | $O(1)$ | **$O(n)$** | Low | Never in production! |
-| **Head Pointer Array** | $O(1)$ | **$O(1)$ amortized** | Moderate | BFS & general DSA |
-| **Circular Ring Buffer** | $O(1)$ | **$O(1)$ strict** | Fixed $O(k)$ | Hardware & streaming buffers |
-| **Doubly Linked List** | $O(1)$ | **$O(1)$ strict** | High (Node pointers) | Deques (push/pop both ends) |
-
----
-
-## Interview Questions
-
-### 1. Deep Definitions and Mental Models
-**Question:** Why does JavaScript not provide a native $O(1)$ Queue data structure in standard ECMAScript, and how should a senior engineer implement one?
-- **Expected answer shape:** ECMAScript relies on Array as the universal linear collection. `push` and `pop` are $O(1)$, but `shift` is $O(n)$ by specification because array elements are stored contiguously. Senior engineers implement a Queue using either (1) an array with a `head` index pointer with periodic compaction, or (2) a singly/doubly linked list, or (3) a fixed-size TypedArray ring buffer for bounded workloads.
-
-### 2. Predict the Output and Trace Execution
-**Question:** In a circular queue of capacity 3: `enQueue(1)`, `enQueue(2)`, `deQueue()`, `enQueue(3)`, `enQueue(4)`. What are the values of `Front()` and `Rear()`?
-- **Expected answer shape:**
-- After `enQueue(1), enQueue(2)`: queue has `[1, 2]`.
-- After `deQueue()`: 1 is removed. Front is `2`.
-- After `enQueue(3), enQueue(4)`: queue has `[2, 3, 4]`.
-- `Front()` returns `2`. `Rear()` returns `4`.
-
-### 3. Implementation Exercise
-**Question:** Write `RecentCounter` (LeetCode 933) using a head pointer queue.
-- **Expected answer shape:**
-```js
 class RecentCounter {
   constructor() {
     this.requests = [];
     this.head = 0;
   }
+
   ping(t) {
     this.requests.push(t);
+
+    // Evict timestamps older than t - 3000 by advancing head pointer in O(1) amortized time
     while (this.requests[this.head] < t - 3000) {
       this.head++;
     }
+
+    // Periodically compact dead space when head accumulates over 2,000 evicted elements
+    if (this.head > 2000) {
+      this.requests = this.requests.slice(this.head);
+      this.head = 0;
+    }
+
     return this.requests.length - this.head;
   }
 }
+
+// Verification Tests
+const counter = new RecentCounter();
+assert.equal(counter.ping(1), 1);     // Window [-2999, 1] -> [1] -> count: 1
+assert.equal(counter.ping(100), 2);   // Window [-2900, 100] -> [1, 100] -> count: 2
+assert.equal(counter.ping(3001), 3);  // Window [1, 3001] -> [1, 100, 3001] -> count: 3
+assert.equal(counter.ping(3002), 3);  // Window [2, 3002] -> 1 evicted! -> [100, 3001, 3002] -> count: 3
+
+console.log("✅ All RecentCounter queue rate-limiting assertions passed successfully!");
 ```
 
-### 4. Debugging and Failure Analysis
-**Question:** An engineer implements a circular queue without tracking `size`, relying solely on `if (this.head === this.tail)` to check if the queue is empty. What bug occurs when the queue is full?
-- **Expected answer shape:** When a circular queue becomes full, `tail` wraps around and equals `head`. If `head === tail` is used for `isEmpty()`, the code will mistakenly report a completely full queue as empty, allowing illegal overwriting of existing un-dequeued data.
+### Solution Explanation
 
-### 5. Design and Tradeoff Questions
-**Question:** How does a Doubly Linked List Deque compare to a Ring Buffer Deque?
-- **Expected answer shape:** A Doubly Linked List Deque has dynamic capacity and strictly guaranteed $O(1)$ push/pop at both ends, but requires allocating a new Node object on the heap per element with two pointer references (`prev` and `next`), increasing GC overhead. A Ring Buffer Deque has zero heap allocations and excellent cache locality, but has a fixed capacity or requires expensive buffer re-allocation when full.
+1. **Amortized $O(1)$ Eviction:** Because timestamps are strictly increasing, the `head` pointer moves forward monotonically. Each request timestamp is inspected at most twice (once upon push, once upon eviction).
+2. **Memory Safety:** Trimming dead references via periodic slice compaction guarantees that memory stays strictly proportional to active requests in the 3-second window.
 
-### 6. Senior Follow-ups: Node.js Microservice Buffering
-**Question:** An Express microservice receives 10,000 webhook events/second and writes them to PostgreSQL. Writing directly to the database causes connection pool exhaustion and crashes the service. How does a queue architecture resolve this?
-- **Expected answer shape:** Introduce an asynchronous queue (e.g. BullMQ with Redis or an in-memory ring buffer). When webhooks arrive, immediately enqueue the payload and respond with `HTTP 202 Accepted` in $< 5$ ms. Worker processes consume from the queue in controlled batches of 100 records using `INSERT INTO ... VALUES (...)`, smoothing database load and capping connection pool utilization regardless of incoming traffic bursts.
+---
+
+## Summary
+
+- Queues adhere to the **First-In, First-Out (FIFO)** protocol; `enqueue` and `dequeue` operate in $O(1)$ time.
+- `Array.prototype.shift()` is an $O(n)$ memory shift; using it inside loops degrades algorithms to $O(n^2)$.
+- Head pointer queues provide $O(1)$ dequeues on native arrays by advancing an index pointer and compacting dead memory periodically.
+- Fixed **Circular Queues (Ring Buffers)** use modulo arithmetic to achieve strict $O(1)$ bounds with zero memory allocation churn.
+- Asynchronous queues provide **load leveling** in Node.js architectures, buffering request bursts to protect databases and external APIs.
+
+---
+
+## Cheat Sheet
+
+### Queue Implementation Comparison
+| Architecture | Enqueue | Dequeue | Space Profile | Best Scenario |
+|---|---|---|---|---|
+| `push()` + `shift()` | $O(1)$ | **$O(n)$** | Low | **Anti-pattern in production** |
+| **Head Pointer Array** | $O(1)$ | **$O(1)$ amortized** | Moderate | Graph BFS, LeetCode algorithms |
+| **Circular Ring Buffer** | $O(1)$ | **$O(1)$ strict** | Fixed $O(k)$ | Low-level streaming & audio buffers |
+| **Doubly Linked List** | $O(1)$ | **$O(1)$ strict** | High (Node pointers) | Deque (both-ends push/pop) |
+
+### Common Pitfalls
+- **Using `shift()` in Graph BFS:** Degrades BFS from $O(V + E)$ to $O(V^2 + E)$.
+- **Circular Queue Rear Calculation:** Writing `tail - 1` without modulo wrapping evaluates to index `-1` when `tail === 0`.
+- **Memory Leaks in Head Pointer Queues:** Never slicing dead array space allows unbounded array growth in long-running services.
+- **Empty vs Full Confusion:** Forgetting that `head === tail` occurs in both empty and full states if `size` is untracked.
+
+---
+
+## Interview Questions
+
+### 1. Why does ECMAScript not provide a native $O(1)$ Queue data structure, and how should a senior engineer implement one in Node.js?
+
+**Question:** Analyze why standard JavaScript lacks a built-in Queue collection and evaluate the top three implementation alternatives.
+
+**Answer:** 
+The ECMAScript specification relies on `Array` as the universal linear sequence collection. While `push()` and `pop()` execute at the end in $O(1)$ amortized time, `shift()` removes index 0 in $O(n)$ time to maintain zero-based contiguous memory indexing. JavaScript engines prioritized simple single-collection semantics over introducing a dedicated `Queue` interface into the core standard library.
+
+**Senior Implementation Options:**
+1. **Head-Pointer Array (Recommended for Algorithms):**
+   Maintain a numeric `head` pointer. Dequeue simply returns `items[head++]`. Periodically compact dead space (`if (head > 1000) items = items.slice(head)`).
+   - *Pros:* Uses native packed SMI elements in V8; optimal cache locality; zero node object allocation.
+2. **Fixed-Size Ring Buffer (Recommended for Bounded Streaming):**
+   Pre-allocate a fixed array or `TypedArray`. Wrap indices using modulo arithmetic: `idx = (idx + 1) % capacity`.
+   - *Pros:* Strictly $O(1)$ worst case; zero garbage collection allocations.
+3. **Doubly Linked List (Recommended for Unbounded Deques):**
+   Maintain `head` and `tail` sentinel pointers linking heap-allocated `Node` objects.
+   - *Pros:* Dynamic capacity; strict non-amortized $O(1)$ push/pop at both boundaries.
+
+---
+
+### 2. In a circular queue of capacity 3: `enQueue(1)`, `enQueue(2)`, `deQueue()`, `enQueue(3)`, `enQueue(4)`. What are the values of `Front()` and `Rear()`?
+
+**Question:** Trace the internal state of a circular queue across the operations and determine final front and rear values.
+
+**Answer:**
+1. **`enQueue(1)`:** Stored at index 0. `head = 0, tail = 1, size = 1`.
+2. **`enQueue(2)`:** Stored at index 1. `head = 0, tail = 2, size = 2`.
+3. **`deQueue()`:** Element 1 dequeued. `head = (0 + 1) % 3 = 1`. `size = 1`.
+4. **`enQueue(3)`:** Stored at index 2. `tail = (2 + 1) % 3 = 0`. `size = 2`.
+5. **`enQueue(4)`:** Stored at index 0 (wrapped!). `tail = (0 + 1) % 3 = 1`. `size = 3`.
+- **`Front()`:** `queue[head] = queue[1] = 2`.
+- **`Rear()`:** $\text{rearIndex} = (1 - 1 + 3) \pmod 3 = 0 \to \text{queue}[0] = 4$.
+- **Result:** `Front() === 2` and `Rear() === 4`.
+
+---
+
+### 3. How does an engineer avoid memory leaks when implementing a Head-Pointer Queue in a long-running Node.js daemon?
+
+**Question:** Explain the memory retention behavior of an unbounded head-pointer queue and describe the optimal compaction strategy.
+
+**Answer:** 
+**The Memory Retention Hazard:**
+In a naive head-pointer queue:
+```javascript
+class LeakyQueue {
+  constructor() { this.items = []; this.head = 0; }
+  enqueue(x) { this.items.push(x); }
+  dequeue() { return this.items[this.head++]; }
+}
+```
+As elements are dequeued, `this.head` increments, but all previous elements from index $0$ to $\text{head} - 1$ remain referenced inside `this.items`. Even though the application logic considers them discarded, V8's Garbage Collector cannot reclaim their memory because they are reachable from the array root. In a server processing 10,000,000 tasks, this causes a fatal Out-Of-Memory (OOM) memory leak.
+
+**Compaction Strategy:**
+Periodically compact the array by slicing off the dead space once `head` crosses an amortized threshold:
+```javascript
+if (this.head > 1000 && this.head > this.items.length / 2) {
+  this.items = this.items.slice(this.head);
+  this.head = 0;
+}
+```
+This drops references to dead elements, re-indexes the array to index 0, and runs in amortized $O(1)$ time.
+
+---
+
+### 4. How does an asynchronous queue architecture provide load leveling in Node.js backend systems during traffic spikes?
+
+**Question:** An Express microservice receives 15,000 webhook events per second. Direct database writes crash the PostgreSQL connection pool. How does an asynchronous queue resolve this?
+
+**Answer:** 
+**The Problem (Traffic Spikes vs DB Saturation):**
+A relational database (e.g., PostgreSQL) has a hard connection pool limit (e.g., 100 concurrent connections). Under a burst of 15,000 incoming HTTP requests/second, attempting to write directly to the database exhausts all available pool connections, causing connection timeouts, cascading HTTP 500 errors, and memory crashes.
+
+**The Queue Load-Leveling Solution:**
+```
+Incoming Requests (15,000/sec)
+       │
+       ▼
+[ Node.js API Gateway ] ──> Fast In-Memory / Redis Queue (BullMQ)
+       │                    (Response: HTTP 202 Accepted in < 5 ms)
+       │
+       ▼
+[ Background Worker Pool ] ──> Consumes queue in controlled batches of 500
+       │
+       ▼
+[ PostgreSQL DB ] ──> Capped at safe throughput (e.g., 500 rows/batch, 10 connections)
+```
+1. **Decoupled Ingestion:** The HTTP handler immediately pushes the webhook payload into a Redis or in-memory FIFO queue and returns an `HTTP 202 Accepted` response in $< 5\text{ ms}$, freeing the Node.js event loop.
+2. **Controlled Batching:** Dedicated worker processes pull jobs from the queue at a sustainable rate, batching individual writes into bulk transactions (`INSERT INTO events VALUES (...), (...)`).
+3. **Fault Tolerance:** If the database encounters transient downtime or deadlocks, requests remain buffered safely in the queue and retry automatically without dropping customer data.
+
+---
 
 <nav aria-label="Lecture navigation">
 

@@ -1,141 +1,193 @@
 # Day 49: 2D Dynamic Programming: Grid Paths and Minimum Path Sum
 
-## 1. Learning Outcomes
-- Master the **2D Grid Dynamic Programming Pattern** where transitions depend on adjacent matrix cells.
-- Solve **Unique Paths I** and optimize space from $O(M \times N)$ to $O(N)$ 1D rolling array.
-- Handle obstacle boundaries and edge blocking in **Unique Paths II**.
-- Implement **Minimum Path Sum** using bottom-up cost minimization.
-- Model multi-hop gateway routing, CDN latency optimization, and delivery network cost tables in Node.js.
+<nav aria-label="Lecture navigation">
+  <a href="day-48-1d-dp-longest-increasing-subsequence.md">◀ Day 48: 1D DP: Longest Increasing Subsequence</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-50-2d-dp-longest-common-subsequence-knapsack.md">Day 50: 2D DP: Longest Common Subsequence and Knapsack ▶</a>
+</nav>
 
 ---
 
-## 2. Prerequisites & Navigation
-- **Prerequisites**: Day 25 (Grid Backtracking), Day 46 (Dynamic Programming Fundamentals).
-- **Navigation**:
-  - [Previous: Day 48 - 1D DP: Longest Increasing Subsequence](day-48-1d-dp-longest-increasing-subsequence.md)
-  - [Roadmap](../javascript-dsa-roadmap.md)
-  - [Next: Day 50 - 2D DP: Longest Common Subsequence & Knapsack](day-50-2d-dp-longest-common-subsequence-knapsack.md)
+## Learning Outcomes
+
+- Master the **2D Grid Dynamic Programming Pattern** where transitions propagate across orthogonal matrix coordinates $(r, c)$.
+- Solve **Unique Paths I** and compress auxiliary memory from $O(M \times N)$ 2D matrix down to an $O(N)$ 1D rolling array.
+- Handle obstacle boundaries and unreachable regions in **Unique Paths II**.
+- Implement **Minimum Path Sum** using bottom-up cost minimization: $dp[r][c] = \text{grid}[r][c] + \min(dp[r - 1][c], dp[r][c - 1])$.
+- Profile V8 memory overhead and cache locality when navigating row-major vs. column-major 2D array layouts in Node.js.
+- Apply 2D grid DP to multi-hop API gateway latency routing and cloud delivery cost optimization.
 
 ---
 
-## 3. Core Concepts & Mental Models
-When navigating a grid from top-left $(0, 0)$ to bottom-right $(M-1, N-1)$ moving only **Right** and **Down**:
-- Any cell $(r, c)$ can only be entered from the cell above $(r-1, c)$ or the cell to the left $(r, c-1)$.
+## Prerequisites
+
+- [Day 25: Grid Backtracking and N-Queens](day-25-grid-backtracking-and-n-queens.md) — 2D matrix coordinate navigation and boundary checks.
+- [Day 46: Dynamic Programming: Memoization and Tabulation](day-46-dynamic-programming-memo-and-tabulation.md) — Tabulation and space optimization fundamentals.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+| :--- | :--- | :--- |
+| **Grid DP** | Dynamic programming where states represent coordinates $(r, c)$ on an $M \times N$ matrix. | Common model for spatial optimization, board games, and path minimization. |
+| **Unique Paths** | The total number of distinct monotonic paths from top-left $(0, 0)$ to bottom-right $(M-1, N-1)$ moving only Right and Down. | Solved via $dp[r][c] = dp[r-1][c] + dp[r][c-1]$ in $O(M \times N)$ time. |
+| **1D Rolling Array** | Maintaining a single array of size $N$ where `dp[c]` holds the state from the previous row before being updated with the left cell. | Reduces auxiliary memory from $O(M \times N)$ to $O(N)$, saving millions of V8 heap allocations. |
+| **Obstacle Grid** | A matrix containing barrier cells that cannot be traversed ($dp[r][c] = 0$). | Requires boundary checks; an obstacle in the first row or column permanently blocks all subsequent cells in that line. |
+| **Minimum Path Sum** | The minimum cumulative cell weight encountered traveling from top-left to bottom-right. | Canonical problem for path minimization in $O(M \times N)$ time and $O(N)$ space. |
+
+---
+
+## Core Concepts & Mechanical Architecture
+
+### 1. Spatial Transitions in Grid DP
+
+When an agent moves on an $M \times N$ grid from top-left $(0, 0)$ to bottom-right $(M - 1, N - 1)$ moving strictly **Right** and **Down**:
+- Any cell $(r, c)$ can only be reached from two possible predecessors:
+  1. From the cell directly above: $(r - 1, c)$
+  2. From the cell directly to the left: $(r, c - 1)$
 
 ```text
-2D Grid DP Transitions:
-      (r-1, c) [From Above]
-          |
-          v
-(r, c-1) ---> [ (r, c) ]
+2D Grid DP Spatial Transitions:
+            (r - 1, c) [From Above]
+                 |
+                 v
+(r, c - 1) ---> [ (r, c) ]
 [From Left]
 
-1. Total Ways (Unique Paths):
+1. Counting Distinct Paths (Unique Paths):
    dp[r][c] = dp[r - 1][c] + dp[r][c - 1]
 
-2. Minimum Cost (Minimum Path Sum):
+2. Minimizing Cumulative Weight (Minimum Path Sum):
    dp[r][c] = grid[r][c] + Math.min(dp[r - 1][c], dp[r][c - 1])
 ```
 
-### 1D Space Optimization Mental Model
-Notice that computing row $r$ only requires the previous row $r - 1$ and the current row's left neighbor.
-By maintaining a single 1D array `dp` of size $N$:
-```javascript
-// dp[c] before update represents cell directly above (r-1, c)
-// dp[c - 1] represents cell to the left (r, c-1)
-dp[c] = dp[c] + dp[c - 1];
+---
+
+### 2. Space Optimization: The 1D Rolling Array Pattern
+
+In standard 2D DP, allocating an $M \times N$ table takes $O(M \times N)$ space.
+Notice that computing row $r$ **only** references:
+- The cell directly above in row $r - 1$ (`dp[r - 1][c]`)
+- The cell to the left in the current row $r$ (`dp[r][c - 1]`)
+
+By using a single 1D array `dp` of size $N$:
+- Before updating index $c$, `dp[c]` still holds the value from the **row above** ($r - 1, c$).
+- `dp[c - 1]` has already been updated for the current row, holding the value from the **cell to the left** ($r, c - 1$).
+Therefore, the recurrence collapses into:
+$$dp[c] = dp[c] + dp[c - 1]$$
+
+```text
+1D Rolling Array Mechanics:
+Row 0: [ 1,  1,  1,  1 ] (Initialized to 1)
+
+Row 1 processing:
+c = 1: dp[1] = dp[1] (above) + dp[0] (left) = 1 + 1 = 2
+c = 2: dp[2] = dp[2] (above) + dp[1] (left) = 1 + 2 = 3
+c = 3: dp[3] = dp[3] (above) + dp[2] (left) = 1 + 3 = 4
+State becomes: [ 1, 2, 3, 4 ]
+
+Row 2 processing:
+c = 1: dp[1] = 2 + 1 = 3
+c = 2: dp[2] = 3 + 3 = 6
+c = 3: dp[3] = 4 + 6 = 10
+State becomes: [ 1, 3, 6, 10 ]
+Space reduced from O(M * N) down to O(N)!
 ```
-This reduces memory from $O(M \times N)$ down to $O(N)$!
 
----
-
-## 4. Detailed Technical Explanations
-
-### 4.1 Boundary Conditions (First Row and First Column)
-- For the first row $(r = 0)$, there is no cell above; you can only arrive from the left.
-- For the first column $(c = 0)$, there is no cell to the left; you can only arrive from above.
-- In **Unique Paths II**, if an obstacle occurs at `grid[0][c]`, all subsequent cells in that first row become permanently unreachable (`0` paths).
-
-### 4.2 Minimum Path Sum Recurrence
-- Base: `dp[0][0] = grid[0][0]`.
-- First row: `dp[0][c] = dp[0][c - 1] + grid[0][c]`.
-- First col: `dp[r][0] = dp[r - 1][0] + grid[r][0]`.
-- Internal cells: `dp[r][c] = grid[r][c] + Math.min(dp[r - 1][c], dp[r][c - 1])`.
-
-### 4.3 Node.js Relevance: Spatial Routing & CDN Transit Costs
-In distributed Node.js gateway routers, traffic flows through layered proxy hops or transit networks. Matrix DP calculates the lowest-latency path through multiple geographic edge nodes or computes optimal data transport routes across bandwidth billing tiers.
-
----
-
-## 5. JavaScript Implementation & Step-by-Step Traces
-
-### 5.1 Unique Paths (LeetCode 62) - O(N) Space
 ```javascript
+// Node.js code: Unique Paths I with O(N) Space
 /**
- * Computes unique paths from (0,0) to (m-1, n-1) with 1D space.
- * Time Complexity: O(m * n)
- * Space Complexity: O(n)
+ * @param {number} m
+ * @param {number} n
+ * @returns {number}
  */
 function uniquePaths(m, n) {
-  // Initialize first row with 1 (only 1 way to travel right along top row)
-  const dp = new Uint32Array(n).fill(1);
+  // Allocate 1D array of size n initialized to 1 (representing row 0)
+  const dp = new Array(n).fill(1);
 
   for (let r = 1; r < m; r++) {
     for (let c = 1; c < n; c++) {
-      // dp[c] is from above (r - 1), dp[c - 1] is from left (r)
-      dp[c] += dp[c - 1];
+      dp[c] = dp[c] + dp[c - 1];
     }
   }
 
   return dp[n - 1];
 }
+
+console.log('Unique paths for 3x7 grid:', uniquePaths(3, 7)); // 28
 ```
 
-### 5.2 Unique Paths II with Obstacles (LeetCode 63)
+---
+
+### 3. Unique Paths II: Obstacles and Path Termination
+
+In **Unique Paths II** (LeetCode 63), cells with `obstacleGrid[r][c] === 1` represent walls that cannot be traversed.
+
+```text
+Obstacle Grid:
+[
+  [0, 0, 0],
+  [0, 1, 0],  <-- Cell (1, 1) is blocked!
+  [0, 0, 0]
+]
+
+Rules:
+1. If obstacleGrid[r][c] === 1: dp[c] = 0 (No paths can traverse this cell!)
+2. If c === 0: dp[0] remains its previous value unless blocked; if blocked, dp[0] = 0!
+```
+
 ```javascript
+// Node.js code: Unique Paths II with O(N) Space
 /**
- * Unique paths with obstacles (1 = obstacle, 0 = open path).
- * Time Complexity: O(m * n)
- * Space Complexity: O(n)
+ * @param {number[][]} obstacleGrid
+ * @returns {number}
  */
 function uniquePathsWithObstacles(obstacleGrid) {
+  if (!obstacleGrid || obstacleGrid.length === 0 || obstacleGrid[0].length === 0) return 0;
+  if (obstacleGrid[0][0] === 1) return 0; // Starting point is blocked
+
   const m = obstacleGrid.length;
   const n = obstacleGrid[0].length;
+  const dp = new Array(n).fill(0);
 
-  // If starting or ending cell is blocked, 0 paths possible
-  if (obstacleGrid[0][0] === 1 || obstacleGrid[m - 1][n - 1] === 1) {
-    return 0;
-  }
-
-  const dp = new Uint32Array(n);
   dp[0] = 1; // Start position
 
   for (let r = 0; r < m; r++) {
     for (let c = 0; c < n; c++) {
       if (obstacleGrid[r][c] === 1) {
-        dp[c] = 0; // Blocked: zero paths pass through an obstacle
+        dp[c] = 0; // Wall: zero paths
       } else if (c > 0) {
-        dp[c] += dp[c - 1];
+        dp[c] = dp[c] + dp[c - 1];
       }
+      // If c === 0, dp[0] either carries down from previous row or becomes 0 if blocked
     }
   }
 
   return dp[n - 1];
 }
+
+console.log('Paths with obstacle:', uniquePathsWithObstacles([[0,0,0],[0,1,0],[0,0,0]])); // 2
 ```
 
-### 5.3 Minimum Path Sum (LeetCode 64) - O(N) Space
+---
+
+### 4. Minimum Path Sum (LeetCode 64)
+
+Given an $M \times N$ grid filled with non-negative numbers, find a path from $(0, 0)$ to $(M - 1, N - 1)$ minimizing the sum of all numbers along its path.
+
 ```javascript
+// Node.js code: Minimum Path Sum with O(N) Space
 /**
- * Finds path from top left to bottom right minimizing sum of numbers.
- * Time Complexity: O(m * n)
- * Space Complexity: O(n)
+ * @param {number[][]} grid
+ * @returns {number}
  */
 function minPathSum(grid) {
+  if (!grid || grid.length === 0) return 0;
   const m = grid.length;
   const n = grid[0].length;
-  const dp = new Array(n);
 
+  const dp = new Array(n);
   dp[0] = grid[0][0];
 
   // Initialize first row
@@ -143,114 +195,254 @@ function minPathSum(grid) {
     dp[c] = dp[c - 1] + grid[0][c];
   }
 
+  // Iterate remaining rows
   for (let r = 1; r < m; r++) {
-    dp[0] += grid[r][0]; // First cell of current row can only come from above
+    dp[0] = dp[0] + grid[r][0]; // First column can only come from above
 
     for (let c = 1; c < n; c++) {
-      // Minimum between above (dp[c]) and left (dp[c - 1]) + current cell cost
       dp[c] = grid[r][c] + Math.min(dp[c], dp[c - 1]);
     }
   }
 
   return dp[n - 1];
 }
+
+console.log(
+  'Min path sum:',
+  minPathSum([
+    [1, 3, 1],
+    [1, 5, 1],
+    [4, 2, 1]
+  ])
+); // 7 (1 -> 3 -> 1 -> 1 -> 1)
 ```
 
-### 5.4 Execution Trace: `uniquePaths(3, 3)`
+---
+
+## Detailed Node.js Relevance
+
+### Multi-Hop Cloud Routing and Latency Minimization Tables
+
+In Node.js cloud gateway microservices routing traffic across geographical edge locations and regional VPCs:
+
 ```text
-Initial dp (Row 0): [1, 1, 1]
-
-Row 1:
-  c = 1: dp[1] = dp[1] (1) + dp[0] (1) = 2.  dp = [1, 2, 1]
-  c = 2: dp[2] = dp[2] (1) + dp[1] (2) = 3.  dp = [1, 2, 3]
-
-Row 2:
-  c = 1: dp[1] = dp[1] (2) + dp[0] (1) = 3.  dp = [1, 3, 3]
-  c = 2: dp[2] = dp[2] (3) + dp[1] (3) = 6.  dp = [1, 3, 6]
-
-Final Result: dp[2] = 6 unique paths!
+Cross-Region Routing Matrix:
+[Client] ---> Edge Node (r) ---> Internal Transit VPC (c) ---> [Target DB]
+Cost table represents cumulative latency in milliseconds.
 ```
 
----
-
-## 6. Common Mistakes & Anti-Patterns
-- **Allocating Full $M \times N$ Matrices Unnecessarily**: Allocating a $1000 \times 1000$ matrix creates 1,000,000 array objects in V8 heap memory. A 1D array of size 1000 uses only 4KB RAM.
-- **Forgetting Obstacle at Start or End**: If `obstacleGrid[0][0] === 1`, the robot cannot even begin moving; return 0 immediately.
-- **Off-By-One in First Column Accumulation**: When using 1D space optimization in `minPathSum`, forgetting to update `dp[0] += grid[r][0]` at the start of each row leaves `dp[0]` with the obsolete previous row's cost.
+1. **V8 Heap Cache Lines**: In JavaScript, a 2D array `const matrix = Array.from({length: M}, () => new Array(N))` creates $M + 1$ distinct array objects scattered across heap memory. Accessing `matrix[r][c]` requires double pointer dereferencing. Using a flat 1D typed array (`new Float64Array(M * N)`) with index arithmetic `r * N + c` keeps all cells contiguous, maximizing CPU cache line hits and eliminating garbage collection churn during real-time route calculations.
+2. **Deterministic Route Caching**: Because cloud route latency tables change infrequently (every few minutes), computing the minimum cost path via 2D DP once and caching the 1D cost table in memory serves thousands of API routing decisions per second with sub-microsecond latency.
 
 ---
 
-## 7. Tricky Points & Edge Cases
-- **Single Row or Single Column Grids**: If $M = 1$ or $N = 1$, only 1 path exists (unless an obstacle blocks it).
-- **Combinatorics Shortcut for Unique Paths I**: The total steps is $(M - 1) + (N - 1)$. Total paths is mathematically $\binom{M + N - 2}{M - 1}$. However, DP is preferred in interviews to prevent 64-bit integer overflow during factorial multiplications.
-- **In-Place Grid Mutation**: If allowed, `grid[r][c]` can be updated in-place as the DP table itself ($O(1)$ space), but this destroys input data.
+## Tricky Points & Edge Cases
+
+1. **Top-Left or Bottom-Right Starting Obstacle**:
+   In Unique Paths II, if `obstacleGrid[0][0] === 1` or `obstacleGrid[m - 1][n - 1] === 1`, no valid path can ever start or finish! Return 0 immediately.
+2. **First Column Obstacle Blocking**:
+   In Unique Paths II, if `obstacleGrid[i][0] === 1`, all subsequent cells in that first column (`obstacleGrid[j][0]` for $j > i$) are completely cut off and must have $dp = 0$.
+3. **In-Place Grid Mutation Pitfall**:
+   While overwriting `grid[r][c]` in-place achieves $O(1)$ auxiliary memory, it permanently corrupts caller data. In production Node.js services where data might be shared across concurrent asynchronous callbacks, always use a separate 1D array to guarantee immutability.
+4. **Dimensions $1 \times 1$**:
+   A grid of size $1 \times 1$ requires 0 moves. Total unique paths is 1 (if no obstacle) or 0 (if blocked). Minimum path sum is simply `grid[0][0]`.
 
 ---
 
-## 8. Practical Engineering Exercises
-1. Implement `minPathSum` mutating the grid in-place in $O(1)$ auxiliary space.
-2. Implement **Triangle** (LeetCode 120) finding the minimum path sum from top to bottom of a triangular array using bottom-up DP.
+## Hands-On Exercise
 
----
+### Scenario
+You are developing a route latency optimizer in Node.js for an API gateway. The network grid is an $M \times N$ matrix where `grid[r][c]` represents latency in milliseconds. Certain nodes are designated as offline maintenance zones (`-1` indicates an impassable node).
+Implement `findCheapestSafeRoute(grid)`:
+1. Returns the **minimum latency** from $(0, 0)$ to $(M - 1, N - 1)$.
+2. If no valid path exists without touching maintenance nodes (`-1`), return `-1`.
+3. Must execute in $O(M \times N)$ time and $O(N)$ auxiliary space.
 
-## 9. Key Takeaways & Summary
-- Grid DP transitions combine values from the cell above $(r-1, c)$ and the cell to the left $(r, c-1)$.
-- Memory can always be compressed from $O(M \times N)$ to $O(N)$ using a 1D rolling array.
-- Obstacles set the state to 0, representing 0 possible path combinations.
-- Minimum Path Sum replaces summation with `Math.min(above, left) + cost`.
-
----
-
-## 10. Quick Reference Cheat Sheet
-| Problem | Recurrence | 1D Rolling State | Time | Space |
-| :--- | :--- | :--- | :--- | :--- |
-| **Unique Paths** | $dp[r][c] = dp[r-1][c] + dp[r][c-1]$ | `dp[c] += dp[c-1]` | $O(M \cdot N)$ | $O(N)$ |
-| **Unique Paths II** | If obstacle: $0$; else sum above+left | If obs: `dp[c] = 0`; else `+= dp[c-1]` | $O(M \cdot N)$ | $O(N)$ |
-| **Min Path Sum** | $cost + \min(above, left)$ | `dp[c] = grid[r][c] + min(dp[c], dp[c-1])` | $O(M \cdot N)$ | $O(N)$ |
-
----
-
-## 11. Interview Questions & Expected Answers
-
-### 1. Conceptual
-**Question**: Explain how the 2D DP matrix for Unique Paths can be compressed into a single 1D array of size $N$.  
-**Hint**: Examine the exact lifetime of previous row entries during row iteration.  
-**Expected Answer Shape**: When computing `dp[r][c]`, we only need the value directly above it (`dp[r - 1][c]`) and the value to its left in the current row (`dp[r][c - 1]`). In a 1D array of size $N$, before updating index $c$, `dp[c]` holds the value from row $r - 1$. Meanwhile, `dp[c - 1]` has already been updated for row $r$. Thus, `dp[c] = dp[c] + dp[c - 1]` cleanly combines both values in-place without needing any older rows, reducing space from $O(M \times N)$ to $O(N)$.
-
-### 2. Code-Writing
-**Question**: Solve **Triangle** (LeetCode 120) where you move from the top of a triangle to adjacent numbers in the row below, finding the minimum path sum.  
-**Hint**: Work bottom-up from the base of the triangle to the top.  
-**Expected Answer Shape**: Initialize `dp` with the last row of the triangle. Loop backwards from row $M - 2$ up to 0. For each column $c$, update `dp[c] = triangle[r][c] + Math.min(dp[c], dp[c + 1])`. At the end, `dp[0]` holds the minimum path sum. This achieves $O(N^2)$ time and $O(N)$ space.
-
-### 3. Debugging
-**Question**: Identify why this Unique Paths II code returns incorrect results when an obstacle is present:  
+### Buggy Code
 ```javascript
-function uniquePathsWithObstacles(grid) {
-  const m = grid.length, n = grid[0].length;
-  const dp = new Array(n).fill(1);
-  for (let r = 0; r < m; r++) {
-    for (let c = 0; c < n; c++) {
-      if (grid[r][c] === 1) dp[c] = 0;
-      else if (c > 0) dp[c] += dp[c - 1];
+function findCheapestSafeRoute(grid) {
+  // BUG: Uses 0 instead of -1 check; treats unreachable cells as 0 latency
+  const dp = new Array(grid[0].length).fill(0);
+  dp[0] = grid[0][0];
+
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[0].length; c++) {
+      // Missing proper boundary checks for impassable cells (-1)
+      dp[c] = grid[r][c] + Math.min(dp[c], dp[c - 1] || 0);
     }
   }
-  return dp[n - 1];
+  return dp[grid[0].length - 1];
 }
-```  
-**Hint**: How is the first row handled when initialized with `fill(1)`?  
-**Expected Answer Shape**: `dp` is initialized with all 1s. If an obstacle is in the first row at column 1, `dp[1]` is set to 0, but `dp[2]` remains 1 from initialization! In reality, any cell after an obstacle in row 0 must be 0. Furthermore, `dp[0]` can never be set to 0 if an obstacle appears at `grid[r][0]` in later rows. Fix by initializing `dp` with 0s, setting `dp[0] = 1` only if `grid[0][0] === 0`, and updating `dp[0] = 0` whenever `grid[r][0] === 1`.
+```
 
-### 4. System Design / Tradeoff
-**Question**: When calculating transit costs in a routing engine in Node.js, when should you use 2D Grid DP versus Dijkstra's Algorithm?  
-**Hint**: Directed acyclic moves vs. general cyclic graphs.  
-**Expected Answer Shape**: Grid DP is strictly applicable only when movement is acyclic and restricted to forward directions (e.g., strictly Right and Down, forming a DAG) with uniform progression. If movement is permitted in all 4 directions (Up, Down, Left, Right) or arbitrary road networks, cycles are possible and subproblems overlap cyclically, invalidating the DP topological order. In such cyclic weighted networks, Dijkstra's algorithm with a priority queue is required.
+### Acceptance Criteria
+- Treat `-1` as completely impassable walls.
+- Return `-1` if start cell or destination cell is blocked.
+- Use `Infinity` sentinel values to prevent unreachable branches from contaminating the minimum calculation.
+- Memory usage must be strictly $O(N)$ without mutating the input grid.
 
-### 5. Tricky / Edge Case
-**Question**: Why does the mathematical formula $\binom{M + N - 2}{M - 1}$ for Unique Paths risk precision issues in JavaScript for grids like $100 \times 100$?  
-**Hint**: IEEE 754 double precision limits.  
-**Expected Answer Shape**: For a $100 \times 100$ grid, total steps is 198. The factorial $198!$ exceeds $10^{370}$, far surpassing JavaScript's `Number.MAX_VALUE` ($\approx 1.79 \times 10^{308}$) and overflowing to `Infinity`. While `BigInt` can compute it, tabular DP with addition avoids huge intermediate factorials and runs safely within 32-bit/64-bit integers with modulo arithmetic.
+### Solution Code
+```javascript
+const assert = require('assert');
 
-### 6. Real-World Node.js Context
-**Question**: How would you optimize memory usage in a Node.js microservice computing a $5000 \times 5000$ cost matrix to prevent garbage collection pauses?  
-**Hint**: Array of Arrays vs. flat TypedArray buffer.  
-**Expected Answer Shape**: An Array of Arrays for $5000 \times 5000$ creates 5,001 separate V8 heap objects totaling over 200MB, triggering heavy GC mark-and-sweep pauses. Use a single 1D `Float64Array(5000)` rolling buffer (40KB) rather than 2D arrays, or if the full matrix must be preserved, allocate a single flat `Float64Array(5000 * 5000)` indexed via `r * 5000 + c`, which creates exactly 1 contiguous buffer outside the primary GC traversal path.
+// Node.js code: Robust Route Latency Optimizer with Impassable Nodes
+/**
+ * @param {number[][]} grid
+ * @returns {number}
+ */
+function findCheapestSafeRoute(grid) {
+  if (!grid || grid.length === 0 || grid[0].length === 0) return -1;
+  const m = grid.length;
+  const n = grid[0].length;
+
+  if (grid[0][0] === -1 || grid[m - 1][n - 1] === -1) return -1;
+
+  const dp = new Array(n).fill(Infinity);
+  dp[0] = grid[0][0];
+
+  // Initialize first row
+  for (let c = 1; c < n; c++) {
+    if (grid[0][c] === -1 || dp[c - 1] === Infinity) {
+      dp[c] = Infinity;
+    } else {
+      dp[c] = dp[c - 1] + grid[0][c];
+    }
+  }
+
+  // Process remaining rows
+  for (let r = 1; r < m; r++) {
+    // Update first column
+    if (grid[r][0] === -1 || dp[0] === Infinity) {
+      dp[0] = Infinity;
+    } else {
+      dp[0] = dp[0] + grid[r][0];
+    }
+
+    for (let c = 1; c < n; c++) {
+      if (grid[r][c] === -1) {
+        dp[c] = Infinity;
+      } else {
+        const fromAbove = dp[c];
+        const fromLeft = dp[c - 1];
+        const minPrev = Math.min(fromAbove, fromLeft);
+
+        if (minPrev === Infinity) {
+          dp[c] = Infinity;
+        } else {
+          dp[c] = grid[r][c] + minPrev;
+        }
+      }
+    }
+  }
+
+  return dp[n - 1] === Infinity ? -1 : dp[n - 1];
+}
+
+// Verification & Automated Unit Tests
+// Test 1: Valid path navigating around -1 obstacle
+const grid1 = [
+  [1, 3, 1],
+  [1, -1, 1],
+  [4, 2, 1]
+];
+// Path: (0,0)->(1,0)->(2,0)->(2,1)->(2,2) = 1 + 1 + 4 + 2 + 1 = 9
+// Or: (0,0)->(0,1)->(0,2)->(1,2)->(2,2) = 1 + 3 + 1 + 1 + 1 = 7 (Optimal!)
+assert.strictEqual(findCheapestSafeRoute(grid1), 7);
+
+// Test 2: Completely blocked grid
+const gridBlocked = [
+  [1, -1],
+  [-1, 1]
+];
+assert.strictEqual(findCheapestSafeRoute(gridBlocked), -1);
+
+// Test 3: Start blocked
+assert.strictEqual(findCheapestSafeRoute([[-1, 5], [2, 1]]), -1);
+
+// Test 4: Single cell
+assert.strictEqual(findCheapestSafeRoute([[42]]), 42);
+assert.strictEqual(findCheapestSafeRoute([[-1]]), -1);
+
+console.log('✅ All findCheapestSafeRoute assertions passed successfully!');
+```
+
+### Solution Explanation
+1. **`Infinity` Sentinel Propagation**: By initializing inaccessible paths to `Infinity`, any cell whose only predecessors are impassable automatically evaluates to `grid[r][c] + Infinity = Infinity`, correctly pruning invalid routes.
+2. **Boundary Safeguards**: Cells in row 0 or column 0 immediately become permanently unreachable if a `-1` precedes them.
+3. **Memory Economy**: Operating on a single 1D array of length $N$ caps space at $O(N)$ while leaving input arrays untouched.
+
+---
+
+## Summary
+
+- **2D Grid DP** computes path metrics on an $M \times N$ matrix where moves are restricted to cardinal directions (typically Right and Down).
+- **Unique Paths** accumulates options: $dp[r][c] = dp[r - 1][c] + dp[r][c - 1]$.
+- **Minimum Path Sum** minimizes cost: $dp[r][c] = \text{grid}[r][c] + \min(dp[r - 1][c], dp[r][c - 1])$.
+- **1D Rolling Array Pattern**: Because each row depends only on the row directly above and the left cell, space can always be compressed from $O(M \times N)$ to $O(N)$.
+- In Node.js networking and cloud services, 1D array DP enables fast latency minimization and packet routing without garbage collection penalties.
+
+---
+
+## Cheat Sheet & Common Pitfalls
+
+| Problem | Recurrence | Base Case | Space Optimization |
+| :--- | :--- | :--- | :--- |
+| **Unique Paths** | $dp[c] = dp[c] + dp[c - 1]$ | `dp.fill(1)` | $O(N)$ 1D array |
+| **Unique Paths II** | If obstacle: $dp[c] = 0$; else add left | `dp[0] = 1` if no obstacle | $O(N)$ 1D array |
+| **Min Path Sum** | $dp[c] = \text{val} + \min(dp[c], dp[c - 1])$ | Cumulative sum of row 0 | $O(N)$ 1D array |
+| **Impassable Cells** | Assign `Infinity` | Propagate sentinel | Guard `minPrev !== Infinity` |
+
+---
+
+## Interview Questions
+
+### 1. How does the 1D rolling array optimization work in 2D Grid DP without data corruption?
+**Question:** Explain how a single 1D array of size $N$ can replace an $M \times N$ matrix in Unique Paths without the new values overwriting needed data.
+
+**Answer:**
+When updating the 1D array `dp` for row $r$:
+1. At any column $c$, we need two values: the value from the row above ($r - 1, c$) and the value from the cell to the left ($r, c - 1$).
+2. In our 1D array `dp`, before we overwrite `dp[c]`, the value currently stored at `dp[c]` was placed there during the calculation of row $r - 1$. Therefore, `dp[c]` **is** the value from above!
+3. The value at `dp[c - 1]` was already updated in the current loop iteration at step $c - 1$. Therefore, `dp[c - 1]` **is** the value from the left!
+4. By evaluating `dp[c] = dp[c] + dp[c - 1]`, we read the previous row's value from `dp[c]` and the current row's left neighbor from `dp[c - 1]`, perfectly mirroring the 2D recurrence without any intermediate buffer.
+
+---
+
+### 2. Can Unique Paths I be solved in $O(1)$ space using combinatorics?
+**Question:** Explain how Unique Paths can be solved in $O(M + N)$ time and $O(1)$ space using mathematical combinations instead of Dynamic Programming.
+
+**Answer:**
+To travel from $(0, 0)$ to $(M - 1, N - 1)$:
+1. The robot must make exactly $M - 1$ Down moves and $N - 1$ Right moves.
+2. The total number of moves is always fixed at $T = (M - 1) + (N - 1) = M + N - 2$.
+3. Any path is uniquely determined by choosing which $M - 1$ of the total $T$ steps are Down moves.
+4. Therefore, the total number of unique paths is the mathematical combination:
+   $$\binom{M + N - 2}{M - 1} = \frac{(M + N - 2)!}{(M - 1)! \cdot (N - 1)!}$$
+5. This can be computed iteratively in $O(\min(M, N))$ time and $O(1)$ auxiliary space without allocating any DP arrays.
+
+---
+
+### 3. What is the danger of in-place grid mutation in Node.js asynchronous APIs?
+**Question:** Why is mutating the input grid directly (e.g., `grid[r][c] += Math.min(...)`) considered an anti-pattern in Node.js backend services, despite saving memory?
+
+**Answer:**
+1. **Shared Memory Concurrency**: In Node.js, functions that receive nested objects or arrays receive them by reference. If the input grid is cached, passed from a shared service, or referenced across multiple asynchronous callbacks/event listeners, mutating it in-place corrupts the original data for other callers.
+2. **Hidden Class De-Optimization in V8**: If the input matrix contains mixed types or if properties are reassigned in ways that alter their V8 hidden shapes, V8's optimizing compiler (TurboFan) may de-optimize subsequent array operations.
+3. **Best Practice**: Use an independent $O(N)$ 1D array or flat typed array (`Int32Array`) to preserve caller immutability with negligible memory cost.
+
+---
+
+### 4. How would you solve Minimum Path Sum if movement was allowed in 4 directions instead of 2?
+**Question:** If movement in the grid was permitted in all 4 orthogonal directions (Up, Down, Left, Right) with arbitrary positive weights, why does Dynamic Programming fail and what algorithm must be used?
+
+**Answer:**
+1. **Why DP Fails**: Dynamic Programming requires a Directed Acyclic Graph (DAG) structure with a clear topological ordering of subproblems. When movement is allowed in all 4 directions, cycles can form (e.g., $(r, c) \to (r, c + 1) \to (r + 1, c + 1) \to (r + 1, c) \to (r, c)$). State $A$ would depend on state $B$, which depends on state $C$, which depends on state $A$, creating circular dependencies that break DP recurrence relations.
+2. **Algorithm Required**: This becomes a classic shortest path problem on a weighted directed graph. We must use **Dijkstra's Algorithm** with a Min-Priority Queue, which explores paths in order of cumulative weight in $O(V \log V) = O((M \cdot N) \log(M \cdot N))$ time.
+
+---
+
+<nav aria-label="Lecture navigation">
+  <a href="day-48-1d-dp-longest-increasing-subsequence.md">◀ Day 48: 1D DP: Longest Increasing Subsequence</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-50-2d-dp-longest-common-subsequence-knapsack.md">Day 50: 2D DP: Longest Common Subsequence and Knapsack ▶</a>
+</nav>

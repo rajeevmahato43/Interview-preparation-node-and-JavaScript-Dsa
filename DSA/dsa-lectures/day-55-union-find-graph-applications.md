@@ -1,224 +1,537 @@
 # Day 55: Union-Find: Graph Applications and Minimum Spanning Tree (MST)
 
-## 1. Learning Outcomes
-- Apply Union-Find to detect cycles and solve **Redundant Connection** in undirected graphs.
-- Solve the **Accounts Merge** problem combining string indexing with DSU set clustering.
-- Master **Kruskal's Algorithm** for finding the **Minimum Spanning Tree (MST)** in weighted graphs.
-- Compare Kruskal's Algorithm with Prim's Algorithm for sparse vs. dense graphs.
-- Model multi-VPC cloud peering costs, fiber-optic network routing, and profile merging in Node.js.
+<nav aria-label="Lecture navigation">
+  <a href="day-54-union-find-disjoint-set-union.md">◀ Day 54: Union-Find: Disjoint Set Union (DSU)</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-56-mixed-pattern-strategy-and-constraints.md">Day 56: Mixed Pattern Strategy and Constraint Decoding ▶</a>
+</nav>
 
 ---
 
-## 2. Prerequisites & Navigation
-- **Prerequisites**: Day 36 (Graph Representations), Day 51 (Greedy Algorithms), Day 54 (Disjoint Set Union).
-- **Navigation**:
-  - [Previous: Day 54 - Union-Find: Disjoint Set Union (DSU)](day-54-union-find-disjoint-set-union.md)
-  - [Roadmap](../javascript-dsa-roadmap.md)
-  - [Next: Day 56 - Mixed Pattern Strategy & Constraints](day-56-mixed-pattern-strategy-and-constraints.md)
+## Learning Outcomes
+
+- Apply Disjoint Set Union to solve the **Redundant Connection** problem by identifying cycle-creating edges in $O(E \cdot \alpha(V))$ time.
+- Implement **Accounts Merge** by indexing arbitrary string emails into integer IDs and grouping equivalence components.
+- Master **Kruskal's Algorithm** for constructing the **Minimum Spanning Tree (MST)** in weighted undirected graphs.
+- Compare Kruskal's Algorithm against **Prim's Algorithm** to determine optimal usage for sparse versus dense topologies.
+- Model multi-region cloud VPC peering topologies, fiber-optic cable routing costs, and profile deduplication in Node.js backend systems.
+- Guard against multigraph parallel edge collisions and disconnected graph partition edge cases.
 
 ---
 
-## 3. Core Concepts & Mental Models
-A tree with $V$ vertices must have exactly $V - 1$ edges and contain **zero cycles**. Adding any single edge between two already connected vertices inevitably creates a cycle:
+## Prerequisites
+
+- [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Vertices, edges, weighted graphs, and edge lists.
+- [Day 51: Greedy: Interval Scheduling and Overlaps](day-51-greedy-interval-scheduling.md) — The Greedy Choice property and edge weight sorting.
+- [Day 54: Union-Find: Disjoint Set Union (DSU)](day-54-union-find-disjoint-set-union.md) — DSU implementation with Path Compression and Union by Rank.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+| :--- | :--- | :--- |
+| **Spanning Tree** | A connected subgraph of an undirected graph that includes all $V$ vertices and exactly $V - 1$ edges with no cycles. | The minimal edge backbone needed to keep an entire network connected. |
+| **Minimum Spanning Tree (MST)** | A spanning tree whose sum of edge weights is strictly less than or equal to the sum of every other spanning tree. | Solves network cabling, circuit routing, and cloud VPC peering cost minimization. |
+| **Kruskal's Algorithm** | A greedy algorithm that sorts edges ascending by weight and adds each edge to the MST using DSU if it does not form a cycle. | Runs in $O(E \log E)$ time; optimal for sparse graphs ($E \ll V^2$). |
+| **Redundant Connection** | An edge whose removal restores an undirected connected graph back into a valid tree. | Discovered immediately when `dsu.union(u, v)` evaluates to false. |
+| **Accounts Merge** | Grouping user accounts that share at least one common identifier (e.g., email address) into a single unified identity. | Standard identity resolution problem in distributed analytics and authentication backends. |
+
+---
+
+## Core Concepts & Mechanical Architecture
+
+### 1. Redundant Connection (LeetCode 684)
+
+In **Redundant Connection**, a graph of $N$ vertices started as a tree (with $N - 1$ edges), but one extra edge was added, forming an undirected cycle ($N$ edges total). We must find and return the edge that created the cycle.
 
 ```text
 Redundant Connection Invariant:
-(1) --- (2)
- |     /
- |   /      Adding edge (1, 3):
-(3)         find(1) === 1, find(3) === 1 (Already connected!).
-            Therefore, (1, 3) creates the cycle! Return [1, 3]!
+Edges: [[1, 2], [1, 3], [2, 3]]
+Graph:
+    (1) -------- (2)
+     |          /
+     |         /
+    (3) ------'
 
-Kruskal's Minimum Spanning Tree (MST):
-Goal: Connect all V vertices with minimum total edge weight using exactly V - 1 edges.
-1. Sort all edges ascending by weight.
-2. Greedily pick edges from smallest to largest.
-3. If endpoints are already connected (find(u) === find(v)), DISCARD (avoids cycles).
-4. Otherwise, UNION endpoints and include edge in MST!
+Step 1: Edge [1, 2] -> dsu.union(1, 2) === true. Sets: {1, 2}, {3}
+Step 2: Edge [1, 3] -> dsu.union(1, 3) === true. Sets: {1, 2, 3}
+Step 3: Edge [2, 3] -> find(2) === find(3) === 1!
+        dsu.union(2, 3) === false! Edge [2, 3] creates the cycle!
+        Return [2, 3].
 ```
 
----
-
-## 4. Detailed Technical Explanations
-
-### 4.1 Redundant Connection Pattern
-Given an undirected graph with $N$ vertices that started as a tree with 1 extra edge added ($N$ edges total):
-- Process edges sequentially using `dsu.union(u, v)`.
-- The very first edge where `dsu.union(u, v) === false` (meaning both endpoints already share the same root) is the redundant cycle edge that can be removed.
-
-### 4.2 Accounts Merge Pattern
-Given user accounts with names and lists of emails:
-- Two accounts belong to the same person if they share at least one email.
-- **Mapping Protocol**:
-  1. Assign a unique integer ID to each unique email.
-  2. Map each email to the person's name: `emailToName.set(email, name)`.
-  3. For each account, `union` the first email's ID with all subsequent emails in that account.
-  4. Group emails by their representative root (`find(emailId)`).
-  5. Sort emails alphabetically within each group and format the output.
-
-### 4.3 Kruskal's vs. Prim's Algorithm
-| Algorithm | Approach | Time Complexity | Best For |
-| :--- | :--- | :--- | :--- |
-| **Kruskal's** | Edge-based greedy + Union-Find | $O(E \log E)$ | Sparse graphs ($E \ll V^2$) |
-| **Prim's** | Vertex-based greedy + Min-Heap | $O(E \log V)$ | Dense graphs ($E \approx V^2$) |
-
-### 4.4 Node.js Relevance: Cloud VPC Peering & Network Topology Optimization
-In cloud infrastructure tooling written in Node.js (e.g., Terraform CDK, AWS CloudFormation generators), interconnecting 50 Virtual Private Clouds (VPCs) with dedicated fiber links incurs direct bandwidth and peering connection costs. Kruskal's MST algorithm determines the minimum set of 49 peering connections required to fully interconnect all VPCs with the lowest possible monthly infrastructure bill.
-
----
-
-## 5. JavaScript Implementation & Step-by-Step Traces
-
-### 5.1 Redundant Connection (LeetCode 684)
 ```javascript
-import { DisjointSet } from './day-54-union-find-disjoint-set-union.js';
-
+// Node.js code: Redundant Connection Implementation
 /**
- * Finds edge that can be removed so graph becomes a valid tree.
- * Time Complexity: O(E * alpha(V)) ≈ O(E)
- * Space Complexity: O(V)
+ * @param {number[][]} edges
+ * @returns {number[]}
  */
 function findRedundantConnection(edges) {
   const n = edges.length;
-  // Vertices are 1-indexed (1 to n)
-  const dsu = new DisjointSet(n + 1);
+  // Vertices are 1-indexed, allocate n + 1
+  const parent = new Int32Array(n + 1);
+  for (let i = 1; i <= n; i++) parent[i] = i;
 
-  for (const [u, v] of edges) {
-    // If u and v already in the same set, this edge forms a cycle!
-    if (!dsu.union(u, v)) {
-      return [u, v];
+  function find(x) {
+    if (parent[x] === x) return x;
+    return (parent[x] = find(parent[x]));
+  }
+
+  function union(x, y) {
+    const rootX = find(x);
+    const rootY = find(y);
+    if (rootX === rootY) return false; // Cycle!
+    parent[rootX] = rootY;
+    return true;
+  }
+
+  for (let i = 0; i < edges.length; i++) {
+    const [u, v] = edges[i];
+    if (!union(u, v)) {
+      return [u, v]; // The redundant edge that creates the cycle
     }
   }
 
   return [];
 }
+
+console.log('Redundant edge:', findRedundantConnection([[1, 2], [1, 3], [2, 3]])); // [2, 3]
 ```
 
-### 5.2 Kruskal's Minimum Spanning Tree
+---
+
+### 2. Accounts Merge (LeetCode 721)
+
+Given a list of accounts where each entry is `[name, email1, email2, ...]`. Two accounts belong to the same person if they share at least one email. We must merge and return the accounts with sorted emails.
+
+```text
+Accounts Merge Workflow:
+Input:
+["John", "johnsmith@mail.com", "john_newyork@mail.com"],
+["John", "johnsmith@mail.com", "john00@mail.com"],
+["Mary", "mary@mail.com"],
+["John", "johnnybravo@mail.com"]
+
+Step 1: Map each unique email to an integer ID and to the person's name:
+  "johnsmith@mail.com"   -> ID 0, Name: "John"
+  "john_newyork@mail.com"-> ID 1, Name: "John"
+  "john00@mail.com"      -> ID 2, Name: "John"
+  "mary@mail.com"        -> ID 3, Name: "Mary"
+  "johnnybravo@mail.com" -> ID 4, Name: "John"
+
+Step 2: For each account, union the first email with all others:
+  Account 1: union(0, 1) -> {0, 1}
+  Account 2: union(0, 2) -> {0, 1, 2} merged into one set!
+  Account 3: union(3, 3) -> {3}
+  Account 4: union(4, 4) -> {4}
+
+Step 3: Group emails by find(emailId):
+  Root 0: ["johnsmith@mail.com", "john_newyork@mail.com", "john00@mail.com"]
+  Root 3: ["mary@mail.com"]
+  Root 4: ["johnnybravo@mail.com"]
+
+Step 4: Format with sorted emails!
+```
+
 ```javascript
+// Node.js code: Accounts Merge Implementation
 /**
- * Computes minimum cost to connect all nodes.
- * @param {number} n - Number of vertices (0 to n - 1)
- * @param {Array<[number, number, number]>} edges - [u, v, weight]
- * Time Complexity: O(E log E)
- * Space Complexity: O(V + E)
+ * @param {string[][]} accounts
+ * @returns {string[][]}
  */
-function kruskalMST(n, edges) {
-  // 1. Sort edges ascending by weight
+function accountsMerge(accounts) {
+  const emailToId = new Map();
+  const emailToName = new Map();
+  let emailCount = 0;
+
+  // 1. Assign unique integer ID to each unique email
+  for (const account of accounts) {
+    const name = account[0];
+    for (let i = 1; i < account.length; i++) {
+      const email = account[i];
+      if (!emailToId.has(email)) {
+        emailToId.set(email, emailCount++);
+        emailToName.set(email, name);
+      }
+    }
+  }
+
+  // 2. Initialize DSU
+  const parent = new Int32Array(emailCount);
+  for (let i = 0; i < emailCount; i++) parent[i] = i;
+
+  function find(x) {
+    if (parent[x] === x) return x;
+    return (parent[x] = find(parent[x]));
+  }
+
+  function union(x, y) {
+    const rootX = find(x);
+    const rootY = find(y);
+    if (rootX !== rootY) parent[rootX] = rootY;
+  }
+
+  // 3. Union emails within each account
+  for (const account of accounts) {
+    const firstEmailId = emailToId.get(account[1]);
+    for (let i = 2; i < account.length; i++) {
+      union(firstEmailId, emailToId.get(account[i]));
+    }
+  }
+
+  // 4. Group emails by representative root
+  const groups = new Map();
+  for (const [email, id] of emailToId.entries()) {
+    const root = find(id);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(email);
+  }
+
+  // 5. Sort emails and format output
+  const mergedAccounts = [];
+  for (const [, emails] of groups.entries()) {
+    emails.sort();
+    const name = emailToName.get(emails[0]);
+    mergedAccounts.push([name, ...emails]);
+  }
+
+  return mergedAccounts;
+}
+```
+
+---
+
+### 3. Kruskal's Minimum Spanning Tree (MST)
+
+Given a connected, undirected, weighted graph $G = (V, E)$, find a spanning tree connecting all $V$ vertices with the **minimum total edge weight**.
+
+```text
+Kruskal's Algorithm Mechanics:
+1. Extract all edges: [[u, v, weight], ...]
+2. Sort edges ascending by weight: O(E log E)
+3. Iterate edges greedily:
+   - If find(u) !== find(v): Include edge in MST, union(u, v)!
+   - If find(u) === find(v): DISCARD (creates cycle!)
+4. Stop when MST contains exactly V - 1 edges.
+```
+
+```javascript
+// Node.js code: Kruskal's MST Implementation
+/**
+ * @param {number} numVertices
+ * @param {Array<[number, number, number]>} edges [u, v, weight]
+ * @returns {{ mstEdges: Array<[number, number, number]>, totalWeight: number }}
+ */
+function kruskalMST(numVertices, edges) {
+  // 1. Sort edges ascending by weight: O(E log E)
   edges.sort((a, b) => a[2] - b[2]);
 
-  const dsu = new DisjointSet(n);
-  let totalCost = 0;
+  const parent = new Int32Array(numVertices);
+  for (let i = 0; i < numVertices; i++) parent[i] = i;
+
+  function find(x) {
+    if (parent[x] === x) return x;
+    return (parent[x] = find(parent[x]));
+  }
+
   const mstEdges = [];
+  let totalWeight = 0;
 
-  // 2. Greedily pick smallest edges
-  for (const [u, v, weight] of edges) {
-    if (dsu.union(u, v)) {
-      totalCost += weight;
+  for (let i = 0; i < edges.length; i++) {
+    const [u, v, weight] = edges[i];
+    const rootU = find(u);
+    const rootV = find(v);
+
+    if (rootU !== rootV) {
+      parent[rootU] = rootV;
       mstEdges.push([u, v, weight]);
+      totalWeight += weight;
 
-      // Optimization: A spanning tree has exactly n - 1 edges
-      if (mstEdges.length === n - 1) {
+      // Spanning tree complete when V - 1 edges are selected
+      if (mstEdges.length === numVertices - 1) {
         break;
       }
     }
   }
 
-  // If graph is not fully connected
-  if (mstEdges.length !== n - 1) {
-    return { cost: -1, edges: [] };
+  return { mstEdges, totalWeight };
+}
+
+const weightedGraph = [
+  [0, 1, 4],
+  [0, 2, 8],
+  [1, 2, 2],
+  [1, 3, 6],
+  [2, 3, 3]
+];
+const mstResult = kruskalMST(4, weightedGraph);
+console.log('MST Weight:', mstResult.totalWeight); // 9 (edges: [1,2,2], [2,3,3], [0,1,4])
+```
+
+---
+
+### 4. Kruskal's vs. Prim's Algorithm
+
+| Feature | Kruskal's Algorithm | Prim's Algorithm |
+| :--- | :--- | :--- |
+| **Approach** | Edge-centric (Global greedy sort + DSU) | Vertex-centric (Local frontier growth + Min-Heap) |
+| **Time Complexity** | $O(E \log E)$ | $O(E \log V)$ with binary heap |
+| **Data Structure** | Disjoint Set Union (DSU) | Priority Queue (Min-Heap) |
+| **Graph Density** | Optimal for **Sparse Graphs** ($E \ll V^2$) | Optimal for **Dense Graphs** ($E \approx V^2$) |
+| **Cycle Prevention** | DSU `find(u) === find(v)` | `visited` boolean set |
+
+---
+
+## Detailed Node.js Relevance
+
+### Cloud Multi-Region Peering & Fiber-Optic Topology Cost Optimization
+
+In modern distributed cloud infrastructure managed by Node.js tooling:
+
+```text
+Cloud VPC Peering Topology:
+[VPC-East (0)] ---- ($15/GB) ---- [VPC-West (1)]
+      |                                 |
+  ($8/GB)                           ($4/GB)
+      |                                 |
+[VPC-Central (2)] -- ($2/GB) ---- [VPC-South (3)]
+```
+
+1. **Peering Cost Minimization**: Connecting $N$ VPC networks directly with dedicated links requires $N(N-1)/2$ connections, leading to massive bandwidth egress fees. Running Kruskal's algorithm identifies the minimum set of $N - 1$ inter-region transit links that guarantees complete connectivity across all services while minimizing overall network egress costs.
+2. **User Identity Resolution**: In analytics and authentication microservices (e.g., identity resolution in customer data platforms like Segment), users interact via disparate cookies, emails, and device IDs. Accounts Merge dynamically joins disconnected profiles into unified customer entities in real time.
+
+---
+
+## Tricky Points & Edge Cases
+
+1. **Disconnected Graphs in MST**:
+   If the original graph is disconnected (fewer than $V - 1$ edges can be selected), Kruskal's algorithm will terminate with `mstEdges.length < V - 1`. A production implementation must verify `mstEdges.length === V - 1` and return an error or indication that no single spanning tree exists.
+2. **Same Name, Different People in Accounts Merge**:
+   Two accounts with the name `"John"` that share zero emails are **different people**! A common interview mistake is unioning accounts that share the same name. Only common **emails** establish identity equivalence.
+3. **Lexicographical Email Sorting**:
+   LeetCode 721 requires emails in each merged account to be sorted alphabetically (`emails.sort()`). Failing to sort causes test rejections despite correct graph clustering.
+4. **Multiple Redundant Connections**:
+   In LeetCode 684, if multiple edges create cycles, the problem requires returning the **last** edge appearing in the input. Processing the edge list in original order and updating the candidate automatically satisfies this rule.
+
+---
+
+## Hands-On Exercise
+
+### Scenario
+You are building an infrastructure provisioning engine in Node.js for a cloud provider. You receive data center nodes numbered $0 \dots n - 1$ and a list of available inter-datacenter fiber links `[nodeA, nodeB, monthlyCost]`.
+Implement `provisionInterconnectNetwork(n, links)`:
+1. Returns `{ totalMonthlyCost: number, activeLinks: Array<[number, number, number]> }`.
+2. Must guarantee that all $n$ data centers are connected with the minimum possible monthly expense using Kruskal's algorithm.
+3. If it is impossible to connect all data centers (the graph is partitioned), throw an `Error('Cannot interconnect all data centers: network partitioned')`.
+
+### Buggy Code
+```javascript
+function provisionInterconnectNetwork(n, links) {
+  // BUG: Does not sort links by cost! Picks arbitrary edges
+  const parent = Array.from({ length: n }, (_, i) => i);
+  let total = 0;
+  const active = [];
+
+  for (let [u, v, cost] of links) {
+    if (parent[u] !== parent[v]) {
+      parent[u] = parent[v]; // BUG: Direct parent assignment without path compression
+      active.push([u, v, cost]);
+      total += cost;
+    }
   }
 
-  return { cost: totalCost, edges: mstEdges };
+  return { totalMonthlyCost: total, activeLinks: active }; // Fails to verify spanning connectivity!
 }
 ```
 
-### 5.3 Execution Trace: Kruskal's MST on 4 Nodes
-```text
-Nodes: 0, 1, 2, 3
-Edges: [[0,1,1], [1,2,2], [0,2,4], [2,3,3], [0,3,5]]
-Sorted by weight: [0,1,1], [1,2,2], [2,3,3], [0,2,4], [0,3,5]
+### Acceptance Criteria
+- Sort links ascending by cost to enforce Kruskal's greedy choice property.
+- Use complete DSU with Path Compression.
+- Verify that exactly $n - 1$ links are provisioned; throw an informative error if disconnected.
+- Unit test assertions covering both connected and partitioned scenarios.
 
-Edge [0, 1, 1]: union(0, 1) -> Success. Cost = 1. mstEdges = 1.
-Edge [1, 2, 2]: union(1, 2) -> Success. Cost = 3. mstEdges = 2.
-Edge [2, 3, 3]: union(2, 3) -> Success. Cost = 6. mstEdges = 3 (equals 4 - 1 = 3!).
-Terminates early! Edge [0, 2, 4] and [0, 3, 5] skipped.
-MST Cost: 6. Edges: [[0,1,1], [1,2,2], [2,3,3]].
-```
-
----
-
-## 6. Common Mistakes & Anti-Patterns
-- **Forgetting 1-Based Indexing**: Many graph interview problems (like LeetCode 684) use 1-indexed nodes. Allocating a DSU of size $N$ causes out-of-bounds errors on node $N$. Allocate $N + 1$.
-- **Sorting Edges Wrongly in Kruskal's**: Sorting descending instead of ascending constructs a *Maximum* Spanning Tree rather than a *Minimum* Spanning Tree.
-- **Missing Disconnection Check in MST**: If the graph has disconnected components, an MST cannot span all nodes. Always verify `mstEdges.length === n - 1`.
-
----
-
-## 7. Tricky Points & Edge Cases
-- **Multiple Valid MSTs**: If edges have identical weights, multiple different spanning trees can have the same minimum total weight.
-- **Accounts with Identical Names**: Two distinct people can have the same name (e.g., John Smith). Grouping must be driven by email connectivity, not name strings.
-- **Dense Graphs ($E \approx V^2$)**: On dense graphs, Kruskal's $O(E \log E)$ sorts $V^2$ edges. Prim's algorithm with an adjacency matrix ($O(V^2)$) can outperform Kruskal's on dense graphs.
-
----
-
-## 8. Practical Engineering Exercises
-1. Implement **Accounts Merge** (LeetCode 721) using DisjointSet with email strings mapped to integer IDs.
-2. Implement **Min Cost to Connect All Points** (LeetCode 1584) by generating Manhattan distance edges and running Kruskal's algorithm.
-
----
-
-## 9. Key Takeaways & Summary
-- Redundant connection detection uses `dsu.union(u, v)`: the edge that fails union is the cycle-causing edge.
-- Kruskal's Algorithm pairs Greedy edge sorting ($O(E \log E)$) with Union-Find cycle detection ($O(\alpha(V))$).
-- An MST connects all $V$ nodes using exactly $V - 1$ edges with minimum total weight.
-- Accounts Merge groups entities by transitively connected identifiers.
-
----
-
-## 10. Quick Reference Cheat Sheet
-| Application | Algorithm Core | Termination Condition | Complexity |
-| :--- | :--- | :--- | :--- |
-| **Redundant Connection** | Return edge where `union(u, v) === false` | First failure | $O(E \cdot \alpha(V))$ |
-| **Kruskal's MST** | Sort edges $\rightarrow$ Greedy `union` | `mstEdges.length === V - 1` | $O(E \log E)$ |
-| **Accounts Merge** | Union email IDs $\rightarrow$ Group by root | All accounts mapped | $O(N \log N)$ (sorting emails) |
-
----
-
-## 11. Interview Questions & Expected Answers
-
-### 1. Conceptual
-**Question**: How does Kruskal's Algorithm prevent cycles while building a Minimum Spanning Tree?  
-**Hint**: What does `find(u) === find(v)` indicate?  
-**Expected Answer Shape**: Kruskal's maintains a Disjoint Set Union of connected vertices. Before adding any candidate edge $(u, v)$, it queries `find(u)` and `find(v)`. If both vertices share the same representative root, a path already connects them within the growing spanning forest. Adding $(u, v)$ would introduce an alternate path, creating a cycle. The algorithm simply discards that edge, ensuring the resulting structure remains strictly a tree.
-
-### 2. Code-Writing
-**Question**: Write `minCostConnectPoints(points)` that computes the minimum cost to connect all 2D points where cost is Manhattan distance $|x_1 - x_2| + |y_1 - y_2|$.  
-**Hint**: Generate all $N(N-1)/2$ edges and run Kruskal's algorithm.  
-**Expected Answer Shape**: Generate edge list of all pairs `[i, j, |xi - xj| + |yi - yj|]`. Sort edges ascending by distance. Use DSU on indices $0 \dots N-1$. Iterate through sorted edges, summing weight whenever `dsu.union(i, j)` succeeds. Stop when $N-1$ edges are added. Returns total cost in $O(N^2 \log N)$ time.
-
-### 3. Debugging
-**Question**: Identify why this Accounts Merge code groups unrelated users with the same name:  
+### Solution Code
 ```javascript
-const nameToEmails = new Map();
-for (const [name, ...emails] of accounts) {
-  nameToEmails.set(name, [...(nameToEmails.get(name) || []), ...emails]);
+const assert = require('assert');
+
+// Node.js code: Production Cloud Network Provisioning Engine
+/**
+ * @param {number} n
+ * @param {Array<[number, number, number]>} links [nodeA, nodeB, monthlyCost]
+ * @returns {{ totalMonthlyCost: number, activeLinks: Array<[number, number, number]> }}
+ */
+function provisionInterconnectNetwork(n, links) {
+  if (n <= 1) {
+    return { totalMonthlyCost: 0, activeLinks: [] };
+  }
+
+  // 1. Sort links ascending by cost: O(E log E)
+  const sortedLinks = [...links].sort((a, b) => a[2] - b[2]);
+
+  // 2. DSU with path compression
+  const parent = new Int32Array(n);
+  const rank = new Uint8Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+
+  function find(x) {
+    if (parent[x] === x) return x;
+    return (parent[x] = find(parent[x]));
+  }
+
+  function union(x, y) {
+    const rootX = find(x);
+    const rootY = find(y);
+    if (rootX === rootY) return false;
+
+    if (rank[rootX] < rank[rootY]) {
+      parent[rootX] = rootY;
+    } else if (rank[rootX] > rank[rootY]) {
+      parent[rootY] = rootX;
+    } else {
+      parent[rootY] = rootX;
+      rank[rootX]++;
+    }
+    return true;
+  }
+
+  const activeLinks = [];
+  let totalMonthlyCost = 0;
+
+  for (let i = 0; i < sortedLinks.length; i++) {
+    const [u, v, cost] = sortedLinks[i];
+    if (union(u, v)) {
+      activeLinks.push([u, v, cost]);
+      totalMonthlyCost += cost;
+
+      if (activeLinks.length === n - 1) {
+        break; // Spanning tree complete
+      }
+    }
+  }
+
+  // 3. Partitioned graph validation
+  if (activeLinks.length !== n - 1) {
+    throw new Error('Cannot interconnect all data centers: network partitioned');
+  }
+
+  return { totalMonthlyCost, activeLinks };
 }
-```  
-**Hint**: What if two different people share the name "John"?  
-**Expected Answer Shape**: Keying by person name assumes names are unique identifiers. If two different customers named "John" have distinct emails (`john_smith@gmail.com` and `john_doe@gmail.com`), this code merges their accounts into a single person, leaking private email data. Accounts must only merge when they share an *email address*. Use DSU to union email nodes, and attach the name to the unified component root.
 
-### 4. System Design / Tradeoff
-**Question**: In designing a distributed mesh VPN in Node.js (e.g., WireGuard mesh topology), why would you use Kruskal's MST to select active network tunnels?  
-**Hint**: Routing loops and tunnel latency costs.  
-**Expected Answer Shape**: In a mesh network with $N$ nodes, establishing all $N(N-1)/2$ peer tunnels creates routing loops (broadcast storms) and high idle keep-alive overhead. Kruskal's MST calculates the minimum spanning tree of active tunnels weighted by ping latency. This guarantees every node can communicate with every other node with zero routing loops and minimum global network delay.
+// Verification & Automated Unit Tests
+// Test 1: Optimal MST with 4 nodes
+const fiberLinks = [
+  [0, 1, 10],
+  [0, 2, 6],
+  [0, 3, 5],
+  [1, 3, 15],
+  [2, 3, 4]
+];
 
-### 5. Tricky / Edge Case
-**Question**: Can Kruskal's Algorithm handle graphs with negative edge weights?  
-**Hint**: Does greedy choice by minimum weight depend on positive numbers?  
-**Expected Answer Shape**: Yes. Unlike Dijkstra's shortest path algorithm (which assumes non-negative weights), Kruskal's Algorithm works correctly with negative edge weights. Sorting edges from most negative to positive simply ensures the algorithm greedily picks negative edges first, which further minimizes the total spanning tree weight while Union-Find prevents cycles.
+// Optimal MST: [2, 3, 4], [0, 3, 5], [0, 1, 10] -> Cost = 19
+const res1 = provisionInterconnectNetwork(4, fiberLinks);
+assert.strictEqual(res1.totalMonthlyCost, 19);
+assert.strictEqual(res1.activeLinks.length, 3);
 
-### 6. Real-World Node.js Context
-**Question**: How does a Node.js monorepo dependency analyzer use Redundant Connection to find unnecessary transitive package dependencies?  
-**Hint**: Direct dependency already satisfied by a transitive path.  
-**Expected Answer Shape**: In large monorepos, if Package A imports Package B, and Package B imports Package C, a direct import of Package C inside Package A is often redundant. DSU or transitive reduction identifies redundant edges that connect already-connected dependency components, allowing automated cleanup tools to prune bloated `package.json` dependency lists.
+// Test 2: Partitioned network error throwing
+const disconnectedLinks = [
+  [0, 1, 5],
+  [2, 3, 10]
+];
+assert.throws(() => {
+  provisionInterconnectNetwork(4, disconnectedLinks);
+}, /network partitioned/);
+
+// Test 3: Trivial single node
+const singleNodeRes = provisionInterconnectNetwork(1, []);
+assert.strictEqual(singleNodeRes.totalMonthlyCost, 0);
+assert.deepStrictEqual(singleNodeRes.activeLinks, []);
+
+console.log('✅ All provisionInterconnectNetwork MST assertions passed successfully!');
+```
+
+### Solution Explanation
+1. **Greedy Edge Sorting**: Sorting edges by cost guarantees that Kruskal's algorithm always inspects the cheapest links first.
+2. **Cycle Rejection via DSU**: Calling `union(u, v)` rejects edges between nodes that are already connected, avoiding redundant loops.
+3. **Partition Verification**: Checking `activeLinks.length === n - 1` prevents partial network deployments and throws descriptive errors on partitioned topologies.
+
+---
+
+## Summary
+
+- **Redundant Connection** uses DSU to identify cycle-creating edges: the first edge where `union(u, v) === false` is the redundant link.
+- **Accounts Merge** maps emails to unique integer IDs and groups them into equivalence sets via DSU.
+- **Kruskal's Algorithm** finds the Minimum Spanning Tree (MST) in $O(E \log E)$ time by sorting edges and greedily uniting disjoint components.
+- Kruskal's algorithm is optimal for sparse graphs ($E \ll V^2$), while Prim's algorithm is preferred for dense graphs ($E \approx V^2$).
+- In Node.js backend systems, MST algorithms minimize inter-region cloud transit bandwidth fees and resolve distributed identity profiles.
+
+---
+
+## Cheat Sheet & Common Pitfalls
+
+| Application | Core Technique | Termination Condition |
+| :--- | :--- | :--- |
+| **Redundant Connection** | DSU on edge list | Stop on first `union(u, v) === false` |
+| **Accounts Merge** | Email $\to$ ID mapping + DSU | Group by `find(id)`, sort emails |
+| **Kruskal's MST** | Sort edges by weight + DSU | Select exactly $V - 1$ edges |
+| **Partitioned Graph** | MST verification | If selected edges $< V - 1 \implies$ Error |
+
+---
+
+## Interview Questions
+
+### 1. Why does Kruskal's algorithm sort edges by weight while Prim's algorithm does not?
+**Question:** Contrast the algorithmic mechanics of Kruskal's algorithm and Prim's algorithm, explaining why Kruskal's requires global edge sorting.
+
+**Answer:**
+- **Kruskal's Algorithm (Global Greedy)**:
+  - Considers all edges globally across the entire graph.
+  - It sorts all edges upfront in $O(E \log E)$ time and picks edges from smallest to largest, irrespective of where they are in the graph, using DSU to prevent cycles.
+  - The tree grows as an arbitrary forest of independent subtrees that eventually merge into a single spanning tree.
+- **Prim's Algorithm (Local Greedy / Frontier Growth)**:
+  - Starts at a single arbitrary root vertex and grows a single contiguous tree outward.
+  - It maintains a Min-Priority Queue of edges connecting the current visited tree to unvisited neighbor vertices.
+  - At each step, it extracts the minimum edge from the active frontier in $O(\log V)$ time.
+  - It does **not** need to sort all edges upfront; it only extracts the minimum from the local frontier queue.
+
+---
+
+### 2. Can Kruskal's algorithm produce different Minimum Spanning Trees on the same graph?
+**Question:** Under what graph conditions is the Minimum Spanning Tree unique, and when can a graph have multiple valid MSTs?
+
+**Answer:**
+- **Unique MST**: If all edge weights in the graph are **strictly unique** (no two edges share the same numerical weight), the Minimum Spanning Tree is mathematically guaranteed to be **unique**.
+- **Multiple Valid MSTs**: If two or more edges have identical weights, multiple different spanning trees can achieve the exact same minimum total weight. Kruskal's algorithm may select different edges depending on how tied weights are ordered during the sorting step, but all produced spanning trees will have the exact same total minimum weight.
+
+---
+
+### 3. In Accounts Merge, why can't we simply use the person's name as the set identifier in DSU?
+**Question:** Why does using the account name as the cluster key in Accounts Merge produce incorrect results?
+
+**Answer:**
+1. Names are **not unique identifiers**. Multiple different individuals can share the same common name (e.g., two distinct users named `"John Smith"` with completely unrelated emails `john@work.com` and `john@gmail.com`).
+2. If we used names as the set identifier, all users with the name `"John Smith"` would be merged into a single consolidated account, leaking private emails and creating false identity associations.
+3. **Correct Protocol**: The email address is the unique primary key. We run DSU strictly on **email IDs**. The name is simply associated with the emails as display metadata.
+
+---
+
+### 4. What is the time complexity of Accounts Merge?
+**Question:** Analyze the time complexity of the Accounts Merge algorithm in terms of total accounts $N$ and total emails $E$.
+
+**Answer:**
+Let $N$ be the number of accounts and $E$ be the total number of emails across all accounts. Let $L$ be the maximum length of an email string.
+1. **ID Mapping & Graph Construction**: Hashing emails and building maps takes $O(E \cdot L)$ time.
+2. **DSU Union Operations**: Uniting emails within accounts performs at most $E$ unions. With path compression and rank, this takes $O(E \cdot \alpha(E))$ time.
+3. **Grouping**: Grouping emails by root takes $O(E \cdot \alpha(E))$ time.
+4. **Sorting Emails**: Sorting the emails within each merged component takes $O(E \log E \cdot L)$ time in the worst case (when all emails belong to a single user).
+5. **Total Time Complexity**: Dominated by email string sorting:
+   $$O(E \log E \cdot L)$$
+6. **Space Complexity**: $O(E \cdot L)$ to store email maps, DSU parent arrays, and output lists.
+
+---
+
+<nav aria-label="Lecture navigation">
+  <a href="day-54-union-find-disjoint-set-union.md">◀ Day 54: Union-Find: Disjoint Set Union (DSU)</a> |
+  <a href="../javascript-dsa-roadmap.md">Roadmap</a> |
+  <a href="day-56-mixed-pattern-strategy-and-constraints.md">Day 56: Mixed Pattern Strategy and Constraint Decoding ▶</a>
+</nav>

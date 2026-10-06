@@ -38,3 +38,7 @@ Each day file must teach the topic in clear, normal language, keep basic materia
 ## Scope boundary
 
 Existing notes under `Javascript/` are preserved source material and are not canonical instructions. Do not rewrite or reorganize them unless the user explicitly requests that work. Future lecture content belongs wherever the user explicitly directs it; these files only define how that content should be produced and reviewed.
+
+## Standalone interview sprints
+
+- [quick-prep-rules.md](quick-prep-rules.md): compact structure and scope rules for the independent one-week tracks under [Quick-prep](../Quick-prep/README.md). These rules replace the long lecture shape only for that directory; shared accuracy and example rules still apply.

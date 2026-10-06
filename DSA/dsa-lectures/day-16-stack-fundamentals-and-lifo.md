@@ -10,83 +10,118 @@
 
 By the end of this lecture, you should be able to:
 
-- Explain the **Last-In, First-Out (LIFO)** data processing principle.
-- Implement a Stack using both a dynamic JavaScript array and a singly linked list.
-- Trace execution frames and call stack mechanics in the V8 engine.
-- Understand stack memory allocation vs heap allocation in Node.js.
-- Design an undo/redo history manager using two LIFO stacks.
+- Explain the **Last-In, First-Out (LIFO)** data processing principle and its core primitives (`push`, `pop`, `peek`, `isEmpty`).
+- Compare memory allocation and performance between a dynamic array stack and a singly linked list stack in V8.
+- Convert deep recursion algorithms prone to `RangeError: Maximum call stack size exceeded` into heap-allocated explicit stacks.
+- Prevent V8 array head shifting traps caused by accidental usage of `shift()` and `unshift()`.
+- Design an in-memory **Undo / Redo History Manager** using two coupled LIFO stacks.
+- Reclaim backing store memory in long-lived Node.js stacks using `stack.length = 0` and reference dropping.
+
+---
 
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md)
-- [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md)
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
+- [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Array internal element kinds and backing memory.
+- [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Call stack activation records and stack overflow limits.
+
+---
+
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+|---|---|---|
+| **LIFO (Last-In, First-Out)** | An access model where the most recently added item is the first item removed. | Foundation of function call execution, syntax parsing, undo buffers, and backtracking. |
+| **Amortized Append** | Adding to an array in $O(1)$ average time despite occasional $O(n)$ backing buffer capacity doubling. | Explains why `arr.push()` is fast in V8, while linked lists guarantee strict non-amortized $O(1)$ operations. |
+| **Explicit Heap Stack** | Simulating execution frames manually using a JavaScript array residing on the V8 heap. | Bypasses the ~10,000-frame call stack ceiling, enabling processing of millions of nested data structures. |
+| **Backing Store Retention** | The V8 engine maintaining an array's pre-allocated memory capacity even after elements are popped. | Requires resetting `stack.length = 0` to free retained memory in long-running Node.js daemon workers. |
+| **Array Head Shift Hazard** | Using `unshift()` and `shift()` to implement a stack, forcing $O(n)$ index reassignment per operation. | Degrades stack processing from $O(n)$ to $O(n^2)$, freezing the Node.js event loop on large datasets. |
 
 ---
 
 ## Core Concepts
 
-### 1. The LIFO Principle
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            LIFO (LAST-IN, FIRST-OUT) ARCHITECTURE                           │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 
-A **Stack** behaves like a physical stack of cafeteria trays: the last tray placed on top is the first tray removed.
+  Push Operations (Adding to Top):
+  push(10) ──> [ 10 ]
+  push(20) ──> [ 10, 20 ]        <-- 20 is on TOP
+  push(30) ──> [ 10, 20, 30 ]    <-- 30 is on TOP
 
-```text
-Operations:
-push(10) -> [ 10 ]
-push(20) -> [ 10, 20 ]       <- 20 is on TOP
-push(30) -> [ 10, 20, 30 ]   <- 30 is on TOP
-pop()    -> removes 30       <- Top is now 20
-peek()   -> inspects 20 without removing it
+  Pop Operation (Removing from Top):
+  pop()    ──> removes 30        <-- Returns 30; Top is now 20!
+
+  Peek Operation (Inspecting Top):
+  peek()   ──> returns 20 without mutating the stack.
 ```
 
-- **`push(item)`**: Add item to the top $\to O(1)$
-- **`pop()`**: Remove and return the top item $\to O(1)$
-- **`peek()` / `top()`**: Return the top item without mutating $\to O(1)$
-- **`isEmpty()`**: Check if size is $0 \to O(1)$
+### 1. The LIFO Principle and Stack Primitives
+
+A **Stack** is a linear collection governed by the Last-In, First-Out (LIFO) protocol: the newest element pushed onto the stack is the first element popped off.
+
+All fundamental stack operations execute in **$O(1)$ constant time**:
+- **`push(item)`**: Inserts `item` onto the top of the stack ($O(1)$).
+- **`pop()`**: Removes and returns the top element ($O(1)$).
+- **`peek()` / `top()`**: Reads the top element without mutating the collection ($O(1)$).
+- **`isEmpty()`**: Checks if the stack contains zero elements ($O(1)$).
+- **`size()`**: Returns the count of elements currently on the stack ($O(1)$).
 
 ---
 
-### 2. Array-Backed vs Linked-List-Backed Stack
+### 2. Implementation Paradigms: Dynamic Array vs Singly Linked List
 
-In JavaScript, there are two primary ways to implement a stack:
+| Criterion | Dynamic Array (`Array.prototype`) | Singly Linked List (`StackNode`) |
+|---|---|---|
+| **Push Complexity** | $O(1)$ amortized (occasional $O(n)$ resize) | Strict $O(1)$ worst case |
+| **Pop Complexity** | $O(1)$ | Strict $O(1)$ worst case |
+| **Memory Locality** | **High** (contiguous packed buffer in V8) | Low (scattered heap nodes and pointer references) |
+| **Memory Overhead** | Minimal (contiguous typed or SMI elements) | High (allocates a JavaScript object wrapper per node) |
+| **GC Pressure** | Minimal | **High** (frequent object allocations and dereferencing) |
+| **Recommendation** | **Standard in JavaScript/Node.js** | Specialized real-time systems needing strict latencies |
 
-#### Approach 1: Dynamic Array (`push()` and `pop()`)
-JavaScript arrays are dynamically resized arrays. Adding and removing from the end (`arr.push(x)` and `arr.pop()`) runs in **$O(1)$ amortized time**.
-- **Pros**: Minimal memory overhead, contiguous memory layout (fast CPU cache hits in V8).
-- **Cons**: Occasional capacity resizing when the array doubles its backing store.
+```javascript
+// Node.js code
+"use strict";
 
-#### Approach 2: Singly Linked List
-Nodes where each node points to the node beneath it.
-- **Pros**: Strictly guaranteed $O(1)$ worst-case push/pop (no array resizing).
-- **Cons**: Allocates an object wrapper per element (higher GC overhead in Node.js).
+// ❌ ANTI-PATTERN: Using shift/unshift at the head of an array (O(n) per operation!)
+class SlowHeadStack {
+  constructor() { this.items = []; }
+  push(val) { this.items.unshift(val); } // O(n) memory shift!
+  pop() { return this.items.shift(); }   // O(n) memory shift!
+}
 
----
+// ✅ PATTERN A: Optimal Dynamic Array Stack (O(1) amortized)
+class ArrayStack {
+  constructor() {
+    this.items = [];
+  }
 
-## Detailed Explanations & Node.js Relevance
+  push(val) {
+    this.items.push(val); // O(1) amortized
+  }
 
-### Call Stack Simulation in Node.js
+  pop() {
+    if (this.isEmpty()) return null;
+    return this.items.pop(); // O(1)
+  }
 
-Every function call in JavaScript creates an execution context pushed onto V8's internal **Call Stack**.
-When a function returns, its frame is popped from the stack.
-```text
-Call Stack:
-| processPayment() | <- Top of stack (executing)
-| handleCheckout() |
-| routerMiddleware|
-+------------------+
-```
-If an algorithm requires deep recursion, it risks a `RangeError: Maximum call stack size exceeded` in Node.js.
-By allocating an **explicit stack on the heap** (`const stack = []`), you can rewrite recursive algorithms iteratively, converting limited call stack depth (~10,000 frames) into heap-allocated operations bounded only by available RAM (GBs).
+  peek() {
+    return this.isEmpty() ? null : this.items[this.items.length - 1];
+  }
 
-### Node.js Architecture: Undo / Redo Buffers
-In stateful backend services (e.g. collaborative document editing or configuration rollback), actions are pushed to an `undoStack`. When an undo occurs, the action is popped and pushed to a `redoStack`.
+  isEmpty() {
+    return this.items.length === 0;
+  }
 
----
+  size() {
+    return this.items.length;
+  }
+}
 
-## JavaScript Implementation & Tracing
-
-### 1. Linked-List-Backed Stack Implementation
-
-```js
+// ✅ PATTERN B: Linked List Stack (Strict O(1) without resizes)
 class StackNode {
   constructor(value, next = null) {
     this.value = value;
@@ -100,9 +135,8 @@ class LinkedListStack {
     this.count = 0;
   }
 
-  push(value) {
-    const newNode = new StackNode(value, this.topNode);
-    this.topNode = newNode;
+  push(val) {
+    this.topNode = new StackNode(val, this.topNode);
     this.count++;
   }
 
@@ -126,11 +160,66 @@ class LinkedListStack {
     return this.count;
   }
 }
+
+const stack = new ArrayStack();
+stack.push(10);
+stack.push(20);
+console.log("Top item:", stack.peek()); // 20
+console.log("Popped:", stack.pop());    // 20
+console.log("New top:", stack.peek());  // 10
 ```
 
-### 2. Undo / Redo Manager Pattern
+---
 
-```js
+### 3. Explicit Heap Stack vs V8 Call Stack Limits
+
+In Node.js, every function call allocates a stack frame on the V8 engine's physical Call Stack. The physical call stack has a strict limit of ~1 MB (~10,000 frames).
+
+If an algorithm requires traversing deeply nested data (e.g., deep tree traversal, recursive graph DFS, or AST parsing):
+- Recursive calls exceed stack depth, throwing `RangeError: Maximum call stack size exceeded`.
+- **The Solution:** Allocate an explicit array stack on the **V8 Heap** (`const stack = []`). Heap memory is bounded only by available RAM (1.5 GB to 4 GB in Node.js), allowing algorithms to safely process millions of elements.
+
+```javascript
+// Node.js code
+// Simulated tree with 50,000 linear depth
+let deepTree = { val: 50000, next: null };
+for (let i = 49999; i >= 1; i--) {
+  deepTree = { val: i, next: deepTree };
+}
+
+// ❌ Recursive traversal throws RangeError on this tree
+// function traverse(node) { if (!node) return; traverse(node.next); }
+
+// ✅ Explicit Heap Stack processes millions of elements safely
+function traverseWithExplicitStack(root) {
+  const stack = [root];
+  let processedCount = 0;
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    processedCount++;
+    if (current.next) {
+      stack.push(current.next);
+    }
+  }
+
+  return processedCount;
+}
+
+console.log("Processed deep tree nodes:", traverseWithExplicitStack(deepTree)); // 50000
+```
+
+---
+
+### 4. Undo / Redo History Manager Pattern
+
+In stateful backend systems (e.g., collaborative editors or transactional staging), user actions are managed via two coupled LIFO stacks:
+1. `undoStack`: Stores chronological actions executed by the user.
+2. `redoStack`: Stores actions that were undone.
+- **Rule:** Executing any *new* action clears the `redoStack` immediately because the previous future timeline is invalidated.
+
+```javascript
+// Node.js code
 class UndoRedoManager {
   constructor() {
     this.undoStack = [];
@@ -139,7 +228,7 @@ class UndoRedoManager {
 
   executeAction(action) {
     this.undoStack.push(action);
-    // Executing a new action clears the redo history
+    // Executing a new action invalidates existing redo history
     this.redoStack.length = 0;
   }
 
@@ -147,130 +236,250 @@ class UndoRedoManager {
     if (this.undoStack.length === 0) return null;
     const action = this.undoStack.pop();
     this.redoStack.push(action);
-    return action; // Caller reverses this action
+    return action; // Reverses this action
   }
 
   redo() {
     if (this.redoStack.length === 0) return null;
     const action = this.redoStack.pop();
     this.undoStack.push(action);
-    return action; // Caller re-applies this action
+    return action; // Re-applies this action
   }
+}
+
+const manager = new UndoRedoManager();
+manager.executeAction("INSERT: 'Hello'");
+manager.executeAction("INSERT: ' World'");
+console.log("Undo action:", manager.undo()); // "INSERT: ' World'"
+console.log("Redo action:", manager.redo()); // "INSERT: ' World'"
+```
+
+#### Execution Trace: Undo / Redo Lifecycle
+
+| Operation | `undoStack` (Bottom $\to$ Top) | `redoStack` (Bottom $\to$ Top) | Output Action |
+|---|---|---|---|
+| `executeAction("A")` | `["A"]` | `[]` | — |
+| `executeAction("B")` | `["A", "B"]` | `[]` | — |
+| `undo()` | `["A"]` | `["B"]` | `"B"` |
+| `redo()` | `["A", "B"]` | `[]` | `"B"` |
+| `executeAction("C")` | `["A", "B", "C"]` | `[]` (Cleared) | — |
+
+---
+
+## Tricky Points and Edge Cases
+
+### 1. Popping from an Empty Stack in JavaScript
+In JavaScript, executing `[].pop()` returns `undefined` without throwing an error:
+```javascript
+// Node.js code
+const stack = [];
+const val = stack.pop(); // undefined
+
+// ❌ TRAP: Arithmetic with undefined yields NaN!
+const total = val + 5; // NaN
+```
+Always check `if (stack.length > 0)` or use `.isEmpty()` guards before performing operations.
+
+### 2. V8 Backing Store Memory Retention
+When an array grows to 1,000,000 elements, V8 allocates a multi-megabyte internal memory buffer. If you pop all elements via `while (stack.length) stack.pop()`, `stack.length` reaches `0`, but V8 often retains the allocated capacity buffer to avoid future reallocations. In long-running Node.js processes, reset via `stack.length = 0` or reassign `stack = []` to allow garbage collection.
+
+---
+
+## Hands-On Exercise
+
+### Scenario
+You are developing an automated scoring engine for a game simulator (LeetCode 682: Baseball Game). You receive an array of string operations representing game events:
+- An integer `x`: Record a new score of `x`.
+- `"+"`: Record a new score that is the sum of the previous two scores.
+- `"D"`: Record a new score that is double the previous score.
+- `"C"`: Invalidate and remove the previous score from the record.
+
+You must return the total sum of all scores remaining on the record.
+
+### Buggy Code
+```javascript
+// Node.js code
+function calPointsBuggy(operations) {
+  // ❌ Bug 1: Uses shift/unshift, introducing an O(n^2) performance penalty
+  // ❌ Bug 2: Fails to convert string values to integers before summing
+  const record = [];
+  for (const op of operations) {
+    if (op === "+") record.push(record[record.length - 1] + record[record.length - 2]); // Strings concatenated!
+    else if (op === "D") record.push(record[record.length - 1] * 2);
+    else if (op === "C") record.pop();
+    else record.push(op);
+  }
+  return record.reduce((a, b) => a + b, 0);
 }
 ```
 
-### Trace: Undo / Redo Execution
+### Acceptance Criteria
+1. Execute in strictly $O(n)$ time using an array-backed stack.
+2. Auxiliary space must be $O(n)$ to store scores.
+3. Parse numeric strings explicitly into integers (`parseInt` or `Number()`).
+4. Accurately handle score invalidations (`"C"`) and double operations (`"D"`).
 
-| Operation | `undoStack` (Bottom $\to$ Top) | `redoStack` (Bottom $\to$ Top) | Returned Action |
-| :--- | :--- | :--- | :--- |
-| `executeAction("Type A")` | `["Type A"]` | `[]` | — |
-| `executeAction("Type B")` | `["Type A", "Type B"]` | `[]` | — |
-| `undo()` | `["Type A"]` | `["Type B"]` | `"Type B"` |
-| `redo()` | `["Type A", "Type B"]` | `[]` | `"Type B"` |
-| `executeAction("Type C")` | `["Type A", "Type B", "Type C"]` | `[]` (Cleared) | — |
+### Solution Code
 
-- **Time Complexity**: $O(1)$ for every `executeAction`, `undo`, and `redo` operation.
-- **Auxiliary Space**: $O(n)$ where $n$ is total history size.
+```javascript
+// Node.js code
+import assert from "node:assert/strict";
 
----
+function calPoints(operations) {
+  const stack = [];
 
-## Common Mistakes & Interview Traps
+  for (const op of operations) {
+    if (op === "+") {
+      // Sum the previous two scores without popping them
+      const prev1 = stack[stack.length - 1];
+      const prev2 = stack[stack.length - 2];
+      stack.push(prev1 + prev2);
+    } else if (op === "D") {
+      // Double the previous score
+      const prev = stack[stack.length - 1];
+      stack.push(prev * 2);
+    } else if (op === "C") {
+      // Invalidate and remove the previous score
+      stack.pop();
+    } else {
+      // Numerical integer score
+      stack.push(Number(op));
+    }
+  }
 
-1. **Popping from an Empty Stack**:
-   Calling `arr.pop()` on an empty array in JavaScript returns `undefined`. Always verify `.length > 0` before operating on values to prevent silent type coercion bugs.
-2. **Accidentally using `arr.shift()` and `arr.unshift()`**:
-   Adding and removing from the front of an array takes $O(n)$ time because all subsequent elements must be re-indexed. Stacks must only use `push()` and `pop()` at the end of the array.
-3. **Forgetting to clear the Redo stack**:
-   When a user performs a new action after an undo, the existing redo history becomes invalid and must be discarded.
+  // Sum all valid remaining scores
+  let totalScore = 0;
+  for (let i = 0; i < stack.length; i++) {
+    totalScore += stack[i];
+  }
 
----
+  return totalScore;
+}
 
-## Tricky Points & Edge Cases
+// Verification Tests
+assert.equal(calPoints(["5", "2", "C", "D", "+"]), 30);
+// Trace: [5] -> [5, 2] -> [5] -> [5, 10] -> [5, 10, 15] -> Sum = 30
 
-- **Peeking Without Mutating**:
-  `const top = stack[stack.length - 1];` reads the top element in $O(1)$ time without removing it.
-- **Memory Retention with Arrays**:
-  Setting `stack.length = 0` instantly drops all references, allowing V8's garbage collector to reclaim memory immediately.
+assert.equal(calPoints(["5", "-2", "4", "C", "D", "9", "+", "+"]), 27);
+assert.equal(calPoints(["1", "C"]), 0);
 
----
+console.log("✅ All Baseball Game stack scoring assertions passed successfully!");
+```
 
-## Practical Exercise
+### Solution Explanation
 
-Implement **Baseball Game** (LeetCode 682):
-You are keeping score for a baseball game with strange rules. Given an array of string operations:
-- Integer $x$: Record a new score of $x$.
-- `"+"`: Record a new score that is the sum of the previous two scores.
-- `"D"`: Record a new score that is double the previous score.
-- `"C"`: Invalidate the previous score, removing it.
-Return the sum of all scores remaining on the record.
-- **Acceptance Criterion**: Must run in $O(n)$ time and $O(n)$ auxiliary space using an explicit stack.
+1. **LIFO Score Invalidation:** The `"C"` operator corresponds directly to `stack.pop()`, removing the most recent score in $O(1)$ time.
+2. **Direct Top Peeking:** Reading `stack[stack.length - 1]` and `stack[stack.length - 2]` accesses the top two scores without mutating stack contents.
 
 ---
 
 ## Summary
 
-- A Stack is a LIFO data structure supporting $O(1)$ push, pop, and peek.
-- JavaScript's native array methods `.push()` and `.pop()` provide an optimal array-backed stack.
-- Using an explicit heap-allocated stack eliminates recursion depth limitations in the Node.js runtime.
-- Undo/redo managers utilize two coupled stacks to track state reversibility in $O(1)$ time per operation.
+- Stacks adhere to the **Last-In, First-Out (LIFO)** protocol; `push`, `pop`, and `peek` execute in $O(1)$ time.
+- Dynamic JavaScript arrays using `.push()` and `.pop()` provide optimal stack performance with superior CPU cache locality in V8.
+- Never use `shift()` or `unshift()` for stacks; head modifications trigger $O(n)$ memory shifts.
+- Converting recursive algorithms to use an **explicit stack on the heap** prevents Node.js `RangeError: Maximum call stack size exceeded` crashes.
+- Coupled undo and redo stacks maintain transactional state history with $O(1)$ transitions per action.
 
 ---
 
 ## Cheat Sheet
 
-### Stack Operations in JavaScript
-```js
+### Common Stack Methods
+```javascript
 const stack = [];
-stack.push(val);          // O(1) Push to top
-const top = stack.pop();  // O(1) Pop from top
-const peek = stack[stack.length - 1]; // O(1) Peek top element
-const isEmpty = stack.length === 0;   // O(1) Check empty
+stack.push(val);                      // O(1) Push to top
+const top = stack.pop();              // O(1) Pop from top
+const peek = stack[stack.length - 1]; // O(1) Inspect top
+const isEmpty = stack.length === 0;   // O(1) Empty check
+stack.length = 0;                     // O(1) Reset & drop references
 ```
+
+### Common Pitfalls
+- **Using `shift()` and `unshift()`:** Introduces $O(n)$ element shifting per operation, causing $O(n^2)$ overall runtime.
+- **Popping Empty Stacks:** Returns `undefined`, which silently leads to `NaN` errors during arithmetic.
+- **Retaining Stale Redo State:** Forgetting to clear `redoStack` when a new action is performed.
+- **Unbounded Stack Memory:** Retaining millions of historical actions in an undo buffer without a maximum capacity limit.
 
 ---
 
 ## Interview Questions
 
-### 1. Deep Definitions and Mental Models
-**Question:** Explain how converting a recursive algorithm into an iterative algorithm using an explicit stack protects a Node.js process.
-- **Expected answer shape:** The V8 call stack has a strict maximum size (~10,000 frames). Recursive functions on large inputs risk throwing a `RangeError: Maximum call stack size exceeded`. An explicit stack allocates frames as objects in the V8 heap, which can hold millions of elements bounded only by available system RAM (e.g. 1.4 GB–4 GB), preventing process termination.
+### 1. How does converting a recursive algorithm into an iterative algorithm using an explicit stack protect a Node.js process?
 
-### 2. Predict the Output and Trace Execution
-**Question:** What does this code log?
-```js
+**Question:** Explain how call stack memory limits in V8 differ from heap memory allocations, and how simulating recursion with an explicit stack prevents application crashes.
+
+**Answer:** 
+In the V8 engine, function execution contexts are placed on the **Call Stack**, an isolated memory region with a rigid physical capacity of approximately 1 MB. This allocates room for roughly **10,000 to 10,400 activation records**. If a recursive function traverses a skewed tree, graph, or nested document of depth $> 10,400$, V8 throws an uncatchable `RangeError: Maximum call stack size exceeded`. In Node.js, an uncaught exception in a request handler terminates the entire worker process.
+
+**The Explicit Heap Stack Solution:**
+By declaring an array `const stack = []` inside a `while` loop, execution records are allocated on the **V8 Heap** rather than the physical Call Stack:
+- Heap memory in Node.js defaults to 1.5 GB to 4 GB.
+- The iterative loop executes within a **single call stack frame**, using $O(1)$ physical call stack space.
+- The heap array can hold millions of element frames without crashing the process, bounded only by system RAM.
+
+---
+
+### 2. What does this code print, and what is the exact step-by-step evaluation order?
+
+**Question:** Trace the execution and output of the following stack operations:
+```javascript
 const stack = [1, 2, 3];
 stack.push(stack.pop() * 2);
 stack.push(stack.pop() + stack.pop());
 console.log(stack);
 ```
-- **Expected answer shape:** Prints `[1, 8]`.
-1. `stack.pop()` returns `3`. `3 * 2 = 6`. `stack.push(6)` $\to$ `[1, 2, 6]`.
-2. Next line evaluates `stack.pop() + stack.pop()` from left to right: first pop is `6`, second pop is `2`. Sum is `6 + 2 = 8`. `stack.push(8)` $\to$ `[1, 8]`.
 
-### 3. Implementation Exercise
-**Question:** Write a function that uses a stack to reverse a string in $O(n)$ time.
-- **Expected answer shape:**
-```js
-function reverseStringWithStack(str) {
-  const stack = [];
-  for (let i = 0; i < str.length; i++) stack.push(str[i]);
-  let reversed = "";
-  while (stack.length > 0) reversed += stack.pop();
-  return reversed;
-}
-```
+**Answer:**
+The code prints: `[ 1, 8 ]`.
 
-### 4. Debugging and Failure Analysis
-**Question:** A developer uses an array as a stack: `stack.unshift(x)` to push and `stack.shift()` to pop. During load testing, performance degrades exponentially with input size. Why?
-- **Expected answer shape:** `unshift()` and `shift()` insert and remove elements at index 0, requiring V8 to shift all existing elements in the underlying buffer. This is an $O(n)$ operation. Over $n$ items, total time is $O(n^2)$. Stacks must use `push()` and `pop()` at the end of the array for $O(1)$ operations.
+**Execution Trace:**
+1. **Initial State:** `stack = [1, 2, 3]`.
+2. **Line 2 (`stack.push(stack.pop() * 2)`):**
+   - `stack.pop()` removes and returns `3`. Stack is now `[1, 2]`.
+   - `3 * 2 = 6`.
+   - `stack.push(6)` appends `6`. Stack is now `[1, 2, 6]`.
+3. **Line 3 (`stack.push(stack.pop() + stack.pop())`):**
+   - Expressions in JavaScript evaluate left to right.
+   - First `stack.pop()` executes, returning `6`. Stack is now `[1, 2]`.
+   - Second `stack.pop()` executes, returning `2`. Stack is now `[1]`.
+   - The addition evaluates: `6 + 2 = 8`.
+   - `stack.push(8)` appends `8`. Stack is now `[1, 8]`.
+4. Output is `[1, 8]`.
 
-### 5. Design and Tradeoff Questions
-**Question:** When would a linked-list stack be preferred over a dynamic-array stack in a systems programming context?
-- **Expected answer shape:** A dynamic array periodically needs to resize when capacity is exceeded, which incurs an $O(n)$ reallocation and memory copy overhead (amortized $O(1)$). A linked list allocates nodes individually, providing a guaranteed $O(1)$ strict worst-case latency per operation, which is critical in hard real-time systems where GC or reallocation spikes are prohibited.
+---
 
-### 6. Senior Follow-ups: Node.js Memory Management
-**Question:** In a long-running Node.js process, an in-memory undo stack has recorded 500,000 actions. Even after popping all items, process memory remains high. Why?
-- **Expected answer shape:** In V8, arrays grow their internal backing capacity as elements are pushed. Popping elements decrements `array.length`, but V8 often keeps the pre-allocated backing memory buffer allocated to avoid resizing churn. Setting `stack.length = 0` or reassigning `stack = []` explicitly drops references, allowing V8 to deallocate the buffer during the next garbage collection cycle.
+### 3. When would a singly linked list stack be preferred over a dynamic array stack in systems programming?
+
+**Question:** Compare worst-case operation latencies and memory characteristics between dynamic arrays and linked lists for stack implementations.
+
+**Answer:** 
+1. **Dynamic Array Stack:**
+   - **Performance:** Appends are $O(1)$ *amortized*. However, when the allocated capacity of the array is exhausted, the engine must allocate a new buffer of double the size and copy all existing $n$ elements over. This single push takes $O(n)$ time.
+   - **Cache Locality:** Contiguous memory layout yields excellent CPU L1/L2 cache hits.
+2. **Linked List Stack:**
+   - **Performance:** Every `push()` allocates an independent `StackNode` containing a pointer to the previous node. Because no resizing or mass array reallocation ever occurs, every single push and pop operation has a **guaranteed strict $O(1)$ worst-case latency**.
+   - **Cache Locality:** Poor. Nodes are scattered across the heap, causing CPU cache misses.
+- **Trade-off Decision:** Dynamic arrays are faster for general Node.js applications. Linked list stacks are preferred in hard real-time systems where $O(n)$ reallocation latency spikes are unacceptable.
+
+---
+
+### 4. In a long-running Node.js process, an in-memory undo stack has recorded 500,000 actions. Even after popping all items, process memory remains high. Why, and how do you fix it?
+
+**Question:** Explain V8 array backing store memory behavior when elements are popped, and how to reclaim memory in Node.js.
+
+**Answer:** 
+When an array grows in V8, the runtime repeatedly doubles its underlying C++ backing store capacity. When elements are subsequently removed via `pop()`, V8 decrements the JavaScript `.length` property, but **does not automatically shrink or deallocate the pre-allocated backing memory buffer**. This optimization avoids memory reallocation churn if the array grows again.
+
+However, in a long-lived Node.js server, retaining a 500,000-element capacity buffer consumes tens of megabytes of resident set size (RSS).
+
+**How to Fix:**
+1. **Reset Length:** `stack.length = 0` clears the array, but may still retain capacity in some V8 versions.
+2. **Reassign Reference:** Reassign the variable to a brand-new empty array: `stack = []`.
+   This severs all references to the large old backing store, allowing V8's Garbage Collector to reclaim the buffer during the next GC cycle.
+3. **Cap History Depth:** Enforce a maximum capacity limit (e.g., maximum 1,000 actions) using a bounded circular buffer or by shifting the oldest action when capacity is exceeded.
+
+---
 
 <nav aria-label="Lecture navigation">
 

@@ -1,78 +1,77 @@
 # Day 34: Binary Search Trees: CRUD and Validation
 
-## 1. Learning Outcomes
-- Master the **Binary Search Tree (BST)** invariant: for every node, all left subtree keys $< \text{node.val} <$ all right subtree keys.
-- Implement BST Search and Insertion in $O(h)$ time ($O(\log n)$ average, $O(n)$ worst-case).
-- Master BST Deletion covering all 3 structural cases: leaf node, single child, and two children with **In-Order Successor** replacement.
-- Implement the **Validate BST** algorithm using both the valid-range boundary $(min, max)$ pattern and monotonic in-order traversal.
-- Connect BST operations to real-world database indexing (B-Tree indexing foundations in PostgreSQL/MongoDB) in Node.js architectures.
+<nav aria-label="Lecture navigation">
+
+[Previous: Tree Depth, Diameter, and Path Sums](day-33-tree-depth-diameter-and-path-sums.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Lowest Common Ancestor and Tree Serialization](day-35-lowest-common-ancestor-and-serialization.md)
+
+</nav>
+
+## Learning Outcomes
+
+By the end of this lecture, you should be able to:
+
+- Master the **Binary Search Tree (BST)** invariant: every left subtree key $< \text{node.val} <$ every right subtree key.
+- Implement BST Search and Insertion in $O(h)$ time ($O(\log n)$ balanced, $O(n)$ degenerate).
+- Master BST Deletion across all 3 structural cases: leaf node, single child, and two children with **In-Order Successor** replacement.
+- Implement **Validate Binary Search Tree** (LeetCode 98) using boundary propagation `(min, max)` and in-order monotonicity.
+- Explain why local child checks (`node.val > node.left.val`) fail to detect deep subtree ancestor violations.
+- Connect BST search invariants to relational database B-Tree index pages in Node.js backend architectures.
 
 ---
 
-## 2. Prerequisites & Navigation
-- **Prerequisites**: Day 26 (Binary Search Fundamentals), Day 31 (Binary Tree DFS & In-Order Traversal).
-- **Navigation**:
-  - [Previous: Day 33 - Tree Depth, Diameter, and Path Sums](day-33-tree-depth-diameter-and-path-sums.md)
-  - [Roadmap](../javascript-dsa-roadmap.md)
-  - [Next: Day 35 - Lowest Common Ancestor and Serialization](day-35-lowest-common-ancestor-and-serialization.md)
+## Prerequisites
+
+- [Day 26: Binary Search Bounds and Intervals](day-26-binary-search-bounds-and-intervals.md) — Binary search comparison principles.
+- [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Recursive and iterative In-Order traversals.
 
 ---
 
-## 3. Core Concepts & Mental Models
-A Binary Search Tree maintains a strict global ordering across all subtrees. It is not sufficient for a node to be larger than its immediate left child; it must be strictly larger than **all** nodes in its entire left subtree.
+## Quick Vocabulary Card
+
+| Term | Engineering Definition | Practical / Interview Impact |
+| :--- | :--- | :--- |
+| **Binary Search Tree (BST)** | A binary tree where for every node, all keys in its left subtree are strictly smaller, and all keys in its right subtree are strictly larger. | Enables logarithmic $O(\log n)$ search, insert, and delete operations when balanced. |
+| **Global BST Invariant** | The requirement that ordering constraints apply across all transitive descendants, not merely immediate children. | Validating a BST requires passing ancestor bounds `(min, max)` downwards rather than inspecting local children. |
+| **In-Order Successor** | The node with the smallest value that is strictly greater than the current node's value (the leftmost node in its right subtree). | Serves as the drop-in replacement when deleting a node possessing two active children. |
+| **In-Order Predecessor** | The node with the largest value that is strictly smaller than the current node's value (the rightmost node in its left subtree). | Symmetrical alternative drop-in replacement for two-child node deletions. |
+| **Degenerate BST** | An unbalanced BST where nodes form a linear chain (height $h = n$), typically created by inserting elements in sorted order. | Degrades search performance from $O(\log n)$ to $O(n)$, motivating self-balancing trees (AVL / Red-Black). |
+
+---
+
+## Core Concepts
+
+### 1. The Binary Search Tree Global Invariant
+
+A **Binary Search Tree (BST)** is an ordered hierarchical data structure where every node satisfies a strict global ordering constraint across its entire left and right subtrees:
+$$\forall x \in \text{LeftSubtree}(N): \text{key}(x) < \text{key}(N)$$
+$$\forall y \in \text{RightSubtree}(N): \text{key}(y) > \text{key}(N)$$
+
+It is **not** sufficient for a node to be larger than its immediate left child and smaller than its immediate right child. It must be strictly larger than **all** nodes in its left subtree and strictly smaller than **all** nodes in its right subtree.
 
 ```text
-Valid BST:                    INVALID BST (Subtree Violation):
-        [10]                                [10]
-       /    \                              /    \
-     [5]    [15]                         [5]    [15]
-    /   \       \                              /    \
-  [2]   [7]     [20]                         [6]    [20]
-                                              ^
-                      6 is in right subtree of 10, but 6 < 10!
-```
-
-### Deletion Case 3: Two Children
-When deleting a node with two children, replace its value with its **In-Order Successor** (the smallest value in its right subtree), then delete that successor from the right subtree.
-
-```text
-Deleting [10] (Two Children):
-       [10]                       [12] (Successor)
-      /    \                     /    \
-    [5]    [15]       ===>     [5]    [15]
-          /    \                     /    \
-        [12]   [20]                null   [20]
+Valid BST:                          INVALID BST (Subtree Violation):
+        [ 10 ]                                   [ 10 ]
+       /      \                                 /      \
+    [ 5 ]    [ 15 ]                          [ 5 ]    [ 15 ]
+   /    \        \                                   /      \
+ [ 2 ]  [ 7 ]   [ 20 ]                            [ 6 ]    [ 20 ]
+                                                    ▲
+                             Node 6 is in the right subtree of 10,
+                             but 6 < 10! Violates Global Invariant!
 ```
 
 ---
 
-## 4. Detailed Technical Explanations
+### 2. BST Search and Insertion in $O(h)$ Time
 
-### 4.1 Search and Insert Invariants
-- If `val === curr.val`: Found (or duplicate handling).
-- If `val < curr.val`: Recurse/advance to `curr.left`.
-- If `val > curr.val`: Recurse/advance to `curr.right`.
-- **Complexity**: $O(h)$ where $h = \log n$ for balanced trees, but degenerates to $O(n)$ if values are inserted in sorted order (unbalanced stick).
+Because keys are partitioned, search and insertion discard half the remaining tree at each decision node:
+- If `val === curr.val`: Target found.
+- If `val < curr.val`: Recurse left: `curr = curr.left`.
+- If `val > curr.val`: Recurse right: `curr = curr.right`.
 
-### 4.2 Deleting a Node (The 3 Cases)
-1. **Node is a Leaf** (`!left && !right`): Simply return `null` to the parent pointer.
-2. **Node has One Child**: Return the non-null child to the parent pointer.
-3. **Node has Two Children**: Find the minimum node in the right subtree (`findMin(node.right)`). Copy its value to `node.val`. Then delete the successor: `node.right = deleteNode(node.right, minVal)`.
-
-### 4.3 Validation: Why Local Checks Fail
-Checking `node.val > node.left.val && node.val < node.right.val` fails because a deep left descendant might violate an ancestor's bound. The correct approach propagates valid ranges `(min, max)` downwards:
-- Left child constraint: `(min, node.val)`.
-- Right child constraint: `(node.val, max)`.
-
-### 4.4 Node.js Relevance: In-Memory Indexing & B-Trees
-Databases (PostgreSQL, MongoDB) implement B-Trees (multi-way balanced search trees) for index lookups. In Node.js in-memory stores (e.g., Redis zsets or local red-black trees in caching engines), BST principles provide logarithmic searches for range queries (`score >= 100 AND score <= 500`).
-
----
-
-## 5. JavaScript Implementation & Step-by-Step Traces
-
-### 5.1 BST Insertion & Deletion
 ```javascript
+// Node.js code: BST Search and Insertion
+
 class TreeNode {
   constructor(val = 0, left = null, right = null) {
     this.val = val;
@@ -81,10 +80,16 @@ class TreeNode {
   }
 }
 
-/**
- * Inserts a value into BST.
- * Time: O(h), Space: O(h) recursion stack
- */
+function searchBST(root, val) {
+  let curr = root;
+  while (curr !== null) {
+    if (curr.val === val) return curr;
+    if (val < curr.val) curr = curr.left;
+    else curr = curr.right;
+  }
+  return null;
+}
+
 function insertIntoBST(root, val) {
   if (!root) return new TreeNode(val);
 
@@ -94,13 +99,47 @@ function insertIntoBST(root, val) {
     root.right = insertIntoBST(root.right, val);
   }
 
-  return root;
+  return root; // Return unchanged pointer
 }
+```
 
-/**
- * Deletes a value from BST handling 3 structural cases.
- * Time: O(h), Space: O(h)
- */
+---
+
+### 3. BST Deletion: The Three Structural Cases
+
+Deleting a node from a BST (LeetCode 450) must preserve the global ordering invariant. It breaks down into three distinct structural cases:
+
+#### Case 1: The Node is a Leaf (`!left && !right`)
+Simply return `null` to the caller, unlinking the node from its parent.
+
+#### Case 2: The Node has One Child
+Return the non-null child directly to the parent pointer, bypassing the deleted node.
+
+#### Case 3: The Node has Two Children
+1. Locate the **In-Order Successor**: the minimum node in the right subtree (`let succ = root.right; while (succ.left) succ = succ.left;`).
+2. Overwrite `root.val = succ.val`.
+3. Recursively delete the successor from the right subtree: `root.right = deleteNode(root.right, succ.val)`.
+
+```text
+Deleting Node [ 10 ] (Case 3: Two Children):
+Initial Tree:                      Step 1: Replace 10 with Successor (12):
+        [ 10 ]                                     [ 12 ]
+       /      \                                   /      \
+    [ 5 ]    [ 15 ]                            [ 5 ]    [ 15 ]
+            /      \                                   /      \
+         [ 12 ]   [ 20 ]       ==========>          [ 12 ]   [ 20 ]
+                                                       │ (Delete old 12)
+                                                       ▼
+Final Tree:                                        [ 12 ]
+                                                  /      \
+                                               [ 5 ]    [ 15 ]
+                                                           \
+                                                           [ 20 ]
+```
+
+```javascript
+// Node.js code: BST Deletion (LeetCode 450)
+
 function deleteNode(root, key) {
   if (!root) return null;
 
@@ -109,8 +148,8 @@ function deleteNode(root, key) {
   } else if (key > root.val) {
     root.right = deleteNode(root.right, key);
   } else {
-    // Found node to delete
-    // Case 1 & 2: 0 or 1 child
+    // Found node to delete!
+    // Cases 1 & 2: 0 or 1 child
     if (!root.left) return root.right;
     if (!root.right) return root.left;
 
@@ -120,103 +159,245 @@ function deleteNode(root, key) {
       successor = successor.left;
     }
 
-    root.val = successor.val; // Replace value
-    root.right = deleteNode(root.right, successor.val); // Delete successor
+    // Copy successor value
+    root.val = successor.val;
+    // Delete the successor from right subtree
+    root.right = deleteNode(root.right, successor.val);
   }
 
   return root;
 }
 ```
 
-### 5.2 Validate Binary Search Tree (LeetCode 98)
+---
+
+### 4. Validate Binary Search Tree: Why Local Checks Fail
+
+A common interview mistake is checking only immediate child relationships:
 ```javascript
-/**
- * Validates BST using range constraints.
- * Time Complexity: O(n)
- * Space Complexity: O(h)
- */
+// ❌ BROKEN LOCAL CHECK:
+if (root.left && root.left.val >= root.val) return false;
+if (root.right && root.right.val <= root.val) return false;
+```
+This fails to catch deep subtree violations (e.g., node `6` in the right subtree of `10`).
+
+#### The Boundary Propagation Pattern
+Every node must fall within an open interval $(min, max)$:
+- The root is bounded by $(-\infty, +\infty)$.
+- Descending left narrows the upper bound: $(min, \text{node.val})$.
+- Descending right narrows the lower bound: $(\text{node.val}, max)$.
+
+```javascript
+// Node.js code: Validate Binary Search Tree (LeetCode 98)
+
 function isValidBST(root) {
   function validate(node, min, max) {
     if (!node) return true;
 
-    // Must be strictly greater than min and strictly less than max
+    // Strict inequalities: duplicates are invalid in standard BST
     if (min !== null && node.val <= min) return false;
     if (max !== null && node.val >= max) return false;
 
-    // Left child bounded by (min, node.val), Right child bounded by (node.val, max)
-    return validate(node.left, min, node.val) && 
-           validate(node.right, node.val, max);
+    // Propagate updated boundaries downward
+    return (
+      validate(node.left, min, node.val) &&
+      validate(node.right, node.val, max)
+    );
   }
 
   return validate(root, null, null);
 }
 ```
 
-### 5.3 Execution Trace: `isValidBST` on Invalid Tree `[10, 5, 15, null, null, 6, 20]`
+---
+
+## Detailed Node.js Relevance: B-Tree Indexing in PostgreSQL and MongoDB
+
+In production Node.js applications querying databases (e.g., PostgreSQL with `pg` or MongoDB with `mongoose`), index lookups are powered by **B-Trees** (balanced multi-way search trees):
+
 ```text
-validate(10, null, null)
-├── validate(5, null, 10): 5 is in (-inf, 10) -> true
-└── validate(15, 10, null): 15 is in (10, inf)
-    ├── validate(6, 10, 15):
-    │   Check: node.val (6) <= min (10) evaluates TRUE!
-    │   Violation! Returns FALSE!
-Returns false immediately to root. Tree is correctly flagged as INVALID BST.
+Disk-Optimized B-Tree Index (PostgreSQL):
+[ Page Header | Key: 100 | Key: 500 | Key: 1000 ]
+      │               │              │
+      ▼               ▼              ▼
+[ Page < 100 ] [ Page 100-500 ] [ Page 500-1000 ]
 ```
 
----
-
-## 6. Common Mistakes & Anti-Patterns
-- **Local-Only Child Validation**: Checking only `root.left.val < root.val` without passing ancestor boundaries.
-- **Handling Equal Values Incorrectly**: Standard BST definition requires strictly less (`<`) and strictly greater (`>`). Using `<=` permits duplicates that break binary search guarantees unless explicitly specified.
-- **Forgetting Parent Pointer Rewiring**: In deletion, writing `root = root.right` without returning `root` to update the parent's `parent.left` or `parent.right` reference.
+- **Branching Factor**: While binary trees have at most 2 children per node, B-Trees feature branching factors of hundreds of keys per node, matching the operating system disk page size (typically 4 KB–16 KB).
+- **Logarithmic Disk Seeks**: When a Node.js query executes `SELECT * FROM users WHERE age BETWEEN 20 AND 30`, the database engine navigates the B-Tree in $O(\log_B n)$ disk seeks rather than scanning millions of rows sequentially, returning records asynchronously to the Node.js event loop in under a millisecond.
 
 ---
 
-## 7. Tricky Points & Edge Cases
-- **32-Bit Integer Limits (`-Infinity`, `Infinity`)**: In JavaScript, using `-Infinity` and `Infinity` handles edge cases where node values equal `Number.MIN_SAFE_INTEGER` or `Number.MAX_SAFE_INTEGER`. Using `null` guards avoids precision overflow.
-- **Duplicate Keys**: If duplicate keys are allowed, design must specify whether duplicates route strictly to the left or right subtree.
-- **Degenerate Trees**: Inserting sorted elements `[1, 2, 3, 4, 5]` results in a linked list structure where search degrades from $O(\log n)$ to $O(n)$. Self-balancing trees (AVL / Red-Black) solve this.
+## Tricky Points & Edge Cases
+
+1. **Strict Inequality vs Duplicates**:
+   Standard BST definitions require strictly less (`<`) and strictly greater (`>`). If duplicate values are inserted, the validation algorithm must return `false` unless the system explicitly defines left-or-right duplicate conventions.
+2. **JavaScript 64-Bit Float Boundaries**:
+   Using `Number.MIN_SAFE_INTEGER` or `Number.MAX_SAFE_INTEGER` as initial bounds fails if tree nodes contain values equal to those extremes. Using `null` guards (`min !== null && node.val <= min`) handles all 64-bit integer values safely.
+3. **Degenerate Trees from Sorted Arrays**:
+   Inserting an already-sorted array `[1, 2, 3, 4, 5]` into a naive BST produces a right-skewed list of height $n$. Self-balancing trees (AVL / Red-Black) apply pointer rotations to maintain $O(\log n)$ height.
 
 ---
 
-## 8. Practical Engineering Exercises
-1. Implement `kthSmallest(root, k)` that returns the $k$-th smallest value in a BST in $O(h + k)$ time using iterative In-Order traversal.
-2. Given a sorted array, implement `sortedArrayToBST(nums)` that constructs a height-balanced BST in $O(n)$ time.
+## Hands-On Exercise
+
+### Scenario: K-th Smallest Element in a BST (LeetCode 230)
+
+Given the root of a binary search tree and an integer $k$, return the $k$-th smallest value (1-indexed) in the tree. Because an In-Order traversal of a BST produces a strictly increasing sequence, you should find the $k$-th element in $O(h + k)$ time without traversing the entire tree.
+
+### Buggy Code
+
+```javascript
+// ❌ BUGGY: Traverses the entire tree into an array and sorts it unnecessarily
+function buggyKthSmallest(root, k) {
+  const vals = [];
+  function dfs(node) {
+    if (!node) return;
+    vals.push(node.val);
+    dfs(node.left);
+    dfs(node.right);
+  }
+  dfs(root);
+  vals.sort((a, b) => a - b); // Wastes O(n log n) time!
+  return vals[k - 1];
+}
+```
+
+### Acceptance Criteria
+
+1. Solves the problem in $O(h + k)$ time complexity using iterative In-Order traversal.
+2. Terminates immediately upon visiting the $k$-th node without touching remaining nodes.
+3. Uses $O(h)$ auxiliary stack memory.
+4. Verified with assertions testing left-heavy trees, balanced trees, and $k = 1$.
+
+### Solution Code
+
+```javascript
+// Node.js code: K-th Smallest Element in BST (LeetCode 230)
+const assert = require("assert");
+
+function kthSmallest(root, k) {
+  const stack = [];
+  let curr = root;
+
+  while (curr !== null || stack.length > 0) {
+    // 1. Descend left as far as possible
+    while (curr !== null) {
+      stack.push(curr);
+      curr = curr.left;
+    }
+
+    // 2. Process node in increasing sorted order
+    curr = stack.pop();
+    k--;
+
+    // 3. Early termination: Found k-th smallest element!
+    if (k === 0) {
+      return curr.val;
+    }
+
+    // 4. Move to right subtree
+    curr = curr.right;
+  }
+
+  return -1;
+}
+
+// Verification Tests
+// Tree 1: [3, 1, 4, null, 2], k = 1 => 1
+const t1 = new TreeNode(3, new TreeNode(1, null, new TreeNode(2)), new TreeNode(4));
+assert.strictEqual(kthSmallest(t1, 1), 1);
+assert.strictEqual(kthSmallest(t1, 2), 2);
+assert.strictEqual(kthSmallest(t1, 3), 3);
+
+// Tree 2: Single node
+assert.strictEqual(kthSmallest(new TreeNode(42), 1), 42);
+
+console.log("✅ All K-th Smallest Element assertions passed successfully.");
+```
+
+### Solution Explanation
+
+1. **In-Order Monotonicity**: Because In-Order traversal visits nodes in strictly increasing order, popping $k$ times isolates the $k$-th smallest element directly.
+2. **Early Termination**: Halting as soon as `k === 0` prevents traversing remaining branches, running in $O(h + k)$ time instead of full-tree $O(n)$ time.
 
 ---
 
-## 9. Key Takeaways & Summary
-- In a valid BST, In-order traversal produces a strictly increasing sorted sequence.
-- Deletion handles 3 cases: leaf nodes, nodes with 1 child, and nodes with 2 children (substituting the in-order successor).
-- Tree validation requires propagating `(min, max)` boundaries downward across every recursion frame.
-- Unbalanced BSTs degenerate to $O(n)$ linked lists under sorted insertions.
+## Summary
+
+- **Global Invariant**: Left subtree $< \text{node.val} <$ Right subtree across all transitive descendants.
+- **In-Order Traversal**: Always flattens a valid BST into a strictly increasing sorted sequence.
+- **Deletion Cases**: Leaf returns null; single-child returns child; two-child replaces with in-order successor and deletes successor from right subtree.
+- **Validation**: Propagate open interval bounds `(min, max)` downward across each frame; checking only immediate children fails deep violations.
+- **B-Trees**: Relational database storage engines scale BST principles to multi-way pages to minimize disk I/O.
 
 ---
 
-## 10. Quick Reference Cheat Sheet
-| Operation | Average Case | Worst Case (Degenerate) | Space |
-| :--- | :--- | :--- | :--- |
-| **Search** | $O(\log n)$ | $O(n)$ | $O(h)$ |
-| **Insert** | $O(\log n)$ | $O(n)$ | $O(h)$ |
-| **Delete** | $O(\log n)$ | $O(n)$ | $O(h)$ |
-| **Validate** | $O(n)$ | $O(n)$ | $O(h)$ |
+## Cheat Sheet & Common Pitfalls
+
+### BST Core Templates
+```javascript
+// Validate BST
+function validate(node, min, max) {
+  if (!node) return true;
+  if (min !== null && node.val <= min) return false;
+  if (max !== null && node.val >= max) return false;
+  return validate(node.left, min, node.val) && validate(node.right, node.val, max);
+}
+
+// In-Order Successor Deletion
+let succ = root.right;
+while (succ.left) succ = succ.left;
+root.val = succ.val;
+root.right = deleteNode(root.right, succ.val);
+```
+
+### Common Pitfalls
+
+| Mistake | Consequence | Correct Pattern |
+| :--- | :--- | :--- |
+| **Local child check only** | Fails deep ancestor bounds in validation. | Propagate running `(min, max)` bounds. |
+| **Permitting `<=` in validation** | Breaks strict binary search guarantees. | Enforce strict inequalities (`<` and `>`). |
+| **Omitting parent return in delete** | Fails to rewire parent pointers. | Return updated subtree root to parent. |
+| **Sorting full tree for K-th element** | Wastes $O(n \log n)$ time and memory. | Terminate In-Order traversal at $k$ steps. |
 
 ---
 
-## 11. Interview Questions & Expected Answers
+## Interview Questions
 
-### 1. Conceptual
-**Question**: Why does In-Order traversal of a Binary Search Tree always yield values in ascending sorted order?  
-**Hint**: Connect the traversal step order ($L-N-R$) with the BST property.  
-**Expected Answer Shape**: In a BST, by definition, all keys in `node.left` are smaller than `node.val`, and all keys in `node.right` are larger. In-Order traversal visits all left subtree keys first, then processes the current `node.val`, and finally visits all right subtree keys. By structural induction, every value is visited in strictly non-decreasing order.
+### 1. Why does In-Order traversal of a Binary Search Tree always yield values in ascending sorted order?
 
-### 2. Code-Writing
-**Question**: Write a function to find the $k$-th smallest element in a BST.  
-**Hint**: Stop In-Order traversal as soon as $k$ nodes are visited.  
-**Expected Answer Shape**: Use iterative In-Order traversal with an explicit stack. Traverse left, push nodes. Pop node, decrement $k$. When $k === 0$, return popped node's value immediately without traversing the rest of the tree ($O(h + k)$ time, $O(h)$ space).
+**Question:** Mathematically prove why an In-Order traversal ($L \to N \to R$) of a Binary Search Tree produces an array of values sorted in strictly increasing order.
 
-### 3. Debugging
-**Question**: What is wrong with this attempt to validate a BST?  
+**Answer:** 
+The proof proceeds by structural induction on tree height:
+1. **Base Case ($h = 0$, leaf node)**: An In-Order traversal of a single node visits its empty left child, processes `node.val`, and visits its empty right child, producing `[node.val]`, which is trivially sorted.
+2. **Inductive Step**:
+   - By the definition of a BST, for every node $N$:
+     $$\forall x \in \text{LeftSubtree}(N): x < N < \forall y \in \text{RightSubtree}(N): y$$
+   - By the induction hypothesis, In-Order traversal of `N.left` produces a sorted sequence $S_{\text{left}}$ where all values are $< N$.
+   - By the induction hypothesis, In-Order traversal of `N.right` produces a sorted sequence $S_{\text{right}}$ where all values are $> N$.
+   - In-Order traversal concatenates:
+     $$S_{\text{left}} \circ [N] \circ S_{\text{right}}$$
+   - Because every element in $S_{\text{left}} < N$ and $N <$ every element in $S_{\text{right}}$, the combined sequence is strictly increasing across the entire domain.
+
+---
+
+### 2. When deleting a node with two children, why is the In-Order Successor guaranteed to have at most one child?
+
+**Question:** In BST deletion, explain why the In-Order Successor (the smallest node in the right subtree) is mathematically guaranteed to have at most one child, and identify which child that can be.
+
+**Answer:** 
+The In-Order Successor is found by moving once to the right child (`root.right`) and then following left pointers until no further left child exists (`while (succ.left) succ = succ.left`).
+- By construction, the successor node has **no left child** (`succ.left === null`). If it had a left child, that left child would be smaller than `succ`, contradicting the premise that `succ` is the minimum element in that subtree.
+- Therefore, the successor can have at most one child: an optional **right child** (`succ.right`).
+- Consequently, recursively deleting the successor node from the right subtree is trivial: it always falls into **Case 1** (leaf node) or **Case 2** (single child), never triggering a recursive two-child deletion.
+
+---
+
+### 3. What is the bug in this BST validation function, and what test case exposes it?
+
+**Question:** Spot the algorithmic flaw in this validation function and provide a concrete binary tree test case that exposes it:
 ```javascript
 function isValid(root) {
   if (!root) return true;
@@ -224,21 +405,45 @@ function isValid(root) {
   if (root.right && root.right.val <= root.val) return false;
   return isValid(root.left) && isValid(root.right);
 }
-```  
-**Hint**: Consider a root with value 10, right child 15, and right child's left child 6.  
-**Expected Answer Shape**: This code only checks immediate parent-child relationships. It fails to catch deep subtree violations. For example, if root is 10, right child is 15, and 15's left child is 6: 6 is locally valid for 15 ($6 < 15$), but invalid globally because $6 < 10$. Must pass running `(min, max)` boundaries downwards.
+```
 
-### 4. System Design / Tradeoff
-**Question**: In building a high-volume leaderboard in Node.js, would you choose an unconstrained BST, an AVL/Red-Black Tree, or a Redis Sorted Set?  
-**Hint**: Unbalanced degradation vs. self-balancing complexity vs. out-of-process store.  
-**Expected Answer Shape**: An unconstrained BST degrades to $O(n)$ if user scores arrive in sorted or clustered order, blocking the Node.js event loop. An in-memory Red-Black tree guarantees $O(\log n)$ lookups and updates via rotations. However, for scalable Node.js deployments across multiple instances, Redis Sorted Sets (backed by Skip Lists and Hash Tables) provide $O(\log n)$ updates with persistence and shared distributed state.
+**Answer:** 
+**Algorithmic Flaw**: The function performs only **local checks** between immediate parents and their direct children. It fails to enforce the global invariant that all nodes in a right subtree must be greater than all ancestral roots above them.
 
-### 5. Tricky / Edge Case
-**Question**: When deleting a node with two children, does choosing the In-Order Predecessor instead of the In-Order Successor alter the correctness of the BST?  
-**Hint**: Where is the predecessor located and does it satisfy BST invariants?  
-**Expected Answer Shape**: No, both are fully valid. The In-Order Predecessor is the maximum element in the left subtree. It is strictly greater than all other left subtree nodes and strictly less than all right subtree nodes, so placing it at the deleted node's position preserves all BST ordering invariants.
+**Counter-Example**:
+Consider tree:
+```text
+       10
+      /  \
+     5   15
+        /  \
+       6   20
+```
+- At root `10`: Left is `5` ($5 < 10$), Right is `15` ($15 > 10$) $\to$ local check passes.
+- At node `15`: Left is `6` ($6 < 15$), Right is `20` ($20 > 15$) $\to$ local check passes.
+- The function returns `true`.
 
-### 6. Real-World Node.js Context
-**Question**: How does MongoDB's wiredTiger storage engine utilize B-Tree principles to handle high write/read throughput from Node.js drivers?  
-**Hint**: Page-level branching factor and disk I/O reduction.  
-**Expected Answer Shape**: MongoDB uses B-Trees rather than binary BSTs for index storage. A B-Tree has a high branching factor (hundreds of keys per node), matching disk block/page sizes. When a Node.js query executes with an indexed filter, wiredTiger loads index pages in $O(\log_B n)$ disk seeks, minimizing disk I/O and returning data asynchronously to the Node.js driver.
+**Why it fails**: Node `6` resides in the right subtree of root `10`. By the global BST invariant, all nodes in the right subtree must be $> 10$. Because $6 < 10$, this tree is completely invalid, but the code falsely marks it valid.
+
+---
+
+### 4. How does MongoDB's WiredTiger storage engine use B-Tree principles to handle high write/read throughput from Node.js drivers?
+
+**Question:** Contrast the architectural design of in-memory Binary Search Trees with disk-based B-Trees used in database engines like MongoDB WiredTiger or PostgreSQL.
+
+**Answer:** 
+1. **Branching Factor & Disk Block Alignment**:
+   - A standard BST has a branching factor of 2. For $10^9$ documents, height is $\approx 30$. Storing this on disk would require 30 sequential disk seek operations per read, causing severe I/O bottlenecks.
+   - B-Trees have branching factors of hundreds to thousands of keys per node, matching operating system page sizes (e.g., 4 KB to 64 KB). For $10^9$ documents, B-Tree height is only 3 to 4 levels.
+2. **Cache-Line Efficiency in Memory**:
+   - B-Tree pages are stored contiguously in memory buffers, maximizing CPU L1/L2 cache prefetching when searching inside a page.
+3. **Concurrency and Node.js Drivers**:
+   - WiredTiger uses multi-version concurrency control (MVCC) and latch-free in-memory skip lists/B-Trees. When Node.js dispatches asynchronous queries, WiredTiger locates indexed document pointers with at most 3–4 cached page inspections, completing queries in microseconds without stalling Node.js socket pools.
+
+---
+
+<nav aria-label="Lecture navigation">
+
+[Previous: Tree Depth, Diameter, and Path Sums](day-33-tree-depth-diameter-and-path-sums.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Lowest Common Ancestor and Tree Serialization](day-35-lowest-common-ancestor-and-serialization.md)
+
+</nav>

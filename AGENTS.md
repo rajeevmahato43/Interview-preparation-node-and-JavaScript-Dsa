@@ -18,6 +18,8 @@ Before answering or changing interview-preparation content, read and follow:
 	- [DOCS/mongodb.md](DOCS/mongodb.md)
 	- [DOCS/postgresql.md](DOCS/postgresql.md)
 	- [DOCS/dsa.md](DOCS/dsa.md)
+	- [DOCS/dsa.md](DOCS/dsa.md)
+7. For content under [Quick-prep](Quick-prep/README.md), also follow [DOCS/quick-prep-rules.md](DOCS/quick-prep-rules.md). Its compact format is specific to that track and does not replace shared accuracy or example rules.
 
 If a request spans multiple topics, apply every relevant topic file. Shared rules apply first; topic rules add constraints and may clarify scope but must not contradict them. When instructions conflict, use the more specific rule and preserve the requirements in this file.
 
@@ -32,6 +34,7 @@ This workspace is for mid-to-senior interview preparation with a backend Node.js
 - The existing `Javascript/` directory is preserved source material. Do not delete, migrate, rename, or silently rewrite it.
 - Keep edits limited to the files required by the user's request. Do not add dependencies, runtime code, or unrelated configuration.
 - Use Markdown for new instruction or study-system documentation and use relative links between workspace documents.
+- Keep the standalone seven-day interview sprints in `Quick-prep/`; do not merge them into the comprehensive course directories.
 - Write original explanations. Summarize external material instead of copying it, and record authoritative references when technical accuracy depends on them.
 
 ## Required behavior
