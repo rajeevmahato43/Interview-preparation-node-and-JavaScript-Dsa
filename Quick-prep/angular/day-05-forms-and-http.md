@@ -1,23 +1,110 @@
-# Day 5: Forms and HTTP
+# Day 5: Forms, Validation, HttpClient, and Interceptors
 
-## Forms
+Quick review of data collection and network communications in Angular. Covers Reactive Forms vs Template-Driven Forms, built-in validators, `HttpClient` requests, and functional HTTP interceptors for auth tokens.
 
-1. **Reactive forms:** Form controls/groups are explicit in TypeScript; suited to complex, reusable, testable forms.
-2. **Template-driven forms:** Directives build the form model from the template; useful for simpler forms.
-3. **Validation:** Built-in/custom validators provide client feedback; the server must validate and enforce domain rules independently. [Forms](https://angular.dev/guide/forms) | [Validation](https://angular.dev/guide/forms/form-validation)
+## Reactive forms and validation
 
-## HTTP client
+**1. Reactive forms architecture (`FormGroup`, `FormControl`, `Validators`)**
 
-1. **`HttpClient`:** Angular service for typed request/response handling; account for pending, success, and error states.
-2. **Interceptors:** Apply cross-cutting request/response behavior such as auth headers or common error mapping; keep feature logic in services/components.
-3. **Testing:** HTTP testing utilities let tests assert outgoing requests and provide controlled responses. [HTTP](https://angular.dev/guide/http) | [Interceptors](https://angular.dev/guide/http/interceptors) | [HTTP testing](https://angular.dev/guide/http/testing)
+Reactive forms provide an explicit, type-safe, and immutable way of managing form state in TypeScript code rather than in template directives.
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+@Component({
+  standalone: true,
+  imports: [ReactiveFormsModule],
+  template: `
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <input formControlName="email" placeholder="Email" />
+      @if (userForm.get('email')?.invalid && userForm.get('email')?.touched) {
+        <small class="error">Valid email is required.</small>
+      }
+      <button type="submit" [disabled]="userForm.invalid">Submit</button>
+    </form>
+  `
+})
+export class UserFormComponent {
+  private fb = inject(FormBuilder);
+
+  userForm = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    role: ['admin', Validators.required]
+  });
+
+  onSubmit() {
+    if (this.userForm.valid) {
+      console.log('Form values:', this.userForm.value);
+    }
+  }
+}
+```
+
+**2. Form control state flags**
+
+- `valid` vs `invalid`: Validity based on configured validators.
+- `pristine` vs `dirty`: Has the user changed the input value?
+- `untouched` vs `touched`: Has the input lost focus (`blur`)?
+
+[Reactive forms](https://angular.dev/guide/forms/reactive-forms) | [Form validation](https://angular.dev/guide/forms/form-validation)
+
+## HttpClient and functional HTTP interceptors
+
+**1. `HttpClient` and backend requests**
+
+Provide `HttpClient` via `provideHttpClient()` in `app.config.ts`. All methods (`get`, `post`, `put`, `delete`) return RxJS Observables that automatically parse JSON responses.
+
+```typescript
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface Post { id: number; title: string; }
+
+@Injectable({ providedIn: 'root' })
+export class PostService {
+  private http = inject(HttpClient);
+
+  getPosts(): Observable<Post[]> {
+    return this.http.get<Post[]>('/api/posts');
+  }
+
+  createPost(post: Partial<Post>): Observable<Post> {
+    return this.http.post<Post>('/api/posts', post);
+  }
+}
+```
+
+**2. Functional HTTP Interceptor (`HttpInterceptorFn`)**
+
+Intercept outgoing HTTP requests and incoming responses globally. Common use case: attaching JWT bearer tokens.
+
+```typescript
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AuthService } from './auth.service';
+
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const token = inject(AuthService).getToken();
+  if (token) {
+    const clonedReq = req.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
+    });
+    return next(clonedReq);
+  }
+  return next(req);
+};
+```
+
+[HttpClient overview](https://angular.dev/guide/http) | [HTTP Interceptors](https://angular.dev/guide/http/interceptors)
 
 ## Tricky points
 
-1. **Forms**
-	1.1 **Reactive versus template-driven:** Reactive forms expose a synchronous explicit model; template-driven forms rely more on template directives and change detection.
-	1.2 **Validation:** Client validation can be bypassed; server validation is authoritative.
-2. **HTTP**
-	2.1 **Interceptor retries:** Retrying a mutation can duplicate effects unless the endpoint is idempotent/protected.
-	2.2 **Types:** A TypeScript response type is not runtime validation of server JSON.
-	2.3 **Version/configuration:** HttpClient and interceptor setup patterns vary with Angular project version/style.
+1. **Forms and validation**
+   **1.1 Cold Observable on HttpClient:** Calling `this.http.get('/api/users')` does not initiate an HTTP network request until `.subscribe()` is called or the `async` pipe is evaluated.
+   **1.2 Modifying immutable HTTP requests:** `HttpRequest` objects in interceptors are immutable; attempting to mutate `req.headers.set(...)` directly fails. Always use `req.clone({ ... })`.
+
+2. **Form control management**
+   **2.1 Showing validation errors prematurely:** Checking only `userForm.get('field')?.invalid` shows red errors immediately on empty fields when the page loads; always combine with `.touched` or `.dirty`.
+   **2.2 Disabled controls in `form.value`:** `form.value` excludes disabled controls from the resulting payload; call `form.getRawValue()` if you need values from disabled fields.

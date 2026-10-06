@@ -1,18 +1,88 @@
-# Day 2: Templates and Binding
+# Day 2: Templates, Data Binding, Control Flow, and Pipes
 
-## Template syntax
+Quick review of Angular template mechanics. Covers the 4 binding types, modern built-in control flow (`@if`, `@for`), two-way binding syntax, and pure/impure pipes.
 
-1. **Interpolation:** `{{ value }}` displays dynamic text.
-2. **Property and attribute binding:** `[value]="name"` passes a value to a DOM/component property; use attribute binding when the HTML attribute itself is required.
-3. **Event and two-way binding:** `(click)="save()"` handles an event; `[(...)]` combines value flow and update event for supported APIs.
-4. **Control flow:** Conditional/repetition syntax shows or creates template content; pipes format/transform values for display. [Templates](https://angular.dev/guide/templates) | [Binding](https://angular.dev/guide/templates/binding) | [Events](https://angular.dev/guide/templates/event-listeners) | [Control flow](https://angular.dev/guide/templates/control-flow) | [Pipes](https://angular.dev/guide/templates/pipes)
+## Data binding syntax and two-way binding
+
+**1. The four binding mechanisms**
+
+1. *Interpolation (`{{ value }}`):* Evaluates expression and renders text into the DOM.
+2. *Property Binding (`[prop]="value"`):* Sets a DOM property or child component input dynamically.
+3. *Event Binding (`(event)="handler($event)"`):* Listens for DOM or component events and executes handler.
+4. *Two-Way Binding (`[(ngModel)]="value"`):* "Banana in a box" syntax syncing input UI value and class property bidirectionally.
+
+```typescript
+@Component({
+  standalone: true,
+  imports: [FormsModule],
+  template: `
+    <!-- Interpolation & Property -->
+    <h2 [id]="headingId">{{ title }}</h2>
+
+    <!-- Event Binding -->
+    <button (click)="increment()">Click</button>
+
+    <!-- Two-Way Binding -->
+    <input [(ngModel)]="username" />
+    <p>User: {{ username }}</p>
+  `
+})
+export class BindingDemoComponent {
+  headingId = 'title-1';
+  title = 'Binding Overview';
+  username = '';
+  increment() { /* ... */ }
+}
+```
+
+[Template syntax](https://angular.dev/guide/templates) | [Two-way binding](https://angular.dev/guide/templates/two-way-binding)
+
+## Modern control flow and pipes
+
+**1. Modern built-in control flow (`@if`, `@for`, `@switch`)**
+
+Modern Angular uses `@`-syntax for control flow directly in the template compiler, replacing legacy `*ngIf` and `*ngFor` directives. In `@for`, `track` is mandatory.
+
+```html
+<!-- Conditional rendering -->
+@if (isLoggedIn) {
+  <p>Welcome back, user!</p>
+} @else if (isGuest) {
+  <p>Welcome, guest!</p>
+} @else {
+  <button (click)="login()">Log In</button>
+}
+
+<!-- List rendering with mandatory tracking -->
+<ul>
+  @for (user of users; track user.id) {
+    <li>{{ user.name }} (Index: {{ $index }})</li>
+  } @empty {
+    <li>No users found.</li>
+  }
+</ul>
+```
+
+**2. Built-in and custom pipes**
+
+Pipes transform display values directly within template expressions (`value | pipeName:arg`).
+- Built-ins: `date:'short'`, `uppercase`, `currency:'USD'`, `json`.
+- `async` pipe: Automatically subscribes to an Observable or Promise and unsubscribes upon component destruction.
+
+```html
+<p>Total: {{ price | currency:'USD' }}</p>
+<p>Updated: {{ lastUpdated | date:'medium' }}</p>
+<p>{{ userObservable$ | async | json }}</p>
+```
+
+[Control flow](https://angular.dev/guide/templates/control-flow) | [Pipes overview](https://angular.dev/guide/pipes)
 
 ## Tricky points
 
-1. **Binding**
-	1.1 **Property versus attribute:** They are related but distinct DOM concepts; choose the binding that matches the required behavior.
-	1.2 **Two-way binding:** It is still a value plus an update event, not global shared state.
-2. **Templates**
-	2.1 **Expression work:** Costly method calls in templates may run repeatedly during view checking.
-	2.2 **Control-flow version:** New built-in syntax and older structural directives may coexist in codebases; follow project version/style.
-	2.3 **Security:** Angular templates do not make arbitrary untrusted HTML safe to bypass sanitization.
+1. **Templates and control flow**
+   **1.1 Missing `track` in `@for`:** Modern `@for` requires an explicit `track` expression (e.g. `track item.id` or `track $index`). Omitting `track` causes compile errors, and using index for reorderable collections causes DOM focus bugs.
+   **1.2 Two-way binding missing `FormsModule`:** Using `[(ngModel)]` in a standalone component without importing `FormsModule` in the component `imports: [FormsModule]` throws a template parse error.
+
+2. **Pipes and performance**
+   **2.1 Expensive function calls in templates:** Calling class methods directly in template interpolation (e.g. `{{ calculateDiscount(price) }}`) runs on *every single change detection cycle*, severely degrading rendering performance. Use a pure pipe or computed signal instead.
+   **2.2 Impure pipe overhead:** Custom pipes default to pure (`pure: true`), executing only when input reference changes. Setting `pure: false` runs the pipe on every cycle, risking frame drops.

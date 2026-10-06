@@ -1,24 +1,70 @@
-# Day 1: Foundations and Interview Method
+# Day 1: Foundations, Interview Method, and Capacity Estimation
 
-## Requirements and quality
+Quick review of main-course lectures 1–7. Covers the 4-step interview communication framework, functional vs non-functional scoping, back-of-the-envelope estimation math, tail latency percentiles, and networking request lifecycles.
 
-1. **System boundary:** Identify users, external actors, owned components, and explicit exclusions before drawing architecture.
-2. **Functional requirements:** State user-visible actions; do not confuse them with a proposed technology.
-3. **Quality attributes:** Translate “fast/reliable” into measurable latency, availability, durability, consistency, security, and cost constraints. [Foundations](../../SystemDesign/system-design-lectures/day-01-system-design-foundations.md) | [Requirements](../../SystemDesign/system-design-lectures/day-03-requirements-and-quality-attributes.md)
+## Requirements, scoping, and the 4-step framework
 
-## Interview method
+**1. Functional vs Non-Functional requirements**
 
-1. **Sequence:** Clarify scope, estimate, define API/data, draw a simple design, trace critical flows, examine bottlenecks/failures, compare trade-offs, summarize.
-2. **Estimation:** Estimate average/peak traffic, read/write ratio, storage growth, and bandwidth; keep assumptions visible.
-3. **Latency:** Use percentiles and fan-out reasoning; a few slow dependencies can dominate end-to-end tail latency.
-4. **Communication:** Draw components, trust boundaries, and sync/async data flow at the level needed for discussion. [Method](../../SystemDesign/system-design-lectures/day-02-design-interview-method.md) | [Estimation](../../SystemDesign/system-design-lectures/day-04-capacity-estimation.md) | [Latency](../../SystemDesign/system-design-lectures/day-05-latency-throughput-and-queues.md) | [Networking](../../SystemDesign/system-design-lectures/day-06-networking-and-request-lifecycle.md) | [Diagrams](../../SystemDesign/system-design-lectures/day-07-diagrams-and-architecture-communication.md)
+Functional requirements specify user-visible capabilities (e.g. "Create shortened link", "Redirect short URL"). Non-functional requirements (NFRs) quantify constraints: availability (99.99%), latency (p99 < 50ms), consistency model, and data retention duration.
+
+**2. The 4-step interview roadmap (45-minute breakdown)**
+
+- *Step 1: Scope & Clarify (5–7 min):* Establish boundaries, scale numbers, read/write ratios, and explicit out-of-scope features.
+- *Step 2: High-Level Architecture & APIs (10–12 min):* Define core endpoints, data models, and block diagrams showing end-to-end flow.
+- *Step 3: Deep Dive Core Components (15–18 min):* Address bottlenecks, database selection, partitioning keys, and caching policies.
+- *Step 4: Resilience & Bottlenecks (5–7 min):* Handle failover, rate limiting, monitoring, and single points of failure (SPOFs).
+
+**3. System boundaries and architectural diagrams (C4 model)**
+
+Clearly separate client tier, edge layer (DNS/CDN), API gateway, stateless microservices, async message queues, and persistent storage engines.
+
+```text
+[Client] -> [DNS/CDN] -> [Load Balancer] -> [API Gateway] -> [Stateless App Servers]
+                                                                    |          |
+                                                            [Cache / Redis]  [DB Primary/Replica]
+```
+
+[System design foundations](../../SystemDesign/system-design-lectures/day-01-system-design-foundations.md) | [Design interview method](../../SystemDesign/system-design-lectures/day-02-design-interview-method.md) | [Requirements and quality attributes](../../SystemDesign/system-design-lectures/day-03-requirements-and-quality-attributes.md) | [Diagrams and architecture communication](../../SystemDesign/system-design-lectures/day-07-diagrams-and-architecture-communication.md)
+
+## Capacity estimation, latency, and networking
+
+**1. Back-of-the-envelope calculation formulas**
+
+Convert scale metrics using standard powers of ten approximations: 1 day $\approx 86,400 \text{ s} \approx 10^5 \text{ s}$.
+
+```text
+QPS (Queries Per Second) = Total Daily Requests / 86,400 s
+Peak QPS                 = Average QPS * Peak Multiplier (typically 2x - 5x)
+Storage per Year         = Daily Writes * Average Payload Size * 365 days
+Bandwidth In/Out         = QPS * Request/Response Size
+```
+
+**2. Latency percentiles and Little's Law**
+
+Average latency conceals slow outlier requests. Monitor p95, p99, and p99.9 percentiles. Little's Law determines concurrent requests in flight: $L = \lambda \times W$ (Concurrency = Arrival Rate $\times$ Average Latency).
+
+```text
+Example: 10,000 QPS with 200ms (0.2s) average response time
+In-flight concurrent connections = 10,000 * 0.2 = 2,000 connections
+```
+
+**3. Networking protocols and request lifecycle**
+
+- *DNS:* Resolves domain name to IP; Anycast routes traffic to closest geographic point of presence.
+- *TCP / TLS 1.3:* Handshake establishes encrypted channel (1 RTT in TLS 1.3 vs 2 RTT in TLS 1.2).
+- *HTTP/1.1 vs HTTP/2 vs HTTP/3:* HTTP/1.1 suffers head-of-line blocking; HTTP/2 introduces binary multiplexing over single TCP connection; HTTP/3 uses QUIC (UDP) to eliminate TCP HOL blocking on packet loss.
+- *WebSockets:* Full-duplex persistent bidirectional TCP connection for real-time streaming.
+
+[Capacity estimation](../../SystemDesign/system-design-lectures/day-04-capacity-estimation.md) | [Latency and queues](../../SystemDesign/system-design-lectures/day-05-latency-throughput-and-queues.md) | [Networking and request lifecycle](../../SystemDesign/system-design-lectures/day-06-networking-and-request-lifecycle.md)
 
 ## Tricky points
 
-1. **Scope and requirements**
-	1.1 **Vague goals:** “Scale” or “high availability” needs a workload and measurable target.
-	1.2 **Solutions too early:** Choosing a database/cache before requirements can lock in the wrong constraints.
-2. **Estimation and communication**
-	2.1 **Averages:** Peak traffic and p95/p99 may be much more important than average load.
-	2.2 **Precision:** Rough estimates reveal orders of magnitude; they are not capacity guarantees.
-	2.3 **Diagram:** A box diagram without request/data flow does not explain the design.
+1. **Scoping and communication**
+   **1.1 Premature technology picking:** Choosing Kafka or Cassandra in the first 2 minutes before establishing write volume or data relations flags shallow engineering judgment.
+   **1.2 Unvalidated assumptions:** Never guess user traffic without verifying; say "Assuming 10M DAU with 10 reads per user per day, is this in line with your expectations?".
+
+2. **Estimation traps**
+   **2.1 Peak multiplier omission:** Provisioning hardware strictly for average daily QPS causes service outages during diurnal traffic spikes; always factor 2x to 5x peak multiplier.
+   **2.2 Secondary index storage:** Raw data storage is not total disk usage; add 20–50% overhead for B-tree indexes, replication copies (typically 3x), and database write-ahead logs (WAL).
+   **2.3 Tail latency amplification:** In fan-out microservice architectures, querying 50 backends in parallel means the client's p99 latency approaches the 99th percentile of the slowest single backend: $P(\text{all fast}) = 0.99^{50} \approx 60.5\%$.
