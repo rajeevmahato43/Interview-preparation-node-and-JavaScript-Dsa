@@ -7,42 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master **Depth-First Search (DFS)** graph exploration using both recursive call stack winding and iterative explicit heap stacks.
-- Enumerate, count, and isolate **Connected Components** across arbitrary disconnected undirected graphs using outer-loop sweeps.
-- Map implicit 2D matrices to graph models to solve grid traversal problems: **Number of Islands**, **Max Area of Island**, and **Flood Fill**.
-- Apply standardized direction offset vectors (`[[-1, 0], [1, 0], [0, -1], [0, 1]]`) with defensive out-of-bounds guards.
-- Weigh in-place matrix mutation ("sinking islands") against immutability and auxiliary memory allocations in high-concurrency Node.js microservices.
-- Model multi-tenant cloud blast radius boundaries and service partition isolation using connected component clustering.
-
----
-
 ## Prerequisites
 
 - [Day 21: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md) — Call stack limits, stack frames, and recursive winding/unwinding.
 - [Day 25: Grid Backtracking and N-Queens](day-25-grid-backtracking-and-n-queens.md) — 2D matrix coordinate navigation and boundary conditions.
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Adjacency list representation and vertex degrees.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Depth-First Search (DFS)** | A traversal strategy that plunges as deep as possible along each branch before backtracking. | Foundation for component discovery, topological ordering, and path-finding in $O(V + E)$ time. |
-| **Connected Component** | A maximal subgraph in an undirected graph where any two vertices are connected to each other by paths. | Enumerating components reveals isolated sub-networks and disconnected partitions. |
-| **Implicit Grid Graph** | Modeling an $M \times N$ matrix where each cell is a vertex and orthogonal adjacent cells are connected by edges. | Converts spatial matrix problems directly into graph traversal algorithms with $|V| = M \cdot N$. |
-| **Direction Offsets** | Constant coordinate delta tuples (`[[ -1, 0 ], [ 1, 0 ], [ 0, -1 ], [ 0, 1 ]]`) representing up, down, left, right. | Eliminates repetitive nested conditionals; standard clean code pattern in technical interviews. |
-| **In-Place Sinking** | Mutating visited cell values (e.g., `'1'` to `'0'`) to eliminate the auxiliary memory required by a `visited` set. | Reduces space from $O(M \cdot N)$ to $O(\text{call stack})$, but risks data corruption in concurrent architectures. |
-| **Outer Loop Sweep** | Iterating through all vertices $0 \le v < V$ and initiating a DFS only when $v$ is unvisited. | Necessary to visit every isolated component in disconnected graphs. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. DFS Traversal Mechanics on General Graphs
+## 1. DFS Traversal Mechanics on General Graphs
 
 **Depth-First Search (DFS)** traverses a graph by exploring outward along an edge until it hits a vertex with no unvisited outgoing edges, at which point it backtracks to explore remaining alternative paths. Unlike trees, graphs may contain multiple paths to the same node as well as cycles; an explicit **`visited` set or lookup table** is mandatory.
 
@@ -69,7 +41,11 @@ All reachable nodes explored!
 
 ---
 
-### 2. Identifying Connected Components via the Outer Loop Sweep
+## 2. Identifying Connected Components via the Outer Loop Sweep
+
+> **Outer Loop Sweep**: Iterating through all vertices $0 \le v < V$ and initiating a DFS only when $v$ is unvisited.
+
+> **Connected Component**: A maximal subgraph in an undirected graph where any two vertices are connected to each other by paths.
 
 A single DFS call from a starting vertex $v$ only explores the connected component containing $v$. If a graph consists of disconnected partitions, an outer loop must sweep through every vertex $0 \dots V - 1$.
 
@@ -140,7 +116,7 @@ console.log('Component count:', countComponents(6, edges)); // 3 (Components: {0
 
 ---
 
-### 3. The 2D Grid as an Implicit Graph: Number of Islands
+## 3. The 2D Grid as an Implicit Graph: Number of Islands
 
 In **Number of Islands** (LeetCode 200), we are given an $M \times N$ 2D binary grid of `'1'`s (land) and `'0'`s (water). An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.
 
@@ -224,7 +200,7 @@ console.log('Total islands found:', numIslands(map)); // 3
 
 ---
 
-### 4. Flood Fill and Max Area of Island
+## 4. Flood Fill and Max Area of Island
 
 1. **Max Area of Island** (LeetCode 695): Instead of just sinking the island, the recursive DFS returns the sum of all land cells in the component:
    $$\text{area}(r, c) = 1 + \sum_{(dr, dc)} \text{area}(r + dr, c + dc)$$

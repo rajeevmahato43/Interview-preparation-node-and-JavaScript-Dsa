@@ -7,42 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the two mathematical prerequisites for **Dynamic Programming (DP)**: **Optimal Substructure** and **Overlapping Subproblems**.
-- Compare the two canonical implementation paradigms: **Top-Down (Recursion + Memoization)** vs. **Bottom-Up (Iterative Tabulation)**.
-- Apply the **3-Step DP Formulation Framework**: State Definition, Recurrence Relation, and Base Cases.
-- Optimize auxiliary memory consumption from $O(n)$ full array storage down to $O(1)$ scalar state variables.
-- Connect memoization patterns to in-memory caching (LRU, Redis) and idempotent query optimization in Node.js backend services.
-- Prevent V8 stack overflow exceptions caused by deep recursive memoization on large input constraints.
-
----
-
 ## Prerequisites
 
 - [Day 04: Recursion and the Call Stack](day-04-recursion-and-the-call-stack.md) — Activation frames, base cases, and recursion trees.
 - [Day 21: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md) — Call stack limits, winding/unwinding phases, and trampolining.
 - [Day 45: Merge 'K' Sorted Lists and Task Scheduling](day-45-merge-k-sorted-lists-and-task-scheduling.md) — Divide-and-conquer subproblem decomposition.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Optimal Substructure** | The property where an optimal solution to a problem can be constructed directly from optimal solutions of its subproblems. | Without this, DP cannot guarantee mathematical optimality (Greedy or exhaustive search required). |
-| **Overlapping Subproblems** | A problem decomposition where the exact same sub-calculations repeat multiple times across different recursive branches. | The sole reason to cache or tabulate; transforms exponential $O(2^n)$ work into polynomial $O(n)$. |
-| **Top-Down (Memoization)** | Starting at the target state and recursively breaking it down, saving computed subproblem outputs in a hash table or array. | Intuitive to write from recursive thinking; only explores states strictly needed for the answer. |
-| **Bottom-Up (Tabulation)** | Starting at the smallest base cases and iteratively filling an array in topological dependency order until reaching the target. | Eliminates V8 call stack overhead; enables straightforward space reduction to $O(1)$ rolling variables. |
-| **State Definition** | The precise semantic meaning of `dp[i]` or `dp[i][j]` expressed in words before writing any code. | The foundation of all DP; getting the state definition wrong guarantees broken recurrence relations. |
-| **Space Optimization** | Replacing full $N$-element DP arrays with 2 or 3 scalar variables when transitions only reference immediate predecessors. | Reduces memory footprint from $O(N)$ to $O(1)$, preventing GC memory pressure in Node.js. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Anatomy of Dynamic Programming
+## 1. The Anatomy of Dynamic Programming
 
 **Dynamic Programming (DP)** is an algorithmic optimization technique that solves complex problems by breaking them down into simpler, overlapping subproblems, computing each subproblem's solution exactly once, and storing the results to eliminate redundant calculations.
 
@@ -67,7 +39,11 @@ With memoization or tabulation, once `fib(3)` is computed, its result is cached.
 
 ---
 
-### 2. Top-Down (Memoization) vs. Bottom-Up (Tabulation)
+## 2. Top-Down (Memoization) vs. Bottom-Up (Tabulation)
+
+> **Bottom-Up (Tabulation)**: Starting at the smallest base cases and iteratively filling an array in topological dependency order until reaching the target.
+
+> **Top-Down (Memoization)**: Starting at the target state and recursively breaking it down, saving computed subproblem outputs in a hash table or array.
 
 | Feature | Top-Down (Memoization) | Bottom-Up (Tabulation) |
 | :--- | :--- | :--- |
@@ -129,7 +105,7 @@ console.log('Fib(10) optimized:', fibOptimized(10)); // 55
 
 ---
 
-### 3. The 3-Step DP Formulation Framework
+## 3. The 3-Step DP Formulation Framework
 
 Every dynamic programming problem can be systematically decomposed using three rigorous steps:
 
@@ -170,7 +146,7 @@ console.log('Ways to climb 5 stairs:', climbStairs(5)); // 8
 
 ---
 
-### 4. Step-by-Step Execution Trace: Climbing Stairs Tabulation
+## 4. Step-by-Step Execution Trace: Climbing Stairs Tabulation
 
 ```text
 Input: n = 5
@@ -200,7 +176,7 @@ Space Complexity: 2 integer registers in scalar mode = O(1)
 
 ---
 
-### 5. Production Pattern: Bounded LRU Memoizer in Node.js
+## 5. Production Pattern: Bounded LRU Memoizer in Node.js
 
 To prevent memory leaks when applying top-down memoization across arbitrary inputs in long-lived Node.js microservices, wrap functions with a capacity-capped LRU (Least Recently Used) cache:
 
@@ -254,7 +230,6 @@ expensiveSquare(40); // Evicts 10 because capacity = 3
 expensiveSquare(10); // calls = 2 (Recomputed)
 console.log('Total executions with LRU bounds:', calls); // 4
 ```
-
 
 ---
 

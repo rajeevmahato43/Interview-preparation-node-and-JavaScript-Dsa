@@ -5,42 +5,13 @@
 [Previous: Binary Search on Rotated Arrays and Peaks](day-27-binary-search-rotated-arrays-and-peaks.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Recognize problems solvable via **Binary Search on the Answer / Solution Space**.
-- Formulate a monotonic boolean predicate function: `canComplete(speed)` or `isFeasible(capacity)`.
-- Derive optimal lower and upper search bounds to avoid unnecessary iterations or logical bugs.
-- Solve **Koko Eating Bananas** (LeetCode 875) in $O(n \log(\max(\text{piles})))$ time.
-- Solve **Capacity To Ship Packages Within D Days** (LeetCode 1011) using greedy load packing.
-- Apply solution-space search in Node.js to auto-tune ETL batch sizes and rate-limiter concurrency limits.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Complexity analysis of composite algorithms ($O(N \log R)$).
 - [Day 26: Binary Search Bounds and Intervals](day-26-binary-search-bounds-and-intervals.md) — Boundary conditions and convergence patterns.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Solution Space Search** | Binary searching across the numeric range of possible answers rather than an input array. | Solves complex optimization problems where validating an answer is easy ($O(n)$) but constructing it directly is hard. |
-| **Monotonic Predicate** | A boolean verification function $P(x)$ whose outputs transition monotonically across the domain (e.g., all `false` followed by all `true`). | The mathematical prerequisite that guarantees binary search can isolate the boundary in logarithmic time. |
-| **Capacity Lower Bound** | The smallest possible theoretical candidate value that cannot be violated by any single atomic item (e.g., `Math.max(...weights)`). | Initializing `left` below this bound results in impossible configurations and broken verification logic. |
-| **Capacity Upper Bound** | The worst-case maximum candidate value guaranteed to satisfy the condition trivially (e.g., `sum(weights)`). | Provides a safe starting `right` boundary that encloses the optimal solution. |
-| **Ceiling Division Invariant** | Computing $\lceil a / b \rceil$ using pure integer arithmetic: $\lfloor (a + b - 1) / b \rfloor$. | Prevents floating-point rounding errors when calculating time units or chunk counts. |
-
----
-
-## Core Concepts
-
-### 1. Searching the Answer Instead of the Input
+## 1. Searching the Answer Instead of the Input
 
 In traditional binary search, the input array must be sorted. In **Binary Search on the Solution Space**, the input array does not need to be sorted at all!
 Instead:
@@ -64,7 +35,7 @@ $$\text{Total Time} = O(\log(\text{Range})) \times O(\text{Validation Predicate}
 
 ---
 
-### 2. The 3-Step Solution Space Framework
+## 2. The 3-Step Solution Space Framework
 
 ```text
 Step 1: Establish Lower Bound (left)
@@ -100,7 +71,7 @@ return ans;
 
 ---
 
-### 3. Problem Study: Koko Eating Bananas (LeetCode 875)
+## 3. Problem Study: Koko Eating Bananas (LeetCode 875)
 
 Koko has $n$ `piles` of bananas, and the guards return in $h$ hours. In each hour, Koko eats up to $k$ bananas from a single pile. If the pile has fewer than $k$ bananas, she eats the entire pile and stops eating for that hour. Find the **minimum integer eating speed $k$** to finish all bananas within $h$ hours.
 
@@ -169,7 +140,7 @@ console.log(minEatingSpeed([30, 11, 23, 4, 20], 5)); // 30
 
 ---
 
-### 4. Problem Study: Capacity To Ship Packages Within D Days (LeetCode 1011)
+## 4. Problem Study: Capacity To Ship Packages Within D Days (LeetCode 1011)
 
 A conveyor belt carries packages with weights `weights[i]`. A ship must transport all packages in the given order within `days` days. Return the **minimum ship weight capacity**.
 
@@ -377,6 +348,8 @@ console.log("✅ All Split Array Largest Sum assertions passed successfully.");
 ## Cheat Sheet & Common Pitfalls
 
 ### Solution Space Search Template
+
+> **Solution Space Search**: Binary searching across the numeric range of possible answers rather than an input array.
 ```javascript
 let left = Math.max(...items);
 let right = items.reduce((a, b) => a + b, 0);

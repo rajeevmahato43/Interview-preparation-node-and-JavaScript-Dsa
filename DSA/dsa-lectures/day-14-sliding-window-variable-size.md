@@ -5,42 +5,12 @@
 [Previous: Sliding Window: Fixed Size](day-13-sliding-window-fixed-size.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Prefix Sum and Cumulative Totals](day-15-prefix-sum-and-range-queries.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the **Expand & Contract Invariant** governing variable-size sliding windows.
-- Prove why nested `while` loops inside a `for` loop maintain an amortized **$O(n)$ linear runtime** ($2n$ total pointer steps).
-- Implement **Longest Substring Without Repeating Characters** in $O(n)$ time using pointer index jumping.
-- Prevent the classic `Math.max(left, ...)` pointer regression bug when processing repeat characters.
-- Solve **Minimum Size Subarray Sum** by recording answers during window contraction.
-- Solve the **At-Most $K$ Distinct Elements** pattern and decompose exact count queries: $\text{Exact}(K) = \text{AtMost}(K) - \text{AtMost}(K - 1)$.
-- Optimize high-throughput string parsers in Node.js using fixed `Int32Array(128)` vectors to eliminate garbage collection pauses.
-
----
-
 ## Prerequisites
 
 - [Day 03: Strings and Text Patterns](day-03-strings-and-text-patterns.md) — String indexing and character codes.
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Map indexing and frequency tracking.
 - [Day 13: Sliding Window: Fixed Size](day-13-sliding-window-fixed-size.md) — State transition fundamentals.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Variable Sliding Window** | A contiguous subsegment whose boundaries expand and contract dynamically according to validity conditions. | Solves constraint optimization problems (e.g., shortest valid or longest valid subarray) in linear time. |
-| **Amortized Linear Scan** | An algorithm with nested loops where inner operations cumulatively execute at most $n$ times across the outer loop's lifecycle. | Guarantees $O(2n) = O(n)$ overall runtime despite the syntactic appearance of nested iteration. |
-| **Index Jumping** | Advancing the `left` boundary directly past a duplicate element's recorded index using a `Map` rather than stepping sequentially. | Skips redundant intermediate checks, minimizing instruction counts in string parsing. |
-| **Pointer Regression Bug** | A bug where `left` jumps backward to a character's index that fell outside the active window. | Prevented by wrapping jump destinations in `left = Math.max(left, lastSeen.get(char) + 1)`. |
-| **At-Most $K$ Decomposition** | The mathematical equivalence: $\text{Exact}(K) = \text{AtMost}(K) - \text{AtMost}(K - 1)$. | Converts non-monotonic exact count constraints into monotonic sliding-window ranges. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -65,7 +35,7 @@ By the end of this lecture, you should be able to:
      p w [w k e w]       ──> Invalid ('w' duplicate) -> Contract left past first 'w'...
 ```
 
-### 1. The Variable Window Expand / Contract Rhythm
+## 1. The Variable Window Expand / Contract Rhythm
 
 While fixed-size windows maintain a constant width $k$, a **variable-size window** dynamically adapts:
 - **`right` pointer (Expansion):** Moves forward monotonically on every iteration, absorbing elements to satisfy or test constraints.
@@ -79,7 +49,7 @@ Though the code features a `while` loop nested inside a `for` loop, the `left` p
 
 ---
 
-### 2. The Universal Variable Window Blueprints
+## 2. The Universal Variable Window Blueprints
 
 The placement of the answer-update step depends on whether you are maximizing or minimizing the window length:
 
@@ -129,7 +99,7 @@ function shortestWindowTemplate(arr, target) {
 
 ---
 
-### 3. Pointer Jumping & The Pointer Regression Trap
+## 3. Pointer Jumping & The Pointer Regression Trap
 
 In *Longest Substring Without Repeating Characters*, rather than incrementing `left` by 1 iteratively, we can store the **last seen index** of each character in a `Map`. When a duplicate is detected at `right`, `left` can jump directly to `lastSeen.get(char) + 1`.
 
@@ -172,7 +142,7 @@ console.log("Longest non-repeating in 'abba':", lengthOfLongestSubstring("abba")
 
 ---
 
-### 4. Step-by-Step Trace: `lengthOfLongestSubstring("abcabcbb")`
+## 4. Step-by-Step Trace: `lengthOfLongestSubstring("abcabcbb")`
 
 | `right` | `char` | Last Seen Index | `left` Calculation | Active Window | Window Length (`R - L + 1`) | `maxLength` |
 |---|---|---|---|---|---|---|
@@ -190,7 +160,7 @@ console.log("Longest non-repeating in 'abba':", lengthOfLongestSubstring("abba")
 
 ---
 
-### 5. Node.js Backend Application: Zero-Allocation ASCII Stream Parsing
+## 5. Node.js Backend Application: Zero-Allocation ASCII Stream Parsing
 
 In high-throughput HTTP proxying and protocol parsing (e.g., scanning raw header lines or session identifiers), using a `Map` creates short-lived heap nodes that trigger garbage collector scavenges.
 
@@ -376,6 +346,8 @@ Let's trace `"abba"` step-by-step without `Math.max`:
 ---
 
 ### 2. Why does a variable sliding window maintain an $O(n)$ time complexity despite having a `while` loop nested inside a `for` loop?
+
+> **Variable Sliding Window**: A contiguous subsegment whose boundaries expand and contract dynamically according to validity conditions.
 
 **Question:** Prove that the time complexity of a variable sliding window algorithm is amortized $O(n)$.
 

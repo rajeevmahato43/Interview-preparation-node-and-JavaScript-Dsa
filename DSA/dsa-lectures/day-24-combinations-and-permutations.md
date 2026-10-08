@@ -5,44 +5,19 @@
 [Previous: Subsets and Power Sets](day-23-subsets-and-power-sets.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Grid Backtracking: Word Search, Maze Paths, and N-Queens](day-25-grid-backtracking-and-n-queens.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Contrast the structural mechanics of **Combinations** (order does not matter $\to$ forward index progression) and **Permutations** (order matters $\to$ visited tracking).
-- Implement **Combination Sum I** (unlimited element reuse) and **Combination Sum II** (single-use with duplicates).
-- Apply **Ascending Sort Pruning** (`break` instead of `continue`) to terminate sum-matching loops early.
-- Solve **Permutations I** using boolean tracking arrays and evaluate in-place swapping alternatives.
-- Solve **Permutations II** by enforcing the `!used[i - 1]` invariant to eliminate duplicate sibling branches.
-- Prevent memory exhaustion in Node.js backend task schedulers using ES6 Generators to stream factorial permutations.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Factorial ($O(n!)$) and combinatorial ($O(2^n)$) growth rates.
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Numeric array sorting.
 - [Day 22: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md) — Choose, explore, and unchoose mechanics.
 - [Day 23: Subsets and Power Sets](day-23-subsets-and-power-sets.md) — Horizontal duplicate skipping.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Combinations vs Permutations: Structural Divergence
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Combination** | An unordered selection of $k$ elements chosen from a set of $n$ elements without regard to arrangement ($\binom{n}{k}$). | Modeled using advancing index pointers (`startIndex`) to prevent duplicate arrangements. |
-| **Permutation** | An ordered arrangement of $n$ elements where distinct orderings constitute unique solutions ($n!$). | Modeled by looping across all indices ($0 \dots n - 1$) with a `used` boolean tracker. |
-| **Element Reuse Invariant** | Passing current index $i$ into recursive calls rather than $i + 1$, allowing unbounded selection of the same element. | Solves unbounded coin-change and target-sum problems (Combination Sum I). |
-| **Ascending Break Pruning** | Terminating loop execution (`break`) when candidates are pre-sorted and candidate value exceeds the remaining target. | Prunes entire subtrees of larger elements rather than testing them individually. |
-| **Multiset Duplicate Pruning** | Skipping identical values if their immediate predecessor was not chosen in the active branch (`!used[i - 1]`). | Ensures identical duplicate values are chosen in strict left-to-right relative order, eliminating duplicate permutations. |
+> **Permutation**: An ordered arrangement of $n$ elements where distinct orderings constitute unique solutions ($n!$).
 
----
-
-## Core Concepts
-
-### 1. Combinations vs Permutations: Structural Divergence
+> **Combination**: An unordered selection of $k$ elements chosen from a set of $n$ elements without regard to arrangement ($\binom{n}{k}$).
 
 The distinction between Combinations and Permutations lies in whether **relative order creates distinct outcomes**.
 
@@ -86,7 +61,7 @@ Total = 3! = 6 Permutations
 
 ---
 
-### 2. Combination Sum: Reusable Elements vs Duplicates
+## 2. Combination Sum: Reusable Elements vs Duplicates
 
 #### Combination Sum I (LeetCode 39): Reusing Elements
 - **Rules**: Candidates can be chosen **unlimited times** to sum to `target`. All candidate values are positive and distinct.
@@ -146,7 +121,7 @@ console.log(combinationSum([2, 3, 6, 7], 7)); // [[2, 2, 3], [7]]
 
 ---
 
-### 3. Permutations I: Visited Tracking via `used` Array
+## 3. Permutations I: Visited Tracking via `used` Array
 
 In **Permutations I** (distinct elements), every element must appear exactly once in each arrangement.
 
@@ -192,7 +167,7 @@ console.log(permute([1, 2, 3])); // Generates all 3! = 6 permutations
 
 ---
 
-### 4. Permutations II: The `!used[i - 1]` Duplicate Pruning Invariant
+## 4. Permutations II: The `!used[i - 1]` Duplicate Pruning Invariant
 
 When the input array contains duplicate values (e.g., `[1, 1, 2]`), naive permutation generation produces duplicate arrangements.
 The total number of unique permutations of a multiset is given by:

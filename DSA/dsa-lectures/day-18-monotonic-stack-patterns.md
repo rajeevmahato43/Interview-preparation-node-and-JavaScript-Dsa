@@ -5,41 +5,12 @@
 [Previous: Valid Parentheses and Expression Parsing](day-17-valid-parentheses-and-expressions.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Queue Fundamentals, Circular Queues, and Deque](day-19-queue-circular-queue-and-deque.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Identify the **Monotonic Stack Pattern** for solving "Next Greater Element" and "Previous Smaller Element" problems.
-- Prove why maintaining strict monotonic order guarantees an aggregate $O(n)$ runtime despite nested loops ($2n$ total operations).
-- Explain why storing **indices rather than values** is mandatory for distance calculations and output lookups.
-- Solve **Daily Temperatures** and **Online Stock Span** using monotonic stacks.
-- Process circular arrays in **Next Greater Element II** using modulo indexing ($2n - 1$) and single-pass push invariants.
-- Solve **Largest Rectangle in Histogram** in $O(n)$ time using boundary limits and sentinel values.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Amortized analysis and complexity bounds.
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO primitives and array stack mechanics.
 - [Day 17: Valid Parentheses and Expression Parsing](day-17-valid-parentheses-and-expressions.md) — Invariant-based stack state management.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Monotonic Stack** | A stack whose elements are maintained in strictly increasing or strictly decreasing order. | Solves range lookups (e.g., next greater element) in $O(n)$ time rather than $O(n^2)$ pairwise scans. |
-| **Monotonic Decreasing Stack** | A stack where elements decrease from bottom to top; popped by elements strictly greater than the top. | Identifies the Next Greater Element for all popped values in real time. |
-| **Monotonic Increasing Stack** | A stack where elements increase from bottom to top; popped by elements strictly smaller than the top. | Identifies the Next Smaller Element or boundaries in histogram problems. |
-| **Amortized Stack Bound** | The property that each of $n$ elements enters the stack once and exits at most once. | Proves that nested `while` loops execute at most $2n$ total operations across the entire algorithm. |
-| **Sentinel Element** | A dummy value (e.g., height `0` or index `-1`) appended to an array to flush remaining stack elements. | Eliminates cleanup loops and prevents elements from being stranded on monotonic stacks. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -58,7 +29,9 @@ By the end of this lecture, you should be able to:
   4. Push 75 ──> New Stack State: [ 100, 80, 75 ]
 ```
 
-### 1. Monotonic Stack Ordering and Classification
+## 1. Monotonic Stack Ordering and Classification
+
+> **Monotonic Stack**: A stack whose elements are maintained in strictly increasing or strictly decreasing order.
 
 A Monotonic Stack maintains sorted ordering among its elements:
 1. **Monotonic Decreasing Stack (Bottom to Top):**
@@ -72,7 +45,7 @@ A Monotonic Stack maintains sorted ordering among its elements:
 
 ---
 
-### 2. The Amortized $O(n)$ Proof
+## 2. The Amortized $O(n)$ Proof
 
 Monotonic stack code features a `while` loop nested inside a `for` loop:
 ```javascript
@@ -92,7 +65,7 @@ for (let i = 0; i < n; i++) {
 
 ---
 
-### 3. Store Indices, Never Values
+## 3. Store Indices, Never Values
 
 In almost all monotonic stack problems, **always store indices `i` on the stack instead of values `arr[i]`**:
 1. You can always retrieve the value from the index: `arr[stackTop]`.
@@ -143,7 +116,7 @@ console.log("Daily Temperatures:", dailyTemperatures([73, 74, 75, 71, 69, 72, 76
 
 ---
 
-### 4. Circular Arrays: Next Greater Element II
+## 4. Circular Arrays: Next Greater Element II
 
 In a circular array, elements wrap around from the end back to index 0.
 

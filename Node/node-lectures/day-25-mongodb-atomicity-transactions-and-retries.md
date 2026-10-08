@@ -6,44 +6,19 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Differentiate single-document atomicity guarantees from multi-document ACID transactions across replica sets.
-- Execute multi-document transactions using `ClientSession` and the `session.withTransaction()` helper with automatic retry handling.
-- Propagate the `{ session }` context parameter reliably to every database operation within a transactional boundary.
-- Configure Read Concern (`snapshot`, `majority`) and Write Concern (`w: 'majority'`, `j: true`) to balance consistency and latency.
-- Handle transient concurrency conflicts (`TransientTransactionError`) and commit timeouts (`UnknownTransactionCommitResult`) gracefully.
-- Bridge the architectural gap between database-level ACID transactions and application-level HTTP request idempotency.
-
----
-
 ## Prerequisites
 
 Before diving into transactions and atomicity, review:
 - [Day 18: API Contracts, Pagination, and Idempotency](day-18-api-contracts-pagination-and-idempotency.md) for idempotency key lifecycles.
 - [Day 21: MongoDB Driver Lifecycle and BSON](day-21-mongodb-driver-lifecycle-and-bson.md) for replica sets and `MongoClient` pooling.
 - [Day 22: MongoDB CRUD from Node](day-22-mongodb-crud-from-node.md) for single-document atomic update operators.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Single-Document Atomicity**| A guarantee that any write operation modifying a single document (including nested subdocuments and arrays) is fully atomic in WiredTiger. | Wrapping simple single-document updates in multi-document transactions, incurring unnecessary lock and network latency overhead. |
-| **`ClientSession`** | A driver abstraction representing an active logical session on the MongoDB cluster, required for tracking transactions. | Omitting `{ session }` in one of the queries inside a transaction callback, causing that write to execute outside the transaction. |
-| **`withTransaction()`** | A higher-order driver helper that manages transaction start, commit, abort, and automatic retries for transient errors. | Writing manual `startTransaction()` / `commitTransaction()` loops without handling `TransientTransactionError` retries. |
-| **Read Concern `snapshot`** | A read isolation level providing a consistent, point-in-time snapshot view across multiple collections in a transaction. | Using dirty reads inside financial transactions; reading data modified by concurrent in-flight transactions. |
-| **Write Concern `w: 'majority'`**| A write guarantee that the transaction will not acknowledge until written to a majority of replica set nodes. | Committing transactions with `w: 1` in mission-critical billing flows; risking data rollback if the primary node crashes before replication. |
-| **`TransientTransactionError`**| An error label indicating that a transaction was aborted due to temporary lock contention or primary election, and can be safely retried. | Treating write conflicts as permanent failures and returning 500 errors to clients instead of retrying the transaction. |
-
 ---
 
 ## Core Concepts
 
 ### 1. Single-Document Atomicity vs Multi-Document Transactions
+
+> **Single-Document Atomicity**: A guarantee that any write operation modifying a single document (including nested subdocuments and arrays) is fully atomic in WiredTiger.
 
 In MongoDB's WiredTiger storage engine, any modification affecting a single document is **naturally atomic**:
 
@@ -624,6 +599,8 @@ The query without `{ session }` executes as an **independent, non-transactional 
 This results in silent data corruption and broken invariants. Every single database command within `withTransaction` must explicitly include `{ session }`.
 
 ### 3. What is the difference between a `TransientTransactionError` and an `UnknownTransactionCommitResult`, and how does `session.withTransaction()` handle them?
+
+> **`TransientTransactionError`**: An error label indicating that a transaction was aborted due to temporary lock contention or primary election, and can be safely retried.
 
 Both error labels represent transient failure modes in distributed MongoDB transactions:
 

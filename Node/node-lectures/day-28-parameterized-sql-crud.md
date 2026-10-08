@@ -6,39 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish the PostgreSQL Extended Query Protocol (`Parse`, `Bind`, `Execute`) from Simple Query string interpolation to permanently eliminate SQL injection vulnerabilities.
-- Architect high-throughput CRUD repositories in Node.js using parameterized placeholders (`$1, $2, ...`) and dynamic query building without sacrificing safety.
-- Leverage `RETURNING` clauses on `INSERT`, `UPDATE`, and `DELETE` operations to eliminate redundant roundtrips and avoid read-after-write race conditions.
-- Configure `node-postgres` type parsers (`pg.types`) to handle `BIGINT` (INT8) string serialization, `TIMESTAMPTZ`, JSONB, and PostgreSQL native array conversions safely within JavaScript's IEEE 754 number limits.
-- Handle multi-row batch inserts via parameterized multi-row `VALUES` and the relational `UNNEST($1::type[])` pattern.
-- Implement atomic UPSERT operations using `ON CONFLICT (key) DO UPDATE` / `DO NOTHING` to prevent concurrent insert race conditions.
-- Translate PostgreSQL error codes (`23505`, `23503`, `23502`, `23514`) into domain-driven HTTP responses (`409 Conflict`, `400 Bad Request`, `404 Not Found`).
-
----
-
 ## Prerequisites
 
 - [Day 27: PostgreSQL and `pg` Pool Lifecycle](day-27-postgresql-and-pg-pool-lifecycle.md) — Connection pools, checkouts, idle timeouts, and client lifecycle management.
 - [Day 16: Express Input Parsing, Validation, and Serialization](day-16-express-input-validation-and-serialization.md) — Request validation schemas, sanitization, and data projection boundaries.
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) — Operational exception mapping and RFC 7807 problem details.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Extended Query Protocol** | A PostgreSQL wire protocol dividing query execution into `Parse`, `Bind`, `Describe`, and `Execute` message phases. | Separates query AST compilation from untrusted scalar inputs, rendering SQL injection structurally impossible. |
-| **Parameterized Placeholder (`$n`)** | Positional variable placeholders (`$1`, `$2`, ...) in PostgreSQL statements referencing indexed values in an execution array. | Instructs PostgreSQL to treat values purely as typed literal data rather than executable SQL grammar tokens. |
-| **`RETURNING` Clause** | SQL syntax instructing the database engine to project modified rows directly in the DML operation's response envelope. | Eliminates read-after-write query roundtrips, prevents concurrency anomalies, and retrieves database-computed defaults atomically. |
-| **SQLSTATE Code** | A standardized 5-character alphanumeric error classification emitted by PostgreSQL (e.g., `23505` for Unique Violation). | Allows reliable programmatic classification of schema rule violations without brittle string pattern matching on error messages. |
-| **`pg.types` OID Parser** | The type deserialization registry in `node-postgres` mapping PostgreSQL type Object Identifiers (OIDs) to JavaScript transformers. | Controls automatic JSON decoding, Date parsing, and safeguards 64-bit integer (`INT8`) conversions from floating-point rounding errors. |
-| **`UNNEST` Array Pattern** | A PostgreSQL set-returning function expanding array parameters into relational table rows: `UNNEST($1::uuid[], $2::text[])`. | Enables bulk batch insertions with a constant number of bind parameters, preventing statement text bloat and parameter count limit overflow. |
-
 ---
 
 ## Core Concepts
@@ -69,6 +41,8 @@ By the end of this lecture, you should be able to:
 ```
 
 ### 1. Parameterized Queries and the Extended Query Protocol
+
+> **Extended Query Protocol**: A PostgreSQL wire protocol dividing query execution into `Parse`, `Bind`, `Describe`, and `Execute` message phases.
 
 A parameterized query is a database interaction pattern where SQL statement templates containing positional placeholders (`$1`, `$2`) are transmitted separately from user-provided input values over the network protocol. 
 
@@ -118,6 +92,8 @@ export async function safeFindUserByEmail(pool, untrustedEmail) {
 ---
 
 ### 2. DML Operations and the `RETURNING` Clause
+
+> **`RETURNING` Clause**: SQL syntax instructing the database engine to project modified rows directly in the DML operation's response envelope.
 
 The `RETURNING` clause is a PostgreSQL SQL extension that directs `INSERT`, `UPDATE`, and `DELETE` commands to immediately output the columns of modified tuples in the command's result stream.
 

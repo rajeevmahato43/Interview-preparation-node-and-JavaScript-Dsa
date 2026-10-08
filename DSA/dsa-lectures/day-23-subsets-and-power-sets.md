@@ -5,43 +5,16 @@
 [Previous: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Combinations and Permutations](day-24-combinations-and-permutations.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain the mathematical derivation proving why an $n$-element set has exactly $2^n$ distinct subsets in its **Power Set**.
-- Implement **Subsets I** (unique elements) using both the Include/Exclude binary choice model and the Loop-based forward index model.
-- Solve **Subsets II** (containing duplicate numbers) by sorting elements and applying horizontal duplicate pruning (`i > startIndex`).
-- Differentiate between vertical recursive descent (choosing identical values at deeper levels) and horizontal branching (skipping identical sibling values).
-- Compare recursive backtracking with **Bit Manipulation** ($1 \ll n$) and identify JavaScript 32-bit integer overflow hazards.
-- Apply subset modeling to Node.js authorization engines, including Role-Based Access Control (RBAC) and permission flags.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Exponential growth rates ($O(2^n)$).
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Numeric array sorting with comparators.
 - [Day 22: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md) — State mutation, undo, and snapshotting.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The Power Set Mathematical Model
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Power Set** | The set of all possible subsets of a set $S$, including the empty set $\emptyset$ and $S$ itself, with cardinality $2^{|S|}$. | Establishes the exact size of the solution space when evaluating all feature or permission configurations. |
-| **Forward Index (`startIndex`)** | A parameter restricting subsequent choices to indices strictly greater than or equal to the current index. | Prevents duplicate combinations across permutations (e.g., generates `[1, 2]` but excludes `[2, 1]`). |
-| **Horizontal Pruning** | Skipping duplicate elements when branching across the same decision depth (`i > startIndex && nums[i] === nums[i - 1]`). | Eliminates identical duplicate subsets without allocating expensive secondary HashSets. |
-| **Vertical Descent** | The recursive progression into deeper stack frames (`i + 1`), allowing identical values from distinct indices to coexist in a single subset. | Allows valid duplicate groupings (such as `[2, 2]` from `[1, 2, 2]`) while blocking redundant sibling trees. |
-| **Bitmask Enumeration** | Mapping each subset to an integer where the $k$-th bit indicates the inclusion or exclusion of the $k$-th element. | Offers an $O(1)$ stack overhead iterative alternative for inputs of size $n \le 30$. |
-
----
-
-## Core Concepts
-
-### 1. The Power Set Mathematical Model
+> **Power Set**: The set of all possible subsets of a set $S$, including the empty set $\emptyset$ and $S$ itself, with cardinality $2^{
 
 A set with $n$ elements yields exactly **$2^n$ subsets**.
 
@@ -83,7 +56,7 @@ Model 2: Loop-Based Forward Index (N-ary Tree)
 
 ---
 
-### 2. Subsets I: All Intermediate Nodes Are Valid
+## 2. Subsets I: All Intermediate Nodes Are Valid
 
 In permutation problems, only leaf nodes containing all $n$ elements represent valid solutions. In **Subset problems**, **every single node in the recursion tree is a valid subset**.
 
@@ -122,7 +95,9 @@ console.log(subsets([1, 2, 3]));
 
 ---
 
-### 3. Subsets II: Handling Duplicates via Horizontal Pruning
+## 3. Subsets II: Handling Duplicates via Horizontal Pruning
+
+> **Horizontal Pruning**: Skipping duplicate elements when branching across the same decision depth (`i > startIndex && nums[i] === nums[i - 1]`).
 
 When the input array contains duplicate elements (e.g., `[1, 2, 2]`), a naive backtracking search generates duplicate subsets because the first `2` and the second `2` generate identical subtrees.
 
@@ -208,7 +183,7 @@ console.log("Correct [1, 2, 2]:", subsetsWithDup([1, 2, 2]));       // Correct 6
 
 ---
 
-### 4. Bitmasking vs Recursive Backtracking
+## 4. Bitmasking vs Recursive Backtracking
 
 Every subset of an $n$-element collection corresponds to a unique integer bitmask in the range $[0, 2^n - 1]$. The $k$-th bit of the integer indicates whether `nums[k]` is included (`1`) or excluded (`0`).
 

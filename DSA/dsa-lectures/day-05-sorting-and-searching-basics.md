@@ -5,43 +5,12 @@
 [Previous: Recursion and Call Stack](day-04-recursion-and-call-stack.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Differentiate between linear search ($O(n)$) and binary search ($O(\log n)$), selecting the appropriate technique based on order invariants.
-- Implement overflow-safe binary search with precise loop boundaries (`left <= right`) and derive insertion points.
-- Explain the mechanics of V8's native `Array.prototype.sort()` engine (TimSort) and its performance guarantees.
-- Avoid the default lexicographical sorting trap and implement robust, transitive comparator functions.
-- Prevent unintended in-place array mutations using ES2023 `toSorted()` or shallow copy methods.
-- Evaluate sort stability and design multi-attribute sorting workflows.
-- Architect high-scale sorting pipelines: deciding between database-level B-Tree indexing, Node.js event-loop sorting, and External Merge Sort for datasets exceeding RAM.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic bounds ($O(\log n)$ vs $O(n)$ vs $O(n \log n)$).
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Divide-and-conquer recursion and stack frame limits.
 - [JS Day 12: Built-in Data Structures](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md) — Array methods and mutating operations.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Binary Search** | An $O(\log n)$ search algorithm that repeatedly halves a monotonically ordered search interval. | Requires pre-sorted data; reduces 1,000,000 element scans to at most 20 comparison steps. |
-| **Comparator Function** | A callback function `(a, b)` returning $< 0$, $0$, or $> 0$ defining strict weak ordering between two elements. | Without a numeric comparator, JavaScript coerces numbers to UTF-16 strings, sorting `"10"` before `"2"`. |
-| **In-Place Mutation** | Modifying an existing data structure directly in its allocated memory addresses without creating a new copy. | `arr.sort()` mutates the source array; mutating shared cache arrays corrupts server state. |
-| **Sort Stability** | A guarantee that elements with equal sort keys maintain their relative pre-sort sequence. | Preserves secondary ordering (e.g., sorting users by department while keeping earlier name sorting intact). |
-| **TimSort** | V8's hybrid sorting algorithm combining Merge Sort and Insertion Sort. | Stable, adaptive sorting running in $O(n \log n)$ worst case and $O(n)$ on nearly-sorted arrays. |
-| **External Merge Sort** | A two-phase sorting algorithm that sorts large chunks on disk and merges them via streaming buffers and Min-Heaps. | Enables sorting 50 GB log files on Node.js servers constrained to 1 GB heap limits. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -59,7 +28,9 @@ By the end of this lecture, you should be able to:
      Step 3: left=4, right=4, mid=4 (val=9)  --> Found at index 4!
 ```
 
-### 1. Linear Search vs Binary Search
+## 1. Linear Search vs Binary Search
+
+> **Binary Search**: An $O(\log n)$ search algorithm that repeatedly halves a monotonically ordered search interval.
 
 Linear search tests every element sequentially from index $0$ to $n-1$. It requires zero prior knowledge or ordering constraints.
 
@@ -109,7 +80,7 @@ console.log("Found 40:", binarySearch(numbers, 40));         // -1
 
 ---
 
-### 2. JavaScript `sort()` Traps: Lexicographical Coercion and Mutation
+## 2. JavaScript `sort()` Traps: Lexicographical Coercion and Mutation
 
 `Array.prototype.sort()` possesses two runtime behaviors that frequently cause production bugs.
 
@@ -161,7 +132,11 @@ console.log(freshConfig); // [40, 10, 30] -> Unchanged
 
 ---
 
-### 3. Sort Stability and TimSort in V8
+## 3. Sort Stability and TimSort in V8
+
+> **TimSort**: V8's hybrid sorting algorithm combining Merge Sort and Insertion Sort.
+
+> **Sort Stability**: A guarantee that elements with equal sort keys maintain their relative pre-sort sequence.
 
 A sorting algorithm is **stable** if elements with equivalent comparison keys preserve their original relative positioning after sorting.
 
@@ -183,7 +158,7 @@ In Node.js (V8 engine), this is implemented using **TimSort**, a hybrid algorith
 
 ---
 
-### 4. Merge Sort: Divide-and-Conquer Implementation
+## 4. Merge Sort: Divide-and-Conquer Implementation
 
 Merge Sort splits an array recursively into single-element subarrays, then merges adjacent sorted lists into larger sorted sequences.
 
@@ -241,7 +216,7 @@ console.log(mergeSort([38, 27, 43, 3, 9, 82, 10]));
 
 ---
 
-### 5. Architectural Decision: Node.js vs Database Sorting
+## 5. Architectural Decision: Node.js vs Database Sorting
 
 | Criterion | In-Memory Node.js `arr.sort()` | Database `ORDER BY` (e.g., PostgreSQL) |
 |---|---|---|
@@ -272,8 +247,8 @@ function searchInsert(nums, target) {
 
   while (left <= right) {
     const mid = left + Math.floor((right - left) / 2);
-    if (nums[mid] === target) return mid;
-    if (nums[mid] < target) left = mid + 1;
+    if (nums=== target) return mid;
+    if (nums< target) left = mid + 1;
     else right = mid - 1;
   }
 

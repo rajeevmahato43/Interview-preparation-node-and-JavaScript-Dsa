@@ -6,24 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Explain what the libuv event loop is and how it coordinates asynchronous non-blocking I/O on a single JavaScript thread.
-- Detail the exact responsibilities, execution order, and exit conditions of all six libuv loop phases.
-- Differentiate between the two microtask queues (`process.nextTick` and ECMAScript Promises) and predict when microtask checkpoints drain.
-- Explain why the execution order between `setTimeout(fn, 0)` and `setImmediate(fn)` is non-deterministic at the top level but strictly deterministic inside an I/O callback.
-- Understand the Node.js 20+ libuv timer refactor and how it affects loop iteration checkpoints.
-- Trace the complete lifecycle of an asynchronous operation from JavaScript invocation through OS/thread pool delegation to callback dispatch.
-- Identify and prevent event loop starvation caused by synchronous execution blocks and recursive microtask queues.
-- Partition CPU-intensive work across event loop iterations using cooperative chunking with `setImmediate()`.
-- Measure production event loop lag using the built-in `node:perf_hooks` module.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be comfortable with:
@@ -34,34 +16,19 @@ Before studying this lecture, you should be comfortable with:
 - [Day 03: Modules, Packages, and Resolution](day-03-modules-packages-and-resolution.md) explores synchronous module evaluation on the main thread.
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) demonstrates non-blocking data streaming through the Poll phase.
 - [Day 11: Worker Threads and Child Processes](day-11-worker-threads-and-child-processes.md) provides true hardware parallelism for CPU workloads that cannot be safely partitioned.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **Event Loop** | A semi-infinite control loop managed by libuv that collects OS events and pushes queued callbacks onto V8's call stack. |
-| **Call Stack** | The V8 execution stack where synchronous JavaScript functions and active callbacks run to completion. |
-| **Microtask Checkpoint** | A synchronization point occurring whenever the call stack empties, where `nextTick` and Promise queues drain completely. |
-| **`process.nextTick` Queue** | A Node.js-internal queue that drains immediately before any Promise jobs or event loop phases. |
-| **Promise Microtask Queue** | The ECMAScript standard job queue executing `.then()`, `.catch()`, `.finally()`, and resumed `async/await` continuations. |
-| **Timers Phase** | The libuv loop phase that executes callbacks for expired `setTimeout()` and `setInterval()` timers. |
-| **Poll Phase** | The core libuv phase that retrieves OS I/O events, executes ready I/O callbacks, and blocks to wait if no work is pending. |
-| **Check Phase** | The libuv phase dedicated exclusively to executing callbacks scheduled via `setImmediate()`, running directly after Poll. |
-| **Close Callbacks Phase** | The libuv phase that handles resource destruction callbacks, such as `socket.on('close', ...)`. |
-| **Event Loop Starvation** | A condition where long synchronous tasks or recursive microtasks block the thread, preventing I/O and timers from running. |
-| **Event Loop Lag** | The delay between when an asynchronous callback was scheduled to run and when it actually executes on the main thread. |
-
 ---
 
 ## 1. What is the Event Loop?
+
+> **Event Loop**: A continuous coordination loop managed by libuv that collects OS I/O events and pushes completed callbacks onto V8's call stack when it is empty.
 
 The **event loop** is a continuous loop provided by libuv that monitors asynchronous tasks and moves their completed callbacks onto JavaScript's call stack when the stack is empty.
 
 JavaScript executes on a single main thread using a **Run-to-Completion** model: once a function starts executing on V8's call stack, it runs until it finishes without interruption. JavaScript itself has no native concept of network sockets, timers, or disk files. Libuv wraps around V8, delegating external operations to the operating system kernel or background threads, and dispatching callbacks back to JavaScript as events complete.
 
 ### Single-Threaded JavaScript vs. Multi-Threaded Node.js
+
+> **Call Stack**: The V8 execution stack where synchronous JavaScript functions and active callbacks run to completion.
 
 While your JavaScript application code executes on a single main thread, Node.js itself runs multiple threads under the hood:
 - **Main JavaScript Thread:** Runs synchronous code, evaluates microtasks, and executes active callbacks.
@@ -166,6 +133,8 @@ When libuv runs an iteration of the event loop, it moves through six distinct ph
 ```
 
 ### 2.1 Timers Phase
+> **Timers Phase**: The libuv loop phase that executes callbacks for expired `setTimeout()` and `setInterval()` timers.
+
 The **Timers phase** runs callbacks scheduled by `setTimeout()` and `setInterval()` whose delay threshold has passed.
 - **Threshold check:** Timers specify a *minimum elapsed delay*, not a guaranteed execution time. Libuv compares current loop time against a binary min-heap of active timers.
 - **The 1ms Delay Clamp:** Passing `0`, negative values, or non-numbers (`setTimeout(fn, 0)`) is automatically clamped by Node.js to `1ms` (`setTimeout(fn, 1)`).
@@ -179,6 +148,8 @@ The **Idle and Prepare phase** runs internal libuv bookkeeping routines before p
 - **Internal only:** Application JavaScript code cannot queue callbacks into this phase; it is used solely by libuv to calibrate internal state.
 
 ### 2.4 Poll Phase
+> **Poll Phase**: The central libuv phase that retrieves OS I/O events, executes ready I/O callbacks, and blocks to wait if no work is pending.
+
 The **Poll phase** queries the operating system for new network and file events, runs ready I/O callbacks, and calculates how long to sleep if no work is pending.
 - **OS & libuv Boundary:** HTTP and TCP operations do not execute inside the event loop itself. The OS kernel monitors sockets using non-blocking primitives (`epoll` on Linux, `kqueue` on macOS, `IOCP` on Windows). When network packets arrive, the OS wakes libuv, which enters the Poll phase to dispatch the JavaScript callback.
 - **Decision Logic upon entering Poll:**
@@ -219,10 +190,14 @@ The **Poll phase** queries the operating system for new network and file events,
 ```
 
 ### 2.5 Check Phase
+> **Check Phase**: The libuv phase dedicated exclusively to executing callbacks scheduled via `setImmediate()`, running directly after Poll.
+
 The **Check phase** runs callbacks registered specifically with `setImmediate()`.
 - **Post-Poll Transition:** Designed specifically to execute code *immediately after the Poll phase completes*. If Poll finishes handling an I/O event and a `setImmediate` callback exists, Node transitions directly to Check without waiting for any timer expiration.
 
 ### 2.6 Close Callbacks Phase
+> **Close Callbacks Phase**: The libuv phase that handles resource destruction callbacks, such as `socket.on('close', ...)`.
+
 The **Close Callbacks phase** runs cleanup and destruction callbacks when handles or sockets close abruptly.
 - **Resource deallocation:** When an active handle is destroyed via `socket.destroy()`, the `'close'` event callback (`socket.on('close', fn)`) runs here, cleanly isolating teardown logic from operational I/O.
 
@@ -282,11 +257,17 @@ console.log("Synchronous setup finished");
 
 ## 3. Microtask Queues: `process.nextTick` vs. Promise Microtasks
 
+> **Microtask Checkpoint**: A synchronization point where Node pauses loop progression to completely drain all waiting `nextTick` and Promise jobs before continuing.
+
 A **microtask** is a high-priority JavaScript task that executes immediately after the current call stack clears, before libuv proceeds to the next callback or phase.
 
 A **microtask checkpoint** is the moment when Node pauses loop progression to completely drain all waiting microtasks. Microtasks are managed directly by V8 and Node.js, not by libuv.
 
 ### 3.1 Two Separate Microtask Queues
+> **`process.nextTick` Queue**: A Node.js-specific high-priority queue that drains immediately before any Promise jobs or event loop phases.
+
+> **Promise Microtask Queue**: The ECMAScript standard job queue executing `.then()`, `.catch()`, `.finally()`, and resumed `async/await` continuations.
+
 1. **The `process.nextTick` Queue:** A Node.js-specific queue that executes ahead of all other microtasks.
 2. **The Promise Microtask Queue:** The ECMAScript standard job queue populated by native Promise reactions (`.then()`, `.catch()`, `.finally()`, and `await` continuations) and `queueMicrotask()`.
 
@@ -549,6 +530,8 @@ console.log("K: Synchronous end");
 
 ## 6. Event Loop Starvation and Work Partitioning
 
+> **Event Loop Starvation**: A condition where long synchronous tasks or recursive microtasks block the single thread, preventing I/O and timers from running.
+
 **Event loop starvation** occurs when synchronous JavaScript code or endless microtasks monopolize the call stack, preventing libuv from processing I/O, timers, or network traffic.
 
 Because Node.js executes JavaScript on a single thread, long computations block all incoming network requests, health checks, and timer deadlines.
@@ -627,6 +610,8 @@ processLargeDatasetCooperatively(
 ---
 
 ## 7. Monitoring Event Loop Delay in Production
+
+> **Event Loop Lag**: The delay between when an asynchronous callback was scheduled to run and when it actually executes on the main thread.
 
 **Event loop delay** (or lag) is the difference in time between when an asynchronous callback was scheduled to execute and when it actually began running on the main thread.
 

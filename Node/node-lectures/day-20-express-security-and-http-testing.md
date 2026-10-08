@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Harden Express applications using **Helmet** headers (CSP, HSTS, X-Content-Type-Options, X-Frame-Options) and understand the threat vectors each header mitigates.
-- Implement strict, dynamic **CORS (Cross-Origin Resource Sharing)** policies, handling preflight `OPTIONS` requests while avoiding insecure origin reflection vulnerabilities.
-- Configure `app.set('trust proxy')` correctly to prevent **IP Spoofing** via manipulated `X-Forwarded-For` headers in rate-limiting pipelines.
-- Architect a production **Sliding-Window Rate Limiter** using Redis sorted sets (`ZADD`, `ZREMRANGEBYSCORE`) that emits RFC-compliant rate limit headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, `Retry-After`).
-- Write comprehensive, deterministic HTTP integration tests using native `node:test` and ephemeral port bindings without mock drift.
-- Validate security controls, status code contracts, and error responses end-to-end across realistic transport boundaries.
-
----
-
 ## Prerequisites
 
 Before diving into security controls and HTTP testing, review:
@@ -26,20 +13,6 @@ Before diving into security controls and HTTP testing, review:
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) for native `node:test` suites and ephemeral ports.
 - [Day 14: Express Middleware and Request Flow](day-14-express-middleware-and-request-flow.md) for middleware pipeline execution order.
 - [Day 19: Authentication and Authorization Boundaries](day-19-authentication-and-authorization-boundaries.md) for 401 and 403 authorization guards.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **CORS** | Cross-Origin Resource Sharing; a browser-enforced security protocol that dictates whether web pages can read HTTP responses from foreign origins. | Believing CORS prevents attackers or curl scripts from calling your API; CORS is strictly a browser-side sandbox mechanism. |
-| **CORS Reflection Attack** | Dynamically copying `req.headers.origin` into `Access-Control-Allow-Origin` with `credentials: true` without validating against an allowlist. | Writing `cors({ origin: true, credentials: true })` blindly, allowing malicious third-party websites to extract authenticated user data. |
-| **IP Spoofing via Proxy** | Injecting fake IP addresses into `X-Forwarded-For` headers to bypass IP-based rate limiting or geolocation firewalls. | Enabling `app.set('trust proxy', true)` when sitting behind an untrusted edge, allowing clients to fake `req.ip` as `127.0.0.1`. |
-| **Sliding Window Counter** | A rate-limiting algorithm that counts events in a dynamic rolling time window (e.g. past 60s) using timestamps in a Redis sorted set. | Using fixed-window counters that allow "burst attacks" where clients consume 2x their quota across window boundary edges. |
-| **Preflight Request** | An automatic browser `OPTIONS` request querying server permissions prior to dispatching complex HTTP requests (e.g. `PUT`, custom headers). | Rejecting `OPTIONS` requests with 401 Unauthorized; preflight checks do not carry credentials and must return 204 No Content. |
-| **Ephemeral Port (Port 0)**| Instructing the OS kernel to assign an unused random high port by passing port `0` to `server.listen(0)`. | Hardcoding test ports (`3001`, `3002`) that collide and fail when tests execute in parallel across multiple CI worker threads. |
-
 ---
 
 ## Core Concepts
@@ -63,6 +36,8 @@ Incoming Request -> [Helmet Middleware Suite] -> Sets Security Headers -> Respon
 ---
 
 ### 2. CORS Mechanics and Preflight Negotiations
+
+> **CORS**: Cross-Origin Resource Sharing; a browser-enforced security protocol that dictates whether web pages can read HTTP responses from foreign origins.
 
 CORS is an opt-in mechanism enforced by browsers. It allows web applications hosted on Origin A (`https://app.frontend.com`) to read responses from Origin B (`https://api.backend.com`):
 
@@ -160,6 +135,8 @@ Score = Timestamp in Milliseconds | Member = Unique Request ID / Nonce
 ---
 
 ### 5. Deterministic Integration Testing via Ephemeral Ports
+
+> **Ephemeral Port (Port 0)**: Instructing the OS kernel to assign an unused random high port by passing port `0` to `server.listen(0)`.
 
 Unit tests with mocks cannot verify that middleware order, header parsers, CORS preflights, and error handlers work together correctly.
 

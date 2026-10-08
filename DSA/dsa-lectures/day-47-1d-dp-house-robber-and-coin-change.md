@@ -7,39 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the fundamental **Choice Pattern** in 1D DP: evaluating the decision to include (pick) or exclude (skip) an element at index $i$.
-- Solve **House Robber I** using recurrence $dp[i] = \max(dp[i - 1], dp[i - 2] + \text{nums}[i])$ and optimize memory from $O(n)$ array to $O(1)$ rolling variables.
-- Deconstruct circular array constraints in **House Robber II** by decomposing into two independent linear subproblems: $[0 \dots N - 2]$ and $[1 \dots N - 1]$.
-- Master the **Unbounded Knapsack Pattern** in **Coin Change** to find the minimum number of coins for a target amount.
-- Understand infinity sentinels (`Infinity` vs. `amount + 1`) to distinguish impossible combinations from zero-cost bases.
-- Apply dynamic payment coupon allocation and resource packaging algorithms to Node.js e-commerce and billing services.
-
----
-
 ## Prerequisites
 
 - [Day 46: Dynamic Programming: Memoization and Tabulation](day-46-dynamic-programming-memo-and-tabulation.md) — The 3-Step DP framework, optimal substructure, and bottom-up space optimization.
-
 ---
 
-## Quick Vocabulary Card
+## 1. House Robber I: The Choice Pattern
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Choice Pattern** | A DP state transition where the optimal value at state $i$ is chosen as the maximum or minimum of mutually exclusive decisions. | Standard model for robbery, knapsacks, stock trading, and interval selection. |
-| **Circular Decomposition** | Breaking a circular constraint (where first and last elements are adjacent) into two overlapping linear slices: excluding last vs. excluding first. | General strategy to solve circular graph and array DP problems in $2 \times O(n) = O(n)$ time. |
-| **Unbounded Knapsack** | A variation where each candidate item (e.g., coin denomination) can be reused an unlimited number of times. | Transitions use the current row's newly updated values: $dp[a] = \min(dp[a], 1 + dp[a - c])$. |
-| **Sentinel Value** | A placeholder value (e.g., `Infinity` or `amount + 1`) used to represent an impossible or unreached state. | Prevents silent failures; allows easy post-computation validation `dp[target] >= sentinel ? -1 : dp[target]`. |
-| **State Compression** | Discarding historical values and retaining only `prev1` and `prev2` when transitions depend solely on immediate neighbors. | Reduces memory footprint from $O(N)$ to $O(1)$ with zero runtime penalty. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. House Robber I: The Choice Pattern
+> **Choice Pattern**: A DP state transition where the optimal value at state $i$ is chosen as the maximum or minimum of mutually exclusive decisions.
 
 In **House Robber I** (LeetCode 198), an array `nums` represents money at each house. Adjacent houses cannot be robbed on the same night. We must maximize total stolen loot.
 
@@ -86,7 +61,7 @@ console.log('Max loot [2, 7, 9, 3, 1]:', rob([2, 7, 9, 3, 1])); // 12 (houses 2 
 
 ---
 
-### 2. House Robber II: Decomposing Circular Dependencies
+## 2. House Robber II: Decomposing Circular Dependencies
 
 In **House Robber II** (LeetCode 213), the houses are arranged in a **circle**: the first house is neighbor to the last house (`nums[0]` is adjacent to `nums[n - 1]`). Robbing both `nums[0]` and `nums[n - 1]` triggers the alarm.
 
@@ -142,7 +117,9 @@ console.log('Circular loot [1, 2, 3, 1]:', robCircular([1, 2, 3, 1])); // 4 (hou
 
 ---
 
-### 3. Coin Change: The Unbounded Knapsack Model
+## 3. Coin Change: The Unbounded Knapsack Model
+
+> **Unbounded Knapsack**: A variation where each candidate item (e.g., coin denomination) can be reused an unlimited number of times.
 
 In **Coin Change** (LeetCode 322), given integer denominations `coins` and total integer `amount`, return the fewest number of coins needed to make up that amount. If impossible, return `-1`.
 

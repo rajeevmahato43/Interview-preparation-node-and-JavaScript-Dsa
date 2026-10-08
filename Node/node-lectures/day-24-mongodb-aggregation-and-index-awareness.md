@@ -6,44 +6,19 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Construct multi-stage MongoDB Aggregation Pipelines using `$match`, `$project`, `$group`, `$sort`, `$unwind`, and `$lookup` with strict stage ordering optimization.
-- Apply the **ESR Rule (Equality, Sort, Range)** to design optimal compound B-Tree indexes that eliminate in-memory blocking sorts.
-- Diagnose and debug slow queries using `explain('executionStats')`, evaluating execution stages (`COLLSCAN`, `IXSCAN`, `FETCH`, `SORT`) and selectivity ratios (`totalKeysExamined` vs `nReturned`).
-- Architect **Covered Queries** where queries are satisfied entirely from RAM index keys with zero document fetches (`totalDocsExamined === 0`).
-- Prevent out-of-memory pipeline crashes by managing the 100MB RAM stage limit and utilizing `allowDiskUse: true` safely.
-- Implement Partial and TTL (Time-To-Live) indexes to minimize storage overhead and automate document lifecycle expiration.
-
----
-
 ## Prerequisites
 
 Before diving into aggregation and index design, review:
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) for pipeline chunking and stream backpressure.
 - [Day 21: MongoDB Driver Lifecycle and BSON](day-21-mongodb-driver-lifecycle-and-bson.md) for BSON types and `ObjectId` comparison.
 - [Day 22: MongoDB CRUD from Node](day-22-mongodb-crud-from-node.md) for query operators and `FindCursor` mechanics.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Aggregation Pipeline** | A sequence of functional data transformation stages where the output documents of one stage feed into the input of the next stage. | Using JavaScript `Array.prototype.reduce()` in Node.js on 100,000 documents; database aggregations execute natively inside C++ storage engines. |
-| **ESR Rule** | Equality, Sort, Range; the universal indexing heuristic dictating the exact order of keys in a compound index. | Placing Range fields before Sort fields in a compound index, forcing MongoDB to execute an expensive in-memory sort. |
-| **`COLLSCAN`** | Collection Scan; an execution stage indicating that MongoDB scanned every physical document in the collection without using an index. | Seeing `COLLSCAN` on large production collections; causes heavy disk I/O, cache evictions, and query timeouts. |
-| **`IXSCAN`** | Index Scan; an execution stage indicating that MongoDB traversed B-Tree index pages to locate matching record pointers. | Assuming all `IXSCAN` operations are fast; an unselective index scan that reads 1,000,000 index keys to return 5 rows is still extremely slow. |
-| **Covered Query** | A query where all filtered, sorted, and projected fields exist within the index itself, allowing MongoDB to bypass document reads (`totalDocsExamined: 0`). | Projecting `_id: 1` by default on an index that does not include `_id`, turning an otherwise covered query into an index scan plus document fetch. |
-| **In-Memory Sort (`SORT`)**| An execution stage where MongoDB sorts documents in RAM rather than using pre-sorted B-Tree index order. | Allowing in-memory sorts on large collections; MongoDB aborts queries if an in-memory sort exceeds 33MB of RAM. |
-
 ---
 
 ## Core Concepts
 
 ### 1. The Aggregation Pipeline Architecture
+
+> **Aggregation Pipeline**: A sequence of functional data transformation stages where the output documents of one stage feed into the input of the next stage.
 
 The MongoDB Aggregation Framework processes documents through an ordered multi-stage data processing pipeline:
 
@@ -74,6 +49,8 @@ Client Output Stream
 ---
 
 ### 2. Compound Index Design and the ESR Rule
+
+> **ESR Rule**: Equality, Sort, Range; the universal indexing heuristic dictating the exact order of keys in a compound index.
 
 When designing compound indexes to support complex queries involving filters and sorting, the **ESR Rule (Equality, Sort, Range)** defines the optimal key order:
 
@@ -349,6 +326,8 @@ export class AuthLookupService {
 
 ### 1. In-Memory Sort Exceeding 33MB RAM Limit
 
+> **In-Memory Sort (`SORT`)**: An execution stage where MongoDB sorts documents in RAM rather than using pre-sorted B-Tree index order.
+
 If a query requests a sort that is not supported by an index (e.g. `COLLSCAN` followed by `SORT`), MongoDB attempts to sort the result set in server RAM.
 - **The Failure**: MongoDB enforces a hard cap of **33MB of RAM** for in-memory sorts on find queries. If the matching documents exceed 33MB, the query crashes immediately with:
   `Executor error during find command: Sort exceeded memory limit of 33554432 bytes`.
@@ -610,6 +589,8 @@ The **ESR Rule** is the foundational guideline for compound index construction i
 - Following ESR ensures MongoDB traverses the index in exact pre-sorted order, eliminating in-memory sorting completely.
 
 ### 2. How do you identify whether a query is performing a Covered Query using `explain('executionStats')`, and why are they exceptionally fast?
+
+> **Covered Query**: A query where all filtered, sorted, and projected fields exist within the index itself, allowing MongoDB to bypass document reads (`totalDocsExamined: 0`).
 
 In `explain('executionStats')`, a query is a **Covered Query** if:
 1. `totalDocsExamined` is exactly **`0`**.

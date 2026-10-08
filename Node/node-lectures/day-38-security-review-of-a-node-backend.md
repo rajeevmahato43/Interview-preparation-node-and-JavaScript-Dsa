@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Execute an evidence-based security audit of a Node.js backend using the STRIDE threat model across architectural trust boundaries.
-- Identify and eliminate OWASP Top 10 API vulnerabilities: Broken Object Level Authorization (BOLA/IDOR), NoSQL Injection, SQL Injection, and Path Traversal.
-- Protect internal infrastructure from Server-Side Request Forgery (SSRF) and DNS rebinding attacks targeting cloud metadata services (`169.254.169.254`).
-- Prevent Node.js-specific vulnerabilities: Prototype Pollution and Regular Expression Denial of Service (ReDoS).
-- Eliminate OS command injection vectors by replacing shell-spawning functions (`child_process.exec`) with argument-vector APIs (`child_process.execFile`).
-- Secure the production supply chain: lockfile verification, dependency auditing, secret lifecycle management, and the Node.js Permission Model.
-
----
-
 ## Prerequisites
 
 - [Day 19: Authentication and Authorization Boundaries](day-19-authentication-and-authorization-boundaries.md) — Dual-token architecture, BOLA defense, and permission guards.
 - [Day 20: Express Security and HTTP Testing](day-20-express-security-and-http-testing.md) — Helmet headers, CORS policies, and rate-limiting perimeter.
 - [Day 33: Layered Backend Architecture](day-33-layered-backend-architecture.md) — DTO boundaries and input perimeter filtering.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Trust Boundary** | An architectural perimeter where data or control transitions between differing levels of privilege or trust (e.g., public internet to Express process). | Every trust boundary crossing requires strict input validation, identity authentication, and authorization checks. |
-| **BOLA / IDOR** | Broken Object Level Authorization: an access control defect where an API allows users to manipulate objects they do not own by swapping resource IDs. | The #1 vulnerability in modern APIs; leads to massive unauthorized data exposure across multi-tenant systems. |
-| **SSRF** | Server-Side Request Forgery: tricking a backend server into making outbound HTTP requests to internal, private network targets. | Allows attackers to query internal cloud metadata endpoints (`169.254.169.254`), steal IAM credentials, and pivot inside VPCs. |
-| **Prototype Pollution** | Injecting properties into JavaScript's `Object.prototype` via recursive merge or JSON deserialization (`__proto__`). | Modifies object behavior application-wide; leads to authentication bypasses, denial-of-service, or remote code execution. |
-| **ReDoS** | Regular Expression Denial of Service: catastrophic polynomial or exponential backtracking in regex evaluation over untrusted input. | Completely freezes the single-threaded Node.js event loop, taking down the entire service for all concurrent users. |
-| **Safe Path Containment** | Validating that a normalized file path resides strictly inside an allowed root directory before executing filesystem calls. | Permanently neutralizes directory traversal attacks (`../../etc/passwd`). |
-
 ---
 
 ## Core Concepts
@@ -67,6 +40,8 @@ By the end of this lecture, you should be able to:
 ```
 
 ### 1. Broken Object Level Authorization (BOLA / IDOR)
+
+> **BOLA / IDOR**: Broken Object Level Authorization: an access control defect where an API allows users to manipulate objects they do not own by swapping resource IDs.
 
 BOLA occurs when an API endpoint accepts a resource identifier (such as a database UUID or integer ID) from the client and retrieves or mutates that resource without verifying whether the authenticated user actually owns it:
 
@@ -136,6 +111,8 @@ execFile('/usr/bin/convert', [untrustedFileName, 'output.png'], (error, stdout) 
 
 ### 3. Server-Side Request Forgery (SSRF) and Cloud Metadata Protection
 
+> **SSRF**: Server-Side Request Forgery: tricking a backend server into making outbound HTTP requests to internal, private network targets.
+
 SSRF occurs when an application accepts a URL from a user (e.g., an avatar image URL or webhook destination) and uses `fetch()` or `axios` to download it from the server.
 
 Attackers supply URLs targeting:
@@ -182,6 +159,8 @@ export async function validateSafeOutboundUrl(rawUrl) {
 
 ### 4. Path Traversal and Safe Path Containment
 
+> **Safe Path Containment**: Validating that a normalized file path resides strictly inside an allowed root directory before executing filesystem calls.
+
 When an API reads files from disk based on user parameters, attackers use `../` sequences to escape the designated folder:
 
 ```javascript
@@ -212,6 +191,10 @@ export function resolveSafePath(rootDir, untrustedRelativePath) {
 ---
 
 ### 5. Prototype Pollution and ReDoS Defense
+
+> **ReDoS**: Regular Expression Denial of Service: catastrophic polynomial or exponential backtracking in regex evaluation over untrusted input.
+
+> **Prototype Pollution**: Injecting properties into JavaScript's `Object.prototype` via recursive merge or JSON deserialization (`__proto__`).
 
 #### Prototype Pollution
 Occurs when recursive object merge functions assign properties using user-controlled keys without blocking `__proto__`, `constructor`, or `prototype`:

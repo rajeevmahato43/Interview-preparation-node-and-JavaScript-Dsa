@@ -7,42 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Event Loop Latency Budget** ($<10\text{ms}$) to prevent single-threaded CPU starvation during heavy algorithmic execution.
-- Partition long-running synchronous algorithms using cooperative batch yielding via `setImmediate()`.
-- Architect data structures that conform to **V8 Hidden Classes (Shapes)** and preserve monomorphic inline caches.
-- Reduce heap memory consumption by over $70\%$ using **TypedArrays** (`Uint32Array`, `Float64Array`) instead of generic object arrays.
-- Offload computationally intensive CPU algorithms to Node.js **Worker Threads** with zero-copy `SharedArrayBuffer` and `Atomics`.
-- Profile and eliminate "Stop-the-World" Garbage Collection pauses caused by pointer-heavy graph and tree allocations.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big-O Notation and Algorithm Analysis in V8](day-01-big-o-notation-and-algorithm-analysis-in-v8.md) — CPU instructions, memory hierarchy, and V8 optimization.
 - [Day 02: Arrays, Sets, Maps, and Hash Tables](day-02-arrays-sets-maps-and-hash-tables.md) — Contiguous array buffers and object property storage.
 - [Day 56: Mixed Pattern Strategy and Constraint Decoding](day-56-mixed-pattern-strategy-and-constraints.md) — Algorithmic operation budgeting.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Event Loop Budget** | The maximum duration a single synchronous block of JavaScript may run before yielding to Libuv I/O polling (ideally $<10\text{ms}$). | Exceeding this budget causes request latency spikes and dropped WebSocket connections. |
-| **Cooperative Yielding** | Breaking large computational loops into smaller chunks and scheduling each chunk with `setImmediate()`. | Prevents CPU-bound DSA routines from blocking incoming network traffic on the main thread. |
-| **V8 Hidden Class (Shape)** | An internal C++ structure created by V8 to track object property offsets in memory. | Consistent property instantiation keeps code monomorphic (fast path); dynamic mutations trigger dictionary mode (slow path). |
-| **TypedArray** | Contiguous, flat binary memory buffers (`Uint8Array`, `Int32Array`) storing raw C-style typed numbers. | Cuts memory by $60\text{--}80\%$, eliminates object header overhead, and avoids GC tracking. |
-| **Worker Threads** | Native OS threads in Node.js executing independent V8 isolates with isolated event loops. | Enables true multi-threaded CPU parallel execution for heavy algorithms without blocking I/O. |
-| **`SharedArrayBuffer`** | Raw binary memory buffer that can be shared across multiple worker threads simultaneously. | Enables zero-copy, lock-free parallel data structure operations using `Atomics`. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Single-Threaded Event Loop Bottleneck
+## 1. The Single-Threaded Event Loop Bottleneck
 
 In academic computer science, an $O(n^2)$ algorithm is evaluated purely on instruction steps. In Node.js, the execution model is **single-threaded**: the Libuv event loop processes timers, network I/O, and HTTP requests sequentially on a single thread.
 
@@ -61,7 +33,7 @@ Starvation Scenario (Heavy Synchronous DSA Loop):
 
 ---
 
-### 2. Cooperative Chunking with `setImmediate()`
+## 2. Cooperative Chunking with `setImmediate()`
 
 When an algorithm must process $N = 1,000,000$ elements synchronously on the main thread, executing the loop in one continuous block freezes the process.
 By partitioning the workload into batches of $B$ elements and yielding between batches via `setImmediate()`, network I/O, timers, and health checks continue operating smoothly:
@@ -116,7 +88,9 @@ processInChunks(largeDataset, (val) => {
 
 ---
 
-### 3. V8 Hidden Classes and Object De-Optimization
+## 3. V8 Hidden Classes and Object De-Optimization
+
+> **V8 Hidden Class (Shape)**: An internal C++ structure created by V8 to track object property offsets in memory.
 
 V8 attaches an internal "Shape" (Hidden Class) to every JavaScript object:
 
@@ -160,7 +134,9 @@ class OptimizedNode {
 
 ---
 
-### 4. TypedArrays: Contiguous Memory & Zero GC Pressure
+## 4. TypedArrays: Contiguous Memory & Zero GC Pressure
+
+> **TypedArray**: Contiguous, flat binary memory buffers (`Uint8Array`, `Int32Array`) storing raw C-style typed numbers.
 
 In tree and graph structures storing millions of nodes, using standard JavaScript objects introduces severe memory bloat:
 - A generic object `{ id, value, left, right }` requires **32 to 48 bytes** of V8 object headers and pointer fields.
@@ -206,7 +182,9 @@ console.log(`Memory for 200k edges: ${graph.getMemoryUsageBytes() / 1024} KB`); 
 
 ---
 
-### 5. Multi-Threaded Offloading via Worker Threads
+## 5. Multi-Threaded Offloading via Worker Threads
+
+> **Worker Threads**: Native OS threads in Node.js executing independent V8 isolates with isolated event loops.
 
 For CPU-intensive DSA algorithms ($O(N \log N)$ sorting of $50,000,000$ integers, image processing, or heavy graph layout algorithms), execution must be offloaded from the main event loop to **Worker Threads**:
 

@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Implement the Three Pillars of Observability (Structured Logs, Metrics, Distributed Traces) in high-throughput Node.js applications.
-- Propagate Request Correlation IDs (`x-correlation-id`) across asynchronous call stacks using Node.js's native `AsyncLocalStorage` without argument drilling.
-- Instrument the **RED Method** (Rate, Errors, Duration) for HTTP endpoints and the **USE Method** (Utilization, Saturation, Errors) for system resources using Prometheus metrics (`prom-client`).
-- Analyze latency profiles using distribution percentiles (p50, p95, p99) rather than misleading arithmetic averages.
-- Monitor Node.js runtime health using native performance APIs: Event-Loop Delay (`monitorEventLoopDelay`), V8 Heap spaces (`process.memoryUsage()`), and Active Handle counts.
-- Decouple Kubernetes `/livez`, `/readyz`, and `/startupz` health check probes to prevent cascading cluster restarts during downstream dependency outages.
-
----
-
 ## Prerequisites
 
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) — Event-loop delay histograms and diagnostic reporting.
 - [Day 20: Express Security and HTTP Testing](day-20-express-security-and-http-testing.md) — Middleware flow and header inspection.
 - [Day 36: Queues and Background Work](day-36-queues-and-background-work.md) — Asynchronous background lifecycle and worker health.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Structured Logging** | Emitting log entries as machine-readable JSON objects with standardized schema fields (`timestamp`, `level`, `correlationId`, `message`). | Enables automated log ingestion, indexing, and querying in Elasticsearch/Datadog without brittle regex parsing. |
-| **`AsyncLocalStorage`** | A native Node.js API that stores asynchronous execution context across callbacks and promises without manual parameter passing. | Essential for attaching Correlation IDs and trace spans to every log line across complex async call graphs. |
-| **RED Method** | A service-level monitoring methodology tracking **Rate** (req/s), **Errors** (failed req/s), and **Duration** (latency distribution). | The standard framework for monitoring customer-facing API microservices and setting SLO/SLA alerts. |
-| **Tail Latency (p99)** | The 99th percentile response time, indicating that 99% of requests were faster than this value while 1% were slower. | Unmasks performance outliers, GC pauses, and connection pool queuing that arithmetic averages completely conceal. |
-| **Event-Loop Lag** | The elapsed time delay between when a timer callback is scheduled to fire and when the Node.js event loop actually executes it. | The most critical Node.js-specific runtime metric; rising lag signals synchronous blocking code or CPU starvation. |
-| **Distributed Tracing** | Propagating a unique Trace ID across microservice boundaries via HTTP headers (W3C `traceparent`) to reconstruct the full request journey. | Isolates the exact microservice, database query, or downstream HTTP call responsible for user-facing latency. |
-
 ---
 
 ## Core Concepts
@@ -64,6 +37,10 @@ By the end of this lecture, you should be able to:
 ```
 
 ### 1. Structured Logging and Context Propagation via `AsyncLocalStorage`
+
+> **`AsyncLocalStorage`**: A native Node.js API that stores asynchronous execution context across callbacks and promises without manual parameter passing.
+
+> **Structured Logging**: Emitting log entries as machine-readable JSON objects with standardized schema fields (`timestamp`, `level`, `correlationId`, `message`).
 
 In production, human-readable console strings (`console.log("Error: " + err)`) are an operational liability. They cannot be reliably searched, filtered, or correlated across microservices.
 
@@ -115,6 +92,8 @@ export function correlationMiddleware(req, res, next) {
 ---
 
 ### 2. Service-Level Monitoring: The RED Method vs The USE Method
+
+> **RED Method**: A service-level monitoring methodology tracking **Rate** (req/s), **Errors** (failed req/s), and **Duration** (latency distribution).
 
 Production systems require two complementary monitoring methodologies:
 

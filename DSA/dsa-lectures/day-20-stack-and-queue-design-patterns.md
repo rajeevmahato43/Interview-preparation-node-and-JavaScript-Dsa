@@ -5,43 +5,16 @@
 [Previous: Queue Fundamentals, Circular Queues, and Deque](day-19-queue-circular-queue-and-deque.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Design an auxiliary-tracked **MinStack** that guarantees strict $O(1)$ constant time for `push()`, `pop()`, `top()`, and `getMin()`.
-- Implement a **FIFO Queue using two LIFO Stacks** (`inStack` and `outStack`) with a rigorous amortized $O(1)$ accounting proof.
-- Implement a **LIFO Stack using standard FIFO Queues** via circular rotation ($O(n)$ push, $O(1)$ pop) and evaluate structural asymmetry.
-- Model multi-page navigation and transactional state machines using the **Browser History Design Pattern** (LeetCode 1472).
-- Diagnose and prevent algorithmic anti-patterns, including eager dual-stack reshuffling and precision loss in difference-encoded stacks.
-- Evaluate real-world Node.js infrastructure patterns, including database connection pool scheduling (FIFO queue fairness vs LIFO stack cache locality) and transactional undo/redo engines.
-
----
-
 ## Prerequisites
 
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md)
 - [Day 17: Valid Parentheses and Expression Parsing](day-17-valid-parentheses-and-expressions.md)
 - [Day 19: Queue Fundamentals, Circular Queues, and Deque](day-19-queue-circular-queue-and-deque.md)
-
 ---
 
-## Quick Vocabulary Card
+## 1. MinStack Architecture: $O(1)$ Historical State Tracking
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **MinStack** | A stack abstract data type augmented with auxiliary state to track the historical minimum element at every frame in $O(1)$ time. | Eliminates $O(n)$ full-scan minimum lookups without sacrificing $O(1)$ mutation speed. |
-| **Dual-Stack Invariant** | A structural constraint where incoming items accumulate in an ingest stack and transfer lazily to an egress stack only when the egress stack is empty. | Guarantees amortized $O(1)$ FIFO behavior using exclusively LIFO building blocks. |
-| **Amortized Analysis** | An asymptotic method averaging execution runtime over an arbitrary sequence of length $k$, guaranteeing an upper bound of $O(k)$ total work. | Proves that infrequent $O(n)$ batch transfers do not degrade overall throughput below $O(1)$ per operation. |
-| **Circular Queue Rotation** | Cycling the front $k - 1$ elements of a FIFO queue back to its tail after enqueueing a new element. | Inverts FIFO order to simulate LIFO behavior using only standard queue operations. |
-| **History Stack Pruning** | The transactional clearing of a forward history stack whenever a new discrete state action is committed. | Prevents non-linear branching in undo/redo engines and browser navigation. |
-
----
-
-## Core Concepts
-
-### 1. MinStack Architecture: $O(1)$ Historical State Tracking
+> **MinStack**: A stack abstract data type augmented with auxiliary state to track the historical minimum element at every frame in $O(1)$ time.
 
 A **MinStack** is a stack data structure that augments standard LIFO operations with a `getMin()` method that returns the minimum value currently stored in the container in $O(1)$ time.
 
@@ -151,7 +124,7 @@ console.log(ms.getMin()); // 5 (restored historical minimum in O(1))
 
 ---
 
-### 2. Implement Queue Using Stacks: The Lazy Transfer Invariant
+## 2. Implement Queue Using Stacks: The Lazy Transfer Invariant
 
 A **Dual-Stack Queue** simulates a First-In-First-Out (FIFO) queue by buffering incoming elements in an ingest stack (`inStack`) and lazily reversing them into an egress stack (`outStack`) exclusively when the egress stack is exhausted.
 
@@ -259,7 +232,7 @@ console.log(q.empty()); // true
 
 ---
 
-### 3. Implement Stack Using Queues: Single-Queue Circular Rotation
+## 3. Implement Stack Using Queues: Single-Queue Circular Rotation
 
 A **Queue-based Stack** simulates LIFO behavior using a standard FIFO queue by cycling preexisting elements behind each newly enqueued item.
 
@@ -335,7 +308,7 @@ console.log(stack.pop()); // 20
 
 ---
 
-### 4. Browser History & State Machine Patterns: Dual-Stack Navigation
+## 4. Browser History & State Machine Patterns: Dual-Stack Navigation
 
 The **Dual-Stack History Pattern** partitions discrete application states across two complementary stacks—backward history and forward history—with the currently active state residing at the boundary.
 
@@ -601,6 +574,8 @@ _transfer() {
 ## Interview Questions
 
 ### 1. How does amortized analysis mathematically prove that a Dual-Stack Queue operates in $O(1)$ time?
+
+> **Amortized Analysis**: An asymptotic method averaging execution runtime over an arbitrary sequence of length $k$, guaranteeing an upper bound of $O(k)$ total work.
 
 **Question:** Mathematically prove why a Dual-Stack Queue has an amortized time complexity of $O(1)$ per operation despite the transfer loop requiring $O(n)$ steps in the worst case. How does this differ from average-case complexity?
 

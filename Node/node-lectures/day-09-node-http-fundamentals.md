@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Trace the end-to-end lifecycle of an HTTP transaction from TCP connection through HTTP parsing to response termination.
-- Master the streaming nature of `http.IncomingMessage` (Readable) and `http.ServerResponse` (Writable).
-- Diagnose and eliminate the ubiquitous `ERR_HTTP_HEADERS_SENT: Cannot set headers after they are sent to the client` runtime error.
-- Ingest and parse HTTP request bodies safely without third-party frameworks, enforcing strict byte limits, content-type checks, and single-settlement error policies.
-- Configure critical production timeouts (`headersTimeout`, `requestTimeout`, `keepAliveTimeout`) to prevent Slowloris attacks.
-- Intercept client disconnections cleanly (`req.on('close')`) and abort backend database queries when clients cancel requests.
-- Contrast Node's raw HTTP module with the abstractions provided by Express and Fastify.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be comfortable with:
@@ -32,24 +16,6 @@ Before studying this lecture, you should be comfortable with:
 *Upcoming Connections:*
 - [Day 10: Networking, DNS, TLS, and Timeouts](day-10-networking-dns-tls-and-timeouts.md) covers underlying TCP sockets, DNS resolution, and TLS encryption.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) builds high-level API routers and middleware layers on top of Node's raw HTTP primitives.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **`http.createServer()`** | Factory function that instantiates an HTTP server bound to an underlying TCP socket listener. |
-| **`IncomingMessage`** | A Readable stream representing an incoming HTTP request, containing headers, method, URL, and streamed body chunks. |
-| **`ServerResponse`** | A Writable stream representing the outgoing HTTP response, managing headers, status codes, and body serialization. |
-| **`headersSent`** | A boolean property on `ServerResponse` indicating whether HTTP status and headers have already been transmitted over the socket. |
-| **`ERR_HTTP_HEADERS_SENT`** | A fatal runtime error thrown when code attempts to set headers or status codes after headers were already dispatched. |
-| **HTTP Keep-Alive** | A persistence mechanism that reuses a single underlying TCP connection across multiple consecutive HTTP requests. |
-| **`headersTimeout`** | The maximum time (default 60s) allowed for an incoming client to finish sending all HTTP request headers. |
-| **`requestTimeout`** | The maximum time (default 5m in modern Node) allowed for an entire request (headers + body) to be transmitted. |
-| **Slowloris Attack** | A Denial-of-Service exploit where clients open thousands of TCP connections and transmit headers byte-by-byte to exhaust server sockets. |
-| **Chunked Transfer (`Transfer-Encoding: chunked`)** | An HTTP/1.1 streaming mechanism allowing data to be transmitted in sized chunks without knowing the total `Content-Length` upfront. |
-
 ---
 
 ## 1. The Anatomy of an HTTP Transaction in Node.js
@@ -246,6 +212,8 @@ if (req.url === "/profile") {
 
 ## 4. HTTP Keep-Alive & Production Timeouts
 
+> **HTTP Keep-Alive**: A persistence mechanism that reuses a single underlying TCP connection across multiple consecutive HTTP requests.
+
 In HTTP/1.1, TCP connections are kept open by default (`Connection: keep-alive`) so that browsers and microservices can reuse the same established socket for subsequent requests, eliminating the overhead of repeated TCP 3-way handshakes and TLS negotiations.
 
 However, poorly configured keep-alive connections leave servers open to **Slowloris Denial-of-Service attacks**, where malicious clients open connections and transmit single bytes every 20 seconds to hold open thousands of sockets.
@@ -355,6 +323,10 @@ async function queryDatabaseWithCancellation(signal) {
 ## 6. What Express & Fastify Add Over Raw Node HTTP
 
 Frameworks like Express and Fastify do not replace Node's HTTP server—they build on top of `IncomingMessage` and `ServerResponse`.
+
+> **`ServerResponse`**: A Writable stream representing the outgoing HTTP response, managing headers, status codes, and body serialization.
+
+> **`IncomingMessage`**: A Readable stream representing an incoming HTTP request, containing headers, method, URL, and streamed body chunks.
 
 | Feature | Raw Node.js HTTP (`node:http`) | Express.js / Fastify |
 | :--- | :--- | :--- |
@@ -694,6 +666,8 @@ Receives `200 OK` with body `"Hello Client"`.
 ---
 
 ### 3. How do you defend a Node.js HTTP server against Slowloris attacks?
+
+> **Slowloris Attack**: A Denial-of-Service exploit where clients open thousands of TCP connections and transmit headers byte-by-byte to exhaust server sockets.
 **Question:** Explain what a Slowloris Denial-of-Service attack is and how it exploits Node's default event loop architecture. Which HTTP server timeout properties must be configured to defend against it?
 
 **Answer:**

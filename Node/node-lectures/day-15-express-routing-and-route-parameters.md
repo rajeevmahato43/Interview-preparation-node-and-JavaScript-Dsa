@@ -6,44 +6,19 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the `path-to-regexp` engine powering Express routing, compiling route patterns into deterministic regular expressions.
-- Eliminate route shadowing bugs by enforcing strict route registration precedence (literal paths before parameterized paths).
-- Hydrate and validate route parameters efficiently using `router.param()` lifecycle middleware without duplicating database lookups.
-- Architect deeply nested RESTful hierarchies using `express.Router({ mergeParams: true })` without losing access to parent path parameters.
-- Differentiate semantic responsibilities between Path Parameters (Resource Identity & Hierarchy) and Query Strings (Filtering, Sorting, Pagination, and Projection).
-- Configure case-sensitivity and strict trailing slash routing settings (`strict routing` and `case sensitive routing`) to maintain deterministic API contracts.
-
----
-
 ## Prerequisites
 
 Before diving into routing architecture, review:
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for URL path parsing and query strings.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for router composition and modular layouts.
 - [Day 14: Express Middleware and Request Flow](day-14-express-middleware-and-request-flow.md) for middleware traversal and `next('route')`.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **`path-to-regexp`** | The underlying library used by Express to compile route pattern strings into RegExp matchers with named capture groups. | Assuming route matching uses simple string prefix matching; dynamic patterns compile into regular expressions. |
-| **Route Shadowing** | An ordering bug where a generic parameterized route (`/users/:id`) matches before a specific literal route (`/users/me`), intercepting the request. | Registering `/users/:id` before `/users/me`; Express executes the first matching route in registration order, treating `"me"` as an `:id`. |
-| **`mergeParams: true`** | An `express.Router` option that preserves and propagates `req.params` from parent router mount paths to nested child routers. | Wondering why `req.params.userId` is `undefined` inside `/users/:userId/posts/:postId` child router; forgetting `mergeParams: true`. |
-| **`router.param()`** | Parameter middleware that executes once per parameter name whenever that parameter is present in the matched route path. | Fetching the same database record repeatedly in every route middleware instead of pre-hydrating `req.entity` via `router.param`. |
-| **Path Parameter** | A named URL segment (e.g. `/orders/:orderId`) defining the unique identity and hierarchical ownership of a resource. | Using path parameters for optional filters or search terms (e.g. `/users/:status/:page` instead of `/users?status=active&page=2`). |
-| **Strict Routing** | Express setting where `/users` and `/users/` are treated as distinct, non-identical routes. | Assuming Express always treats trailing slashes identically; unconfigured routing can cause SEO duplication and routing mismatches. |
-
 ---
 
 ## Core Concepts
 
 ### 1. The Route Matching Engine (`path-to-regexp`)
+
+> **`path-to-regexp`**: The underlying library used by Express to compile route pattern strings into RegExp matchers with named capture groups.
 
 Express route matching is governed by the `path-to-regexp` library, which converts route pattern strings into regular expressions with named capturing groups.
 
@@ -65,6 +40,8 @@ When a request arrives (e.g., `/users/102/posts/55`):
 ---
 
 ### 2. Route Shadowing and Precedence Rules
+
+> **Route Shadowing**: An ordering bug where a generic parameterized route (`/users/:id`) matches before a specific literal route (`/users/me`), intercepting the request.
 
 Express evaluates routes in **exact registration order**. It does not perform "longest prefix matching" or "most specific path first" heuristics.
 
@@ -128,6 +105,8 @@ router.get('/users/:userId', (req, res) => {
 
 ### 4. Nested Routers and `mergeParams: true`
 
+> **`mergeParams: true`**: An `express.Router` option that preserves and propagates `req.params` from parent router mount paths to nested child routers.
+
 In enterprise REST APIs, resources naturally form parent-child ownership hierarchies:
 ```text
 /organizations/:orgId/projects/:projectId/environments/:envId
@@ -164,6 +143,8 @@ postRouter.get('/:postId', (req, res) => {
 ---
 
 ### 5. Path Parameters vs Query Parameters in REST Design
+
+> **Path Parameter**: A named URL segment (e.g. `/orders/:orderId`) defining the unique identity and hierarchical ownership of a resource.
 
 A clear REST contract separates the identity of a resource from how that resource is queried or presented:
 

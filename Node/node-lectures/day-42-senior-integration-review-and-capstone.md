@@ -6,35 +6,10 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Synthesize V8 engine mechanics, libuv event-loop concurrency, relational ACID guarantees, distributed caching, message queues, and telemetry into a single unified mental model.
-- Execute senior-level technical system design interviews using the **FRAME Methodology** (Functional bounds, Resource limits, Architecture, Mitigation, Evidence).
-- Architect high-concurrency event ticketing and flash-sale engines capable of handling 50,000 req/s bursts with zero inventory overselling.
-- Defend architectural trade-offs under high-stakes technical grilling: synchronous vs asynchronous boundaries, strong vs eventual consistency, and in-memory vs distributed coordination.
-- Transition from mid-level imperative coding to senior-level architectural thinking across reliability, security, and scalability.
-
----
-
 ## Prerequisites
 
 - Complete mastery of [Days 01 through 41](../node-roadmap.md).
 - A unified understanding of JavaScript asynchronous execution, Node.js runtime internals, PostgreSQL/MongoDB drivers, Express architectures, and production operations.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **FRAME Methodology** | A structured system design communication framework: **F**unctional/Non-Functional, **R**esource Bounds, **A**rchitecture, **M**itigations, **E**vidence. | Transforms unstructured interview responses into executive-level architectural presentations. |
-| **Overselling Anomaly** | A race condition where concurrent write transactions reserve more units of inventory than physically exist in stock. | Catastrophic business failure; eliminated by atomic database checks (`WHERE stock >= $1`) and distributed leases. |
-| **Inventory Hold Lease** | A temporary, time-bounded reservation on a resource (e.g., concert seat held for 10 minutes during checkout) that expires automatically if unpurchased. | Converts high-contention database updates into fast, ephemeral distributed token acquisitions. |
-| **Blast Radius Containment** | Architectural isolation ensuring that catastrophic failure in a single sub-system (e.g., email dispatch) cannot degrade core revenue operations (e.g., checkout). | Achieved via bulkheads, message queues, and circuit breakers. |
-| **Unified Mental Model** | The ability to trace a single user interaction from the physical network wire through the V8 heap, libuv loop, database socket, and disk page buffers. | Distinguishes Staff/Senior engineers from mid-level developers who treat runtimes as black boxes. |
-
 ---
 
 ## Core Concepts
@@ -81,6 +56,8 @@ By the end of this lecture, you should be able to:
 When interviewing for Senior, Staff, or Principal Backend roles, jumping immediately into code or drawing boxes on a whiteboard without clarifying constraints is an immediate red flag.
 
 Senior engineers communicate using the **FRAME Methodology**:
+
+> **FRAME Methodology**: A structured system design communication framework: **F**unctional/Non-Functional, **R**esource Bounds, **A**rchitecture, **M**itigations, **E**vidence.
 
 ### 1. **F** — Functional & Non-Functional Requirements
 - **Functional:** What *must* the system do? (e.g., "Users reserve seats, pay, and receive a PDF ticket via email").

@@ -7,41 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Apply Disjoint Set Union to solve the **Redundant Connection** problem by identifying cycle-creating edges in $O(E \cdot \alpha(V))$ time.
-- Implement **Accounts Merge** by indexing arbitrary string emails into integer IDs and grouping equivalence components.
-- Master **Kruskal's Algorithm** for constructing the **Minimum Spanning Tree (MST)** in weighted undirected graphs.
-- Compare Kruskal's Algorithm against **Prim's Algorithm** to determine optimal usage for sparse versus dense topologies.
-- Model multi-region cloud VPC peering topologies, fiber-optic cable routing costs, and profile deduplication in Node.js backend systems.
-- Guard against multigraph parallel edge collisions and disconnected graph partition edge cases.
-
----
-
 ## Prerequisites
 
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Vertices, edges, weighted graphs, and edge lists.
 - [Day 51: Greedy: Interval Scheduling and Overlaps](day-51-greedy-interval-scheduling.md) — The Greedy Choice property and edge weight sorting.
 - [Day 54: Union-Find: Disjoint Set Union (DSU)](day-54-union-find-disjoint-set-union.md) — DSU implementation with Path Compression and Union by Rank.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Redundant Connection (LeetCode 684)
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Spanning Tree** | A connected subgraph of an undirected graph that includes all $V$ vertices and exactly $V - 1$ edges with no cycles. | The minimal edge backbone needed to keep an entire network connected. |
-| **Minimum Spanning Tree (MST)** | A spanning tree whose sum of edge weights is strictly less than or equal to the sum of every other spanning tree. | Solves network cabling, circuit routing, and cloud VPC peering cost minimization. |
-| **Kruskal's Algorithm** | A greedy algorithm that sorts edges ascending by weight and adds each edge to the MST using DSU if it does not form a cycle. | Runs in $O(E \log E)$ time; optimal for sparse graphs ($E \ll V^2$). |
-| **Redundant Connection** | An edge whose removal restores an undirected connected graph back into a valid tree. | Discovered immediately when `dsu.union(u, v)` evaluates to false. |
-| **Accounts Merge** | Grouping user accounts that share at least one common identifier (e.g., email address) into a single unified identity. | Standard identity resolution problem in distributed analytics and authentication backends. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Redundant Connection (LeetCode 684)
+> **Redundant Connection**: An edge whose removal restores an undirected connected graph back into a valid tree.
 
 In **Redundant Connection**, a graph of $N$ vertices started as a tree (with $N - 1$ edges), but one extra edge was added, forming an undirected cycle ($N$ edges total). We must find and return the edge that created the cycle.
 
@@ -101,7 +76,9 @@ console.log('Redundant edge:', findRedundantConnection([[1, 2], [1, 3], [2, 3]])
 
 ---
 
-### 2. Accounts Merge (LeetCode 721)
+## 2. Accounts Merge (LeetCode 721)
+
+> **Accounts Merge**: Grouping user accounts that share at least one common identifier (e.g., email address) into a single unified identity.
 
 Given a list of accounts where each entry is `[name, email1, email2, ...]`. Two accounts belong to the same person if they share at least one email. We must merge and return the accounts with sorted emails.
 
@@ -202,7 +179,11 @@ function accountsMerge(accounts) {
 
 ---
 
-### 3. Kruskal's Minimum Spanning Tree (MST)
+## 3. Kruskal's Minimum Spanning Tree (MST)
+
+> **Minimum Spanning Tree (MST)**: A spanning tree whose sum of edge weights is strictly less than or equal to the sum of every other spanning tree.
+
+> **Spanning Tree**: A connected subgraph of an undirected graph that includes all $V$ vertices and exactly $V - 1$ edges with no cycles.
 
 Given a connected, undirected, weighted graph $G = (V, E)$, find a spanning tree connecting all $V$ vertices with the **minimum total edge weight**.
 
@@ -271,7 +252,7 @@ console.log('MST Weight:', mstResult.totalWeight); // 9 (edges: [1,2,2], [2,3,3]
 
 ---
 
-### 4. Kruskal's vs. Prim's Algorithm
+## 4. Kruskal's vs. Prim's Algorithm
 
 | Feature | Kruskal's Algorithm | Prim's Algorithm |
 | :--- | :--- | :--- |
@@ -481,6 +462,8 @@ console.log('✅ All provisionInterconnectNetwork MST assertions passed successf
 ## Interview Questions
 
 ### 1. Why does Kruskal's algorithm sort edges by weight while Prim's algorithm does not?
+
+> **Kruskal's Algorithm**: A greedy algorithm that sorts edges ascending by weight and adds each edge to the MST using DSU if it does not form a cycle.
 **Question:** Contrast the algorithmic mechanics of Kruskal's algorithm and Prim's algorithm, explaining why Kruskal's requires global edge sorting.
 
 **Answer:**

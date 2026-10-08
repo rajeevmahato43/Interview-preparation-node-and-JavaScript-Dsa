@@ -5,42 +5,12 @@
 [Previous: Strings and Text Patterns](day-03-strings-and-text-patterns.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct recursive mechanics into rigorous base cases and progress-guaranteeing recursive steps.
-- Explain the physical structure of a call stack frame (activation record) in the V8 engine.
-- Calculate recursive auxiliary space complexity based on peak call stack depth.
-- Identify the limits of the JavaScript call stack (~10,000 frames) and protect Node.js microservices against recursive Denial-of-Service (DoS) attacks.
-- Convert exponential tree recursion ($O(2^n)$) into linear time ($O(n)$) using top-down memoization.
-- Refactor stack-overflow-prone recursion into memory-safe iteration using heap-allocated explicit stacks and trampolines.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary call stack space.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Array stack primitives (`push`/`pop`) and `Map` cache structures.
 - [JS Day 06: Functions, Parameters, and Callbacks](../../Javascript/javascript-lectures/day-06-functions-parameters-and-callbacks.md) — Execution contexts and scope chains.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Activation Record (Stack Frame)** | A discrete memory block allocated on the execution call stack storing arguments, local variables, and the return address. | Consumes stack memory per active function call; disappears only when the function executes `return`. |
-| **Base Case** | The terminating condition that produces an immediate non-recursive result without further calls. | Missing or faulty base cases cause infinite recursion and application crashes. |
-| **Stack Overflow** | A runtime exception (`RangeError`) triggered when cumulative stack frames exceed the call stack memory limit (~1 MB in V8). | Occurs at ~10,400 nested calls in Node.js, crashing the entire worker process if uncaught. |
-| **Call Stack Depth** | The maximum number of concurrently active stack frames living in memory at any point during execution. | Defines the auxiliary space complexity ($O(\text{depth})$) of recursive algorithms. |
-| **Tail Call Optimization (TCO)** | An engine optimization that reuses the current stack frame if the recursive call is in tail position. | Supported in ES2015 spec, but **not implemented in V8/Node.js**; recursion always grows the stack. |
-| **Explicit Stack** | A heap-allocated JavaScript array used with a `while` loop to emulate the execution call stack. | Allows processing millions of tree nodes or graph vertices without exhausting call stack limits. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -59,7 +29,9 @@ By the end of this lecture, you should be able to:
   └──────────────────────────────────────────────┘     • Heap holds explicit data structures.
 ```
 
-### 1. Anatomy of Recursion: Base Case and Recursive Step
+## 1. Anatomy of Recursion: Base Case and Recursive Step
+
+> **Base Case**: The terminating condition that produces an immediate non-recursive result without further calls.
 
 Recursion is a problem-solving technique where a function solves a subproblem by calling itself with smaller or partitioned input.
 
@@ -96,7 +68,9 @@ countdown(3);
 
 ---
 
-### 2. The Execution Call Stack and Activation Records
+## 2. The Execution Call Stack and Activation Records
+
+> **Activation Record (Stack Frame)**: A discrete memory block allocated on the execution call stack storing arguments, local variables, and the return address.
 
 JavaScript executes code synchronously on a single thread. When a function is called, the V8 engine pushes an **activation record** (stack frame) onto the Call Stack.
 
@@ -133,7 +107,7 @@ The auxiliary space complexity of recursion is strictly governed by the **maximu
 
 ---
 
-### 3. Stack Depth Limits and V8 `RangeError`
+## 3. Stack Depth Limits and V8 `RangeError`
 
 The V8 engine reserves a fixed call stack size of approximately 1 MB per isolate. On typical 64-bit systems, each frame consumes between 96 and 128 bytes, allowing approximately **10,000 to 10,400 concurrent frames**.
 
@@ -159,7 +133,7 @@ If recursion exceeds this allocation, V8 terminates execution with:
 
 ---
 
-### 4. Branching Recursion vs Memoization ($O(2^n) \to O(n)$)
+## 4. Branching Recursion vs Memoization ($O(2^n) \to O(n)$)
 
 When a recursive function branches by invoking itself multiple times per frame, the total operations grow exponentially if subproblems overlap.
 
@@ -206,7 +180,7 @@ console.timeEnd("fibMemo(45)"); // ~1ms
 
 ---
 
-### 5. Logarithmic Recursion: Divide and Conquer (`myPow`)
+## 5. Logarithmic Recursion: Divide and Conquer (`myPow`)
 
 Not all recursion is linear ($O(n)$) or exponential ($O(2^n)$). When a recursive function divides the problem size in half on each step, the recursion depth is bounded by $O(\log n)$.
 
@@ -233,7 +207,7 @@ console.log(myPow(2, -3)); // 0.125
 
 ---
 
-### 6. Converting Recursion to Heap-Allocated Iteration
+## 6. Converting Recursion to Heap-Allocated Iteration
 
 When recursion depth threatens to exceed 10,000 frames (e.g., deep tree traversals, graph searches, or compiler parsing), developers must convert the recursion into an iterative `while` loop utilizing an explicit array stack stored on the **heap**.
 
@@ -279,7 +253,7 @@ traverseIterative(root);
 
 ## Tricky Points and Edge Cases
 
-### 1. The Post-Decrement Trap (`n--` vs `n - 1`)
+## 1. The Post-Decrement Trap (`n--` vs `n - 1`)
 Passing `n--` into a recursive call passes the *current value* of `n` to the next function invocation before decrementing local `n`. The next frame receives the exact same number, creating an immediate infinite loop.
 
 ```javascript
@@ -294,7 +268,7 @@ function brokenCountdown(n) {
 }
 ```
 
-### 2. Execution Order: Pre-Order vs Post-Order
+## 2. Execution Order: Pre-Order vs Post-Order
 Statements executed *before* the recursive invocation run during the downward stack buildup. Statements placed *after* the recursive call run in reverse order during stack unwinding.
 
 ```javascript
@@ -316,7 +290,10 @@ printUpDown(3);
 // Up: 3
 ```
 
-### 3. V8 Tail Call Optimization Reality
+## 3. V8 Tail Call Optimization Reality
+
+> **Tail Call Optimization (TCO)**: An engine optimization that reuses the current stack frame if the recursive call is in tail position.
+
 While ES2015 formally specified Proper Tail Calls (PTC), **V8 (and therefore Node.js) disabled PTC support** due to debugging complexities and stack trace erasure. Tail-recursive code in Node.js still consumes stack frames linearly.
 
 ---
@@ -463,7 +440,7 @@ console.log("✅ All recursive traversal security tests passed successfully!");
 
 ## Interview Questions
 
-### 1. What happens in memory when a function calls itself recursively, and why does a `while` loop avoid call stack exhaustion?
+## 1. What happens in memory when a function calls itself recursively, and why does a `while` loop avoid call stack exhaustion?
 
 **Question:** Compare call stack memory consumption during recursion against iterative execution within a `while` loop.
 
@@ -473,7 +450,7 @@ In contrast, a `while` loop executes within a **single stack frame**. On each it
 
 ---
 
-### 2. What does this code output, and why do the console statements print in opposite orders?
+## 2. What does this code output, and why do the console statements print in opposite orders?
 
 **Question:** Explain the execution order and output of the following recursive function:
 ```javascript
@@ -503,7 +480,7 @@ Execution proceeds in two distinct phases:
 
 ---
 
-### 3. How does binary exponentiation reduce the complexity of calculating $x^n$ from $O(n)$ to $O(\log n)$, and what is its call stack space requirement?
+## 3. How does binary exponentiation reduce the complexity of calculating $x^n$ from $O(n)$ to $O(\log n)$, and what is its call stack space requirement?
 
 **Question:** Implement and explain the time and space complexity of computing $x^n$ recursively using divide-and-conquer exponentiation.
 
@@ -527,7 +504,7 @@ function myPow(x, n) {
 
 ---
 
-### 4. How can recursive parsing of user-supplied JSON or nested document trees lead to Denial-of-Service in a Node.js microservice, and how do you mitigate it?
+## 4. How can recursive parsing of user-supplied JSON or nested document trees lead to Denial-of-Service in a Node.js microservice, and how do you mitigate it?
 
 **Question:** An API endpoint uses a recursive function to validate nested permission hierarchies in client JSON payloads. How can an attacker exploit this to crash the server, and what are the three architectural lines of defense?
 

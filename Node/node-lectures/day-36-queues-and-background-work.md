@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Decouple synchronous HTTP request/response lifecycles from long-running, CPU-bound, or external I/O tasks using asynchronous background queues.
-- Explain the distributed systems reality of **At-Least-Once Delivery** and design idempotent consumers to achieve logical exactly-once execution.
-- Implement the **Transactional Outbox Pattern** in PostgreSQL to eliminate the dual-write race condition between database mutations and message enqueuing.
-- Configure queue lifecycles: Visibility Timeouts (leases), Exponential Backoff retries with Jitter, Poison Pill detection, and Dead-Letter Queues (DLQ).
-- Architect production-grade background worker processes in Node.js (e.g., BullMQ / PostgreSQL `SKIP LOCKED`) with worker concurrency throttling and resource limits.
-- Implement zero-loss graceful worker shutdowns that pause queue ingestion, allow active jobs to finish or re-lease cleanly, and close broker connections on `SIGTERM`.
-
----
-
 ## Prerequisites
 
 - [Day 11: Worker Threads and Child Processes](day-11-worker-threads-and-child-processes.md) — CPU isolation, event-loop offloading, and IPC.
 - [Day 31: PostgreSQL Transactions, MVCC, and Locks](day-31-postgresql-transactions-mvcc-and-locks.md) — Row locks and worker polling via `FOR UPDATE SKIP LOCKED`.
 - [Day 34: Deadlines, Retries, and Idempotency](day-34-deadlines-retries-and-idempotency.md) — Idempotent state machines and retry policies.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **At-Least-Once Delivery** | A messaging guarantee where the broker ensures a message is delivered to a consumer one or more times until explicitly acknowledged (`ACK`). | Network partitions or worker crashes cause message re-deliveries; consumers **must** be idempotent. |
-| **Visibility Timeout** | The duration a message is hidden from other workers after being picked up by a consumer, acting as an active processing lease. | If a worker crashes or exceeds the timeout without renewing its lease, the broker redelivers the message to another worker. |
-| **Dead-Letter Queue (DLQ)** | A secondary queue storing messages that have exceeded their maximum retry limit without successful acknowledgment. | Isolates poison pill messages, preventing continuous worker retry loops from exhausting cluster capacity. |
-| **Transactional Outbox** | Storing outgoing background events directly in an `outbox` database table within the exact same atomic transaction as business data. | Eliminates the dual-write problem: guarantees that an event is queued if and only if the database transaction commits. |
-| **Poison Pill Message** | A malformed or unprocessable message that causes worker code to crash or throw an unhandled exception every time it is attempted. | Can crash entire worker clusters in a loop unless bounded retries and DLQs isolate the message. |
-| **`SKIP LOCKED` Poller** | A database queue pattern using PostgreSQL's `SELECT ... FOR UPDATE SKIP LOCKED` to lock and retrieve pending jobs concurrently. | Allows building simple, ACID-compliant, zero-dependency background task queues directly inside PostgreSQL. |
-
 ---
 
 ## Core Concepts
@@ -124,6 +97,8 @@ export async function processOrderJob(job, db) {
 
 ### 3. The Dual-Write Problem and the Transactional Outbox Pattern
 
+> **Transactional Outbox**: Storing outgoing background events directly in an `outbox` database table within the exact same atomic transaction as business data.
+
 A critical vulnerability occurs when an API handler updates the database and immediately calls an external message queue:
 
 ```javascript
@@ -176,6 +151,10 @@ The solution is eliminating the dual-write by storing outgoing events in the **s
 ---
 
 ### 4. Queue Lifecycle: Visibility Timeouts and Dead-Letter Queues
+
+> **Dead-Letter Queue (DLQ)**: A secondary queue storing messages that have exceeded their maximum retry limit without successful acknowledgment.
+
+> **Visibility Timeout**: The duration a message is hidden from other workers after being picked up by a consumer, acting as an active processing lease.
 
 A message queue coordinates four distinct lifecycle states:
 
@@ -552,6 +531,8 @@ In distributed systems, physical "Exactly-Once Message Delivery" is proven impos
 
 To guarantee that messages are never lost, production message brokers default to **At-Least-Once Delivery**. If an acknowledgment is not received within the **Visibility Timeout**, the broker redelivers the message to another worker.
 
+> **At-Least-Once Delivery**: A messaging guarantee where the broker ensures a message is delivered to a consumer one or more times until explicitly acknowledged (`ACK`).
+
 Engineers achieve **Logical Exactly-Once Execution** by pairing At-Least-Once Delivery with an **Idempotent Consumer**:
 1. Every message is assigned a globally unique `idempotency_key` or `job_id`.
 2. When the consumer receives the message, it attempts to insert this key into an atomic unique store (such as a database unique table: `INSERT INTO processed_jobs (id) VALUES ($1) ON CONFLICT DO NOTHING`).
@@ -597,6 +578,8 @@ All workers claim unique jobs concurrently with zero blocking, zero lock content
 ---
 
 ### 4. What is a Poison Pill message in a queue architecture, and how does a Dead-Letter Queue (DLQ) protect worker infrastructure?
+
+> **Poison Pill Message**: A malformed or unprocessable message that causes worker code to crash or throw an unhandled exception every time it is attempted.
 
 A **Poison Pill message** is a message whose payload contains unexpected data, corrupted syntax, or edge-case parameters that trigger an unhandled runtime error or crash (e.g., `TypeError`, unhandled JSON parse exception, or out-of-memory error) whenever a worker attempts to process it.
 

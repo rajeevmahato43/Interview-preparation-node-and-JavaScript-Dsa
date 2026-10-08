@@ -5,42 +5,13 @@
 [Previous: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master **Floyd's Cycle-Finding Algorithm (Tortoise and Hare)** for $O(n)$ time and $O(1)$ space cycle detection.
-- Mathematically derive and implement finding the exact start node of a linked list cycle (LeetCode 142).
-- Find the middle node of a linked list in a single pass across odd and even lengths without computing length beforehand.
-- Implement **Palindrome Linked List** (LeetCode 234) in $O(n)$ time and $O(1)$ space while restoring the original list structure.
-- Solve **Reorder List** (LeetCode 143) by composing middle-finding, in-place reversal, and alternating pointer interleaving.
-- Apply cycle detection principles to distributed trace loops and circular JSON serialization in Node.js backends.
-
----
-
 ## Prerequisites
 
 - [Day 12: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md) — Two pointers with different velocities.
 - [Day 29: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md) — Node references and in-place list reversal.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Floyd's Cycle Algorithm** | A pointer algorithm where two pointers traverse a sequence at $1\times$ and $2\times$ speeds to detect cyclic loops in $O(1)$ space. | Detects circular references without allocating secondary HashSets that consume memory. |
-| **Cycle Entry Point** | The unique node where the linear non-cyclic prefix transitions into the circular loop. | Identified by resetting one pointer to `head` after collision and advancing both at $1\times$ speed. |
-| **Midpoint Severing** | Setting `slow.next = null` after locating the middle node to disconnect the first half from the second half. | Prevents circular cross-links and infinite loops when reversing or reordering sublists. |
-| **List Interleaving** | Alternating next pointers between two disjoint linked chains ($A_0 \to B_0 \to A_1 \to B_1$). | Solves topological zipper problems like Reorder List without extra array buffers. |
-| **Structural Invariant Restoration** | Re-reversing a mutated sublist back to its original configuration before returning from a function. | Prevents unintended side effects when inspecting shared in-memory data structures in production. |
-
----
-
-## Core Concepts
-
-### 1. Floyd's Cycle-Finding Algorithm & Cycle Entry Proof
+## 1. Floyd's Cycle-Finding Algorithm & Cycle Entry Proof
 
 **Floyd's Cycle Detection Algorithm** (the Tortoise and Hare) advances two pointers—`slow` at $1$ step per iteration and `fast` at $2$ steps per iteration.
 - If the list is acyclic, `fast` reaches `null` in $O(n)$ time.
@@ -111,7 +82,7 @@ function detectCycle(head) {
 
 ---
 
-### 2. Finding the Middle Node (Odd vs Even Lengths)
+## 2. Finding the Middle Node (Odd vs Even Lengths)
 
 Given a linked list, return the middle node using Fast & Slow pointers in a single pass:
 - `slow = slow.next` (1 step)
@@ -150,7 +121,7 @@ function middleNode(head) {
 
 ---
 
-### 3. Palindrome Linked List: The Three-Step Composition
+## 3. Palindrome Linked List: The Three-Step Composition
 
 Given the head of a singly linked list, determine whether it is a palindrome in $O(n)$ time and $O(1)$ space.
 
@@ -217,7 +188,7 @@ function isPalindrome(head) {
 
 ---
 
-### 4. Reorder List: Interleaving Split Halves (LeetCode 143)
+## 4. Reorder List: Interleaving Split Halves (LeetCode 143)
 
 Given a singly linked list:
 $$L_0 \to L_1 \to \dots \to L_{n-1} \to L_n$$

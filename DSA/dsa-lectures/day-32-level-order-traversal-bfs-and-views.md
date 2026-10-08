@@ -5,42 +5,15 @@
 [Previous: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Tree Depth, Diameter, and Path Sums](day-33-tree-depth-diameter-and-path-sums.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master **Breadth-First Search (BFS)** across binary trees using an explicit FIFO Queue.
-- Apply the **Snapshot Sizing Invariant** (`const levelSize = queue.length`) to isolate generation boundaries.
-- Implement **Binary Tree Right Side View** and **Left Side View** in $O(n)$ time.
-- Implement **Zigzag Level-Order Traversal** with optimal array placement, eliminating $O(n^2)$ `unshift()` overhead.
-- Analyze BFS space complexity ($O(w)$ where max width $w \approx n/2$ for balanced trees) and compare against DFS stack depth ($O(h)$).
-- Apply level-order scheduling to microservice boot sequencing and package dependency trees in Node.js.
-
----
-
 ## Prerequisites
 
 - [Day 19: Queue Fundamentals, Circular Queues, and Deque](day-19-queue-circular-queue-and-deque.md) — FIFO queue mechanics and `shift()` performance hazards.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Node structures, root, left, and right pointers.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Breadth-First Search (BFS) and FIFO Queue Architecture
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Breadth-First Search (BFS)** | A tree traversal strategy that visits all nodes at horizontal distance $d$ from the root before exploring nodes at distance $d + 1$. | Used for shortest-path calculations, level grouping, and hierarchical generation boundaries. |
-| **Snapshot Sizing** | Capturing the queue length before processing a level (`levelSize = queue.length`) and iterating exactly that many times. | Ensures newly enqueued child nodes do not contaminate the active generation loop. |
-| **Maximum Tree Width ($w$)** | The maximum number of nodes existing at any single horizontal level of a binary tree. | Governs the auxiliary queue memory footprint ($w \le \lceil n/2 \rceil$ for complete binary trees). |
-| **Right Side View** | The sequence of nodes visible when looking at a binary tree from the right, corresponding to the final element of each BFS level. | Solved cleanly via BFS (`i === levelSize - 1`) or DFS with depth indexing. |
-| **Zigzag Traversal** | Level-order traversal where node values alternate between left-to-right and right-to-left order on consecutive depths. | Models alternating generation scheduling and bi-directional scan pipelines. |
-
----
-
-## Core Concepts
-
-### 1. Breadth-First Search (BFS) and FIFO Queue Architecture
+> **Breadth-First Search (BFS)**: A tree traversal strategy that visits all nodes at horizontal distance $d$ from the root before exploring nodes at distance $d + 1$.
 
 A **Breadth-First Search (BFS)** explores a binary tree horizontally, level by level, in order of increasing depth from the root node.
 
@@ -68,7 +41,9 @@ Output:    [[1], [2, 3], [4, 5, 6]]
 
 ---
 
-### 2. The Snapshot Sizing Invariant: Level Grouping
+## 2. The Snapshot Sizing Invariant: Level Grouping
+
+> **Snapshot Sizing**: Capturing the queue length before processing a level (`levelSize = queue.length`) and iterating exactly that many times.
 
 In problems like **Binary Tree Level Order Traversal** (LeetCode 102), nodes must be segmented into nested arrays grouping elements by depth: `[[1], [2, 3], [4, 5, 6]]`.
 
@@ -117,7 +92,7 @@ function levelOrder(root) {
 
 ---
 
-### 3. Binary Tree Right and Left Side Views (LeetCode 199)
+## 3. Binary Tree Right and Left Side Views (LeetCode 199)
 
 The **Right Side View** represents the sequence of nodes visible when looking at the tree from the right-hand side.
 
@@ -170,7 +145,7 @@ function rightSideView(root) {
 
 ---
 
-### 4. Zigzag Level-Order Traversal (LeetCode 103)
+## 4. Zigzag Level-Order Traversal (LeetCode 103)
 
 In **Zigzag Level Order Traversal**, nodes are read left-to-right on even levels and right-to-left on odd levels.
 
@@ -404,6 +379,8 @@ while (queue.length > 0) {
 ---
 
 ### 2. Can Right Side View be solved using DFS instead of BFS? What is the traversal order and space complexity?
+
+> **Right Side View**: The sequence of nodes visible when looking at a binary tree from the right, corresponding to the final element of each BFS level.
 
 **Question:** Implement Binary Tree Right Side View using Depth-First Search rather than Breadth-First Search, and explain its traversal order.
 

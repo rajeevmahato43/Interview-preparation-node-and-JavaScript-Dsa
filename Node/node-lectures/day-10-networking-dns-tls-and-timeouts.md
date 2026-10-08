@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Diagnose and isolate network failures across individual lifecycle stages: DNS resolution, TCP handshake, TLS negotiation, request transmission, and response body streaming.
-- Contrast `dns.lookup()` (synchronous OS `getaddrinfo()` executed on libuv thread pool) with `dns.resolve*()` (asynchronous c-ares network resolver) and prevent thread-pool starvation under high DNS query volumes.
-- Configure Node.js HTTP/HTTPS agents (`http.Agent`, `undici.Agent`) with connection pooling, socket timeouts, and keep-alive socket recreation to prevent stale socket crashes (`ECONNRESET`).
-- Implement end-to-end deadline budgets and cooperative cancellation using `AbortController` and `AbortSignal.timeout()` across multi-stage outbound request graphs.
-- Protect internal infrastructure against Server-Side Request Forgery (SSRF) and DNS rebinding attacks using strict IP allowlists and pinned socket connections.
-- Design resilient, production-grade retry policies incorporating exponential backoff with full jitter, classification of transient versus terminal status codes, and idempotency key safety.
-
----
-
 ## Prerequisites
 
 Before diving into networking and timeouts, review:
@@ -26,20 +13,6 @@ Before diving into networking and timeouts, review:
 - [Day 06: Buffers, Encodings, and Serialization](day-06-buffers-encodings-and-serialization.md) for raw socket byte streams and serialization.
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) for stream pipeline abort handling and socket teardown.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for HTTP protocol framing and server socket timeouts.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Stage Timeout** | A deadline bound to a specific network phase (e.g., DNS lookup, TCP connect, TLS handshake, or initial response headers). | Setting only a single global 30-second timeout that obscures whether the failure was DNS resolution, socket queueing, or server stall. |
-| **`dns.lookup()`** | Node.js DNS resolver wrapping the operating system's `getaddrinfo(3)` C function, executed synchronously on the libuv thread pool. | Assuming all DNS lookups in Node.js are non-blocking async network calls; high DNS load blocks `fs` and `crypto` operations. |
-| **`dns.resolve()`** | Node.js DNS resolver powered by `c-ares`, issuing asynchronous UDP/TCP queries directly to configured name servers without touching the thread pool. | Using `dns.resolve()` expecting it to parse `/etc/hosts` or system nsswitch files (it bypasses local OS hostname resolution files). |
-| **Stale Socket Race** | A race condition where a client sends a request over an idle Keep-Alive connection just as the upstream server closes it, yielding an `ECONNRESET`. | Treating `ECONNRESET` on keep-alive reuse as an unrecoverable server crash rather than an expected transient race requiring automatic retry. |
-| **Full Jitter Backoff** | A retry backoff algorithm where sleep duration is selected uniformly at random between 0 and `min(cap, base * 2^attempt)`. | Adding constant sleep intervals or deterministic exponential backoff, which synchronizes retried requests and creates thundering herds. |
-| **SSRF** | Server-Side Request Forgery; an exploit where an attacker forces a backend server to issue requests to internal or restricted IP networks. | Relying on regex URL validation alone without resolving and checking the destination IP against private CIDR blocks prior to connection. |
-
 ---
 
 ## Core Concepts
@@ -153,6 +126,8 @@ A robust timeout architecture specifies deadlines at every tier of the call stac
 
 ### 5. Server-Side Request Forgery (SSRF) and DNS Rebinding Defenses
 
+> **SSRF**: Server-Side Request Forgery; an exploit where an attacker forces a backend server to issue requests to internal or restricted IP networks.
+
 SSRF occurs when an attacker crafts input that induces the backend server to make an HTTP request to an unintended destination, such as internal cloud metadata endpoints (`http://169.254.169.254/`) or loopback administrative interfaces (`http://127.0.0.1:8080/`).
 
 #### The DNS Rebinding Flaw
@@ -189,6 +164,8 @@ Full Jitter:     Sleep = Math.random() * Math.min(cap, base * 2 ** attempt)
 ### 1. Libuv Thread Pool DNS Starvation vs `c-ares` Custom Resolver
 
 Demonstrating how `dns.lookup` blocks thread pool operations and how to configure a custom agent using `dns.resolve4`.
+
+> **`dns.lookup()`**: Node.js DNS resolver wrapping the operating system's `getaddrinfo(3)` C function, executed synchronously on the libuv thread pool.
 
 ```js
 // Node.js code

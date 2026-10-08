@@ -6,37 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Architect maintainable, modular Node.js backends adhering to Clean / Hexagonal Layered Architecture principles.
-- Decouple transport mechanisms (HTTP/Express/gRPC) from business domains and persistence technologies (PostgreSQL/MongoDB).
-- Implement the Dependency Inversion Principle (DIP) using functional Dependency Injection (Factory Functions) without heavy reflection frameworks.
-- Assemble application lifecycles cleanly using a dedicated **Composition Root** to eliminate global singletons and circular imports.
-- Enforce strict Data Transfer Object (DTO) projection boundaries between API payloads, domain models, and database rows.
-- Design targeted testing suites across layers, isolating business unit tests from database integration tests.
-
----
-
 ## Prerequisites
 
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) — Application factories, routers, and module cohesion.
 - [Day 26: MongoDB in Express](day-26-mongodb-in-express.md) — Document repository layering.
 - [Day 32: PostgreSQL in Express](day-32-postgresql-in-express.md) — Relational repository layering and the Executor pattern.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Fat Controller** | An anti-pattern where HTTP route handlers execute input validation, database queries, business policy checks, and response formatting in a single function. | Makes code virtually impossible to unit test, couples business logic to Express, and leads to massive code duplication. |
-| **Dependency Inversion (DIP)** | An architectural principle stating that high-level modules (business rules) must not depend on low-level modules (SQL drivers); both depend on abstractions. | Allows swapping persistence engines (e.g., PostgreSQL for an in-memory mock) without modifying a single line of business code. |
-| **Composition Root** | A single centralized location at application startup where all concrete infrastructure instances are wired into domain services. | Eliminates hidden global singletons, resolves circular dependencies, and ensures deterministic startup ordering. |
-| **Domain Entity** | A core business object encapsulating enterprise invariants and state manipulation methods, completely independent of databases or HTTP frameworks. | Protects business rules from external technology churn and framework migrations. |
-| **DTO (Data Transfer Object)** | A plain serializable object that carries data between processes or layers without containing business logic. | Prevents sensitive persistence data (`password_hash`, internal flags) from leaking across the API transport perimeter. |
-
 ---
 
 ## Core Concepts
@@ -111,6 +85,8 @@ A layered backend partitions responsibilities into horizontal strata with a unid
 
 ### 2. Dependency Inversion and Functional Dependency Injection
 
+> **Dependency Inversion (DIP)**: An architectural principle stating that high-level modules (business rules) must not depend on low-level modules (SQL drivers); both depend on abstractions.
+
 The **Dependency Inversion Principle (DIP)** states:
 > 1. High-level modules should not depend on low-level modules. Both should depend on abstractions.
 > 2. Abstractions should not depend on details. Details should depend on abstractions.
@@ -161,6 +137,8 @@ export function createUserService({ userRepository, emailGateway, logger }) {
 ---
 
 ### 3. The Composition Root
+
+> **Composition Root**: A single centralized location at application startup where all concrete infrastructure instances are wired into domain services.
 
 The **Composition Root** is the unique location in an application where the dependency graph is composed at process startup. In an Express application, this is typically `app.js` or `container.js`.
 
@@ -213,6 +191,8 @@ export function buildContainer(config) {
 ---
 
 ### 4. Data Transfer Objects (DTOs) vs Domain Entities vs Persistence Entities
+
+> **DTO (Data Transfer Object)**: A plain serializable object that carries data between processes or layers without containing business logic.
 
 A common defect in Express backends is passing database row objects directly out of route handlers as API JSON responses:
 
@@ -615,6 +595,8 @@ export function assembleMemberModule(pool, paymentGateway, logger) {
 ## Interview Questions
 
 ### 1. What is the "Fat Controller" anti-pattern in Node.js, and what specific architectural vulnerabilities does it introduce into a production system?
+
+> **Fat Controller**: An anti-pattern where HTTP route handlers execute input validation, database queries, business policy checks, and response formatting in a single function.
 
 The "Fat Controller" anti-pattern occurs when an HTTP route handler assumes multiple responsibilities: parsing request payloads, executing business logic and policy checks, querying database connections directly, orchestrating external network calls, and constructing responses.
 

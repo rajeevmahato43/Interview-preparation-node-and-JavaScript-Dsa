@@ -6,41 +6,49 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain string immutability in JavaScript and how V8 manages strings in memory (flat strings, cons-strings, and sliced strings).
-- Prevent the hidden $O(n^2)$ time and memory trap when building strings in loops by using array buffers and `join("")`.
-- Map characters to fixed-size frequency vectors using `charCodeAt()` to achieve $O(1)$ auxiliary space.
-- Navigate UTF-16 encoding quirks, distinguishing code units from Unicode code points (surrogate pairs and emoji handling).
-- Solve fundamental string interview patterns: two-pointer inward scan (Valid Palindrome), balanced frequency vector (Valid Anagram), and linear pointer tracking (Subsequence).
-- Diagnose and prevent memory retention leaks in Node.js caused by V8 sliced strings holding large parent buffers.
-
----
-
 ## Prerequisites
 
-- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and space complexity.
+- [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary space.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Array allocations and hash tables.
-- [JS Day 03: Values, Types, and Literals](../../Javascript/javascript-lectures/day-03-values-types-and-literals.md) — Primitive value semantics.
-- [JS Day 15: Regular Expressions and Text Processing](../../Javascript/javascript-lectures/day-15-regular-expressions-and-text-processing.md) — Text transformations.
+- Basic understanding of JavaScript strings and loops.
 
 ---
 
-## Quick Vocabulary Card
+## 1. String Immutability and Memory in V8
 
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **String Immutability** | Primitive string values cannot be mutated in place; any modification creates a distinct string allocation. | Index assignment (`str[0] = 'a'`) fails silently; naive concatenation in loops takes $O(n^2)$ time. |
-| **Cons-String** | A V8 internal tree representation of two concatenated strings without immediate memory copying. | Postpones copying until string flattening, but can bloat memory if deeply nested. |
-| **Sliced String** | A V8 internal pointer containing an offset and length pointing into a parent string's memory. | Slicing a small 10-character token from a 50 MB HTTP payload keeps the entire 50 MB in memory. |
-| **Code Unit vs Code Point** | A code unit is a 16-bit storage slot in UTF-16 ($0$ to $0xFFFF$). A code point is a full Unicode character ($0$ to $0x10FFFF$). | Astral plane characters (emojis, rare scripts) consume two 16-bit code units (surrogate pairs). |
-| **Frequency Vector** | A fixed-size numeric array (e.g., size 26) indexed by character codes (`code - 97`). | Provides $O(1)$ auxiliary space counting that outperforms `Map` when character sets are bounded. |
+In JavaScript, strings are primitive values. Once a string is created, its characters **cannot** be changed in place.
 
----
+> **String Immutability**: A string primitive cannot be mutated in place. Any change (like `str += 'a'` or `.slice()`) always allocates a brand new string in memory.
 
-## Core Concepts
+If you attempt to modify a character by index, it either fails silently or throws an error in strict mode:
+
+```javascript
+// Node.js code
+"use strict";
+
+const word = "hello";
+
+// ❌ ANTI-PATTERN: Attempting in-place mutation does not work
+try {
+  word[0] = "j"; // Throws TypeError in strict mode!
+} catch (err) {
+  console.log("Cannot mutate string index:", err.message);
+}
+
+// ✅ PATTERN: Create a new string explicitly
+const updated = "j" + word.slice(1);
+console.log(updated); // "jello"
+```
+
+### How V8 Stores Strings Internally
+
+To keep operations fast, the V8 engine (Node.js/Chrome) uses special string representations under the hood:
+
+1. **Flat Strings**: Characters are stored next to each other in memory in one continuous row. Reading by index takes $O(1)$ time.
+2. **Cons-Strings**: When you join two strings with `+`, V8 avoids copying immediately. Instead, it creates a small pointer tree linking both strings.
+   > **Cons-String**: A V8 internal tree where two strings are linked using pointers rather than copied right away. This delays the expensive copy until the string is finally read or printed.
+3. **Sliced Strings**: When you call `slice()` on a large string, V8 creates a small pointer referencing the parent string with a start offset and length.
+   > **Sliced String**: A V8 internal pointer that references a section of a parent string with an offset and length, avoiding memory allocation until needed.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -50,55 +58,22 @@ By the end of this lecture, you should be able to:
   1. FLAT STRING (Contiguous Character Storage)
      "hello"  --> [ 'h' | 'e' | 'l' | 'l' | 'o' ]
      • Indexed random access: O(1)
-     • Read-only: Mutating an index does nothing or throws in strict mode!
+     • Read-only: Mutating an index fails or throws!
 
   2. CONS-STRING (Concatenation Tree)
      strA + strB --> ConsString { left: ptr(strA), right: ptr(strB) }
-     • Prevents immediate re-allocation during +=, but requires "flattening" upon access.
+     • Delays copying until the string is flattened upon access.
 
   3. SLICED STRING (Window into Parent String)
      parentStr.slice(0, 5) --> SlicedString { parent: ptr(parentStr), offset: 0, length: 5 }
-     • O(1) creation time, but prevents garbage collection of the entire parentStr!
-
-  4. UTF-16 ENCODING & SURROGATE PAIRS
-     "A"  --> Code Unit: 0x0041 (1 unit,  .length = 1)
-     "🚀" --> High Surrogate: 0xD83D, Low Surrogate: 0xDE80 (2 units, .length = 2)
+     • O(1) creation time, but holds onto the parent string's memory!
 ```
-
-### 1. String Immutability and V8 Internal Representations
-
-A JavaScript string is a primitive value representing a sequence of 16-bit unsigned integer values (UTF-16 code units).
-
-Because strings are immutable, you cannot alter existing character elements in place:
-
-```javascript
-// Node.js code
-"use strict";
-
-const word = "hello";
-
-// ❌ ANTI-PATTERN: Attempting in-place mutation
-try {
-  word[0] = "j"; // Throws TypeError in strict mode; silently fails in non-strict mode
-} catch (err) {
-  console.log("Cannot mutate string index:", err.message);
-}
-
-// ✅ PATTERN: Constructing a new string explicitly
-const updated = "j" + word.slice(1);
-console.log(updated); // "jello"
-```
-
-In the V8 engine, strings are not always flat contiguous character arrays:
-1. **Sequential / Flat Strings:** Characters are laid out consecutively in memory.
-2. **Cons-Strings:** Created when two strings are concatenated with `+`. Instead of allocating a new buffer and copying both inputs immediately, V8 creates a pair of pointers referencing the operands. When a flat string is required (e.g., regex execution or IPC), V8 flattens the tree.
-3. **Sliced Strings:** Created when `slice()` or `substring()` is called on a large string. Rather than copying bytes, V8 points back to the parent string with a start offset and length.
 
 ---
 
-### 2. The String-Building Trap: $O(n^2)$ vs Array Buffer $O(n)$
+## 2. The String Building Trap: O(n²) vs Array Buffer O(n)
 
-Concatenating strings inside a loop using `+=` copies accumulated characters repeatedly once V8 flattens the structure, yielding quadratic time complexity.
+Because strings are immutable, adding characters one by one with `+=` inside a loop forces JavaScript to allocate and copy all previous characters over and over again!
 
 ```
 Iteration 1: copy 1 char
@@ -106,101 +81,105 @@ Iteration 2: copy 2 chars
 Iteration 3: copy 3 chars
 ...
 Iteration n: copy n chars
-Total copies = 1 + 2 + 3 + ... + n = n(n + 1) / 2 = O(n²)
+Total copies = 1 + 2 + 3 + ... + n = n(n + 1) / 2 = O(n²) operations!
 ```
 
 ```javascript
 // Node.js code
-// ❌ ANTI-PATTERN: Quadratic string concatenation inside a loop (O(n^2))
+// ❌ ANTI-PATTERN: O(n^2) quadratic string concatenation inside a loop
 function buildCsvSlow(rowCount) {
   let csv = "";
   for (let i = 0; i < rowCount; i++) {
-    csv += `row_${i},value_${i}\n`; // Repeated re-allocation and copying!
+    csv += `row_${i},val_${i}\n`; // Constant re-allocation and character copying!
   }
   return csv;
 }
 
-// ✅ PATTERN: Collecting into an array and joining once (O(n))
+// ✅ PATTERN: Collect tokens in an array and join once in O(n) time
 function buildCsvFast(rowCount) {
   const parts = new Array(rowCount);
   for (let i = 0; i < rowCount; i++) {
-    parts[i] = `row_${i},value_${i}\n`;
+    parts[i] = `row_${i},val_${i}\n`;
   }
   return parts.join(""); // Single pass allocation and copy
 }
 
 const n = 20000;
-console.time("Slow Concatenation");
+console.time("Slow Concatenation (O(n^2))");
 buildCsvSlow(n);
-console.timeEnd("Slow Concatenation");
+console.timeEnd("Slow Concatenation (O(n^2))");
 
-console.time("Fast Array Join");
+console.time("Fast Array Join (O(n))");
 buildCsvFast(n);
-console.timeEnd("Fast Array Join");
+console.timeEnd("Fast Array Join (O(n))");
 ```
 
 ---
 
-### 3. Unicode, UTF-16 Code Units, and Code Points
+## 3. Unicode, Emojis, and UTF-16 Surrogate Pairs
 
-JavaScript strings index over 16-bit UTF-16 **code units**, not full Unicode characters (code points).
+JavaScript encodes strings using **UTF-16**.
 
-- Characters within the Basic Multilingual Plane (BMP, $U+0000$ to $U+FFFF$) occupy **one code unit** (`length === 1`).
-- Supplementary characters (emojis, historic scripts, $U+10000$ to $U+10FFFF$) occupy **two code units** called a surrogate pair (`length === 2`).
+> **Code Unit vs Code Point**: In UTF-16, a **code unit** is a 16-bit storage slot ($0$ to $0xFFFF$). Basic Latin letters use 1 code unit. Emojis and special symbols require 2 code units (called a **surrogate pair**) to represent 1 full character (**code point**).
+
+Because `.length` counts 16-bit code units rather than visual characters, an emoji has a length of 2!
 
 ```javascript
 // Node.js code
-const ascii = "A";
+const letter = "A";
 const emoji = "🚀";
 
-console.log(ascii.length); // 1
-console.log(emoji.length); // 2
+console.log(letter.length); // 1
+console.log(emoji.length);  // 2! (Surrogate pair: 2 code units)
 
-// ❌ ANTI-PATTERN: Naive string reversal breaks surrogate pairs!
-const brokenReverse = emoji.split("").reverse().join("");
-console.log(brokenReverse); // Outputs corrupted characters (e.g. )
+// ❌ ANTI-PATTERN: Naive string reversal corrupts emojis!
+const broken = emoji.split("").reverse().join("");
+console.log(broken); // Outputs broken question mark characters!
 
-// ✅ PATTERN: Iterate by Unicode code points using Array.from or for...of
-const safeCharacters = Array.from(emoji);
-console.log(safeCharacters.length); // 1
-console.log(safeCharacters[0]);      // "🚀"
+// ✅ PATTERN: Use Array.from() or for...of to handle full Unicode characters
+const safeChars = Array.from(emoji);
+console.log(safeChars.length); // 1
+console.log(safeChars[0]);      // "🚀"
 
-// Inspecting code points vs code units
-console.log(emoji.charCodeAt(0));   // 55357 (High surrogate code unit)
-console.log(emoji.codePointAt(0));  // 128640 (Full Unicode code point)
+// Code units vs Code points
+console.log(emoji.charCodeAt(0));  // 55357 (High surrogate code unit)
+console.log(emoji.codePointAt(0)); // 128640 (Full Unicode code point)
 ```
 
-| Method | Unit Inspected | Surrogate Pair Safe? |
+### Unicode String Methods Comparison
+
+| Method | What It Inspects | Handles Emojis Safely? |
 |---|---|---|
-| `str.charCodeAt(i)` | 16-bit Code Unit ($0$ to $65535$) | ❌ No |
-| `str.codePointAt(i)` | Full 32-bit Unicode Code Point | ✅ Yes |
+| `str.charCodeAt(i)` | 16-bit Code Unit ($0$ to $65535$) | ❌ No (splits surrogate pairs) |
 | `str[i]` | Character at 16-bit Code Unit index | ❌ No |
-| `for (const ch of str)` | Full Unicode character stream | ✅ Yes |
+| `str.length` | Total 16-bit Code Units | ❌ No (counts emojis as 2) |
+| `str.codePointAt(i)` | Full 32-bit Unicode Code Point | ✅ Yes |
+| `for (const ch of str)` | Full character sequence | ✅ Yes |
 | `Array.from(str)` | Array of full Unicode characters | ✅ Yes |
 
 ---
 
-### 4. Character Frequency Vectors ($O(1)$ Auxiliary Space)
+## 4. Character Frequency Vectors in O(1) Auxiliary Space
 
-When a problem statement restricts inputs to lowercase English letters (`'a'` through `'z'`), an array of size 26 is asymptotically optimal ($O(1)$ space) and avoids hash map hashing overhead.
+When an interview problem specifies that inputs only contain lowercase English letters (`'a'` through `'z'`), using a fixed 26-slot array gives you **$O(1)$ auxiliary (extra) space** and runs faster than a `Map`.
+
+> **Frequency Vector**: A fixed-size array (like 26 slots for `'a'`–`'z'`) where each index represents a letter offset: $\text{index} = \text{charCode} - 97$.
 
 ```
-Character Code Offsets:
-'a' = 97  --> 97 - 97 = index 0
-'b' = 98  --> 98 - 97 = index 1
+'a' (ASCII 97)  --> 97 - 97 = index 0
+'b' (ASCII 98)  --> 98 - 97 = index 1
 ...
-'z' = 122 --> 122 - 97 = index 25
+'z' (ASCII 122) --> 122 - 97 = index 25
 ```
 
 ```javascript
 // Node.js code
-function getCharacterFrequencies(str) {
+function getCharacterCounts(str) {
   // Fixed 26-slot integer array (O(1) auxiliary space)
   const freq = new Array(26).fill(0);
 
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
-    // Boundary check for lowercase English
     if (code >= 97 && code <= 122) {
       freq[code - 97]++;
     }
@@ -209,19 +188,19 @@ function getCharacterFrequencies(str) {
   return freq;
 }
 
-const sampleFreq = getCharacterFrequencies("banana");
-// 'a' (code 97) appears 3 times -> freq[0] === 3
-// 'b' (code 98) appears 1 time  -> freq[1] === 1
-// 'n' (code 110) appears 2 times -> freq[13] === 2
-console.log("Frequencies: a =", sampleFreq[0], "b =", sampleFreq[1], "n =", sampleFreq[13]);
+const counts = getCharacterCounts("banana");
+// 'a' appears 3 times -> counts[0] === 3
+// 'b' appears 1 time  -> counts[1] === 1
+// 'n' appears 2 times -> counts[13] === 2
+console.log("Frequencies: a =", counts[0], "b =", counts[1], "n =", counts[13]);
 ```
 
 ---
 
-### 5. Algorithmic Patterns: Palindrome, Anagram, Subsequence
+## 5. Three Core String Patterns
 
-#### Pattern A: Valid Palindrome (Two Pointers Inward Scan)
-A string is a palindrome if it reads identically forwards and backwards after ignoring non-alphanumeric characters and normalizing case.
+### Pattern A: Valid Palindrome (Two Pointers Inward Scan)
+A string is a palindrome if it reads the same forward and backward, ignoring non-alphanumeric characters and case.
 
 ```javascript
 // Node.js code
@@ -238,17 +217,17 @@ function isPalindrome(s) {
   let right = s.length - 1;
 
   while (left < right) {
-    // Advance left pointer past non-alphanumerics
+    // Skip non-alphanumeric characters on the left
     while (left < right && !isAlphaNumeric(s.charCodeAt(left))) {
       left++;
     }
-    // Decrement right pointer past non-alphanumerics
+    // Skip non-alphanumeric characters on the right
     while (left < right && !isAlphaNumeric(s.charCodeAt(right))) {
       right--;
     }
 
     if (s[left].toLowerCase() !== s[right].toLowerCase()) {
-      return false; // Mismatch discovered
+      return false; // Mismatch found
     }
 
     left++;
@@ -261,11 +240,13 @@ function isPalindrome(s) {
 console.log(isPalindrome("A man, a plan, a canal: Panama")); // true
 console.log(isPalindrome("race a car")); // false
 ```
-- **Time Complexity:** $O(n)$ — each character is visited at most twice.
-- **Auxiliary Space:** $O(1)$ — pointers move in place without creating filtered substrings or arrays.
+- **Time Complexity:** $O(n)$ — each character is inspected at most twice.
+- **Auxiliary Space:** $O(1)$ — pointers move in place without creating extra strings or arrays.
 
-#### Pattern B: Valid Anagram (Balanced Frequency Vector)
-Two strings are anagrams if they contain the identical multiset of characters with equal frequencies.
+---
+
+### Pattern B: Valid Anagram (Balanced Frequency Vector)
+Two strings are anagrams if they use the exact same characters with the same frequencies.
 
 ```javascript
 // Node.js code
@@ -274,11 +255,13 @@ function isAnagram(s, t) {
 
   const counts = new Array(26).fill(0);
 
+  // Single loop: count up for s, count down for t
   for (let i = 0; i < s.length; i++) {
-    counts[s.charCodeAt(i) - 97]++; // Increment for string s
-    counts[t.charCodeAt(i) - 97]--; // Decrement for string t
+    counts[s.charCodeAt(i) - 97]++;
+    counts[t.charCodeAt(i) - 97]--;
   }
 
+  // If all counts are 0, both strings matched perfectly
   for (let i = 0; i < 26; i++) {
     if (counts[i] !== 0) return false;
   }
@@ -290,10 +273,12 @@ console.log(isAnagram("anagram", "nagaram")); // true
 console.log(isAnagram("rat", "car"));         // false
 ```
 - **Time Complexity:** $O(n)$ where $n = s.\text{length}$.
-- **Auxiliary Space:** $O(1)$ (fixed 26-element array).
+- **Auxiliary Space:** $O(1)$ (bounded 26-slot array).
 
-#### Pattern C: Is Subsequence (Greedy Two-Pointer Scan)
-Verify if all characters of string `s` appear inside string `t` in their original relative sequence.
+---
+
+### Pattern C: Is Subsequence (Greedy Two-Pointer Scan)
+Check if all characters of string `s` appear in string `t` in their original order.
 
 ```javascript
 // Node.js code
@@ -303,9 +288,9 @@ function isSubsequence(s, t) {
 
   while (sIndex < s.length && tIndex < t.length) {
     if (s[sIndex] === t[tIndex]) {
-      sIndex++; // Advance target probe upon match
+      sIndex++; // Matched character, look for next character in s
     }
-    tIndex++; // Always advance host string pointer
+    tIndex++; // Always advance in t
   }
 
   return sIndex === s.length;
@@ -319,60 +304,68 @@ console.log(isSubsequence("aec", "abcde")); // false
 
 ---
 
+## Common Mistakes and Interview Traps
+
+### 1. Hidden $O(n^2)$ Searching with `indexOf()` or `includes()`
+Calling `str.indexOf()` or `str.includes()` inside an outer loop creates nested iteration:
+```javascript
+// Node.js code
+// ❌ Quadratic O(n^2) trap
+for (let i = 0; i < s.length; i++) {
+  if (s.indexOf(s[i]) === s.lastIndexOf(s[i])) { ... }
+}
+```
+Always replace nested searches with a single-pass frequency array or hash map ($O(n)$ time).
+
+### 2. Forgetting that `replace()` Only Replaces the First Match
+Calling `str.replace("a", "b")` with a string literal replaces **only the first match**:
+```javascript
+// Node.js code
+const original = "banana";
+console.log(original.replace("a", "o"));    // "bonana" (Replaced only first 'a'!)
+console.log(original.replaceAll("a", "o")); // "bonono" (Replaced all 'a's!)
+```
+
+---
+
 ## Tricky Points and Edge Cases
 
 ### 1. The V8 Sliced String Memory Retention Leak in Node.js
-When you slice a small string out of a massive string in V8, the sliced string internally references the entire parent string. If the small substring is retained in a long-lived cache, the multi-megabyte parent string cannot be garbage collected.
+When you slice a small substring from a huge string in V8, the sliced string internally points back to the entire parent string.
+- If you parse a 50 MB JSON/XML payload and store a 20-character session ID token in a long-lived cache:
+- V8 **cannot** garbage-collect the 50 MB parent string because the tiny token holds a pointer to it!
 
 ```javascript
 // Node.js code
-function extractTokenVulnerable(largePayload) {
-  // SlicedString maintains internal pointer to largePayload!
-  return largePayload.slice(0, 16);
-}
-
 function extractTokenSafe(largePayload) {
-  // Force creation of a fresh flat string by cloning character data
   const token = largePayload.slice(0, 16);
-  // In V8, concatenating with an empty string or using Buffer creates a detached string
+  // Force V8 to allocate an independent flat string, detaching from the large parent
   return (" " + token).slice(1);
 }
 ```
 
-### 2. `replace()` vs `replaceAll()` and Global Flags
-Calling `str.replace("a", "b")` with a string literal replaces **only the first match**. To replace every occurrence, use `replaceAll()` or a RegExp with the global flag `/g`.
+### 2. `slice()` vs `substring()`
+Always use `String.prototype.slice()` in modern JavaScript:
+- `str.slice(start, end)` supports negative indices (`slice(-3)` gets the last 3 characters).
+- `str.substring(start, end)` treats negative numbers as `0` and swaps arguments if `start > end`, leading to unexpected results.
 
-```javascript
-// Node.js code
-const original = "banana";
-
-// ❌ Trap: Replaces only the first 'a'
-console.log(original.replace("a", "o")); // "bonana"
-
-// ✅ Pattern: Replaces all occurrences
-console.log(original.replaceAll("a", "o")); // "bonono"
-console.log(original.replace(/a/g, "o"));   // "bonono"
-```
-
-### 3. `slice()` vs `substring()`
-Always standardize on `String.prototype.slice()`.
-- `slice(start, end)` supports negative indices counting backwards from the string end (`slice(-3)` gets the last 3 characters).
-- `substring(start, end)` treats negative indices as `0` and swaps arguments if `start > end`.
+### 3. Comparing Character Codes Without Normalizing Case
+`"A".charCodeAt(0)` is 65, while `"a".charCodeAt(0)` is 97. If an algorithm ignores case, always call `.toLowerCase()` or add a case check before calculating character code offsets.
 
 ---
 
-## Hands-On Exercise
+## Hands-On Exercise: Finding the First Unique Character
 
 ### Scenario
-You are implementing a log parser for a high-throughput Node.js microservice. You must find the index of the first non-repeating character in a lowercase stream line. If no unique character exists, return `-1`.
+You are building an event processing pipeline in Node.js. You must find the index of the first non-repeating character in a lowercase log stream line. If every character repeats, return `-1`.
 
 ### Buggy Code
 ```javascript
 // Node.js code
-function firstUniqCharBuggy(s) {
+// ❌ Inefficient O(n^2) implementation that times out on large streams
+export function firstUniqCharBuggy(s) {
   for (let i = 0; i < s.length; i++) {
-    // ❌ Bug: indexOf and lastIndexOf scan the entire string inside an outer loop!
-    // Time complexity becomes O(n^2), timing out on large strings.
+    // BUG: indexOf and lastIndexOf each scan the entire string inside the loop!
     if (s.indexOf(s[i]) === s.lastIndexOf(s[i])) {
       return i;
     }
@@ -382,27 +375,30 @@ function firstUniqCharBuggy(s) {
 ```
 
 ### Acceptance Criteria
-1. The solution must run in strictly $O(n)$ time.
-2. The solution must use $O(1)$ auxiliary space (a 26-slot frequency array).
-3. The function must pass edge cases: empty strings, single character strings, all duplicates, and unique character at the final index.
+1. The solution must run in strictly **$O(n)$ time**.
+2. The solution must use **$O(1)$ auxiliary space** (a 26-slot frequency array).
+3. Pass all edge cases: empty strings, single-character strings, all duplicates, and the unique character at the final index.
+4. Verify using Node.js assertions.
 
 ### Solution Code
-
 ```javascript
 // Node.js code
 import assert from "node:assert/strict";
 
-function firstUniqChar(s) {
+/**
+ * Two-pass O(n) First Unique Character using a 26-element frequency vector
+ */
+export function firstUniqChar(s) {
   if (s.length === 0) return -1;
   if (s.length === 1) return 0;
 
-  // Pass 1: Build frequency vector in O(n) time, O(1) space
+  // Pass 1: Build frequency counts in O(n) time, O(1) space
   const counts = new Array(26).fill(0);
   for (let i = 0; i < s.length; i++) {
     counts[s.charCodeAt(i) - 97]++;
   }
 
-  // Pass 2: Identify the first character whose frequency is exactly 1
+  // Pass 2: Find the first character whose count is exactly 1
   for (let i = 0; i < s.length; i++) {
     if (counts[s.charCodeAt(i) - 97] === 1) {
       return i;
@@ -413,8 +409,8 @@ function firstUniqChar(s) {
 }
 
 // Verification Tests
-assert.equal(firstUniqChar("leetcode"), 0);     // 'l' is at index 0
-assert.equal(firstUniqChar("loveleetcode"), 2); // 'v' is at index 2
+assert.equal(firstUniqChar("leetcode"), 0);     // 'l' at index 0
+assert.equal(firstUniqChar("loveleetcode"), 2); // 'v' at index 2
 assert.equal(firstUniqChar("aabb"), -1);        // No unique characters
 assert.equal(firstUniqChar("z"), 0);           // Single character
 assert.equal(firstUniqChar(""), -1);           // Empty string
@@ -422,41 +418,39 @@ assert.equal(firstUniqChar(""), -1);           // Empty string
 console.log("✅ All firstUniqChar test assertions passed successfully!");
 ```
 
-### Solution Explanation
-
-1. **Two-Pass Algorithm:** The first pass iterates across all $n$ characters and increments the corresponding bucket in the 26-element array ($O(n)$ time). The second pass inspects the characters in order of their original indices and returns the first index where `counts[code - 97] === 1`.
-2. **Strict $O(1)$ Memory:** Regardless of whether the string length is 10 or 1,000,000 characters, the auxiliary space allocated is bounded to exactly 26 integers.
-
 ---
 
 ## Summary
 
-- JavaScript strings are immutable primitives; index mutations fail or throw, and every modification creates a new allocation.
-- In-loop string concatenation via `+=` causes $O(n^2)$ copying overhead; accumulate parts in an array and invoke `.join("")` once.
-- Lowercase English character frequencies can be tracked in $O(1)$ auxiliary memory using `charCodeAt(i) - 97` inside a 26-element array.
-- JavaScript measures string length in 16-bit UTF-16 code units; characters outside the BMP (such as emojis) require surrogate pairs (`codePointAt()`, `Array.from()`).
-- Two-pointer inward scanning solves palindrome verification in $O(n)$ time with $O(1)$ memory without allocating reversed strings.
+- **String Immutability**: JavaScript strings are read-only primitives. Any index assignment (`str[0] = 'x'`) fails or throws. Every change creates a new string in memory.
+- **The $O(n^2)$ Concatenation Trap**: Using `+=` inside a loop repeatedly allocates new strings and copies existing characters ($O(n^2)$ total work). Collect tokens in an array and use `arr.join("")` for clean $O(n)$ execution.
+- **V8 Internal Representations**: V8 uses Flat Strings (fast contiguous), Cons-Strings (concatenation pointer trees), and Sliced Strings (pointers into parent strings).
+- **Unicode & Surrogate Pairs**: UTF-16 measures strings in 16-bit code units. Basic letters use 1 unit, but emojis use 2 units (surrogate pairs), making `emoji.length === 2`. Always use `Array.from()` or `for...of` to iterate code points safely.
+- **$O(1)$ Frequency Vectors**: For lowercase English letters, a fixed 26-slot array indexed by `charCodeAt(i) - 97` provides $O(1)$ auxiliary space and avoids hash map overhead.
+- **Three Essential Patterns**:
+  - Valid Palindrome: Two pointers inward scan ($O(n)$ time, $O(1)$ space).
+  - Valid Anagram: Balanced frequency array ($O(n)$ time, $O(1)$ space).
+  - Is Subsequence: Greedy two-pointer forward scan ($O(n)$ time, $O(1)$ space).
 
 ---
 
 ## Cheat Sheet
 
-### Common String Complexities
-| Operation | Method / Pattern | Time Complexity | Space Complexity |
-|---|---|---|---|
-| Index Access | `str[i]` | $O(1)$ | $O(1)$ |
-| Substring Slice | `str.slice(start, end)` | $O(k)$ | $O(k)$ (or V8 sliced string pointer) |
-| Naive Loop Concatenation | `str += char` | $O(n^2)$ | $O(n^2)$ allocations |
-| Array Join | `arr.join("")` | $O(n)$ | $O(n)$ single buffer allocation |
-| Character Code | `str.charCodeAt(i)` | $O(1)$ | $O(1)$ |
-| Unicode Code Point | `str.codePointAt(i)` | $O(1)$ | $O(1)$ |
+| Operation | Method / Pattern | Time Complexity | Auxiliary Space | Key Note |
+|---|---|---|---|---|
+| Index Access | `str[i]` | $O(1)$ | $O(1)$ | Reads 16-bit code unit |
+| Substring Slice | `str.slice(start, end)` | $O(k)$ | $O(k)$ | Creates sliced string pointer |
+| In-Loop Concatenation | `str += char` | $O(n^2)$ | $O(n^2)$ | Re-allocates on every step |
+| Array Join | `arr.join("")` | $O(n)$ | $O(n)$ | Single pass memory allocation |
+| Character Code | `str.charCodeAt(i)` | $O(1)$ | $O(1)$ | Code unit integer ($0$–$65535$) |
+| Unicode Code Point | `str.codePointAt(i)` | $O(1)$ | $O(1)$ | Full 32-bit scalar value |
 
-### Common Pitfalls
-- **The Accidental $O(n^2)$ Search:** Calling `str.indexOf()` or `str.includes()` inside an outer loop creates nested quadratic iteration.
-- **Surrogate Splitting:** Using `str.split("").reverse().join("")` splits 32-bit surrogate pairs into invalid code units.
-- **Single Replacement Trap:** Forgetting that `str.replace("a", "b")` only replaces the first instance.
-- **Case Inconsistency:** Comparing character codes directly without case normalization (`"A".charCodeAt(0) === 65` while `"a".charCodeAt(0) === 97`).
-- **Memory Retention with Slices:** Retaining tiny substrings extracted from large request buffers in long-lived caches in Node.js.
+### Common Pitfalls Checklist
+- [ ] Concatenating strings with `+=` inside large loops instead of using an array buffer with `.join("")`.
+- [ ] Splitting emojis with `.split("").reverse().join("")`, corrupting surrogate pairs.
+- [ ] Forgetting that `str.replace("a", "b")` only replaces the first instance (use `replaceAll()`).
+- [ ] Keeping large parent HTTP request strings in memory by storing small sliced substrings in caches.
+- [ ] Using `indexOf()` or `lastIndexOf()` inside loops, creating accidental $O(n^2)$ bottlenecks.
 
 ---
 
@@ -466,11 +460,11 @@ console.log("✅ All firstUniqChar test assertions passed successfully!");
 
 **Question:** Explain what string immutability means at the memory level and why appending characters with `+=` inside a loop degrades performance quadratically.
 
-**Answer:** String immutability means that once a string primitive is allocated in memory, its character contents cannot be modified in place. Operations like `word[0] = 'a'` either fail silently or throw in strict mode.
+**Answer:** String immutability means that once a string primitive is allocated in memory, its characters cannot be changed in place. Operations like `word[0] = 'a'` either fail silently or throw a `TypeError` in strict mode.
 
-When you execute `str += char` inside a loop of $n$ iterations, JavaScript cannot expand the existing memory buffer in place. For each iteration $i$, a new memory buffer of size $i$ must be allocated, and all existing $i - 1$ characters must be copied over along with the new character. Summing the character copies across all iterations yields:
+When you execute `str += token` inside a loop of $n$ iterations, JavaScript cannot expand the existing memory buffer in place. For each iteration $i$, a new memory buffer of size $i$ must be allocated, and all existing $i - 1$ characters must be copied over along with the new token. Summing the character copies across all iterations yields:
 $$\sum_{i=1}^{n} i = \frac{n(n + 1)}{2} = O(n^2)$$
-For $n = 50,000$, this triggers over 1.25 billion memory copy operations and massive garbage collection pressure. To solve this, collect tokens into an array (`parts.push(token)`) where appends are $O(1)$ amortized, and execute `parts.join("")` once at the end in $O(n)$ time.
+For $n = 50,000$, this triggers over 1.25 billion memory copies and heavy garbage collection pressure. To solve this, collect tokens in an array (`parts.push(token)`) where appends take $O(1)$ amortized time, and call `parts.join("")` once at the end in $O(n)$ time.
 
 ---
 
@@ -493,13 +487,13 @@ To fix this leak, you must force V8 to allocate an independent flat string, such
 
 **Question:** Explain UTF-16 code units versus code points in JavaScript, why emoji lengths appear doubled, and how to safely reverse or process text containing emojis.
 
-**Answer:** JavaScript strings are encoded using UTF-16. In UTF-16, characters are represented by 16-bit **code units** ($0$ to $0xFFFF$). Basic characters (Latin, digits, common punctuation) fit within a single 16-bit unit.
+**Answer:** JavaScript strings are encoded using UTF-16. In UTF-16, characters are represented by 16-bit **code units** ($0$ to $0xFFFF$). Basic characters (Latin letters, digits) fit within a single 16-bit unit.
 
-However, Unicode contains over $1,114,112$ characters (code points up to $0x10FFFF$). Characters outside the Basic Multilingual Plane (such as emojis like `'🚀'`, mathematical symbols, and rare Han characters) cannot fit into 16 bits. UTF-16 represents these characters using two consecutive 16-bit code units known as a **surrogate pair** (one high surrogate between $0xD800$–$0xDBFF$ and one low surrogate between $0xDC00$–$0xDFFF$).
+However, Unicode contains over $1,114,112$ characters (code points up to $0x10FFFF$). Characters outside the Basic Multilingual Plane (such as emojis like `'🚀'`) cannot fit into 16 bits. UTF-16 represents these characters using two consecutive 16-bit code units known as a **surrogate pair**.
 
-Because `String.prototype.length` counts 16-bit code units rather than visual glyphs or code points, `'🚀'.length` returns `2`. Naively reversing via `'🚀'.split('').reverse().join('')` inverts the surrogate order, producing corrupt replacement characters (``).
+Because `String.prototype.length` counts 16-bit code units rather than visual glyphs, `'🚀'.length` returns `2`. Naively reversing via `'🚀'.split('').reverse().join('')` inverts the surrogate order, producing corrupt replacement characters.
 
-To safely iterate or manipulate Unicode strings:
+To safely process Unicode strings:
 1. Use `for...of` or `Array.from(str)`: The ES2015 iterator protocol is code-point aware and yields full characters.
 2. Use `str.codePointAt(i)` instead of `str.charCodeAt(i)` to read the true 32-bit scalar value.
 

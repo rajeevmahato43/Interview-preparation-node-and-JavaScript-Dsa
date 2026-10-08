@@ -5,43 +5,16 @@
 [Previous: Binary Search Trees: CRUD and Validation](day-34-binary-search-trees-crud-and-validation.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the definition and structural properties of the **Lowest Common Ancestor (LCA)** in trees.
-- Implement LCA in a general Binary Tree using bottom-up post-order DFS in $O(n)$ time.
-- Implement LCA in a Binary Search Tree (BST) exploiting key ordering in $O(h)$ time and $O(1)$ space.
-- Master **Binary Tree Serialization and Deserialization** (LeetCode 297) using Pre-Order encoding with explicit null markers.
-- Eliminate $O(n^2)$ deserialization performance bugs by replacing `Array.shift()` with pointer-based index advancement.
-- Evaluate tree serialization trade-offs in Node.js distributed architectures: JSON vs delimited strings vs binary Buffer packing in Redis.
-
----
-
 ## Prerequisites
 
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Pre-Order and Post-Order DFS mechanics.
 - [Day 32: Level-Order Traversal (BFS) and Tree Views](day-32-level-order-traversal-bfs-and-views.md) — Level-order serialization mappings.
 - [Day 34: Binary Search Trees: CRUD and Validation](day-34-binary-search-trees-crud-and-validation.md) — BST directional properties.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Lowest Common Ancestor in General Binary Trees (LeetCode 236)
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Lowest Common Ancestor (LCA)** | The deepest node $T$ in a tree that has both nodes $p$ and $q$ as descendants (allowing a node to be a descendant of itself). | Solves hierarchical access control, organizational unit permissions, and network routing divergence points. |
-| **Split Point** | In a BST, the unique node where $p$ and $q$ branch into opposite subtrees (or one equals the current node). | Identifies the LCA in a BST in $O(h)$ time without traversing irrelevant subtrees. |
-| **Tree Serialization** | Converting a non-linear node graph into a flat linear string or binary buffer. | Essential for transmitting tree data structures across process boundaries, network sockets, and distributed caches. |
-| **Explicit Null Sentinel** | Encoding missing children with a distinguished character (`'#'`) in the serialized stream. | Mandated to resolve topological ambiguity during deserialization. |
-| **Pointer-Based Deserialization** | Advancing a scalar index through an array of tokens rather than invoking `Array.prototype.shift()`. | Eliminates $O(n^2)$ element copying during string reconstruction. |
-
----
-
-## Core Concepts
-
-### 1. Lowest Common Ancestor in General Binary Trees (LeetCode 236)
+> **Lowest Common Ancestor (LCA)**: The deepest node $T$ in a tree that has both nodes $p$ and $q$ as descendants (allowing a node to be a descendant of itself).
 
 The **Lowest Common Ancestor (LCA)** of two nodes $p$ and $q$ in a general binary tree is the lowest node that contains both $p$ and $q$ within its descendant subtrees.
 
@@ -97,7 +70,7 @@ function lowestCommonAncestor(root, p, q) {
 
 ---
 
-### 2. LCA in Binary Search Trees: Exploiting Key Ordering (LeetCode 235)
+## 2. LCA in Binary Search Trees: Exploiting Key Ordering (LeetCode 235)
 
 In a **Binary Search Tree**, we do not need to search both subtrees. We can use key comparisons to identify the LCA in **$O(h)$ time and $O(1)$ space**:
 - If both $p$ and $q$ values are smaller than `curr.val`: The LCA must reside strictly in the left subtree (`curr = curr.left`).
@@ -127,7 +100,9 @@ function lowestCommonAncestorBST(root, p, q) {
 
 ---
 
-### 3. Binary Tree Serialization and Deserialization (LeetCode 297)
+## 3. Binary Tree Serialization and Deserialization (LeetCode 297)
+
+> **Tree Serialization**: Converting a non-linear node graph into a flat linear string or binary buffer.
 
 Serialization transforms a hierarchical node graph into a flat linear string. Deserialization reconstructs the original tree topology from that string.
 
@@ -190,7 +165,7 @@ function deserialize(data) {
 
 ---
 
-### 4. Data Serialization Trade-offs in Node.js Distributed Architectures
+## 4. Data Serialization Trade-offs in Node.js Distributed Architectures
 
 In Node.js enterprise microservices, complex trees (e.g., ASTs, organizational charts, category taxonomies) must be shared across processes or cached in Redis:
 

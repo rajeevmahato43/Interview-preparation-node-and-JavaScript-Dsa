@@ -7,42 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Understand the mathematical definition and prerequisites of a **Topological Sort** on **Directed Acyclic Graphs (DAGs)**.
-- Implement **Kahn's Algorithm** (in-degree BFS queue) for linear ordering and cycle detection in $O(V + E)$ time.
-- Implement **DFS Post-Order Reversal** with 3-color visited states for dependency sorting and cycle rejection.
-- Solve **Course Schedule I** (cycle verification) and **Course Schedule II** (complete order extraction).
-- Leverage Kahn's level-by-level BFS queue batches to execute parallel task waves in Node.js job schedulers and monorepo build tools (Turborepo/Nx).
-- Contrast BFS versus DFS topological sort approaches regarding memory usage, recursion overhead, and streaming compatibility.
-
----
-
 ## Prerequisites
 
 - [Day 19: Queue and Deque Implementations](day-19-queue-and-deque-implementations.md) — FIFO queues and level-by-level queue sizing.
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Adjacency lists and in-degree / out-degree definitions.
 - [Day 39: Cycle Detection in Directed and Undirected Graphs](day-39-cycle-detection-directed-and-undirected.md) — 3-color state machine and back-edge cycle detection.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Topological Sort** | A linear ordering of vertices in a directed graph such that for every directed edge $u \to v$, $u$ comes before $v$. | Essential for build systems, database migration order, and asynchronous workflow runners. |
-| **Directed Acyclic Graph (DAG)** | A directed graph containing zero cycles. | A graph has at least one topological sort **if and only if** it is a DAG. |
-| **In-Degree** | The count of directed incoming edges terminating at a vertex. | Vertices with `inDegree === 0` have no pending prerequisites and are ready to execute. |
-| **Kahn's Algorithm** | An iterative BFS-like algorithm that repeatedly removes vertices with in-degree 0 and decrements neighbor in-degrees. | Natural fit for job schedulers; detects cycles if final processed count $< V$. |
-| **Post-Order Reversal** | Collecting vertices as they finish their DFS exploration and reversing the resulting list. | The classical alternative to Kahn's; generates valid topological order in $O(V + E)$. |
-| **Parallel Execution Waves** | Grouping all nodes with in-degree 0 in the same BFS queue level to run concurrently. | Enables concurrent task execution in Node.js via `Promise.all()`. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Topological Ordering Invariants
+## 1. Topological Ordering Invariants
 
 A **Topological Sort** orders vertices linearly such that dependencies are guaranteed to be resolved before dependent tasks run. If edge $u \to v$ exists, vertex $u$ must appear before vertex $v$ in the final sequence.
 
@@ -69,7 +41,11 @@ If a graph contains a cycle (e.g., $3 \to 0$), no vertex in the cycle can ever h
 
 ---
 
-### 2. Kahn's Algorithm (In-Degree BFS)
+## 2. Kahn's Algorithm (In-Degree BFS)
+
+> **Kahn's Algorithm**: An iterative BFS-like algorithm that repeatedly removes vertices with in-degree 0 and decrements neighbor in-degrees.
+
+> **In-Degree**: The count of directed incoming edges terminating at a vertex.
 
 **Algorithm Mechanics**:
 1. **Calculate In-Degrees**: Initialize an array `inDegree` of size $V$. For every directed edge $u \to v$, increment `inDegree[v]++`.
@@ -154,7 +130,9 @@ console.log('Kahn topo order:', kahnsTopologicalSort(4, testEdges)); // [0, 1, 2
 
 ---
 
-### 3. DFS Post-Order Topological Sort
+## 3. DFS Post-Order Topological Sort
+
+> **Topological Sort**: A linear ordering of vertices in a directed graph such that for every directed edge $u \to v$, $u$ comes before $v$.
 
 In DFS, a vertex is marked "finished" only after all vertices reachable from it have been completely explored. The vertex that finishes last has no unvisited dependencies, meaning reversing the post-order finishing times yields a valid topological sort.
 
@@ -221,7 +199,7 @@ function dfsTopologicalSort(numVertices, edges) {
 
 ---
 
-### 4. Course Schedule II (Ordering Extraction)
+## 4. Course Schedule II (Ordering Extraction)
 
 In **Course Schedule II** (LeetCode 210), prerequisites are formatted as `[course, prereq]`, meaning edge `prereq -> course`. We must return any valid course completion order, or `[]` if impossible.
 

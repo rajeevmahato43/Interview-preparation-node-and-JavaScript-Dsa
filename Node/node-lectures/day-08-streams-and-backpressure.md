@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Delineate the four core Node.js stream types: Readable, Writable, Duplex, and Transform.
-- Master stream flow control: Paused mode (`readable.read()`) vs. Flowing mode (`readable.on('data')`).
-- Explain the physical mechanics of **backpressure**: why `writable.write()` returns `false`, what `highWaterMark` actually buffers, and how the `'drain'` event coordinates throughput.
-- Differentiate between binary streams (measured in bytes) and `objectMode` streams (measured in discrete objects).
-- Compose multi-stage stream pipelines safely using `stream.pipeline` from `node:stream/promises` with automatic error forwarding and resource teardown.
-- Consume readable streams cleanly using modern `for await...of` async iterators.
-- Implement custom `Transform` streams to parse, filter, and mutate data on the fly with bounded memory footprints.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be familiar with:
@@ -32,27 +16,11 @@ Before studying this lecture, you should be familiar with:
 *Upcoming Connections:*
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) explores `http.IncomingMessage` (Readable) and `http.ServerResponse` (Writable).
 - [Day 10: Networking, DNS, TLS, and Timeouts](day-10-networking-dns-tls-and-timeouts.md) demonstrates Duplex streams over TCP/TLS sockets.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **Stream** | An asynchronous data-handling abstraction for reading or writing data sequentially in discrete chunks. |
-| **Backpressure** | A flow-control feedback mechanism where a slow consumer signals a fast producer to halt data generation until buffers drain. |
-| **`highWaterMark`** | The internal buffer threshold (default 64KB for files/HTTP, 16KB for generic streams, 16 items for `objectMode`) that triggers backpressure. |
-| **Flowing Mode** | A Readable stream state where data is read from the underlying system automatically and emitted as fast as possible via `'data'` events. |
-| **Paused Mode** | The default Readable stream state where data must be explicitly requested using the `stream.read()` method. |
-| **The `'drain'` Event** | An event emitted by a Writable stream when its internal write buffer has emptied below `highWaterMark`, signaling it is safe to resume writing. |
-| **`pipeline()`** | A core utility from `node:stream/promises` that pipes streams together, ensuring proper backpressure, error propagation, and resource cleanup. |
-| **`objectMode`** | A stream configuration allowing streams to emit discrete JavaScript objects, arrays, or numbers rather than raw binary Buffers. |
-| **Duplex Stream** | A stream that is both Readable and Writable independently (e.g., a bidirectional TCP socket). |
-| **Transform Stream** | A Duplex stream whose output is mathematically or logically computed from its input (e.g., `zlib.createGzip()`). |
-
 ---
 
 ## 1. What is a Stream? The Four Core Stream Types
+
+> **Stream**: An asynchronous data-handling abstraction for reading or writing data sequentially in discrete chunks.
 
 A **stream** is an abstract interface in Node.js for handling streaming data sequentially in discrete chunks rather than buffering entire payloads in memory.
 
@@ -122,6 +90,10 @@ async function compressLogFile(sourcePath, destinationPath) {
 
 ## 2. Stream Flow Control: Paused Mode vs. Flowing Mode
 
+> **Paused Mode**: The default Readable stream state where data must be explicitly requested using the `stream.read()` method.
+
+> **Flowing Mode**: A Readable stream state where data is read from the underlying system automatically and emitted as fast as possible via `'data'` events.
+
 A `Readable` stream operates in one of two distinct operational modes: **Paused Mode** or **Flowing Mode**.
 
 ```text
@@ -169,6 +141,8 @@ readable.on("end", () => console.log("Stream ended."));
 ---
 
 ## 3. The Physical Mechanics of Backpressure
+
+> **Backpressure**: A flow-control feedback mechanism where a slow consumer signals a fast producer to halt data generation until buffers drain.
 
 **Backpressure** is the flow-control signal that prevents a fast data producer from overwhelming a slow data consumer.
 
@@ -243,6 +217,8 @@ Historically, developers connected streams using `readable.pipe(writable)`. Howe
 3. **Incomplete Cleanup:** If the client disconnects or aborts, `pipe()` does not clean up intermediate streams.
 
 ### Modern Solution: `pipeline` from `node:stream/promises`
+
+> **`pipeline()`**: A core utility from `node:stream/promises` that pipes streams together, ensuring proper backpressure, error propagation, and resource cleanup.
 
 Since Node.js 15+, always use **`stream.pipeline`** (or its promise-based variant):
 - Forwards errors across all intermediate transform stages.
@@ -321,9 +297,13 @@ async function processStreamAsync(readableStream) {
 
 ## 6. Binary Mode vs. `objectMode`
 
+> **`objectMode`**: A stream configuration allowing streams to emit discrete JavaScript objects, arrays, or numbers rather than raw binary Buffers.
+
 By default, streams operate on binary data (`Buffer` or `string` instances). A stream can be configured with **`objectMode: true`** to emit discrete JavaScript objects, arrays, or numbers.
 
 ### Critical Differences: `highWaterMark`
+
+> **`highWaterMark`**: The internal buffer threshold (default 64KB for files/HTTP, 16KB for generic streams, 16 items for `objectMode`) that triggers backpressure.
 
 | Stream Mode | Chunk Type | Default `highWaterMark` | What it Measures |
 | :--- | :--- | :--- | :--- |
@@ -356,6 +336,8 @@ const filterAdminUsers = new Transform({
 ## 7. Implementing Custom `Transform` Streams
 
 A **`Transform` stream** is a Duplex stream where the output is computed from the input. You implement it by overriding the `_transform(chunk, encoding, callback)` method:
+
+> **Duplex Stream**: A stream that is both Readable and Writable independently (e.g., a bidirectional TCP socket).
 
 ```js
 // Node.js code

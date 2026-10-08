@@ -6,44 +6,19 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the internal mechanics of the Express middleware pipeline, including `app._router.stack`, `Layer` objects, and the function arity (`fn.length`) rule.
-- Differentiate the exact behavior of `next()`, `next(err)`, `next('route')`, and `next('router')` across application and router layers.
-- Prevent catastrophic runtime errors caused by double `next()` invocations and post-response execution (`ERR_HTTP_HEADERS_SENT`).
-- Architect a production request pipeline in canonical execution order (correlation IDs, security headers, body parsing, auth, authorization, validation, controllers, 404 handler, and error middleware).
-- Bridge the asynchronous error-handling gap between Express 4 (unhandled promise rejections) and Express 5 (native async promise catching) using robust wrapper utilities.
-- Implement short-circuiting guards and atomic context decorators without mutating frozen request properties.
-
----
-
 ## Prerequisites
 
 Before diving into middleware mechanics, review:
 - [Day 02: Event Loop and Scheduling](day-02-event-loop-and-scheduling.md) for async microtask scheduling and unhandled promise rejections.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for `ERR_HTTP_HEADERS_SENT` and HTTP streaming headers.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for 4-layer architecture and application factories.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Middleware Function** | A function with signature `(req, res, next)` that has access to the request, response, and the pipeline iterator. | Thinking middleware only modifies data; forgetting to call either `next()` or send a response causes the HTTP request to hang until client timeout. |
-| **Function Arity (`fn.length`)** | The number of formal arguments declared in a function signature, inspected by Express via `fn.length` at runtime. | Defining error middleware with `(err, req, res)` (length 3); Express interprets it as standard middleware and passes `req` into the `err` parameter. |
-| **Short-Circuiting** | Terminating request processing early by writing an HTTP response without invoking the `next()` callback. | Calling `res.status(401).json(...)` and then calling `next()`, which continues pipeline execution and triggers `ERR_HTTP_HEADERS_SENT`. |
-| **`next('route')`** | A special signal that skips all remaining middleware functions in the *current* route stack and jumps to the next route matching the path. | Attempting to use `next('route')` inside top-level `app.use()` middleware (it is only supported inside route-level handlers like `router.get`). |
-| **`next('router')`** | A control signal that aborts execution of the current `express.Router()` instance completely and returns control to the parent router stack. | Using `next('router')` assuming it acts like `next(err)`; it skips the sub-router without initiating error handling. |
-| **`asyncHandler`** | A higher-order wrapper that wraps an async middleware function and chains `.catch(next)` to intercept rejected promises. | Assuming Express 4 automatically catches thrown errors in `async` middleware functions (causes unhandled promise rejections). |
-
 ---
 
 ## Core Concepts
 
 ### 1. Internal Pipeline Architecture & The Function Arity Rule
+
+> **Function Arity (`fn.length`)**: The number of formal arguments declared in a function signature, inspected by Express via `fn.length` at runtime.
 
 An Express application processes HTTP requests through an ordered linked-array pipeline called `app._router.stack`.
 
@@ -103,6 +78,10 @@ if (err) {
 
 ### 2. Control Flow Signals: `next()` vs `next(err)` vs `next('route')` vs `next('router')`
 
+> **`next('router')`**: A control signal that aborts execution of the current `express.Router()` instance completely and returns control to the parent router stack.
+
+> **`next('route')`**: A special signal that skips all remaining middleware functions in the *current* route stack and jumps to the next route matching the path.
+
 The `next()` callback accepts specific arguments that instruct the Express router iterator how to traverse the pipeline:
 
 | Invocation | Target Destination | When to Use |
@@ -143,6 +122,8 @@ The order of `app.use()` calls defines the exact execution sequence of your appl
 
 In **Express 4.x**, the router is purely synchronous. If an `async` middleware function throws an error or rejects a Promise:
 
+> **Middleware Function**: A function with signature `(req, res, next)` that has access to the request, response, and the pipeline iterator.
+
 ```js
 // ❌ EXPRESS 4 HAZARD: Unhandled Promise Rejection!
 app.get('/users', async (req, res, next) => {
@@ -173,6 +154,8 @@ app.get('/users', asyncHandler(async (req, res, next) => {
 ---
 
 ### 5. Short-Circuiting and Mutating Request Context
+
+> **Short-Circuiting**: Terminating request processing early by writing an HTTP response without invoking the `next()` callback.
 
 Middleware functions enrich the request context by attaching verified metadata.
 
@@ -687,6 +670,8 @@ return next();
 ```
 
 ### 3. Why do unhandled Promise rejections in Express 4 async middleware fail to reach error middleware, and how does `asyncHandler` resolve this?
+
+> **`asyncHandler`**: A higher-order wrapper that wraps an async middleware function and chains `.catch(next)` to intercept rejected promises.
 
 Express 4 was designed prior to the widespread adoption of native JavaScript Promises and `async/await`. Its internal routing engine is purely synchronous: it invokes `layer.handle_request(req, res, next)` inside a synchronous `try/catch` block.
 

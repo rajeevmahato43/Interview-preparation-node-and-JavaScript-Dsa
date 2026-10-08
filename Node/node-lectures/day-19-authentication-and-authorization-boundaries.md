@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish the security boundaries and HTTP status contracts between **Authentication** (401 Unauthorized) and **Authorization** (403 Forbidden).
-- Compare stateful session-based authentication (Redis sessions, HTTP-only cookies) with stateless token authentication (JWT, Asymmetric RS256/EdDSA).
-- Implement a Dual-Token Architecture featuring short-lived access tokens, long-lived refresh tokens, and **Refresh Token Rotation with Reuse Detection**.
-- Enforce multi-tier authorization including **Role-Based Access Control (RBAC)** and **Attribute-Based Access Control (ABAC)** via composable Express middleware.
-- Eliminate **Broken Object Level Authorization (BOLA / IDOR)** by binding resource queries directly to authenticated tenant and user identifiers at the database query layer.
-- Prevent timing attacks during signature and credential verification using `crypto.timingSafeEqual()`.
-
----
-
 ## Prerequisites
 
 Before diving into authentication and authorization boundaries, review:
@@ -26,20 +13,6 @@ Before diving into authentication and authorization boundaries, review:
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for separating transport controllers from domain services.
 - [Day 14: Express Middleware and Request Flow](day-14-express-middleware-and-request-flow.md) for pipeline execution and request short-circuiting.
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) for `UnauthorizedError` (401) and `ForbiddenError` (403).
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Authentication (AuthN)** | The process of verifying the claimed identity of a caller (e.g. validating a password, JWT, or session cookie). | Returning HTTP 403 when a token is missing or expired; unauthenticated requests must always return HTTP 401. |
-| **Authorization (AuthZ)** | The process of verifying whether an authenticated caller possesses permission to perform a specific action on a resource. | Returning HTTP 401 when an authenticated user lacks admin rights; unauthorized callers must receive HTTP 403 Forbidden. |
-| **BOLA / IDOR** | Broken Object Level Authorization (Insecure Direct Object Reference); an exploit where an attacker accesses resources belonging to other users by tampering with an ID. | Querying `SELECT * FROM invoices WHERE id = $id` without scoping the query to `AND user_id = $authenticatedUser.id`. |
-| **Refresh Token Rotation** | An auth strategy where every refresh operation issues a brand-new refresh token and invalidates the previous one immediately. | Reusing static refresh tokens indefinitely; if a token is intercepted, the attacker maintains indefinite access. |
-| **Token Reuse Detection** | A security mechanism where presenting an already-invalidated refresh token triggers the immediate revocation of all active sessions for that user family. | Silently rejecting a reused token without invalidating the active compromised session. |
-| **Constant-Time Comparison**| Comparing cryptographic buffers using `crypto.timingSafeEqual()` so execution duration does not leak secret character positions. | Using standard `===` to compare API keys or cryptographic signatures, opening the system to side-channel timing attacks. |
-
 ---
 
 ## Core Concepts
@@ -129,6 +102,10 @@ If an attacker steals a refresh token and uses it to obtain a new pair, the legi
 
 ### 4. Broken Object Level Authorization (BOLA / IDOR)
 
+> **BOLA / IDOR**: Broken Object Level Authorization (Insecure Direct Object Reference); an exploit where an attacker accesses resources belonging to other users by tampering with an ID.
+
+> **Authorization (AuthZ)**: The process of verifying whether an authenticated caller possesses permission to perform a specific action on a resource.
+
 BOLA (formerly IDOR) is ranked by OWASP as the #1 vulnerability in API security. It occurs when an API endpoint relies on user-supplied IDs to locate resources without verifying ownership:
 
 ```text
@@ -193,6 +170,8 @@ export function timingSafeCompare(a, b) {
 ## Code Snippets and Demonstrations
 
 ### 1. Robust JWT Authentication Middleware with Asymmetric Verification
+
+> **Authentication (AuthN)**: The process of verifying the claimed identity of a caller (e.g. validating a password, JWT, or session cookie).
 
 Verifying JWT bearer tokens using `node:crypto` and handling expiration gracefully.
 
@@ -336,6 +315,8 @@ export function requireOwnership(resourceIdExtractor) {
 ---
 
 ### 3. Refresh Token Rotation with Reuse Detection
+
+> **Refresh Token Rotation**: An auth strategy where every refresh operation issues a brand-new refresh token and invalidates the previous one immediately.
 
 Implementing an atomic token family lifecycle in memory/database.
 

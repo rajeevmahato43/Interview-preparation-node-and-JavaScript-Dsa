@@ -6,24 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Explain how Node.js creates architectural boundaries and encapsulation using module systems.
-- Contrast the synchronous loading and execution lifecycle of CommonJS (CJS) against the 3-phase asynchronous graph pipeline of ECMAScript Modules (ESM).
-- Demystify the CJS Module Wrapper function and understand how `require.cache` operates under the hood.
-- Trace ESM live bindings and explain how they differ fundamentally from CommonJS exported value copies.
-- Trace the complete Node.js module resolution algorithm: core `node:` prefixes, relative paths, and hierarchical `node_modules` directory lookup.
-- Configure `package.json` entry points using `type`, `exports`, conditional exports (`import`/`require`), and package-private subpath `#imports`.
-- Diagnose, reproduce, and resolve circular dependency deadlocks and partially initialized export bugs in both CJS and ESM.
-- Understand cross-module interoperability, dynamic `import()`, and how to prevent the Dual-Package Hazard in production libraries.
-- Structure backend applications with zero import-time side effects to ensure fast startup and isolated testing.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be familiar with:
@@ -34,28 +16,11 @@ Before studying this lecture, you should be familiar with:
 *Upcoming Connections:*
 - [Day 04: Process, Configuration, and Lifecycle](day-04-process-configuration-and-lifecycle.md) explores how environment variables and graceful shutdown interact with module initialization.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) uses layered module boundaries to separate routes, controllers, and services.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **Module** | A distinct file or package that encapsulates private code and exposes an explicit public API. |
-| **CommonJS (CJS)** | Node's legacy module format using synchronous `require()` and mutable `module.exports`. |
-| **ECMAScript Modules (ESM)** | The official JavaScript standard module format using static `import` and `export` statements with live bindings. |
-| **Module Wrapper Function** | The hidden function Node wraps around every CJS file to provide scoped variables like `exports`, `require`, `module`, `__filename`, and `__dirname`. |
-| **`require.cache`** | An in-memory object where Node stores evaluated CommonJS module exports keyed by absolute file path. |
-| **Live Binding** | An ESM mechanism where imported variables reference the live memory binding of the exporting module rather than a static snapshot. |
-| **Resolution Algorithm** | The deterministic sequence of rules Node follows to map a string specifier to an absolute file path on disk. |
-| **Exports Map (`exports`)** | A `package.json` field defining explicit, encapsulated public entry points, acting as a firewall against internal file leaks. |
-| **Subpath Imports (`imports`)** | A `package.json` field providing package-internal private aliases prefixed with `#`. |
-| **Dual-Package Hazard** | A bug where both CJS and ESM builds of the same package are loaded in one runtime, creating duplicate instances with separate state. |
-| **Circular Dependency** | A dependency graph where two or more modules depend on each other directly or indirectly. |
-
 ---
 
 ## 1. The Module as an Architectural Boundary
+
+> **Module**: A distinct file or package that encapsulates private code and exposes an explicit public API.
 
 A **module** is an isolated unit of code stored in a file that hides internal implementation details behind an explicit public interface.
 
@@ -103,9 +68,13 @@ module.exports = { UserService };
 
 ## 2. CommonJS (CJS) Mechanics
 
+> **CommonJS (CJS)**: Node's legacy module format using synchronous `require()` and mutable `module.exports`.
+
 **CommonJS** is Node's original module format where `require()` immediately loads, compiles, executes, and caches a file synchronously on the main JavaScript thread.
 
 ### 2.1 The Module Wrapper Function
+
+> **Module Wrapper Function**: The hidden function Node wraps around every CJS file to provide scoped variables like `exports`, `require`, `module`, `__filename`, and `__dirname`.
 
 Before Node.js executes any CommonJS file, it wraps the entire file's source code inside a hidden wrapper function:
 
@@ -121,6 +90,8 @@ Because of this wrapper:
 - `exports`, `require`, and `module` are passed as references into the function scope.
 
 ### 2.2 `module.exports` vs. `exports`
+
+> **Exports Map (`exports`)**: A `package.json` field defining explicit, encapsulated public entry points, acting as a firewall against internal file leaks.
 
 In CommonJS, `exports` is simply a local variable initialized to point to the exact same object as `module.exports`:
 
@@ -144,6 +115,8 @@ module.exports = function () { return "Working"; };
 ```
 
 ### 2.3 Synchronous Caching via `require.cache`
+
+> **`require.cache`**: An in-memory object where Node stores evaluated CommonJS module exports keyed by absolute file path.
 
 When a file is loaded via `require(specifier)`, Node:
 1. Resolves the specifier to an absolute filename on disk (e.g., `/app/src/db.js`).
@@ -182,6 +155,8 @@ console.log(counterB.customProperty); // "mutated" - leaks across files!
 
 ## 3. ECMAScript Modules (ESM) Mechanics
 
+> **ECMAScript Modules (ESM)**: The official JavaScript standard module format using static `import` and `export` statements with live bindings.
+
 **ECMAScript Modules (ESM)** is the official JavaScript standard module format that constructs and validates a static dependency graph before executing any module code.
 
 ### 3.1 The Three-Phase Loading Pipeline
@@ -212,6 +187,8 @@ Unlike CommonJS, which loads and executes files imperatively on the fly, ESM exe
 3. **Evaluation:** Node runs the JavaScript code top-to-bottom. Memory slots are populated with their actual evaluated values.
 
 ### 3.2 Live Bindings vs. Value Copies
+
+> **Live Binding**: An ESM mechanism where imported variables reference the live memory binding of the exporting module rather than a static snapshot.
 
 A critical difference between CJS and ESM is how exported values are shared:
 - **CommonJS exports values by copy/assignment:** When you `require()`, you receive whatever value was assigned to `module.exports` at that moment. If the exporting module later updates an internal variable, the consumer does not see the change unless it was an object property.
@@ -280,6 +257,8 @@ While top-level await pauses the evaluation of this module and any modules impor
 ---
 
 ## 5. `package.json` Configuration: `type`, `exports`, and `imports`
+
+> **Subpath Imports (`imports`)**: A `package.json` field providing package-internal private aliases prefixed with `#`.
 
 The `package.json` file controls how Node's module loader interprets file extensions, exposes public interfaces, and resolves package-internal paths.
 
@@ -375,6 +354,8 @@ import { config } from "#config";
 ---
 
 ## 6. The Node.js Package Resolution Algorithm
+
+> **Resolution Algorithm**: The deterministic sequence of rules Node follows to map a string specifier to an absolute file path on disk.
 
 The **resolution algorithm** is the deterministic sequence of rules Node follows to map an import/require specifier string to an absolute file path on disk.
 
@@ -499,6 +480,8 @@ Do not patch cycles with runtime hacks like delaying execution with `setTimeout(
 
 ## 8. Cross-Module Interoperability and the Dual-Package Hazard
 
+> **Dual-Package Hazard**: A bug where both CJS and ESM builds of the same package are loaded in one runtime, creating duplicate instances with separate state.
+
 Modern Node.js backends often operate in hybrid ecosystems where ESM and CommonJS co-exist.
 
 ### 8.1 Importing CommonJS from ESM
@@ -610,6 +593,8 @@ Even inside a synchronous CommonJS file, `import(specifier)` is valid and always
 ## Hands-On Exercise
 
 ### Scenario: Fixing a Circular Dependency Crash in an Authentication Service
+
+> **Circular Dependency**: A dependency graph where two or more modules depend on each other directly or indirectly.
 Your team is deploying an Express microservice. During startup, user authentication fails with a cryptic error: `TypeError: userService.findUserById is not a function`. The team discovered that `authService.cjs` and `userService.cjs` depend on each other cyclically, causing CommonJS to return an incomplete, empty export object.
 
 ### Buggy Code

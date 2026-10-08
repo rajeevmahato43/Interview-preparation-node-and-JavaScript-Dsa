@@ -6,37 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Structure a high-confidence test pyramid in Node.js balancing Unit Tests, HTTP Integration Tests, Database Integration Tests, and Contract Tests.
-- Avoid the "Mocking Trap" (mocking what you don't own) by substituting database query builders with real test databases or contract-preserving in-memory fakes.
-- Isolate database integration tests using the **Transactional Rollback Pattern** (`BEGIN` before test $\to$ `ROLLBACK` after test) to execute parallel, zero-leak tests at high speed.
-- Test failure modes, timeouts, and cooperative cancellations (`AbortController`) without relying on brittle timing hacks or sleep loops.
-- Detect and prevent asynchronous handle leaks (dangling timers, unclosed sockets) that prevent test runners and Node.js worker processes from exiting cleanly.
-- Author robust test suites using native `node:test` and `node:assert` without third-party test framework overhead.
-
----
-
 ## Prerequisites
 
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) — Node test runner fundamentals, handle leaks, and lifecycle hooks.
 - [Day 20: Express Security and HTTP Testing](day-20-express-security-and-http-testing.md) — Ephemeral port testing and Supertest integration.
 - [Day 32: PostgreSQL in Express](day-32-postgresql-in-express.md) — Multi-layer architecture, repositories, and transaction isolation.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Test Boundary** | The explicit interface seam (HTTP route, service interface, or database socket) where a test injects inputs and verifies assertions. | Defining the wrong boundary leads to brittle tests that break on minor refactors or pass despite production bugs. |
-| **Transactional Rollback Isolation** | Running each database integration test inside a dedicated transaction that is rolled back in the test teardown (`afterEach`). | Enables instantaneous test cleanup without slow database table truncation or schema drops between tests. |
-| **Mock vs Stub vs Fake** | **Stub:** Provides canned responses; **Mock:** Asserts interaction expectations; **Fake:** Working in-memory implementation of an interface. | Overusing mocks couples tests to internal code structure; Fakes test real behavioral invariants cleanly. |
-| **Dangling Handle** | An unclosed TCP socket, active timer, or child process handle remaining registered in libuv's event loop after test completion. | Causes test runners (Jest, `node:test`) to hang indefinitely at the end of execution and leaks memory in production. |
-| **Contract Testing** | Verifying that an API consumer and provider agree on shared request/response schemas (e.g., Pact) without deploying full clusters. | Eliminates integration surprises between microservices without the fragility and slow execution of end-to-end tests. |
-
 ---
 
 ## Core Concepts
@@ -598,6 +572,8 @@ Alternatively, use Node's `wtfnode` package or run the test runner with `--detec
 ---
 
 ### 4. What is Contract Testing (e.g., using Pact), and how does it prevent breaking changes in distributed microservices without the overhead of end-to-end tests?
+
+> **Contract Testing**: Verifying that an API consumer and provider agree on shared request/response schemas (e.g., Pact) without deploying full clusters.
 
 In a microservices architecture, deploying full End-to-End (E2E) testing environments to verify that Service A can communicate with Service B is expensive, slow, and prone to flaky network failures. Conversely, testing with static mocks risks deploying breaking changes if Service B modifies a response field without Service A updating its mock.
 

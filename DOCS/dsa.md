@@ -11,6 +11,7 @@ Cover asymptotic analysis, arrays and strings, hashing, linked lists, stacks, qu
 - Begin with problem clarification, constraints, invariants, and a brute-force baseline.
 - Derive the optimized approach and explain why it is correct before presenting code.
 - State time and space complexity, including auxiliary space and recursion depth where relevant.
+- Use plain, basic English for all definitions. Whenever technical or specialized terms appear (such as "Amortized" or "Auxiliary Space"), define them in-place with a 1-line callout block (`> **Amortized**: 1-line definition`) or inline clarification (`Auxiliary (Extra) Space`).
 - Trace representative and adversarial cases, including empty input, duplicates, extremes, cycles, and overflow-like concerns.
 - Use JavaScript implementations with descriptive names and explain language-specific concerns such as mutation, numeric limits, maps, sets, and sorting behavior.
 - Compare alternatives when the choice depends on constraints rather than presenting one pattern as universal.

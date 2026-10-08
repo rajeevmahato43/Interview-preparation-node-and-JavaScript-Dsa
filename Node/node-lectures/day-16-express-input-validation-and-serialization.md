@@ -6,39 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish the four discrete data lifecycle stages: **Parsing**, **Validation**, **Normalization**, and **Serialization**.
-- Configure stream-level payload limits and handle malformed JSON syntax errors (`entity.parse.failed`) gracefully without leaking server stack traces.
-- Protect applications against critical input vulnerabilities including **Mass Assignment**, **Prototype Pollution**, and **HTTP Parameter Pollution (HPP)**.
-- Implement reusable, schema-driven validation middleware using modern validators (Zod/TypeBox) across `req.body`, `req.query`, and `req.params`.
-- Design strict outbound Data Transfer Objects (DTOs) and projection serializers to guarantee internal secrets (`password_hash`, internal flags) never escape the network perimeter.
-- Optimize high-throughput response serialization using compiled JSON schema stringifiers.
-
----
-
 ## Prerequisites
 
 Before diving into validation and serialization, review:
 - [Day 06: Buffers, Encodings, and Serialization](day-06-buffers-encodings-and-serialization.md) for JSON payload limits and UTF-8 encoding traps.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for HTTP request streaming and bounded body ingestion.
 - [Day 14: Express Middleware and Request Flow](day-14-express-middleware-and-request-flow.md) for middleware traversal and short-circuiting.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Parsing** | Decoding raw byte streams into structured JavaScript objects (e.g. `express.json()`). | Assuming parsed data is safe or valid; a syntactically valid JSON document can contain malicious, missing, or malformed business fields. |
-| **Validation** | Verifying that a structured object conforms to expected domain types, constraints, ranges, and invariants. | Validating input after initiating database operations or business side effects. |
-| **Mass Assignment** | An exploit where an attacker passes unexpected attributes in a request body that are blindly persisted to the database. | Passing unvalidated `req.body` directly to `User.create(req.body)`, allowing attackers to inject `role: 'admin'`. |
-| **Parameter Pollution (HPP)** | Supplying duplicate keys in a query string (`?id=1&id=2`), converting a string into an array (`['1', '2']`). | Assuming `req.query.filter` is always a string; calling `filter.trim()` throws a runtime `TypeError` when passed an array. |
-| **Outbound DTO** | A Data Transfer Object explicitly defining the public contract of an HTTP response, isolating public fields from internal database models. | Calling `res.json(userRecord)` directly, accidentally leaking `password_hash`, `salt`, and internal audit columns. |
-| **Strict Schema** | A validation schema mode that explicitly strips or rejects unexpected properties not declared in the contract. | Allowing arbitrary unvalidated extra keys to pass through the validation layer into domain logic. |
-
 ---
 
 ## Core Concepts
@@ -103,6 +76,10 @@ app.use((err, req, res, next) => {
 
 ### 3. Critical Security Hazards: Mass Assignment & Parameter Pollution
 
+> **Parameter Pollution (HPP)**: Supplying duplicate keys in a query string (`?id=1&id=2`), converting a string into an array (`['1', '2']`).
+
+> **Mass Assignment**: An exploit where an attacker passes unexpected attributes in a request body that are blindly persisted to the database.
+
 #### Hazard A: Mass Assignment
 Mass assignment occurs when client input is passed directly to database models without allowlisting:
 
@@ -130,6 +107,8 @@ An attacker can intentionally submit duplicate query parameters to crash server 
 ---
 
 ### 4. Schema-Driven Validation Architecture (Zod / TypeBox)
+
+> **Validation**: Verifying that a structured object conforms to expected domain types, constraints, ranges, and invariants.
 
 Handwritten `if (!req.body.email) ...` validation logic is error-prone, verbose, and difficult to keep synchronized with API documentation.
 
@@ -252,6 +231,8 @@ export function hppGuard(options = {}) {
 ---
 
 ### 3. Outbound DTO Serialization and Sensitive Field Masking
+
+> **Outbound DTO**: A Data Transfer Object explicitly defining the public contract of an HTTP response, isolating public fields from internal database models.
 
 Demonstrating how to serialize domain entities safely and prevent information leakage.
 
@@ -683,6 +664,8 @@ describe('Patient API Validation and Security Tests', () => {
 ## Interview Questions
 
 ### 1. What is the fundamental difference between Input Parsing and Input Validation, and why does one not replace the other?
+
+> **Parsing**: Decoding raw byte streams into structured JavaScript objects (e.g. `express.json()`).
 
 **Input Parsing** is the mechanical process of decoding an inbound stream of raw bytes into an in-memory JavaScript data structure. For example, `express.json()` reads HTTP chunk streams, decodes them according to UTF-8, and invokes `JSON.parse()` to produce a JavaScript object on `req.body`. A successful parse guarantees only that the payload conforms to JSON grammar syntax.
 

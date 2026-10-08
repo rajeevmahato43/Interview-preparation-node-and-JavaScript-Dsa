@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the asynchronous error-handling mechanics between Express 4 (synchronous router, unhandled promise rejections) and Express 5 (native async promise interception).
-- Architect an enterprise Domain Error Class Hierarchy that encapsulates HTTP status codes, operational flags, and error codes.
-- Distinguish **Operational Errors** (predictable runtime failures) from **Programmer Errors** (bugs requiring process restart) to prevent server state corruption.
-- Implement a centralized 4-argument Express error middleware adhering to the **RFC 7807 Problem Details** standard with automatic production stack trace redaction.
-- Translate low-level database and third-party driver errors (PostgreSQL constraint `23505`, MongoDB `E11000`, JWT `TokenExpiredError`) into clean public API responses.
-- Prevent unhandled rejections and streaming memory leaks when client connections disconnect (`req.on('close')`) mid-operation.
-
----
-
 ## Prerequisites
 
 Before diving into async error handling, review:
@@ -26,20 +13,6 @@ Before diving into async error handling, review:
 - [Day 04: Process, Configuration, and Lifecycle](day-04-process-configuration-and-lifecycle.md) for `uncaughtException` and graceful process exit.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for 4-layer architecture and error propagation.
 - [Day 14: Express Middleware and Request Flow](day-14-express-middleware-and-request-flow.md) for function arity (`fn.length === 4`) error routing.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Operational Error** | A known, predictable runtime failure mode that does not indicate a software bug (e.g., validation failure, 404 not found, expired token, network timeout). | Treating all errors as generic 500 bugs and restarting the Node.js process upon client validation errors. |
-| **Programmer Error** | An unhandled software defect or bug in application code (e.g., `TypeError`, `ReferenceError`, calling methods on `undefined`). | Swallowing programmer errors with a generic `catch {}` block and attempting to continue execution in an unpredictable state. |
-| **RFC 7807 Problem Details**| A standardized JSON specification (`application/problem+json`) defining machine-readable error responses (`type`, `title`, `status`, `detail`, `instance`). | Returning inconsistent error payload shapes (e.g., `{ msg: 'error' }` on route A, `{ error: 'failed' }` on route B, `{ message: 'err' }` on route C). |
-| **`isOperational` Flag** | A boolean property attached to custom `AppError` instances denoting that the failure was anticipated and can be safely resolved with an HTTP response. | Relying on error string matching (`err.message.includes('not found')`) to determine HTTP status codes. |
-| **`res.headersSent`** | A native boolean property indicating whether HTTP response headers have already been committed to the underlying network socket. | Attempting to call `res.status(500).json(...)` in error middleware after a stream has already begun flushing bytes to the client. |
-| **Driver Error Translation**| The process of mapping proprietary database errors (e.g. Postgres error code `23505`) into domain errors (`ConflictError`) at the persistence boundary. | Letting raw database error objects escape directly to clients, leaking database table names and column constraints. |
-
 ---
 
 ## Core Concepts
@@ -84,6 +57,10 @@ Until your infrastructure runs Express 5 natively, all asynchronous route handle
 ---
 
 ### 2. Operational Errors vs Programmer Errors
+
+> **Programmer Error**: An unhandled software defect or bug in application code (e.g., `TypeError`, `ReferenceError`, calling methods on `undefined`).
+
+> **Operational Error**: A known, predictable runtime failure mode that does not indicate a software bug (e.g., validation failure, 404 not found, expired token, network timeout).
 
 A production backend must maintain a clear distinction between **Operational Errors** and **Programmer Errors**:
 
@@ -144,6 +121,8 @@ if (user.isLocked) throw new ForbiddenError('Account is suspended');
 
 ### 4. RFC 7807 Problem Details Standard
 
+> **RFC 7807 Problem Details**: A standardized JSON specification (`application/problem+json`) defining machine-readable error responses (`type`, `title`, `status`, `detail`, `instance`).
+
 RFC 7807 defines a standardized HTTP error payload schema (`application/problem+json`), providing a predictable contract for frontend and mobile API clients:
 
 ```json
@@ -169,6 +148,8 @@ RFC 7807 defines a standardized HTTP error payload schema (`application/problem+
 ---
 
 ### 5. Third-Party Driver Error Translation
+
+> **Driver Error Translation**: The process of mapping proprietary database errors (e.g. Postgres error code `23505`) into domain errors (`ConflictError`) at the persistence boundary.
 
 Database drivers and third-party SDKs throw proprietary error objects that should never leak beyond the repository boundary:
 
@@ -397,6 +378,8 @@ export function createErrorHandler(logger = console) {
 ## Edge Cases and Tricky Scenarios
 
 ### 1. Writing Responses After `res.headersSent` is True
+
+> **`res.headersSent`**: A native boolean property indicating whether HTTP response headers have already been committed to the underlying network socket.
 
 If an error occurs while streaming a large response payload or after an explicit `res.flushHeaders()` call:
 

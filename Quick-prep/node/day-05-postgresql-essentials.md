@@ -1,113 +1,181 @@
-# Day 5: PostgreSQL from Node.js
+# Day 5: PostgreSQL, Connection Pooling, Parameterized SQL, and Transactions
 
-## Client and SQL
+Quick review of main-course lectures 27–32. Designed for rapid interview revision: `pg.Pool` connection lifecycle, SQL injection prevention, relational constraints, query execution plans (`EXPLAIN ANALYZE`), MVCC, and pessimistic locking (`FOR UPDATE`).
 
-**1. `pg` pool and client**
+## Connection pooling and the `pg` client lifecycle
 
-Reuse a bounded pool; release each checked-out client in `finally` so errors do not leak connections.
+**1. `pg.Pool` connection management**
+
+A connection pool manages persistent TCP connections to PostgreSQL, avoiding expensive connection handshakes per query. Use `pool.query()` for standalone queries (it acquires and releases automatically). Use `pool.connect()` only when managing multi-statement transactions.
+
+```js
+import pg from "pg";
+const { Pool } = pg;
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20,                   // Maximum clients in the pool
+  idleTimeoutMillis: 30000,  // Close idle clients after 30s
+  connectionTimeoutMillis: 2000 // Error if client checkout takes > 2s
+});
+
+// Always register error listener on idle clients
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle PostgreSQL client:", err);
+});
+```
+
+**1.1 Client checkout and release contract**
+
+When acquiring a client manually via `pool.connect()`, always release it in a `finally` block. Failing to release a checked-out client leaks the socket, eventually exhausting the pool and causing the server to hang.
 
 ```js
 const client = await pool.connect();
-try { await client.query("SELECT 1"); }
-finally { client.release(); }
+try {
+  const result = await client.query("SELECT NOW()");
+} finally {
+  client.release(); // Crucial: Returns client socket to pool
+}
 ```
 
-**2. Parameterized queries**
+[PostgreSQL pool lifecycle](../../Node/node-lectures/day-27-postgresql-and-pg-pool-lifecycle.md)
 
-Pass values separately from SQL text; never concatenate untrusted values into query strings.
+## Parameterized queries and SQL injection prevention
+
+**1. Parameterized SQL queries**
+
+Always pass dynamic user values through parameterized placeholders (`$1`, `$2`). The PostgreSQL query planner compiles and binds parameters separately from the SQL grammar, rendering SQL injection impossible.
 
 ```js
-await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+// Correct: Safe parameterized query
+const { rows } = await pool.query(
+  "SELECT id, email, role FROM users WHERE email = $1 AND is_active = $2",
+  [emailInput, true]
+);
+
+// Incorrect: Vulnerable to catastrophic SQL Injection!
+// const query = `SELECT * FROM users WHERE email = '${emailInput}'`;
+// Attacker input: "admin@corp.com' OR '1'='1" bypasses authentication entirely!
 ```
 
-**3. Relational schema and constraints**
+**1.1 Dynamic identifiers and query builders**
 
-Primary/foreign keys and `NOT NULL`/`UNIQUE`/`CHECK` constraints keep invalid states out, including concurrent writes.
+Parameters (`$1`) can only substitute **values**, not table or column identifiers. If table or column names are dynamic, sanitize and quote them using `pg-format` (`%I` format specifier).
 
-[Pool](../../Node/node-lectures/day-27-postgresql-and-pg-pool-lifecycle.md) | [Parameterized CRUD](../../Node/node-lectures/day-28-parameterized-sql-crud.md) | [Correctness](../../Node/node-lectures/day-29-relational-correctness-for-apis.md)
+```js
+import format from "pg-format";
 
-## Querying and performance
+// Safe dynamic column sort
+const sql = format("SELECT * FROM products ORDER BY %I ASC LIMIT 10", sortByColumn);
+const { rows } = await pool.query(sql);
+```
 
-**1. SQL composition**
+[Parameterized SQL CRUD](../../Node/node-lectures/day-28-parameterized-sql-crud.md) | [Relational correctness](../../Node/node-lectures/day-29-relational-correctness-for-apis.md)
 
-Joins combine relations; grouping aggregates rows; subqueries/CTEs name intermediate query steps. Check row cardinality before aggregating.
+## Schema constraints and query performance
 
-**2. Indexes and plans**
+**1. Relational constraints as source of truth**
 
-Indexes may support filters/orderings but add storage/write cost; use `EXPLAIN` and workload evidence.
-
-**3. API integration**
-
-Map database rows to API output; keep client/transaction lifetime separate from unrelated remote calls.
-
-[Query composition](../../Node/node-lectures/day-30-sql-composition-and-performance-awareness.md) | [Express integration](../../Node/node-lectures/day-32-postgresql-in-express.md)
-
-## Transactions and concurrency
-
-**1. Transactions**
-
-`BEGIN`/`COMMIT` group database changes; rollback on failure and keep transaction boundaries narrow.
-
-**2. MVCC and isolation**
-
-MVCC provides versioned snapshots; isolation level determines which concurrent changes a transaction observes.
-
-**3. Row locks and deadlocks**
-
-Locks coordinate conflicting writes; deterministic lock order reduces deadlock risk.
+Enforce data integrity at the database layer using constraints: `PRIMARY KEY`, `FOREIGN KEY ... ON DELETE CASCADE | RESTRICT`, `UNIQUE`, and `CHECK`.
 
 ```sql
-BEGIN;
-UPDATE inventory SET quantity = quantity - 1 WHERE id = $1 AND quantity > 0;
-COMMIT;
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >= 0),
+  status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
-**4. Retry and integrity**
+**2. Query execution analysis: `EXPLAIN ANALYZE`**
 
-Constraints are authoritative; retry deadlock/serialization failures only when the transaction is safe to rerun.
+Use `EXPLAIN (ANALYZE, BUFFERS)` to diagnose slow queries.
+- `Seq Scan`: Full table scan. Slow on large tables; indicates a missing index.
+- `Index Scan` / `Bitmap Index Scan`: Uses a B-tree index to locate rows rapidly.
 
-[Transactions, MVCC, and locks](../../Node/node-lectures/day-31-postgresql-transactions-mvcc-and-locks.md)
+```sql
+-- Create an index on foreign key for performant JOINs
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+
+-- Verify execution plan
+EXPLAIN ANALYZE SELECT * FROM orders WHERE user_id = 'c7a4b88e-6701-4475-8120-cf6a17b07542';
+```
+
+[SQL composition and performance](../../Node/node-lectures/day-30-sql-composition-and-performance-awareness.md)
+
+## Transactions, MVCC, and pessimistic locking
+
+**1. Transaction isolation and execution flow**
+
+Run transactions across a single checked-out client with explicit `BEGIN`, `COMMIT`, and `ROLLBACK` blocks.
+
+```js
+async function transferFunds(fromId, toId, amount) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Pessimistic lock: Prevents concurrent updates until transaction completes
+    const { rows: [sender] } = await client.query(
+      "SELECT balance FROM accounts WHERE id = $1 FOR UPDATE",
+      [fromId]
+    );
+
+    if (sender.balance < amount) throw new Error("Insufficient funds");
+
+    await client.query("UPDATE accounts SET balance = balance - $1 WHERE id = $2", [amount, fromId]);
+    await client.query("UPDATE accounts SET balance = balance + $1 WHERE id = $2", [amount, toId]);
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+```
+
+**2. MVCC (Multi-Version Concurrency Control) and row locks**
+
+Under MVCC, readers never block writers, and writers never block readers. When an `UPDATE` occurs, Postgres writes a new tuple version and flags the old tuple as dead (later reclaimed by `VACUUM`). Use `FOR UPDATE` to lock specific rows during critical read-modify-write balances, or `FOR UPDATE SKIP LOCKED` for high-throughput concurrency job queues.
+
+```js
+// Lock-free queue consumer: grabs the first unlocked task and skips locked ones
+const { rows } = await client.query(`
+  SELECT id, payload FROM jobs
+  WHERE status = 'PENDING'
+  ORDER BY id
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+`);
+```
+
+[Transactions and MVCC](../../Node/node-lectures/day-31-postgresql-transactions-mvcc-and-locks.md) | [PostgreSQL in Express](../../Node/node-lectures/day-32-postgresql-in-express.md)
 
 ## Tricky points
 
-1. **Client and query**
+1. **Connection pooling**
 
-**1.1 Pool release**
+**1.1 Leaking clients on error paths**
+If `client.release()` is omitted or placed inside the `try` block before an error occurs, the checked-out client is never returned to the pool. Over time, all connections lock, freezing every subsequent database call across the server.
 
-A checked-out client not released after errors can starve later requests.
+**1.2 Mixing `pool.query()` with `BEGIN`**
+Calling `await pool.query("BEGIN")` executes on an arbitrary client from the pool; subsequent calls may run on completely different clients, breaking transaction boundaries and leaving open transactions lingering in Postgres.
 
-**1.2 Parameters**
+2. **Queries and constraints**
 
-Parameters represent values, not identifiers; dynamic table/column names need strict allowlisting.
+**2.1 Missing indexes on foreign keys**
+Unlike primary keys, PostgreSQL does not automatically create indexes on foreign key columns. Deleting or updating rows on the referenced parent table requires an expensive full table `Seq Scan` on the child table.
 
-**1.3 `NULL`**
+**2.2 Blind numeric float coercion**
+Storing financial balances in `FLOAT` or JavaScript `Number` causes floating-point rounding errors (e.g., `0.1 + 0.2 !== 0.3`). Always use `NUMERIC(12, 2)` or integer cents.
 
-`column = NULL` is unknown; use `IS NULL`.
+3. **Concurrency and locks**
 
-2. **Relational semantics**
+**3.1 Deadlocks from inconsistent locking order**
+If Transaction A locks Account 1 and attempts to lock Account 2, while Transaction B locks Account 2 and attempts to lock Account 1, Postgres detects a deadlock and aborts one transaction with error code `40P01`. Always sort resource IDs before acquiring locks.
 
-**2.1 Join cardinality**
-
-A one-to-many join duplicates parent rows; aggregate at the intended level.
-
-**2.2 Outer joins**
-
-A `WHERE` predicate on the nullable side can remove unmatched rows and effectively act like an inner join.
-
-**2.3 Constraints**
-
-Application check-then-insert races; database constraints are authoritative.
-
-3. **Transactions and performance**
-
-**3.1 Remote calls**
-
-Do not hold row locks while waiting on HTTP or another slow dependency.
-
-**3.2 Isolation**
-
-A transaction does not prevent every anomaly at every level; state the isolation level and invariant.
-
-**3.3 Indexes**
-
-More indexes can improve reads but slow writes and consume resources; verify actual plans.
+**3.2 Table bloat from long-running transactions**
+A lingering open transaction prevents `VACUUM` from cleaning dead tuple versions across the entire database, causing disk bloat and degrading query performance across unrelated tables.

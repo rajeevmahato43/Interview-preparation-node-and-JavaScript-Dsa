@@ -7,40 +7,13 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **5-Phase 45-Minute Live Interview Execution Blueprint** to structure time under high-pressure conditions.
-- Understand what hiring committees specifically evaluate across Junior, Mid, and Senior/Staff engineering levels.
-- Apply practical **Unsticking Strategies** when blocked on an unfamiliar or complex problem.
-- Communicate technical tradeoffs, constraints, and algorithmic decisions clearly out loud before writing code.
-- Bridge abstract coding implementations to production Node.js engineering realities during the final interview wrap-up.
-- Catch logical off-by-one errors and edge case bugs through manual tracing before clicking "Run".
-
----
-
 ## Prerequisites
 
 - [Day 01–58: All DSA Lectures](day-01-big-o-notation-and-algorithm-analysis-in-v8.md) — Comprehensive technical mastery of all core patterns and Node.js systems.
 - [Day 56: Mixed Pattern Strategy and Constraint Decoding](day-56-mixed-pattern-strategy-and-constraints.md) — Complexity derivation and pattern selection.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Think-Aloud Protocol** | Verbalizing your mental model, assumptions, and decision tradeoffs continuously throughout the interview. | Allows the interviewer to assess reasoning and offer subtle hints before you write wrong code. |
-| **5-Phase Blueprint** | Structuring a 45-minute coding session into Clarification, Exploration, Coding, Dry-Run, and Tradeoff phases. | Prevents running out of time; ensures working code is delivered within 30 minutes. |
-| **Unsticking Strategy** | Concrete heuristics (e.g., tiny example, bottleneck analysis, inverting constraints) used to escape mental blocks. | Prevents silent panics; demonstrates senior resilience and problem-solving maturity. |
-| **Dry-Run Tracing** | Manually stepping through your code line-by-line with a concrete test case before executing the test suite. | Demonstrates senior code ownership; catches edge cases without relying on IDE error output. |
-| **Senior Wrap-Up** | Connecting the algorithmic solution to production systems (memory footprint, GC, streaming, failure modes). | Elevates the evaluation from a standard LeetCode coder to a senior system builder. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The 5-Phase 45-Minute Execution Blueprint
+## 1. The 5-Phase 45-Minute Execution Blueprint
 
 A technical interview is **not an exam to silently solve in isolation**; it is a **collaborative pair-programming simulation** measuring your communication, problem-solving, and engineering judgment.
 
@@ -59,7 +32,7 @@ The 45-Minute Senior Interview Timeline:
 
 ---
 
-### 2. Detailed Breakdown of the 5 Phases
+## 2. Detailed Breakdown of the 5 Phases
 
 #### Phase 1: Clarification & Scoping (0–5 Minutes)
 Never start coding immediately. Clarify ambiguities and establish explicit constraints:
@@ -95,7 +68,7 @@ Connect the algorithmic solution to production Node.js realities:
 
 ---
 
-### 3. The Senior Engineering Evaluation Rubric
+## 3. The Senior Engineering Evaluation Rubric
 
 | Dimension | Junior Candidate | Mid-Level Candidate | Senior / Staff Candidate |
 | :--- | :--- | :--- | :--- |
@@ -107,7 +80,7 @@ Connect the algorithmic solution to production Node.js realities:
 
 ---
 
-### 4. The 4 Concrete Unsticking Strategies
+## 4. The 4 Concrete Unsticking Strategies
 
 When you encounter a mental block during a live interview, use this triage checklist:
 
@@ -133,7 +106,7 @@ The Unsticking Decision Tree:
 
 ---
 
-### 5. Verbal Communication Scripts: Exact Phrases for Every Phase
+## 5. Verbal Communication Scripts: Exact Phrases for Every Phase
 
 Mastering what to say out loud keeps the conversation collaborative and prevents awkward dead air:
 
@@ -165,7 +138,7 @@ Phase 5: Production Wrap-Up Scripts
 
 ---
 
-### 6. Senior Mock Interview Dialogue Transcript
+## 6. Senior Mock Interview Dialogue Transcript
 
 ```text
 [00:00 - 05:00] PHASE 1: CLARIFICATION
@@ -209,7 +182,6 @@ Candidate:   "In a production Node.js service handling millions of live events, 
               worker threads. That concludes my design."
 Interviewer: "Excellent work."
 ```
-
 
 ---
 

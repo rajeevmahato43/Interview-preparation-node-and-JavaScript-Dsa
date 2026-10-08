@@ -5,43 +5,14 @@
 [Previous: Grid Backtracking: Word Search, Maze Paths, and N-Queens](day-25-grid-backtracking-and-n-queens.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Binary Search on Rotated Arrays and Peaks](day-27-binary-search-rotated-arrays-and-peaks.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain how Binary Search achieves guaranteed $O(\log n)$ runtime by halving the search space on each iteration.
-- Implement the three structural invariants of binary search without off-by-one errors or infinite loops.
-- Derive why the `left` pointer lands on the exact insertion index in **Search Insert Position** (`lower_bound`).
-- Implement boundary searches to locate the **First and Last Occurrence** of an element in a sorted array containing duplicates.
-- Prevent floating-point index bugs in JavaScript caused by missing `Math.floor()` conversions.
-- Apply binary search principles in Node.js backend systems to query time-partitioned logs via byte-offset disk seeking.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Logarithmic growth rates ($O(\log n)$).
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Contiguous array indexing in V8.
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Array sorting and linear vs binary search baselines.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Binary Search** | A divide-and-conquer algorithm that repeatedly halves a sorted search interval by comparing the target with the median element. | Reduces linear scans of $1,000,000$ elements from $1,000,000$ comparisons to at most $20$ comparisons. |
-| **Search Space Invariant** | A mathematical guarantee that the target value, if present, is strictly contained within the current `[left, right]` boundary. | Preserving this invariant prevents infinite loops and off-by-one errors. |
-| **Lower Bound** | The smallest index `i` such that `nums[i] >= target`. | Identifies the first occurrence of a duplicate or the valid insertion slot for a missing key. |
-| **Upper Bound** | The smallest index `i` such that `nums[i] > target`. | Identifies the boundary immediately following the last occurrence of a target. |
-| **Byte Offset Seeking** | Using binary search over file byte positions (`fs.read`) to locate timestamped log entries without loading files into memory. | Enables sub-millisecond log querying over multi-gigabyte disk files in Node.js. |
-
----
-
-## Core Concepts
-
-### 1. The Logarithmic Halving Principle ($O(\log n)$)
+## 1. The Logarithmic Halving Principle ($O(\log n)$)
 
 A **Binary Search** locates a target within an ordered collection by comparing the target against the element at the midpoint of the search interval and discarding the half that cannot contain the target.
 
@@ -76,7 +47,9 @@ Step 2: mid index is 5 (nums[5] = 23).
 
 ---
 
-### 2. The Three Invariants for Bug-Free Binary Search
+## 2. The Three Invariants for Bug-Free Binary Search
+
+> **Binary Search**: A divide-and-conquer algorithm that repeatedly halves a sorted search interval by comparing the target with the median element.
 
 Binary search is notorious for off-by-one errors and infinite loops. Adhering strictly to three mathematical invariants guarantees correctness:
 
@@ -147,7 +120,7 @@ function binarySearch(nums, target) {
 
 ---
 
-### 3. Search Insert Position: The Termination Invariant
+## 3. Search Insert Position: The Termination Invariant
 
 In **Search Insert Position** (LeetCode 35), we return the index of the target if found, or the index where it would be inserted in order if missing.
 
@@ -194,7 +167,7 @@ console.log(searchInsert([1, 3, 5, 6], 0)); // 0 (belongs at head)
 
 ---
 
-### 4. Boundary Searching: First and Last Occurrences
+## 4. Boundary Searching: First and Last Occurrences
 
 When a sorted array contains duplicates (e.g., `[5, 7, 7, 8, 8, 10]`), standard binary search stops at whichever duplicate happens to land on `mid`.
 To locate the exact boundaries:
@@ -440,7 +413,7 @@ In both cases, the loop terminates with `left = right + 1`, and `left` points to
 
 **Answer:** 
 
-| Step | `left` | `right` | `mid` | `nums[mid]` | Evaluation | Action | `bound` |
+| Step | `left` | `right` | `mid` | `nums` | Evaluation | Action | `bound` |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | 1 | 0 | 5 | 2 | 7 | $7 < 8$ | `left = mid + 1 = 3` | -1 |
 | 2 | 3 | 5 | 4 | 8 | $8 === 8$ | `bound = 4`, `right = mid - 1 = 3` | 4 |

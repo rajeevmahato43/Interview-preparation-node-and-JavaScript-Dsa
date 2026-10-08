@@ -7,41 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Implement a production-grade **LRU Cache** (LeetCode 146) pairing a Hash Map with a Doubly Linked List for strict $O(1)$ `get` and `put` operations.
-- Solve **Trapping Rain Water** (LeetCode 42) in optimal $O(n)$ time and $O(1)$ auxiliary space using opposing Two Pointers.
-- Compare Two Pointers vs. Monotonic Stack vs. Dynamic Programming for elevation and water retention geometry.
-- Master defensive engineering patterns expected in Senior/Staff interviews: sentinel dummy nodes, boundary guards, and memory leak prevention.
-- Connect LRU caches and buffer pooling to real-world Node.js memory management (V8 heap sizing and Node.js Buffer pool).
-- Articulate algorithmic tradeoffs, space bounds, and clean refactoring patterns out loud under interview conditions.
-
----
-
 ## Prerequisites
 
 - [Day 11: Two Pointers: Opposite and Same Direction](day-11-two-pointers-opposite-and-same-direction.md) — Converging two-pointer bounds.
 - [Day 18: Monotonic Stack: Next Greater and Temperatures](day-18-monotonic-stack-next-greater-and-temperatures.md) — Monotonic stack for histogram geometry.
 - [Day 29: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md) — Node unlinking and sentinel pointer splicing.
-
 ---
 
-## Quick Vocabulary Card
+## 1. LRU Cache: Hash Map + Doubly Linked List
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **LRU Cache** | A fixed-capacity cache that evicts the least recently accessed item when capacity is reached. | Standard caching policy for database query results, Redis keys, and HTTP asset caching. |
-| **Sentinel Dummy Nodes** | Static, non-data placeholder nodes (`head` and `tail`) that anchor list boundaries. | Eliminates null pointer checks and special-case branching during insertion and deletion. |
-| **Trapping Rain Water** | Calculating the volume of water retained between vertical elevation bars after rainfall. | Benchmark interview problem testing two-pointer invariant derivation and $O(1)$ space optimization. |
-| **Water Level Invariant** | Water height above index $i$ is strictly bounded by $\min(\text{maxLeft}, \text{maxRight}) - \text{height}[i]$. | Enables one-pass two-pointer processing without computing the opposite boundary upfront. |
-| **Buffer Pooling** | Reusing pre-allocated contiguous memory chunks instead of repeatedly instantiating new buffers. | Eliminates V8 garbage collection overhead in high-throughput network servers. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. LRU Cache: Hash Map + Doubly Linked List
+> **LRU Cache**: A fixed-capacity cache that evicts the least recently accessed item when capacity is reached.
 
 An **LRU Cache** (Least Recently Used) must support two operations in strictly $O(1)$ time:
 1. `get(key)`: Returns the value if key exists, and marks it as most recently used. Otherwise returns `-1`.
@@ -175,7 +150,9 @@ console.log('Get 2 (evicted):', cache.get(2)); // -1
 
 ---
 
-### 2. Trapping Rain Water: Optimal Two Pointers
+## 2. Trapping Rain Water: Optimal Two Pointers
+
+> **Trapping Rain Water**: Calculating the volume of water retained between vertical elevation bars after rainfall.
 
 In **Trapping Rain Water** (LeetCode 42), given $n$ non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.
 
@@ -238,7 +215,7 @@ console.log('Trapped water:', trap([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])); // 6
 
 ---
 
-### 3. Comparison Matrix: Approaches to Trapping Rain Water
+## 3. Comparison Matrix: Approaches to Trapping Rain Water
 
 | Approach | Time Complexity | Auxiliary Space | Architectural Mechanism |
 | :--- | :--- | :--- | :--- |

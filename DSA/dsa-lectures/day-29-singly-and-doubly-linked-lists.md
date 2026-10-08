@@ -5,43 +5,14 @@
 [Previous: Binary Search on Solution Space](day-28-binary-search-on-solution-space.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Linked List Fast & Slow Pointers and Reversals](day-30-linked-list-fast-slow-and-reversals.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Contrast heap-allocated dynamic node structures with contiguous array layouts in V8 engine memory.
-- Implement Singly and Doubly Linked Lists with $O(1)$ head/tail mutations and understand $O(n)$ access limitations.
-- Master the **Dummy Head (Sentinel) Pattern** to eliminate head-boundary null pointer exceptions.
-- Implement in-place list reversal ($O(n)$ time, $O(1)$ space) without allocating new nodes.
-- Solve the two-pointer offset window pattern: removing the $N$-th node from the end in a single pass.
-- Evaluate Node.js backend performance trade-offs: pointer chasing cache misses vs array shifts in LRU caches and connection pools.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Reference vs value semantics and memory.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Contiguous array allocations in V8.
 - [Day 11: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md) — Multi-pointer movement patterns.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Singly Linked List** | A linear data structure composed of distinct heap nodes where each node contains a value and a forward reference pointer (`next`). | Enables $O(1)$ insertions and deletions at known pointer locations without shifting elements. |
-| **Doubly Linked List** | A linked node structure where each node maintains two pointer references: one to its predecessor (`prev`) and one to its successor (`next`). | Enables $O(1)$ arbitrary node deletion and bi-directional traversal, forming the backbone of LRU caches. |
-| **Sentinel (Dummy Head)** | An auxiliary node prepended before the actual head node whose value is arbitrary and never read. | Unifies edge-case operations by ensuring that every valid node—including the real head—always possesses a valid predecessor. |
-| **Pointer Chasing** | Iteratively dereferencing scattered memory addresses across the heap to traverse a linked structure. | Induces CPU L1/L2 cache misses, making linked lists substantially slower than flat arrays for sequential iteration. |
-| **Offset Window** | Maintaining two pointers separated by an invariant distance of $k$ nodes. | Allows locating elements positioned relative to the end of a list in a single pass without knowing list length. |
-
----
-
-## Core Concepts
-
-### 1. Pointer-Based Dynamic Structures vs Contiguous Arrays in V8
+## 1. Pointer-Based Dynamic Structures vs Contiguous Arrays in V8
 
 A **Linked List** is a linear collection of data elements whose order is not dictated by physical memory placement, but rather by explicit reference links stored within each independent node object.
 
@@ -69,7 +40,9 @@ In Node.js, each JavaScript object `{ val, next }` consumes ~32–48 bytes due t
 
 ---
 
-### 2. The Sentinel (Dummy Head) Pattern
+## 2. The Sentinel (Dummy Head) Pattern
+
+> **Sentinel (Dummy Head)**: An auxiliary node prepended before the actual head node whose value is arbitrary and never read.
 
 When modifying a linked list, operations at the `head` node frequently require conditional branches (`if (head === target)`) because the head has no predecessor.
 A **Dummy Head (Sentinel Node)** is an artificial node created prior to the real head (`dummy.next = head`).
@@ -94,7 +67,9 @@ Return dummy.next -> [Node 20] cleanly returned!
 
 ---
 
-### 3. In-Place Reversal of a Singly Linked List (LeetCode 206)
+## 3. In-Place Reversal of a Singly Linked List (LeetCode 206)
+
+> **Singly Linked List**: A linear data structure composed of distinct heap nodes where each node contains a value and a forward reference pointer (`next`).
 
 Given the head of a singly linked list, reverse the list in-place and return the new head.
 
@@ -160,7 +135,9 @@ function reverseList(head) {
 
 ---
 
-### 4. The Two-Pointer Offset Window: Remove N-th Node From End (LeetCode 19)
+## 4. The Two-Pointer Offset Window: Remove N-th Node From End (LeetCode 19)
+
+> **Offset Window**: Maintaining two pointers separated by an invariant distance of $k$ nodes.
 
 Given the head of a linked list, remove the $n$-th node from the end of the list and return its head in a single pass.
 
@@ -252,6 +229,8 @@ Doubly Linked List (Ordering):
 ## Hands-On Exercise
 
 ### Scenario: LRU Cache Doubly Linked List Engine
+
+> **Doubly Linked List**: A linked node structure where each node maintains two pointer references: one to its predecessor (`prev`) and one to its successor (`next`).
 
 Build a bare-metal `DoublyLinkedList` container supporting $O(1)$ operations: `addToHead(node)`, `removeNode(node)`, and `removeTail()`. The container must use Sentinel Head and Sentinel Tail nodes to eliminate all null checks.
 

@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Select the appropriate filesystem API (`node:fs/promises`, streams, or file handles) for backend workloads without blocking the libuv event loop.
-- Contrast URL parsing (`node:url`) with filesystem path resolution (`node:path`) and safely convert between them across POSIX and Windows.
-- Defend against Path Traversal vulnerabilities by strictly confining candidate file access within a designated root directory.
-- Eliminate Time-of-Check to Time-of-Use (TOCTOU) file race conditions using atomic file open flags (`wx`, `r`).
-- Implement atomic file persistence patterns using same-filesystem temporary files and `fs.rename` to prevent partial write corruption.
-- Manage file descriptors safely to prevent `EMFILE` (Too many open files) leaks using RAII-style `try/finally` blocks.
-- Stream large files with backpressure using `stream.pipeline` instead of loading entire files into V8 heap memory with `fs.readFile()`.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be comfortable with:
@@ -32,24 +16,6 @@ Before studying this lecture, you should be comfortable with:
 *Upcoming Connections:*
 - [Day 06: Buffers, Encodings, and Serialization](day-06-buffers-encodings-and-serialization.md) explores binary data chunks, memory allocation, and byte encodings.
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) covers deep backpressure mechanics, transform streams, and highWaterMark tuning.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **Path Traversal** | A security vulnerability where malicious input (e.g., `../../etc/passwd`) escapes the intended directory boundary to access sensitive system files. |
-| **TOCTOU Race** | Time-of-Check to Time-of-Use; a concurrency flaw where file state changes between when it is inspected (`fs.access`) and when it is operated on (`fs.open`). |
-| **Atomic Write** | A persistence pattern that writes data to a temporary file first, flushes disk buffers (`fsync`), and atomically renames it to guarantee no corrupted partial files exist. |
-| **File Descriptor (FD)** | An integer assigned by the OS kernel representing an open file, socket, or pipe handle. |
-| **`EMFILE` Error** | An OS kernel error indicating the current process has exceeded its allocated maximum number of open file descriptors. |
-| **Canonical Path** | The absolute, fully resolved file path with all symbolic links, relative segments (`..`), and redundant slashes resolved (`fs.realpath`). |
-| **`path.resolve()`** | Resolves a sequence of path segments into an absolute path, processing segments from right to left until an absolute path is formed. |
-| **`path.join()`** | Joins all given path segments together using the platform-specific separator and normalizes the resulting path. |
-| **`fileURLToPath()`** | Converts a `file://` URL object or string into a fully qualified, platform-compliant operating system file path. |
-| **Stream Backpressure** | A flow-control signal where a slow consumer instructs a fast producer to pause reading from disk until outgoing buffers drain. |
-
 ---
 
 ## 1. Asynchronous Filesystem Architecture in Node.js
@@ -166,6 +132,8 @@ console.log(path.resolve("/first", "/second", "file.txt"));
 
 ## 3. Path Traversal Attacks & Strict Containment
 
+> **Path Traversal**: A security vulnerability where malicious input (e.g., `../../etc/passwd`) escapes the intended directory boundary to access sensitive system files.
+
 A **path traversal attack** (or directory traversal) is an exploit where an attacker inputs characters like `../` or encoded representations to force the server to read or overwrite files outside the intended root directory.
 
 ### 3.1 The Vulnerability: Naive Concatenation
@@ -275,6 +243,8 @@ async function verifyRealpathContainment(safeRoot, candidatePath) {
 
 ## 4. TOCTOU Races and Atomic File Flags
 
+> **TOCTOU Race**: Time-of-Check to Time-of-Use; a concurrency flaw where file state changes between when it is inspected (`fs.access`) and when it is operated on (`fs.open`).
+
 A **TOCTOU race** (Time-of-Check to Time-of-Use) occurs when a program checks the state of a resource (e.g., checking if a file exists) and performs an operation on it later, under the assumption that the state has not changed.
 
 ### 4.1 The Flawed Pattern: `fs.access()` followed by `fs.writeFile()`
@@ -331,6 +301,8 @@ async function acquireLockFile(lockPath) {
 ## 5. Atomic File Writes & Durability Patterns
 
 An **atomic write** guarantees that a file is updated completely or not at all, preventing half-written, corrupted files if the server process crashes or loses power mid-write.
+
+> **Atomic Write**: A persistence pattern that writes data to a temporary file first, flushes disk buffers (`fsync`), and atomically renames it to guarantee no corrupted partial files exist.
 
 ### 5.1 The Crash-Vulnerability of Direct Writes
 
@@ -399,6 +371,8 @@ async function writeAtomic(targetFilePath, data) {
 ---
 
 ## 6. Resource Ownership & File Descriptor Leaks (`EMFILE`)
+
+> **File Descriptor (FD)**: An integer assigned by the OS kernel representing an open file, socket, or pipe handle.
 
 A **file descriptor (FD)** is a low-level integer handle allocated by the OS kernel for every open file, socket, or pipe in a process.
 

@@ -7,42 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master **Breadth-First Search (BFS)** traversal on arbitrary directed and undirected graphs using an explicit FIFO queue and `visited` tracking set.
-- Mathematically prove why BFS guarantees finding the **Shortest Path** (minimum edge count) in unweighted graphs.
-- Implement **Clone Graph** to deep-copy complex cyclic graphs without infinite recursion using object-to-clone hash maps.
-- Solve multi-state transformation problems such as **Word Ladder** by modeling intermediate wildcard bucket transitions.
-- Eliminate JavaScript queue performance bottlenecks by replacing $O(N)$ `Array.prototype.shift()` with pointer-based deques in high-throughput graph traversals.
-- Apply BFS algorithms to real-world backend architectures: peer-to-peer (P2P) network discovery, crawl frontiers, and route-distance calculation in Node.js services.
-
----
-
 ## Prerequisites
 
 - [Day 19: Queue and Deque Implementations](day-19-queue-and-deque-implementations.md) — FIFO queue invariants and amortized array vs. pointer performance.
 - [Day 32: Level Order Traversal, BFS, and Tree Views](day-32-level-order-traversal-bfs-and-views.md) — Sized-batch queue processing and breadth exploration invariants.
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Adjacency lists and vertex degree fundamentals.
-
 ---
 
-## Quick Vocabulary Card
+## 1. BFS Mechanics and the Shortest Path Guarantee
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Breadth-First Search (BFS)** | A graph traversal algorithm that explores all neighbor nodes at current depth $d$ before proceeding to depth $d + 1$. | Fundamental algorithm for finding the shortest path in unweighted graphs in $O(V + E)$ time. |
-| **Visited Timing Invariant** | Marking a node as visited immediately when it is **enqueued**, rather than when dequeued. | Crucial bug prevention; marking on dequeue causes duplicate queue insertions and exponential memory blowup. |
-| **Shortest Path (Unweighted)** | The minimum number of edge transitions required to travel from source vertex $S$ to target vertex $T$. | Solved in $O(V + E)$ by BFS; Dijkstra's algorithm is only necessary when edges have variable non-negative weights. |
-| **Clone Graph** | Constructing a deep copy of a graph with identical topology while ensuring no references point to original nodes. | Tests handling of cycles and back-edges using `Map<OriginalNode, ClonedNode>`. |
-| **Intermediate State Bucketing** | Pre-computing wildcard transformation patterns (e.g., `*ot` for `hot`, `dot`, `lot`) to find neighbors in $O(L)$ instead of $O(N \cdot L)$. | Core optimization for Word Ladder; reduces neighbor discovery time from quadratic to linear. |
-| **Queue Head Pointer** | Maintaining an integer index pointer to the current front of an array queue instead of invoking `shift()`. | Prevents $O(N^2)$ traversal degradation caused by V8 array memory re-indexing. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. BFS Mechanics and the Shortest Path Guarantee
+> **Shortest Path (Unweighted)**: The minimum number of edge transitions required to travel from source vertex $S$ to target vertex $T$.
 
 **Breadth-First Search (BFS)** on a graph systematically expands outward in concentric rings or layers from an initial source vertex $S$. Because each step transitions across exactly one edge, all vertices at distance $k$ are explored before any vertex at distance $k + 1$.
 
@@ -72,7 +46,9 @@ Pop 6:             Target reached! Distance = 3 edges.
 
 ---
 
-### 2. The Visited Timing Invariant: Enqueue vs. Dequeue
+## 2. The Visited Timing Invariant: Enqueue vs. Dequeue
+
+> **Visited Timing Invariant**: Marking a node as visited immediately when it is **enqueued**, rather than when dequeued.
 
 The most dangerous pitfall in graph BFS is marking nodes as visited upon dequeue instead of enqueue.
 
@@ -159,7 +135,9 @@ console.log('Shortest path 0 to 6:', bfsShortestPath(graph, 0, 6)); // 3
 
 ---
 
-### 3. Deep Copying Cyclic Graphs: Clone Graph
+## 3. Deep Copying Cyclic Graphs: Clone Graph
+
+> **Clone Graph**: Constructing a deep copy of a graph with identical topology while ensuring no references point to original nodes.
 
 In **Clone Graph** (LeetCode 133), we must construct an exact duplicate of an undirected, connected graph where vertices contain cyclic references.
 
@@ -226,7 +204,7 @@ function cloneGraph(rootNode) {
 
 ---
 
-### 4. Multi-State Transition Search: Word Ladder
+## 4. Multi-State Transition Search: Word Ladder
 
 In **Word Ladder** (LeetCode 127), we are given `beginWord`, `endWord`, and a `wordList`. A transition between two words is valid if and only if they differ by exactly one character. We must find the minimum number of words in the transformation sequence.
 

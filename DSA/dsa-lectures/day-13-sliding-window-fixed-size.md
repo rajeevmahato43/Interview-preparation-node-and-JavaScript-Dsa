@@ -5,41 +5,12 @@
 [Previous: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Sliding Window: Variable Size](day-14-sliding-window-variable-size.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Identify problem constraints that dictate a **Fixed-Size Sliding Window** (contiguous subarrays/substrings of exact length $k$).
-- Apply the **Subtract Left / Add Right** invariant to transition between contiguous windows in $O(1)$ arithmetic time.
-- Implement **Maximum Sum Subarray of Size K** and **Maximum Average Subarray I** in $O(n)$ time rather than $O(n \times k)$ brute force.
-- Track non-additive window metrics (such as the first negative integer) using queue index heads without incurring $O(k)$ `shift()` memory copying penalties.
-- Prevent negative-number initialization bugs when tracking maximum window metrics.
-- Implement real-time streaming rolling averages and rate limiters in Node.js using fixed-memory ring buffers.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
 - [Day 11: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md) — Multi-pointer index traversal.
 - [Day 12: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md) — Same-direction pointer scanning.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Fixed Sliding Window** | A contiguous subsegment of an array or string that maintains an invariant length $k$ as it shifts across the data. | Avoids recalculating shared elements, reducing window operations from $O(n \cdot k)$ to $O(n)$. |
-| **Window State Transition** | The mathematical update rule: $\text{NextState} = \text{CurrentState} - \text{Outgoing} + \text{Incoming}$. | Enables incremental $O(1)$ state updates per step regardless of window size $k$. |
-| **Outgoing Index** | The index of the element being ejected from the left edge of the window: $\text{outgoingIndex} = i - k$. | Crucial off-by-one boundary checkpoint; subtracting $i - k - 1$ corrupts the sliding sum. |
-| **Index-Pointer Queue** | A queue that stores array indices rather than values, dequeuing via an incrementing `head` index. | Avoids $O(k)$ array shifts in JavaScript when tracking non-additive window attributes. |
-| **Boundary Burst Problem** | A flaw in fixed-window rate limiting where double the traffic limit is admitted across window boundary transitions. | Motivates sliding-log or token bucket algorithms in production Node.js gateway architectures. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -60,7 +31,7 @@ By the end of this lecture, you should be able to:
     each step performs 1 subtraction and 1 addition -> O(n) total time!
 ```
 
-### 1. The Fixed Window Transition Rule
+## 1. The Fixed Window Transition Rule
 
 When evaluating contiguous sequences of length $k$ across an array of length $n$:
 - Brute-force re-evaluation recalculates the sum of every window from scratch, taking $(n - k + 1) \times k = O(n \cdot k)$ operations.
@@ -116,7 +87,7 @@ console.log("Fast result:", maxSubarraySumFast(numbers, k)); // 9
 
 ---
 
-### 2. Execution Trace: `maxSubarraySumFast([2, 1, 5, 1, 3, 2], 3)`
+## 2. Execution Trace: `maxSubarraySumFast([2, 1, 5, 1, 3, 2], 3)`
 
 | Index `i` | Outgoing Index `i - k` (`nums[i-k]`) | Incoming Index `i` (`nums[i]`) | Arithmetic Formula | `currentSum` | `maxSum` |
 |---|---|---|---|---|---|
@@ -130,7 +101,7 @@ console.log("Fast result:", maxSubarraySumFast(numbers, k)); // 9
 
 ---
 
-### 3. Non-Additive Window Metrics: Queue-Assisted Tracking
+## 3. Non-Additive Window Metrics: Queue-Assisted Tracking
 
 Not all metrics can be updated using basic subtraction. For non-additive properties (such as finding the **First Negative Integer in Every Window of Size K**), maintain a queue of candidate indices:
 
@@ -172,7 +143,7 @@ console.log("First Negative per Window:", firstNegativeInWindow(streamData, 3));
 
 ---
 
-### 4. Node.js Backend Application: Rolling Telemetry with Circular Buffers
+## 4. Node.js Backend Application: Rolling Telemetry with Circular Buffers
 
 In microservice health monitoring, calculating the rolling error rate over the last $k = 1,000$ HTTP requests on every incoming request is common.
 
@@ -441,6 +412,8 @@ function numOfSubarrays(arr, k, threshold) {
 ---
 
 ### 4. How does a Fixed-Window sliding counter compare to a Leaky/Token Bucket algorithm for API rate limiting in Node.js, and what is the Boundary Burst Problem?
+
+> **Boundary Burst Problem**: A flaw in fixed-window rate limiting where double the traffic limit is admitted across window boundary transitions.
 
 **Question:** Analyze the architectural difference between fixed-window rate limiting and leaky/token bucket rate limiting in a Node.js API gateway.
 

@@ -5,41 +5,12 @@
 [Previous: Monotonic Stack Patterns](day-18-monotonic-stack-patterns.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Stack and Queue Design Patterns](day-20-stack-and-queue-design-patterns.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain the **First-In, First-Out (FIFO)** processing principle and its core operations (`enqueue`, `dequeue`, `peek`).
-- Identify why JavaScript's native `Array.prototype.shift()` introduces an $O(n)$ memory shift penalty, degrading BFS algorithms to $O(V^2)$.
-- Implement an optimal $O(1)$ amortized Queue using an array with a `head` index pointer and dead-space compaction.
-- Design a fixed-capacity **Circular Queue (Ring Buffer)** using modulo wrap-around arithmetic.
-- Implement a **Double-Ended Queue (Deque)** supporting strict $O(1)$ push and pop operations at both boundaries.
-- Architect asynchronous job queues in Node.js to level traffic bursts and protect database connection pools.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and amortized time.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Contiguous array allocations and pointer offsets.
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO vs FIFO mechanical trade-offs.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **FIFO (First-In, First-Out)** | An access protocol where the first element enqueued is the first element dequeued. | Dictates task scheduling, message broker processing, and Breadth-First Search (BFS). |
-| **Array Shift Trap** | The $O(n)$ memory penalty incurred when removing the head element (`arr.shift()`), forcing all remaining items to copy leftward. | Turns linear algorithms into $O(n^2)$ bottlenecks, locking the Node.js event loop during high-throughput workloads. |
-| **Head Pointer Queue** | A queue pattern that advances a numeric index pointer `head` rather than shifting elements in memory. | Yields $O(1)$ dequeues on native arrays without external linked list node allocation overhead. |
-| **Circular Ring Buffer** | A fixed-capacity array where head and tail pointers wrap around cyclically via modulo arithmetic ($idx \pmod C$). | Provides zero-allocation, garbage-collection-free queue storage in streaming audio, network sockets, and OS kernels. |
-| **Deque (Double-Ended Queue)** | A generalized queue data structure allowing $O(1)$ insertions and deletions at both the front and rear. | Required for sliding window maximum algorithms, work-stealing schedulers, and palindrome checks. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -63,7 +34,9 @@ By the end of this lecture, you should be able to:
      • Zero memory allocations; eliminates unbounded array growth!
 ```
 
-### 1. The FIFO Principle and Queue Primitives
+## 1. The FIFO Principle and Queue Primitives
+
+> **FIFO (First-In, First-Out)**: An access protocol where the first element enqueued is the first element dequeued.
 
 A **Queue** models a physical queue: elements enter at the rear (tail) and exit from the front (head).
 
@@ -76,7 +49,7 @@ All fundamental queue operations operate in **$O(1)$ constant time**:
 
 ---
 
-### 2. The JavaScript `arr.shift()` Hazard
+## 2. The JavaScript `arr.shift()` Hazard
 
 A common mistake in JavaScript is implementing a queue using native array methods:
 ```javascript
@@ -149,7 +122,7 @@ console.log("Front item:", q.peek());  // 20
 
 ---
 
-### 3. Design Circular Queue (Ring Buffer)
+## 3. Design Circular Queue (Ring Buffer)
 
 In streaming systems, network sockets, and OS kernel device drivers, unbounded queues risk Out-Of-Memory crashes. A **Circular Queue** pre-allocates an array of fixed capacity $k$ and wraps pointers using modulo arithmetic:
 $$\text{nextIndex} = (\text{currentIndex} + 1) \pmod k$$
@@ -217,7 +190,9 @@ class MyCircularQueue {
 
 ---
 
-### 4. Double-Ended Queue (Deque) using a Doubly Linked List
+## 4. Double-Ended Queue (Deque) using a Doubly Linked List
+
+> **Deque (Double-Ended Queue)**: A generalized queue data structure allowing $O(1)$ insertions and deletions at both the front and rear.
 
 A **Deque** allows insertions and deletions at both ends in strict $O(1)$ time:
 - `pushFront()`, `popFront()`

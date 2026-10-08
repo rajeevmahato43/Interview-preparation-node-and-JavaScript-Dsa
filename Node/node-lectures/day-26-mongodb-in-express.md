@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Integrate MongoDB seamlessly into the 4-Layer Express Architecture (Routes, Controllers, Domain Services, and Repositories) without leaking database driver objects into HTTP handlers.
-- Enforce query-level operational deadlines using MongoDB's `maxTimeMS()` to protect connection pools from hanging slow queries.
-- Translate low-level MongoDB driver exceptions (`E11000` duplicate key, `BSONTypeError`, `MongoNetworkError`) into standard RFC 7807 HTTP responses.
-- Implement responsive Kubernetes readiness probes (`/readyz`) via administrative `ping` commands without saturating database connection pools.
-- Construct a production-grade Composition Root managing `MongoClient` connection pooling, dependency wiring, and graceful SIGTERM teardown.
-- Formulate an engineering framework comparing MongoDB (document-centric, denormalized) and PostgreSQL (relational integrity, complex joins) at the application architecture level.
-
----
-
 ## Prerequisites
 
 Before diving into Express + MongoDB integration, review:
@@ -26,20 +13,6 @@ Before diving into Express + MongoDB integration, review:
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) for RFC 7807 problem details and driver error translation.
 - [Day 21: MongoDB Driver Lifecycle and BSON](day-21-mongodb-driver-lifecycle-and-bson.md) for `MongoClient` pooling and BSON `ObjectId` mechanics.
 - [Day 25: MongoDB Atomicity, Transactions, and Retries](day-25-mongodb-atomicity-transactions-and-retries.md) for transactions and session management.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **`maxTimeMS`** | A MongoDB query option instructing the database server to abort query execution if processing exceeds a specified time budget. | Relying solely on client-side `setTimeout()`; without `maxTimeMS`, the database server continues scanning disk pages long after the HTTP client aborted. |
-| **`E11000` Error** | The MongoDB error code thrown when an insert or update violates a unique index constraint. | Catching `E11000` and returning a generic 500 Internal Error; must be translated into an HTTP 409 Conflict with the conflicting field name. |
-| **`BSONTypeError`** | The exception thrown by the driver when attempting to instantiate an `ObjectId` with an invalid format. | Letting `BSONTypeError` bubble up unhandled as a 500 crash; indicates client input validation failure and must be mapped to HTTP 422. |
-| **Composition Root** | The single location in the application where the `MongoClient` is initialized and injected into repositories, services, and controllers. | Importing global database singletons directly into route files, making automated testing and mocking impossible. |
-| **Administrative Ping** | Executing `db.command({ ping: 1 })` to verify cluster reachability with minimal CPU and zero storage overhead. | Running heavy count or find queries inside health checks; an administrative ping verifies network and primary responsiveness safely. |
-| **Document vs Relational Fit**| Choosing a database engine based on application access patterns and data relational coupling rather than framework trends. | Selecting MongoDB for rigid relational data with deep foreign key dependencies, forcing fragile multi-collection application joins. |
-
 ---
 
 ## Core Concepts
@@ -76,6 +49,8 @@ In a production Express + MongoDB application, dependencies flow strictly inward
 ---
 
 ### 2. Guarding Connection Pools with `maxTimeMS` Deadlines
+
+> **`maxTimeMS`**: A MongoDB query option instructing the database server to abort query execution if processing exceeds a specified time budget.
 
 A critical stability pattern when using MongoDB in web applications is enforcing database-side query deadlines:
 
@@ -310,6 +285,8 @@ export function createArticleRouter({ articleRepo }) {
 ---
 
 ### 3. Production Composition Root and Server Bootstrap
+
+> **Composition Root**: The single location in the application where the `MongoClient` is initialized and injected into repositories, services, and controllers.
 
 Initializing MongoDB pooling, wiring routes, handling health checks, and orchestrating graceful shutdown.
 

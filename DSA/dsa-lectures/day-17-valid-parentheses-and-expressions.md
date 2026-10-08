@@ -5,40 +5,11 @@
 [Previous: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Monotonic Stack Patterns](day-18-monotonic-stack-patterns.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the **Bracket Matching Pattern** using a LIFO stack and hash map lookup.
-- Implement **Valid Parentheses** in $O(n)$ time with immediate early-return failure detection.
-- Normalize Unix file system paths (**Simplify Path**) in $O(n)$ time using stack segmenting.
-- Evaluate expressions in **Reverse Polish Notation (RPN)** without operator precedence ambiguity.
-- Prevent non-commutative operand reversal bugs in subtraction and division.
-- Defend Node.js static file servers against directory traversal security exploits using canonical path resolution.
-
----
-
 ## Prerequisites
 
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — JavaScript object mapping and array methods.
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO primitives (`push`, `pop`, `peek`).
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Bracket Matching Invariant** | The structural rule that the most recently opened delimiter must be the first delimiter closed. | Requires LIFO stack tracking; simple numeric counters fail on interleaved types (`"{[(])}"`). |
-| **Reverse Polish Notation (RPN)** | A postfix mathematical notation where operators strictly follow their operands. | Eliminates the need for operator precedence rules and parentheses during stack evaluation. |
-| **Non-Commutative Popping** | The property of subtraction and division where operand order matters ($A - B \ne B - A$). | Popping a stack yields the right operand first and the left operand second. |
-| **Truncation Toward Zero** | Discarding fractional digits toward zero (`Math.trunc()`), differing from rounding down toward $-\infty$ (`Math.floor()`). | Critical for RPN arithmetic; `Math.floor(-7 / 3)` produces `-3`, whereas `Math.trunc` produces `-2`. |
-| **Directory Traversal Attack** | An exploit where an attacker uses `../` path sequences to escape web root directories and access system files. | Mitigated by stack-based path normalization and verifying that resolved paths start with the root directory. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -55,7 +26,9 @@ By the end of this lecture, you should be able to:
   6. Read '}' ──> Closing bracket: Pop '{' from stack. Match! ──> Stack: [ ] (Empty -> VALID!)
 ```
 
-### 1. The Bracket Matching Invariant
+## 1. The Bracket Matching Invariant
+
+> **Bracket Matching Invariant**: The structural rule that the most recently opened delimiter must be the first delimiter closed.
 
 When parsing nested syntactic tokens (HTML/XML tags, JSON formatting, mathematical expressions, or source code):
 > **Every closing delimiter must match the most recently opened, unclosed delimiter.**
@@ -105,7 +78,7 @@ console.log("Is '{[(])}' valid?", isValid("{[(])}")); // false
 
 ---
 
-### 2. Path Normalization: Simplify Path (Unix `cd`)
+## 2. Path Normalization: Simplify Path (Unix `cd`)
 
 In Unix-style file systems, absolute paths are formatted with directories separated by slashes (`/`):
 - `.` represents the current directory $\to$ Ignore.
@@ -149,7 +122,9 @@ console.log(simplifyPath("/../"));            // "/"
 
 ---
 
-### 3. Reverse Polish Notation (RPN) Expression Evaluation
+## 3. Reverse Polish Notation (RPN) Expression Evaluation
+
+> **Reverse Polish Notation (RPN)**: A postfix mathematical notation where operators strictly follow their operands.
 
 In postfix notation, operators follow their operands: `["2", "1", "+", "3", "*"]` represents $(2 + 1) \times 3 = 9$.
 
@@ -198,7 +173,7 @@ console.log("RPN Result:", evalRPN(["4", "13", "5", "/", "+"])); // 6 (4 + trunc
 
 ---
 
-### 4. Node.js Security: Directory Traversal Prevention
+## 4. Node.js Security: Directory Traversal Prevention
 
 In Express.js static file servers, an attacker might request:
 `GET /static?file=../../../../etc/passwd`

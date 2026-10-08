@@ -7,41 +7,14 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Input Constraint Heuristic**: deducing the target algorithmic time complexity directly from variable limits ($N$).
-- Map problem keywords and requirements to the **17 Core DSA Patterns** within 30 seconds of reading an interview prompt.
-- Formulate a systematic decision matrix to evaluate competing algorithms under runtime and memory budgets.
-- Dissect and architect composite solutions that combine multiple distinct patterns (e.g., Trie + Backtracking, Heap + Two Pointers).
-- Translate algorithmic constraint limits to single-threaded Node.js event-loop budgets ($<10\text{ms}$ per tick).
-- Prevent CPU timeouts and out-of-memory exceptions during high-velocity production data processing.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big-O Notation and Algorithm Analysis in V8](day-01-big-o-notation-and-algorithm-analysis-in-v8.md) — Asymptotic operations and hardware cycles.
 - [Day 50: 2D DP: Longest Common Subsequence and Knapsack](day-50-2d-dp-longest-common-subsequence-knapsack.md) — 2D state transitions and knapsack bounds.
 - [Day 55: Union-Find: Graph Applications and Minimum Spanning Tree (MST)](day-55-union-find-graph-applications.md) — Graph cycle detection and set equivalence.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Constraint Decoding** | Determining the maximum allowable asymptotic Big-O runtime by calculating allowable CPU operations for input size $N$. | Instantly eliminates unviable algorithms (e.g., rules out $O(n^2)$ when $N = 10^5$). |
-| **Operations Budget** | Modern CPUs and execution sandbox limits permit roughly $10^7$ to $10^8$ operations per second. | Any algorithm whose operation count exceeds $10^8$ will trigger Time Limit Exceeded (TLE). |
-| **Keyword Mapping** | Associating specific trigger phrases in problem statements with established algorithmic archetypes. | Cuts problem analysis time from minutes to seconds during live technical interviews. |
-| **Composite Pattern** | A problem architecture requiring two complementary data structures (e.g., Hash Map + Doubly Linked List for LRU Cache). | Standard differentiator for Senior and Staff engineering levels. |
-| **Event Loop Starvation** | A synchronous JavaScript calculation running $> 50\text{ms}$ that delays asynchronous I/O and timers. | Translates algorithmic complexity directly into real-world backend microservice SLAs. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Constraint-to-Complexity Decoupling Heuristic
+## 1. The Constraint-to-Complexity Decoupling Heuristic
 
 In technical interviews and online assessment platforms, the problem statement always provides input constraints (e.g., $1 \le N \le 10^5$). Because modern CPU execution sandboxes terminate executions exceeding $\approx 10^7 - 10^8$ operations per second, the constraint $N$ **strictly determines** the target Big-O complexity before writing any code:
 
@@ -77,7 +50,7 @@ Constraint Decoding Decision Flow:
 
 ---
 
-### 2. The 17 Core Patterns Keyword Lookup Table
+## 2. The 17 Core Patterns Keyword Lookup Table
 
 | Keyword / Clue in Problem Statement | Primary Pattern | Target Data Structure | Lecture Day |
 | :--- | :--- | :--- | :--- |
@@ -97,7 +70,7 @@ Constraint Decoding Decision Flow:
 
 ---
 
-### 3. Dissecting Composite Problems (Multi-Pattern Synthesis)
+## 3. Dissecting Composite Problems (Multi-Pattern Synthesis)
 
 Senior-level coding interviews rarely test isolated, single-step templates. Instead, problems combine two or more patterns into a unified system:
 
@@ -186,7 +159,7 @@ console.log('Word "ABCCED" exists:', wordExists(matrix, 'ABCCED')); // true
 
 ---
 
-### 4. The 4-Step Algorithmic Synthesis Decision Matrix
+## 4. The 4-Step Algorithmic Synthesis Decision Matrix
 
 When faced with an ambiguous or open-ended interview prompt, follow this 4-step elimination protocol:
 
@@ -222,7 +195,6 @@ Step 4: Audit Auxiliary Space
 | **Dynamic Connectivity** | Streaming Edge Events | DSU with Path Compression | BFS per edge ($O(E^2)$ — too slow) |
 | **Range Minimum / Maximum** | Static Array | Prefix / Suffix arrays | Segment Tree / Sparse Table (dynamic updates) |
 | **Combinatorial Generation** | $N \le 16$ | Backtracking + Rollback | Bitmask Iteration ($0 \dots 2^N - 1$) |
-
 
 ---
 

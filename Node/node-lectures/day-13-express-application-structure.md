@@ -6,39 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the internal relationship between Express and Node's core `http.Server`, explaining how Express extends `IncomingMessage` and `ServerResponse` prototypes.
-- Architect scalable backend systems using the 4-Layer Architecture (Routes, Controllers, Domain Services, and Data Repositories).
-- Implement clean Dependency Injection (DI) via Functional Factory compositions to make HTTP services deterministically testable without global mocks.
-- Decouple application assembly (`createApp`) from network binding (`server.listen()`), supporting side-effect-free module imports in test runners.
-- Isolate domain business logic from transport protocols, preventing HTTP objects (`req`, `res`, `next`) from leaking into domain services and repositories.
-- Design an explicit asynchronous Composition Root that handles database connectivity, schema validation, and health signals during service bootstrap.
-
----
-
 ## Prerequisites
 
 Before diving into Express application structure, review:
 - [Day 03: Modules, Packages, and Resolution](day-03-modules-packages-and-resolution.md) for ESM/CJS module graph resolution and entry points.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for `http.createServer`, `IncomingMessage`, and `ServerResponse`.
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) for ephemeral port binding and test lifecycle isolation.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Application Factory** | A higher-order function that accepts configured dependencies and returns a freshly configured Express application instance. | Instantiating a single global `const app = express()` at module scope that binds port 3000 immediately upon file import. |
-| **Composition Root** | The single location in an application where the dependency graph is composed and wired together during bootstrap. | Scattering `new DatabaseClient()` or `new Service()` instantiations throughout individual route handlers. |
-| **Controller** | An adapter layer component that translates incoming HTTP requests (parameters, headers, body) into domain inputs and maps domain results to HTTP responses. | Embedding database queries, third-party payment calls, and business validation rules directly inside controller functions. |
-| **Domain Service** | A transport-agnostic module implementing pure business rules and domain operations without referencing `req`, `res`, or HTTP status codes. | Passing Express `req` and `res` objects into domain services, locking business logic exclusively to the Express HTTP protocol. |
-| **Repository** | A persistence abstraction encapsulating raw database access (SQL queries, ORM calls, MongoDB filters) behind domain interfaces. | Writing raw `db.query('SELECT...')` statements directly inside HTTP route callbacks. |
-| **Side-Effect-Free Import**| A module design guarantee where importing a file does not initiate network connections, open file handles, or start timers. | Running `app.listen(3000)` at module load time, causing test runners to collide on port 3000 when importing the app. |
-
 ---
 
 ## Core Concepts
@@ -166,6 +139,8 @@ export function createUserService({ userRepo, emailClient, logger }) {
 ---
 
 ### 4. The Composition Root Pattern
+
+> **Composition Root**: The single location in an application where the dependency graph is composed and wired together during bootstrap.
 
 The **Composition Root** is the centralized bootstrap entry point of the application where all concrete instances are initialized and injected into dependent layers.
 
@@ -340,6 +315,8 @@ export function createUserRouter({ userController }) {
 
 ### 2. The Application Factory (`createApp`)
 
+> **Application Factory**: A higher-order function that accepts configured dependencies and returns a freshly configured Express application instance.
+
 Composing middleware, routes, and centralized error translation into an isolated application instance.
 
 ```js
@@ -444,6 +421,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 ## Edge Cases and Tricky Scenarios
 
 ### 1. Passing `req` and `res` into Domain Services
+
+> **Domain Service**: A transport-agnostic module implementing pure business rules and domain operations without referencing `req`, `res`, or HTTP status codes.
 
 Developers frequently pass the entire `req` or `res` object into domain services for convenience:
 
@@ -789,6 +768,10 @@ The Application Factory pattern is critical for testing and environment isolatio
 3. **State Isolation**: Because each test can invoke `createApp()` independently, tests avoid leaking global state, middleware modifications, or session caches between test runs.
 
 ### 4. How should errors flow through a 4-layer architecture (Repository -> Service -> Controller -> Express Error Middleware)?
+
+> **Repository**: A persistence abstraction encapsulating raw database access (SQL queries, ORM calls, MongoDB filters) behind domain interfaces.
+
+> **Controller**: An adapter layer component that translates incoming HTTP requests (parameters, headers, body) into domain inputs and maps domain results to HTTP responses.
 
 Errors should flow upward through the architectural hierarchy with each layer translating or propagating errors according to its domain:
 

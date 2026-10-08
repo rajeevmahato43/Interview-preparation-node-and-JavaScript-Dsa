@@ -88,24 +88,26 @@ When the output is meant to guide progress, include:
 This turns learning into professional growth, not just memorization.
 
 ### 7. Make it complete and reusable
-A final output should usually include:
-- title and learning outcomes
+A final output should follow this clean structure:
+- title (`# Day XX: <Topic Title>`) and top navigation
 - prerequisites
-- vocabulary cards or quick definitions
-- core concepts with examples
-- tricky points
+- core concepts with plain English definitions, in-place term callouts (`> **Term**: 1-line definition`), consistent heading hierarchy (`##` -> `###` -> `####`), and ✅/❌ code examples
+- tricky points and edge cases (detailed with code and consequences)
 - hands-on exercises or bug-fix tasks
-- summary bullets
+- summary (comprehensive, detailed recap covering all rules, numbers, and behaviors from the lecture)
 - cheat sheet and pitfalls list
-- interview questions
-- navigation or next-step links
+- interview questions (Q&A format)
+- navigation links
+
+*(Do not include Learning Outcomes or standalone Vocabulary Card tables; define terms in-place).*
 
 This is the benchmark for a polished course or lecture set.
 
 ## Decision points and branch logic
 
 ### If the task is to explain a technical concept
-- focus on definitions, examples, and the failure mode
+- focus on definitions in simple plain English, examples, and the failure mode
+- define unfamiliar words in-place with a 1-line callout
 - keep the content direct and readable
 - include one working example and one breaking example
 
@@ -126,7 +128,7 @@ This is the benchmark for a polished course or lecture set.
 
 ### If the task is to build a full course
 - structure the curriculum by modules and progression
-- include learning outcomes, exercises, recap, and interview questions
+- include hands-on exercises, detailed recap summary, and interview questions
 - ensure each part is useful to both learning and hiring
 
 ## Quality bar

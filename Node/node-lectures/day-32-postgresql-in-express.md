@@ -6,37 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Structure a production-grade 4-layer Express application (Controller, Service, Repository, Database) backed by PostgreSQL and `pg.Pool`.
-- Implement clean transaction propagation across multiple repositories using the Unit of Work / Executor abstraction without leaking database clients into HTTP controllers.
-- Build centralized Express error-handling middleware translating PostgreSQL SQLSTATE error codes (`23505`, `23503`, `23514`, `57014`, `53300`) into RFC 7807 Problem Details.
-- Implement decoupled Kubernetes `/livez` and `/readyz` health check probes using low-overhead ping queries (`SELECT 1`).
-- Execute safe, zero-downtime graceful shutdown sequences that drain HTTP connections and close the PostgreSQL pool without severing in-flight transactions.
-- Evaluate workload trade-offs between PostgreSQL and MongoDB using a rigorous architectural decision matrix.
-
----
-
 ## Prerequisites
 
 - [Day 27: PostgreSQL and `pg` Pool Lifecycle](day-27-postgresql-and-pg-pool-lifecycle.md) — Pool connection lifecycle, client leaks, and pool sizing.
 - [Day 31: PostgreSQL Transactions, MVCC, and Locks](day-31-postgresql-transactions-mvcc-and-locks.md) — Explicit transactions, client checkout, and deadlock prevention.
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) — Async request boundaries and RFC 7807 problem details.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Repository Pattern** | An architectural boundary isolating SQL query composition and row mapping from business domain logic. | Prevents SQL leakage into HTTP routes and enables unit testing via mock repositories without database dependencies. |
-| **Executor Abstraction (`dbOrClient`)** | Passing a common interface (`{ query: Function }`) accepting either `pg.Pool` or a checked-out `pg.PoolClient` into repository methods. | Allows repositories to execute either as standalone single queries or composed together within a single shared transaction. |
-| **RFC 7807 Problem Details** | A standardized JSON format (`application/problem+json`) for conveying machine-readable API error details to HTTP clients. | Normalizes database constraint errors across microservices with consistent status codes, titles, and error identifiers. |
-| **Readiness Probe (`/readyz`)** | An orchestrator health check verifying whether the service instance can actively serve database traffic. | Prevents load balancers from routing customer traffic to instances experiencing database connection pool starvation. |
-| **Graceful Pool Drain** | Closing incoming HTTP traffic first, waiting for in-flight queries to finish, and calling `await pool.end()`. | Prevents broken socket pipes and rollbacks of active transactions during rolling deployments. |
-
 ---
 
 ## Core Concepts
@@ -142,6 +116,8 @@ export class OrderRepository {
 ### 3. Centralized PostgreSQL Error Classification Middleware
 
 PostgreSQL errors are strongly classified via their 5-character `code` property (`SQLSTATE`). Instead of littering every repository with repetitive `try/catch` error translation, an Express application should deploy a centralized error middleware translating SQLSTATE codes into standardized **RFC 7807 Problem Details**:
+
+> **RFC 7807 Problem Details**: A standardized JSON format (`application/problem+json`) for conveying machine-readable API error details to HTTP clients.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐

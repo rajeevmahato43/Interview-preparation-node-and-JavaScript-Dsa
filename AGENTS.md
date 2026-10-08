@@ -18,7 +18,6 @@ Before answering or changing interview-preparation content, read and follow:
 	- [DOCS/mongodb.md](DOCS/mongodb.md)
 	- [DOCS/postgresql.md](DOCS/postgresql.md)
 	- [DOCS/dsa.md](DOCS/dsa.md)
-	- [DOCS/dsa.md](DOCS/dsa.md)
 7. For content under [Quick-prep](Quick-prep/README.md), also follow [DOCS/quick-prep-rules.md](DOCS/quick-prep-rules.md). Its compact format is specific to that track and does not replace shared accuracy or example rules.
 
 If a request spans multiple topics, apply every relevant topic file. Shared rules apply first; topic rules add constraints and may clarify scope but must not contradict them. When instructions conflict, use the more specific rule and preserve the requirements in this file.
@@ -39,6 +38,6 @@ This workspace is for mid-to-senior interview preparation with a backend Node.js
 
 ## Required behavior
 
-Every generated study explanation must follow the applicable rules in `DOCS/`. Every lecture must use clear language, include examples, provide a summary and cheat sheet, and end with an `Interview Questions` section. Add a `Tricky Points` section when the topic has meaningful traps or difficult behavior; do not force it into a simple lecture. Add JavaScript, Node.js, and DSA connections when they are useful, not mechanically.
+Every generated study explanation must follow the applicable rules in `DOCS/`. Every lecture must use clear, basic English for definitions, teach with concrete code examples, define specialized terms in-place with a 1-line callout block or inline clarification (without learning outcomes or vocabulary card tables), provide rich and detailed Summary and Tricky Points sections, and end with an `Interview Questions` section. Add JavaScript, Node.js, and DSA connections when they are useful, not mechanically.
 
 Every new DOCS instruction file must be listed in [DOCS/README.md](DOCS/README.md) and linked from this file. Technical examples must follow [DOCS/example-rules.md](DOCS/example-rules.md), and version-sensitive claims must follow [DOCS/accuracy-rules.md](DOCS/accuracy-rules.md).

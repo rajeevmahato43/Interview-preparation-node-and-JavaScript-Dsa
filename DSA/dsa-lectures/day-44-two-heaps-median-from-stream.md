@@ -7,41 +7,15 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Two Heaps Pattern** to partition an unbounded, dynamic stream of numbers into two symmetrically balanced halves.
-- Implement **MedianFinder** to achieve $O(\log n)$ insertion time and $O(1)$ constant-time median lookups.
-- Enforce the two structural invariants: a **Max-Heap** for the lower numerical half and a **Min-Heap** for the upper numerical half.
-- Address parity edge cases across odd versus even stream lengths without floating-point truncation bugs.
-- Generalize the Two-Heaps architecture to arbitrary percentile tracking (P50, P90, P99) in Node.js Application Performance Monitoring (APM) agents.
-- Analyze the garbage collection footprint and rebalancing overhead of high-throughput streaming heaps in the V8 engine.
-
----
-
 ## Prerequisites
 
 - [Day 41: Binary Heap and Array Representation](day-41-binary-heap-array-representation.md) — Heap array mechanics, child formulas, and complete binary trees.
 - [Day 42: Min-Heap and Max-Heap Implementation](day-42-min-heap-and-max-heap-implementation.md) — Reusable `PriorityQueue` classes with custom comparators.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The Median Partitioning Mental Model
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Median** | The middle value in an ordered set; divides numbers such that half are smaller and half are larger. | Robust measure of central tendency unaffected by extreme outliers. |
-| **Two Heaps Pattern** | Partitioning a dataset into a Max-Heap (lower half) and a Min-Heap (upper half) meeting at the median. | Solves dynamic streaming median in $O(\log n)$ insert and $O(1)$ query without maintaining a sorted array ($O(n)$ insert). |
-| **Lower Half (Max-Heap)** | Stores the smaller $50\%$ of numbers; root provides the maximum of this half in $O(1)$ time. | Essential anchor for calculating median when the total count is odd. |
-| **Upper Half (Min-Heap)** | Stores the larger $50\%$ of numbers; root provides the minimum of this half in $O(1)$ time. | Works in tandem with the lower half to compute the average of middle elements when count is even. |
-| **Rebalance Invariant** | Maintaining either $|\text{lower}| = |\text{upper}|$ or $|\text{lower}| = |\text{upper}| + 1$. | Guarantees that neither half exceeds the other by more than 1 element, preserving $O(1)$ median derivation. |
-| **Quantile Tracking (P99)** | Adjusting the relative capacity ratio of the two heaps (e.g., $99\% : 1\%$) to track arbitrary percentiles in real time. | Core algorithmic pattern for SLA latency measurement in Node.js backend monitoring. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Median Partitioning Mental Model
+> **Median**: The middle value in an ordered set; divides numbers such that half are smaller and half are larger.
 
 In a sorted list of numbers, the **median** sits right in the center:
 - If the count $N$ is odd, the median is the exact middle element.
@@ -73,7 +47,7 @@ maxHeap.size() === minHeap.size() + 1   (When N is odd)
 
 ---
 
-### 2. Insertion and Rebalancing Protocol
+## 2. Insertion and Rebalancing Protocol
 
 When a new number `num` arrives:
 1. **Step 1: Placement**:
@@ -102,7 +76,7 @@ Insertion Trace: Adding 1, 5, 2, 8, 4
 
 ---
 
-### 3. Implementation: MedianFinder (LeetCode 295)
+## 3. Implementation: MedianFinder (LeetCode 295)
 
 ```javascript
 // Node.js code: Complete MedianFinder Implementation
@@ -252,8 +226,8 @@ class SlidingWindowMedianTracker {
     // BUG: Cloning and sorting on EVERY query takes O(W log W)!
     const sorted = [...this.window].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 1) return sorted[mid];
-    return (sorted[mid - 1] + sorted[mid]) / 2;
+    if (sorted.length % 2 === 1) return sorted;
+    return (sorted[mid - 1] + sorted) / 2;
   }
 }
 ```
@@ -290,7 +264,7 @@ class SlidingWindowMedianTracker {
 
     while (low <= high) {
       const mid = (low + high) >> 1;
-      if (this.sorted[mid] >= price) {
+      if (this.sorted>= price) {
         insertIdx = mid;
         high = mid - 1;
       } else {
@@ -333,9 +307,9 @@ class SlidingWindowMedianTracker {
 
     const mid = len >> 1;
     if (len % 2 === 1) {
-      return this.sorted[mid];
+      return this.sorted;
     }
-    return (this.sorted[mid - 1] + this.sorted[mid]) / 2.0;
+    return (this.sorted[mid - 1] + this.sorted) / 2.0;
   }
 }
 
@@ -364,7 +338,7 @@ console.log('✅ All SlidingWindowMedianTracker assertions passed successfully!'
 
 ### Solution Explanation
 1. **Sorted Window with Binary Search**: For small-to-moderate sliding windows ($W \le 10,000$), maintaining a sorted array with binary search insertion and deletion (`splice`) runs in $O(W)$ time without the complex lazy-removal bookkeeping required by two-heap structures.
-2. **$O(1)$ Median Lookup**: The median is accessed directly via array index arithmetic: `sorted[mid]` for odd lengths, or the average of `mid - 1` and `mid` for even lengths.
+2. **$O(1)$ Median Lookup**: The median is accessed directly via array index arithmetic: `sorted` for odd lengths, or the average of `mid - 1` and `mid` for even lengths.
 3. **Oldest Bid Expiration**: The FIFO `history` queue tracks original arrival sequence, guaranteeing that the correct expired item is excised from the sorted array.
 
 ---

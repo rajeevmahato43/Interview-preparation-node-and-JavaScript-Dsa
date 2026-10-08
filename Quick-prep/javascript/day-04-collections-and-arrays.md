@@ -1,121 +1,181 @@
-# Day 4: Modern Syntax, Iteration, and Metaprogramming
+# Day 4: Modern Collections, Protocols, Generators, and Metaprogramming
 
-## Modern syntax
+Quick review of main-course lectures 13–16. Designed for rapid interview revision: `Map`/`Set` vs `WeakMap`/`WeakSet`, destructuring and spread mechanics, custom iterable protocols, generator coroutines, and Proxy/Reflect metaprogramming.
 
-**1. Destructuring**
+## Keyed collections: Map, Set, WeakMap, and WeakSet
 
-Reads array items or object properties into bindings; a default applies only when the value is `undefined`.
+**1. `Map` and `Set` vs plain Objects**
 
-```js
-const { limit = 10 } = { limit: null }; // limit is null, not 10
-```
-
-**2. Rest and spread**
-
-Rest gathers remaining values; spread expands iterables/properties. Object spread is shallow.
+- **`Map`:** Keys can be any value (including objects and functions); preserves exact insertion order; provides `.size`; does not inherit prototype properties.
+- **`Set`:** Stores unique values with expected $O(1)$ lookups via `.has()`.
+- Plain objects (`{}`) coerce all keys to strings or symbols and inherit `Object.prototype` methods.
 
 ```js
-const [first, ...rest] = [1, 2, 3]; // first=1, rest=[2,3]
+const map = new Map();
+const keyObj = { id: 1 };
+
+map.set(keyObj, "Session Active");
+console.log(map.get(keyObj)); // "Session Active"
+console.log(map.size);        // 1
+
+// Plain object coercion trap:
+const obj = {};
+obj[keyObj] = "Overwritten";
+obj[{ id: 2 }] = "New Value";
+console.log(obj["[object Object]"]); // "New Value" (both coerced to same string!)
 ```
 
-**3. Modern operators**
+**1.1 `WeakMap` and `WeakSet` garbage collection mechanics**
 
-Optional chaining stops on nullish receivers; `??` defaults only for null/undefined; logical assignment updates conditionally.
+`WeakMap` and `WeakSet` hold references to object keys **weakly**. If no other reference to a key object exists, the object and its entry are eligible for immediate Garbage Collection. Because entries are dynamic and dependent on GC, `WeakMap` is not iterable and has no `.size` property.
 
 ```js
-user?.name ?? "Guest"; // preserves empty string; defaults only if nullish
+let user = { id: 99 };
+const metadata = new WeakMap();
+metadata.set(user, { loginCount: 5 });
+
+user = null; // Key object becomes unreachable; metadata entry is automatically collected!
 ```
 
-**4. Template literals**
+[Collections](../../Javascript/javascript-lectures/day-13-destructuring-spread-and-modern-operators.md)
 
-Backticks interpolate expressions and preserve multiline text: `` `Hello, ${name}` ``.
+## Destructuring, rest, and spread mechanics
 
-[Full topic](../../Javascript/javascript-lectures/day-13-destructuring-spread-and-modern-operators.md)
+**1. Destructuring patterns and default values**
 
-## Iterables and generators
-
-**1. Iterable and iterator protocols**
-
-An iterable provides `Symbol.iterator`; its iterator's `next()` returns `{ value, done }`.
+Destructuring extracts properties by position (Arrays) or by property key (Objects). Default values apply only when the incoming property is strictly `undefined`.
 
 ```js
-for (const value of [1, 2]) console.log(value); // array is iterable
+const config = { host: "localhost", port: undefined, timeout: null };
+
+// Renaming (host -> serverHost) and defaults
+const { host: serverHost, port = 8080, timeout = 5000 } = config;
+console.log(serverHost, port, timeout); // "localhost" 8080 null (null does not trigger default!)
 ```
 
-**2. Generators**
+**2. Shallow copying with Spread (`...`)**
 
-`function*` pauses at `yield`; values are computed lazily when `next()` is requested.
+The spread operator performs a **shallow copy**. Top-level primitives are duplicated, but nested objects and arrays share identical memory references.
 
 ```js
-function* ids() { yield 1; yield 2; }
+const state = { count: 1, nested: { active: true } };
+const copy = { ...state };
+
+copy.count = 2;              // Does not mutate state.count
+copy.nested.active = false;  // Mutates state.nested.active! (shared reference)
 ```
 
-**3. Async iterables**
+[Destructuring and spread](../../Javascript/javascript-lectures/day-14-iterables-iterators-generators-and-symbols.md)
 
-An async iterable yields values over time via `Symbol.asyncIterator`; consume it with `for await...of`.
+## Iteration protocols and generator coroutines
 
-[Full topic](../../Javascript/javascript-lectures/day-14-iterables-iterators-generators-and-symbols.md)
+**1. The Iterable and Iterator protocol**
 
-## Text and metaprogramming
-
-**1. Regular expressions**
-
-Patterns match text; groups capture parts, flags alter matching, and global/sticky regexes retain `lastIndex` state.
+An object is **iterable** if it defines a method keyed by `Symbol.iterator` that returns an **iterator** object with a `next()` method returning `{ value, done }`.
 
 ```js
-/^id-\d+$/.test("id-12"); // true
+// Implementing a custom range iterable
+const range = (from, to) => ({
+  [Symbol.iterator]() {
+    let current = from;
+    return {
+      next() {
+        return current <= to
+          ? { value: current++, done: false }
+          : { value: undefined, done: true };
+      }
+    };
+  }
+});
+
+for (const num of range(1, 3)) console.log(num); // 1, 2, 3
 ```
 
-**2. Symbols**
+**2. Generator functions (`function*` and `yield`)**
 
-Each `Symbol()` is unique and can be used as a non-colliding property key.
-
-**3. Reflection and proxies**
-
-`Reflect` exposes object operations; `Proxy` intercepts them, subject to invariants the engine enforces.
+Generators are pausable functions that produce an iterator. Calling a generator returns a generator object without executing code until `.next()` is called. `yield` can also receive values passed into subsequent `.next(value)` calls.
 
 ```js
-const checked = new Proxy(target, { get: (object, key) => Reflect.get(object, key) });
+function* idGenerator() {
+  let id = 1;
+  while (true) {
+    const reset = yield id++;
+    if (reset) id = 1; // Two-way communication via next(arg)
+  }
+}
+
+const gen = idGenerator();
+console.log(gen.next().value);     // 1
+console.log(gen.next().value);     // 2
+console.log(gen.next(true).value); // 1 (reset triggered)
 ```
 
-[Regex](../../Javascript/javascript-lectures/day-15-regular-expressions-and-text-processing.md) | [Symbols, Reflect, Proxy](../../Javascript/javascript-lectures/day-16-symbols-reflection-and-proxies.md)
+[Iterators and generators](../../Javascript/javascript-lectures/day-15-regular-expressions-and-text-processing.md)
+
+## Metaprogramming: Symbols, Proxies, and Reflect
+
+**1. Symbols as unique identifiers**
+
+`Symbol()` creates a guaranteed unique primitive value. Well-known symbols customize built-in engine behaviors (`Symbol.iterator`, `Symbol.toStringTag`, `Symbol.toPrimitive`).
+
+```js
+const privateKey = Symbol("token");
+const data = { [privateKey]: "secret_abc", public: "visible" };
+console.log(Object.keys(data)); // ["public"] (Symbols are hidden from standard key lists)
+console.log(data[privateKey]);  // "secret_abc"
+```
+
+**2. Proxy traps and Reflect**
+
+A `Proxy` intercepts fundamental language operations (property access, assignment, function invocation, deletion). Always pair Proxy traps with `Reflect` methods, passing the `receiver` argument to preserve correct `this` binding on getters.
+
+```js
+const target = {
+  _val: 10,
+  get val() { return this._val; }
+};
+
+const proxy = new Proxy(target, {
+  get(targetObj, prop, receiver) {
+    console.log(`Accessing property: ${String(prop)}`);
+    // Reflect.get with receiver ensures 'this' inside getter points to proxy
+    return Reflect.get(targetObj, prop, receiver);
+  },
+  set(targetObj, prop, value, receiver) {
+    if (typeof value !== "number") throw new TypeError("Value must be a number");
+    return Reflect.set(targetObj, prop, value, receiver); // Must return boolean in strict mode
+  }
+});
+
+console.log(proxy.val); // Logs access -> 10
+proxy._val = 20;        // Sets successfully
+// proxy._val = "bad";  // TypeError: Value must be a number
+```
+
+[Metaprogramming and proxies](../../Javascript/javascript-lectures/day-16-symbols-reflection-and-proxies.md)
 
 ## Tricky points
 
-1. **Syntax and copying**
+1. **Collections**
 
-**1.1 Defaults**
+**1.1 WeakMap keys must be objects or unregistered symbols**
+Attempting to use primitive values as keys in a WeakMap (`weakMap.set("user_id", 123)`) throws a `TypeError: Invalid value used as weak map key`.
 
-Destructuring defaults replace `undefined`, not `null`.
+**1.2 NaN equality in Map and Set**
+Unlike `===` where `NaN !== NaN`, `Map` and `Set` use the `SameValueZero` equality algorithm: `NaN` is treated as equal to `NaN`, so a `Set` contains at most one `NaN`.
 
-**1.2 Spread**
+2. **Destructuring and spread**
 
-Object spread copies references for nested values; it is not a deep clone.
+**2.1 Destructuring `null` or `undefined`**
+Destructuring `null` or `undefined` throws a `TypeError: Cannot destructure property of 'null' as it is null`. Always provide default object fallbacks (`const { x } = input ?? {}`).
 
-**1.3 Optional chaining**
+**2.2 Spread does not copy prototype methods or descriptors**
+Using `{ ...obj }` copies only own enumerable properties. Non-enumerable properties, prototype methods, and custom getters (which are converted to static values upon read) are lost.
 
-It protects a nullish receiver, not invalid types or malformed data.
+3. **Generators and proxies**
 
-2. **Iteration**
+**3.1 Generators cannot be arrow functions**
+There is no arrow syntax for generators. `const fn = *() => {}` is an invalid syntax error.
 
-**2.1 Generator laziness**
-
-The generator body runs on `next()`, not when its iterator object is created.
-
-**2.2 Cleanup**
-
-Early loop exit may call iterator `return()`; custom iterators should release resources there.
-
-3. **Regex and proxies**
-
-**3.1 Stateful regex**
-
-Global/sticky regexes retain `lastIndex`; reuse can change later results.
-
-**3.2 Backtracking**
-
-Ambiguous nested quantifiers on long untrusted input can consume excessive CPU.
-
-**3.3 Proxy invariants**
-
-A trap cannot contradict fixed, non-configurable target properties.
+**3.2 Proxy breaking private class fields**
+Accessing a private class field (`#field`) on a Proxy instance throws `TypeError: Cannot read private member #field from an object whose class did not declare it` because the Proxy is not the raw class instance.

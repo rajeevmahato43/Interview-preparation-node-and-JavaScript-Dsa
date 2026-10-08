@@ -6,39 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Execute production-grade CRUD operations using the official MongoDB Node.js driver collections API (`insertOne`, `insertMany`, `findOne`, `find`, `updateOne`, `replaceOne`, `deleteOne`).
-- Eliminate read-then-write race conditions using atomic document mutations via `findOneAndUpdate()` with `{ returnDocument: 'after' }`.
-- Distinguish document replacement (`replaceOne`) from atomic field mutation operators (`$set`, `$unset`, `$inc`, `$push`, `$addToSet`).
-- Stream large database result sets efficiently using `FindCursor` and `for await...of` without buffering entire collections into Node memory with `toArray()`.
-- Evaluate write results accurately, distinguishing `matchedCount` from `modifiedCount` to avoid false-negative API updates.
-- Implement Optimistic Concurrency Control (OCC) using version fields to prevent lost updates under high concurrency.
-
----
-
 ## Prerequisites
 
 Before diving into CRUD operations, review:
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) for async iterators and stream processing.
 - [Day 16: Express Input Validation and Serialization](day-16-express-input-validation-and-serialization.md) for input sanitization and DTO projection.
 - [Day 21: MongoDB Driver Lifecycle and BSON](day-21-mongodb-driver-lifecycle-and-bson.md) for `MongoClient` pooling, BSON `ObjectId`, and `Decimal128`.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **`FindCursor`** | A pointer to the result set of a query that streams documents on-demand from the server in batches. | Calling `cursor.toArray()` on queries matching 100,000 documents; buffers gigabytes of BSON into Node heap, triggering out-of-memory crashes. |
-| **`findOneAndUpdate()`** | An atomic database operation that finds, modifies, and returns a document in a single non-interruptible step. | Reading a document via `findOne()`, modifying it in JavaScript memory, and saving it via `updateOne()`; introduces severe race conditions. |
-| **Document Replacement**| Completely overwriting an existing document with a new document shape using `replaceOne()`. | Using `replaceOne` when a partial update was intended, inadvertently wiping out fields added by other services. |
-| **`matchedCount` vs `modifiedCount`**| `matchedCount` is how many documents matched the filter; `modifiedCount` is how many actually had their values changed. | Assuming an update failed if `modifiedCount === 0`; if the incoming value was identical to existing data, `matchedCount === 1` but `modifiedCount === 0`. |
-| **`$addToSet`** | An array update operator that appends a value to an array only if the value does not already exist. | Using `$push` blindly for tags or permissions, creating duplicate values in document arrays. |
-| **Optimistic Concurrency (OCC)**| A concurrency control pattern where an update filter checks a document version (`version: currentVersion`) and increments it atomically. | Performing updates without concurrency checks, allowing the "last write wins" bug to overwrite concurrent changes silently. |
-
 ---
 
 ## Core Concepts
@@ -65,6 +38,8 @@ insertMany([docA, docB, docC], { ordered: false })
 
 When executing `collection.find(filter)`, MongoDB does **not** return an array of documents. It returns an instance of **`FindCursor`**.
 
+> **`FindCursor`**: A pointer to the result set of a query that streams documents on-demand from the server in batches.
+
 ```text
 Node.js Application Process                      MongoDB Server Node
 ┌─────────────────────────────────┐              ┌─────────────────────────────┐
@@ -87,6 +62,8 @@ Calling `await cursor.toArray()` loads every matching document from the database
 ---
 
 ### 3. Update Operators vs Full Document Replacement
+
+> **Document Replacement**: Completely overwriting an existing document with a new document shape using `replaceOne()`.
 
 Updating data in MongoDB requires choosing between partial atomic mutations and full document replacement:
 
@@ -142,6 +119,8 @@ const result = await collection.findOneAndUpdate(
 ---
 
 ### 5. Optimistic Concurrency Control (OCC)
+
+> **Optimistic Concurrency (OCC)**: A concurrency control pattern where an update filter checks a document version (`version: currentVersion`) and increments it atomically.
 
 When multiple users can edit different fields of the same entity simultaneously (e.g. updating a customer profile or wiki page), applying updates without concurrency validation results in silent data overwrites.
 

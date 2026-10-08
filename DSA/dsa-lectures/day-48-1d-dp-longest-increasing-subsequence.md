@@ -7,40 +7,13 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the classic $O(n^2)$ Dynamic Programming formulation for the **Longest Increasing Subsequence (LIS)**.
-- Understand why LIS cannot be compressed to $O(1)$ scalar space variables due to historical predecessor dependency.
-- Master the optimal $O(n \log n)$ **Patience Sorting & Binary Search** algorithm using a monotonic `tails` candidate array.
-- Solve 2D multidimensional extensions such as **Russian Doll Envelopes** using width-ascending and height-descending sort heuristics.
-- Reconstruct the exact subsequence elements via parent-index back-pointers.
-- Apply monotonic sequence validation and audit-log ordering reconciliation in Node.js backend streaming pipelines.
-
----
-
 ## Prerequisites
 
 - [Day 26: Binary Search Bounds and Intervals](day-26-binary-search-bounds-and-intervals.md) — Lower bound binary search (`lower_bound` / `bisect_left`).
 - [Day 46: Dynamic Programming: Memoization and Tabulation](day-46-dynamic-programming-memo-and-tabulation.md) — State definition and tabulation mechanics.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Subsequence** | A sequence derived from an array by deleting zero or more elements without changing the relative order of the remaining elements. | Differs from subarrays; subsequences do not need to be contiguous in memory. |
-| **LIS State ($dp[i]$)** | The length of the longest strictly increasing subsequence that ends specifically with element `nums[i]`. | Fundamental 1D DP invariant requiring a nested scan over all predecessors $0 \le j < i$. |
-| **Patience Sorting** | Card-sorting algorithm where each element is placed on the leftmost pile whose top card is $\ge$ the element. | Foundational algorithm that proves LIS can be solved in $O(n \log n)$ time. |
-| **`tails` Array** | An array where `tails[len]` stores the smallest possible ending tail value of all increasing subsequences of length `len + 1`. | Guaranteed to be strictly sorted; enables logarithmic binary search updates. |
-| **Russian Doll Envelopes** | 2D nesting problem where envelope $A$ fits inside $B$ if and only if $w_A < w_B$ and $h_A < h_B$. | Solved by sorting widths ascending and heights descending, reducing the 2D problem directly to 1D LIS! |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Classic $O(n^2)$ Tabulation Approach
+## 1. The Classic $O(n^2)$ Tabulation Approach
 
 In **Longest Increasing Subsequence** (LeetCode 300), given an integer array `nums`, we must find the length of the longest strictly increasing subsequence.
 
@@ -93,14 +66,16 @@ console.log('LIS length:', lengthOfLISQuadratic([10, 9, 2, 5, 3, 7, 101, 18])); 
 
 ---
 
-### 2. Why LIS Cannot Be Reduced to $O(1)$ Space
+## 2. Why LIS Cannot Be Reduced to $O(1)$ Space
 
 In problems like Fibonacci or House Robber, state `dp[i]` depends strictly on a fixed number of immediate predecessors (`dp[i-1]`, `dp[i-2]`), allowing state compression to 2 scalar variables.
 In LIS, state `dp[i]` depends on **all** preceding states $j \in [0 \dots i - 1]$ because any previous smaller element could be the predecessor in the optimal subsequence. Because we cannot predict which historical elements will be smaller than future elements, the entire array must be preserved, making $O(n)$ space unavoidable in standard DP.
 
 ---
 
-### 3. Optimal $O(n \log n)$ Patience Sorting & Binary Search
+## 3. Optimal $O(n \log n)$ Patience Sorting & Binary Search
+
+> **Patience Sorting**: Card-sorting algorithm where each element is placed on the leftmost pile whose top card is $\ge$ the element.
 
 To achieve $O(n \log n)$ time, we maintain an array `tails = []`:
 - `tails[i]` stores the **smallest tail element** of all increasing subsequences of length $i + 1$ found so far.
@@ -174,7 +149,9 @@ console.log('Optimal LIS length:', lengthOfLIS([10, 9, 2, 5, 3, 7, 101, 18])); /
 
 ---
 
-### 4. 2D Extension: Russian Doll Envelopes (LeetCode 354)
+## 4. 2D Extension: Russian Doll Envelopes (LeetCode 354)
+
+> **Russian Doll Envelopes**: 2D nesting problem where envelope $A$ fits inside $B$ if and only if $w_A < w_B$ and $h_A < h_B$.
 
 Given envelopes with dimensions `[width, height]`. Envelope $A$ fits inside $B$ if and only if $w_A < w_B$ and $h_A < h_B$. Find the maximum number of envelopes you can Russian-doll.
 
@@ -301,7 +278,7 @@ function extractLongestValidTrace(events) {
 
     while (low <= high) {
       const mid = (low + high) >> 1;
-      const tailIdx = tailsIndices[mid];
+      const tailIdx = tailsIndices;
       if (events[tailIdx].timestamp >= x) {
         targetSlot = mid;
         high = mid - 1;
@@ -396,6 +373,10 @@ console.log('✅ All extractLongestValidTrace LIS assertions passed successfully
 ## Interview Questions
 
 ### 1. Why does the `tails` array in Patience Sorting not necessarily represent a valid increasing subsequence?
+
+> **`tails` Array**: An array where `tails[len]` stores the smallest possible ending tail value of all increasing subsequences of length `len + 1`.
+
+> **Subsequence**: A sequence derived from an array by deleting zero or more elements without changing the relative order of the remaining elements.
 **Question:** Explain why the elements stored in the `tails` array at the end of the $O(n \log n)$ LIS algorithm may not form a valid subsequence of the original array, yet its length is always correct.
 
 **Answer:**

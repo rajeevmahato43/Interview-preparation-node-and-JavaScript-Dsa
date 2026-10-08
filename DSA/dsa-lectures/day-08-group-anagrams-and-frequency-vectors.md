@@ -5,41 +5,12 @@
 [Previous: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Duplicate Detection and Array Intersections](day-09-duplicate-detection-and-intersections.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Apply the **Equivalence Class Partitioning** pattern to group items by invariant canonical signatures.
-- Compare the two canonical key-generation strategies for anagrams: **Sorted Strings** ($O(k \log k)$) vs **Serialized Frequency Count Vectors** ($O(k)$).
-- Avoid the **Reference Equality Trap** when using arrays or objects as keys in JavaScript `Map` instances.
-- Explain why mathematical prime number multiplication fails in JavaScript due to IEEE-754 `MAX_SAFE_INTEGER` overflow.
-- Prevent digit collisions in frequency vector string serialization using delimiter formatting.
-- Implement the DataLoader request-batching pattern in Node.js backends using canonical signature grouping.
-
----
-
 ## Prerequisites
 
 - [Day 03: Strings and Text Patterns](day-03-strings-and-text-patterns.md) — String immutability, `charCodeAt()`, and character frequencies.
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Hash bucket lookups and prototype safety.
 - [Day 07: Two Sum and Hash Complements](day-07-two-sum-and-hash-complements.md) — Hash map state tracking and single-pass iteration.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Equivalence Class** | A partition of a set where all elements share a reflexive, symmetric, and transitive relationship. | Allows grouping anagrams into identical buckets by deriving a single canonical representative key. |
-| **Canonical Signature** | A standardized, deterministic string representation derived from an object's invariant properties. | Maps disparate strings (e.g., `"eat"`, `"tea"`, `"ate"`) to an identical hash key (`"aet"`). |
-| **Delimiter Collision** | An accidental string key collision caused by concatenating multi-digit numbers without separator tokens. | Frequency strings `"1"` and `"11"` collapse into `"111"` without delimiters, corrupting hash map buckets. |
-| **Reference Key Trap** | The JavaScript behavior where `Map.prototype.get([1, 2])` checks memory pointer identity rather than array contents. | Passing arrays directly as `Map` keys fails to match subsequent lookups; requires string serialization. |
-| **IEEE-754 Safe Integer Limit** | The boundary ($2^{53} - 1 \approx 9 \times 10^{15}$) beyond which JavaScript floating-point numbers lose exact integer precision. | Causes prime-product anagram hashing to collide catastrophically on words longer than 12–14 characters. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -61,7 +32,7 @@ By the end of this lecture, you should be able to:
   OUTPUT: [ ["eat", "tea", "ate"], ["tan", "nat"], ["bat"] ]
 ```
 
-### 1. The Grouping by Signature Pattern
+## 1. The Grouping by Signature Pattern
 
 An anagram is a word formed by rearranging the letters of another word using all original letters exactly once (e.g., `"eat"`, `"tea"`, and `"ate"`).
 
@@ -72,7 +43,7 @@ When solving problems that ask to *"group items that share a common relationship
 
 ---
 
-### 2. Strategy Comparison: Sorted String vs Serialized Frequency Vector
+## 2. Strategy Comparison: Sorted String vs Serialized Frequency Vector
 
 To group $n$ strings where each string has a maximum length of $k$:
 
@@ -139,7 +110,7 @@ console.log("Vector key result:", groupAnagramsVector(words));
 
 ---
 
-### 3. Execution Trace: Group Anagrams
+## 3. Execution Trace: Group Anagrams
 
 Input: `strs = ["eat", "tea", "tan", "ate", "nat", "bat"]`
 
@@ -157,7 +128,7 @@ Input: `strs = ["eat", "tea", "tan", "ate", "nat", "bat"]`
 
 ---
 
-### 4. Node.js Backend Application: Request Batching (DataLoader Pattern)
+## 4. Node.js Backend Application: Request Batching (DataLoader Pattern)
 
 In GraphQL servers or microservice aggregators, multiple client queries often execute independent database reads for the same SQL statement shape.
 
@@ -375,6 +346,8 @@ console.log("✅ All shifted string grouping assertions passed successfully!");
 ## Interview Questions
 
 ### 1. What is an equivalence relation in the context of Group Anagrams, and how does canonical signature generation enable $O(1)$ group lookups?
+
+> **Canonical Signature**: A standardized, deterministic string representation derived from an object's invariant properties.
 
 **Question:** Explain the mathematical concept of an equivalence relation in grouping problems and how it maps to hash table operations.
 

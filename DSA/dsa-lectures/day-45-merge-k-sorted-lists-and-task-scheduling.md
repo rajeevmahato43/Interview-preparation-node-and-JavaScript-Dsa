@@ -7,42 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Solve **Merge K Sorted Lists** using a Min-Heap of size $K$ in $O(N \log K)$ time and $O(K)$ auxiliary space.
-- Compare Min-Heap multi-way merging against **Divide-and-Conquer Pairwise Merging** regarding recursion depth, space complexity, and pointer chasing.
-- Solve **Task Scheduler** with cooldown intervals using both Max-Heap simulation and greedy mathematical cycle bounding.
-- Implement **External Multi-Way Sort** for merging multi-gigabyte log files that exceed Node.js V8 heap limits.
-- Build rate-limited task executors and distributed stream mergers for production Node.js microservices.
-- Guard against null list headers, empty inputs, and memory reference leaks during streaming list operations.
-
----
-
 ## Prerequisites
 
 - [Day 19: Queue and Deque Implementations](day-19-queue-and-deque-implementations.md) — FIFO queues, waiting buffers, and cooldown intervals.
 - [Day 29: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md) — Node manipulation, sentinel dummy heads, and pointer splicing.
 - [Day 42: Min-Heap and Max-Heap Implementation](day-42-min-heap-and-max-heap-implementation.md) — `PriorityQueue` classes with custom comparators.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Multi-Way Merge Mechanics: Min-Heap of Size $K$
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Multi-Way Merge** | Merging $K$ independent sorted streams simultaneously into a single global sorted output sequence. | Standard algorithmic foundation for external sorting, LSM-tree compaction (RocksDB), and distributed log aggregation. |
-| **Min-Heap of Heads** | A priority queue storing only the current front head element from each of the $K$ sorted streams. | Reduces comparison cost from $O(K)$ to $O(\log K)$ per item, bringing total time to $O(N \log K)$. |
-| **Divide-and-Conquer Merge** | Iteratively pairing up lists and merging pairs using standard 2-way merge until only 1 list remains. | Matches $O(N \log K)$ time and achieves $O(1)$ auxiliary space for linked lists. |
-| **Task Scheduler Cooldown** | An interval $n$ requiring at least $n$ units of idle or alternative work between two executions of identical tasks. | Modeled with a Max-Heap for highest remaining frequencies and a FIFO queue for cooldown timers. |
-| **Idle Cycle Injection** | Forcing CPU idle ticks when high-frequency tasks are on cooldown and no eligible alternative tasks exist. | Common interview pitfall: failing to count idle slots when calculating total elapsed cycles. |
-| **External Sorting** | Sorting datasets too large to fit in RAM by sorting chunks on disk and merging them using a Min-Heap. | Essential backend technique for Node.js services processing large CSV/JSON database dumps. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Multi-Way Merge Mechanics: Min-Heap of Size $K$
+> **Multi-Way Merge**: Merging $K$ independent sorted streams simultaneously into a single global sorted output sequence.
 
 Given $K$ sorted lists with a total of $N$ elements:
 - Merging them sequentially one-by-one ($L_1$ with $L_2$, then with $L_3$, etc.) takes:
@@ -72,7 +46,7 @@ Total Comparisons: N * log(K)
 
 ---
 
-### 2. Implementation: Merge K Sorted Lists (LeetCode 23)
+## 2. Implementation: Merge K Sorted Lists (LeetCode 23)
 
 ```javascript
 // Node.js code: Merge K Sorted Lists Implementation
@@ -165,7 +139,7 @@ function mergeKLists(lists) {
 
 ---
 
-### 3. Divide-and-Conquer Alternative: $O(1)$ Space Merging
+## 3. Divide-and-Conquer Alternative: $O(1)$ Space Merging
 
 Instead of maintaining a heap, we can merge lists pairwise using standard two-way linked list merging:
 - Round 1: Merge $L_0$ with $L_1$, $L_2$ with $L_3 \dots$ ($K \to K/2$ lists).
@@ -184,7 +158,7 @@ Round 2:     [ Merge(L01, L23) ] -> Final Result!
 
 ---
 
-### 4. Task Scheduler (LeetCode 621)
+## 4. Task Scheduler (LeetCode 621)
 
 Given an array of CPU task strings (e.g., `["A","A","A","B","B","B"]`) and non-negative cooldown integer $n$:
 - Identical tasks must be separated by at least $n$ intervals.
@@ -492,6 +466,8 @@ In JavaScript engines (V8), arrays are stored as contiguous memory buffers.
 ---
 
 ### 4. How does external sorting using a Min-Heap handle multi-gigabyte files in Node.js?
+
+> **External Sorting**: Sorting datasets too large to fit in RAM by sorting chunks on disk and merging them using a Min-Heap.
 **Question:** How would you sort a 20GB log file in a Node.js process constrained to a 512MB heap limit?
 
 **Answer:**

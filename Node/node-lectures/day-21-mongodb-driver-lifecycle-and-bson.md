@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the MongoDB Node.js driver architecture, including Server Discovery and Monitoring (SDAM), topology monitors, and connection pooling.
-- Manage a single, long-lived `MongoClient` instance across an application lifecycle while avoiding per-request connection churn and file descriptor exhaustion.
-- Contrast BSON (Binary JSON) with standard JSON, detailing the binary layout of 12-byte `ObjectId`s, 64-bit `Long` integers, and IEEE 754-2008 `Decimal128` precision types.
-- Prevent floating-point financial corruption by utilizing BSON `Decimal128` over native JavaScript `Number`.
-- Parse and serialize MongoDB documents deterministically between Canonical and Relaxed Extended JSON (`EJSON`) formats.
-- Implement an enterprise MongoDB Repository layer featuring health checks, connection pooling options (`maxPoolSize`, `minPoolSize`), and idempotent graceful shutdown.
-
----
-
 ## Prerequisites
 
 Before diving into MongoDB driver internals, review:
@@ -26,25 +13,13 @@ Before diving into MongoDB driver internals, review:
 - [Day 06: Buffers, Encodings, and Serialization](day-06-buffers-encodings-and-serialization.md) for raw binary allocation and byte serialization.
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) for handle management and resource draining.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for Repository and Composition Root patterns.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **`MongoClient`** | The root client managing background topology discovery, replica set monitoring, and connection pooling to a MongoDB cluster. | Instantiating `new MongoClient()` inside every route handler or repository function, opening hundreds of redundant connection pools. |
-| **SDAM** | Server Discovery and Monitoring; the driver's background protocol that continuously monitors replica set heartbeats and handles primary elections. | Manually re-connecting upon server errors; the MongoDB driver automatically discovers new primaries during replica set failovers. |
-| **BSON** | Binary JSON; a length-prefixed, type-annotated binary serialization format used on the wire between Node.js and MongoDB. | Assuming MongoDB stores plain JSON; BSON supports native types like `Decimal128`, `Long`, `Date`, and raw binary buffers. |
-| **`ObjectId`** | A 12-byte unique BSON identifier consisting of a 4-byte timestamp, 5-byte random process value, and a 3-byte incrementing counter. | Treating `ObjectId` as a standard string; querying `_id: "507f1f77bcf86cd799439011"` matches zero records unless wrapped in `new ObjectId()`. |
-| **`Decimal128`** | A 128-bit decimal floating-point format supporting 34 decimal digits of precision for exact financial calculations. | Storing currency amounts using native JavaScript `Number`, introducing IEEE 754 floating-point rounding errors (`0.1 + 0.2 !== 0.3`). |
-| **Relaxed vs Canonical EJSON**| Canonical Extended JSON preserves exact BSON types (`{ "$numberDecimal": "99.99" }`); Relaxed converts types to native JSON where possible (`99.99`). | Using standard `JSON.stringify(doc)` directly, which strips BSON type information and silently coerces high-precision values. |
-
 ---
 
 ## Core Concepts
 
 ### 1. Driver Topology & Server Discovery and Monitoring (SDAM)
+
+> **SDAM**: Server Discovery and Monitoring; the driver's background protocol that continuously monitors replica set heartbeats and handles primary elections.
 
 A `MongoClient` is an active cluster management engine rather than a passive database connection.
 
@@ -92,6 +67,10 @@ The driver's connection pool controls the throughput and memory footprint of dat
 ---
 
 ### 3. BSON Architecture and the Anatomy of an `ObjectId`
+
+> **`ObjectId`**: A 12-byte unique BSON identifier consisting of a 4-byte timestamp, 5-byte random process value, and a 3-byte incrementing counter.
+
+> **BSON**: Binary JSON; a length-prefixed, type-annotated binary serialization format used on the wire between Node.js and MongoDB.
 
 BSON was created for three primary reasons:
 1. **Lightweight**: Optimized binary format with low overhead.
@@ -171,6 +150,8 @@ MongoDB provides **Extended JSON (`mongodb.EJSON`)** to serialize and parse BSON
 ## Code Snippets and Demonstrations
 
 ### 1. Robust `MongoClient` Lifecycle and Connection Manager
+
+> **`MongoClient`**: The root client managing background topology discovery, replica set monitoring, and connection pooling to a MongoDB cluster.
 
 Managing client bootstrap, pool configuration, ping verification, and graceful shutdown.
 
@@ -635,6 +616,8 @@ Operational advantages:
 - **Embedded Timestamp**: Applications can extract the exact creation time of a record using `id.getTimestamp()` without storing or indexing a separate `created_at` timestamp column.
 
 ### 3. Why does storing financial data using native JavaScript `Number` types cause balance discrepancies, and how does BSON `Decimal128` solve this?
+
+> **`Decimal128`**: A 128-bit decimal floating-point format supporting 34 decimal digits of precision for exact financial calculations.
 
 Native JavaScript numbers are implemented according to the **IEEE 754 Binary Floating-Point standard** (Double Precision / 64-bit). In binary floating-point representations, base-10 fractional decimals like `0.1`, `0.2`, or `0.05` cannot be represented exactly; they are stored as repeating binary approximations:
 ```text

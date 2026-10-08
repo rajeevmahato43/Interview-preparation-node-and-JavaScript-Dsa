@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish the logical query execution order (`FROM` $\to$ `WHERE` $\to$ `GROUP BY` $\to$ `SELECT` $\to$ `ORDER BY` $\to$ `LIMIT`) from physical access paths planned by PostgreSQL's Cost-Based Optimizer (CBO).
-- Decipher query plans using `EXPLAIN (ANALYZE, BUFFERS)` to diagnose buffer cache hits, disk reads, memory spills, and row estimate skews.
-- Differentiate PostgreSQL table access paths: `Seq Scan`, `Index Scan`, `Index Only Scan`, and `Bitmap Index Scan / Bitmap Heap Scan`.
-- Analyze join algorithms (`Nested Loop`, `Hash Join`, `Merge Join`) and optimize memory allocations (`work_mem`) to eliminate disk-based sorting and hashing.
-- Eliminate the ubiquitous $N+1$ query problem in Node.js backends using relational joins and PostgreSQL's native `json_agg()` / `json_build_object()` single-roundtrip aggregation.
-- Architect multi-column B-Tree indexes adhering to the Equality-Sort-Range (ESR) rule and leverage covering indexes with the `INCLUDE` clause for Index Only Scans.
-
----
-
 ## Prerequisites
 
 - [Day 29: Relational Correctness for APIs](day-29-relational-correctness-for-apis.md) — Schema invariants, foreign keys, and safe zero-downtime indexing.
 - [Day 28: Parameterized SQL CRUD](day-28-parameterized-sql-crud.md) — Parameter placeholders and dynamic query construction.
 - [Day 24: MongoDB Aggregation and Index Awareness](day-24-mongodb-aggregation-and-index-awareness.md) — Index selectivity, ESR patterns, and query execution costs.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Cost-Based Optimizer (CBO)** | The PostgreSQL query planner module that estimates disk I/O and CPU costs across candidate execution trees using table statistics (`pg_statistic`). | Determines join ordering, index selection, and parallel workers based on table size and data distribution. |
-| **`EXPLAIN (ANALYZE, BUFFERS)`** | An execution command that actually runs a SQL query and measures true elapsed wall time, memory usage, and shared buffer page hits vs disk reads. | The primary diagnostic tool for discovering query bottlenecks, index mismatches, and `work_mem` disk spills. |
-| **Index Only Scan** | A physical scan where all requested columns reside in the index itself, avoiding table heap tuple lookups using the Visibility Map. | The fastest relational read path; reduces disk and buffer cache read volume by up to 90%. |
-| **Bitmap Heap Scan** | A two-phase scan where an index scan builds an in-memory bitmap of matching tuple IDs (TIDs), followed by sorted physical page fetches from the heap. | Maximizes physical sequential I/O efficiency when filtering across multiple non-clustered or combined indexes. |
-| **`work_mem`** | The per-operation memory allocation limit dedicated to internal sorting (`ORDER BY`, `DISTINCT`) and hash tables (`Hash Join`, hash aggregation). | Inadequate `work_mem` causes queries to spill intermediate sort batches to temporary disk files, degrading latency by 10x–100x. |
-| **`json_agg` Single-Roundtrip** | A PostgreSQL aggregation function transforming joined child rows directly into a JSON array within the database engine. | Solves the $N+1$ query problem and avoids relational row multiplication over Node.js connection sockets. |
-
 ---
 
 ## Core Concepts
@@ -292,6 +265,8 @@ INCLUDE (total_amount, status);
 
 ### Anatomy of an `EXPLAIN (ANALYZE, BUFFERS)` Output
 
+> **`EXPLAIN (ANALYZE, BUFFERS)`**: An execution command that actually runs a SQL query and measures true elapsed wall time, memory usage, and shared buffer page hits vs disk reads.
+
 To diagnose database latency in production, run `EXPLAIN (ANALYZE, BUFFERS)` on the target statement:
 
 ```sql
@@ -545,6 +520,8 @@ export async function getRecentOrdersOptimized(pool, merchantId, limit = 50) {
 
 ### 1. In PostgreSQL, what is the fundamental difference between an `Index Scan` and an `Index Only Scan`, and what role does the Visibility Map play?
 
+> **Index Only Scan**: A physical scan where all requested columns reside in the index itself, avoiding table heap tuple lookups using the Visibility Map.
+
 In a standard **Index Scan**, the query engine traverses the B-Tree index to locate the Tuple Identifiers (TIDs) of matching index entries. Each TID consists of a physical page block number and a tuple offset on that page. PostgreSQL must then visit the actual table heap page on disk or in the shared buffer pool to retrieve the remaining column values requested in the `SELECT` clause and to verify whether the tuple is visible to the active transaction under MVCC rules.
 
 In an **Index Only Scan**, all columns required by both the `WHERE` filter and the `SELECT` projection are already present within the index itself (either as indexed keys or via the `INCLUDE` clause). Crucially, PostgreSQL can only bypass visiting the table heap if it can confirm that the row is visible to the current transaction. PostgreSQL indexes do not contain MVCC transaction visibility metadata (`xmin` and `xmax`). Instead, PostgreSQL inspects the **Visibility Map (VM)**. The Visibility Map tracks whether all tuples on a given heap page are older than the oldest running transaction. If the VM indicates the target page is fully visible, PostgreSQL reads the data entirely from the index without reading the heap page. If the page is not marked fully visible, it must fall back to checking the heap tuple. Regular `VACUUM` runs are necessary to maintain the Visibility Map for Index Only Scans.
@@ -552,6 +529,8 @@ In an **Index Only Scan**, all columns required by both the `WHERE` filter and t
 ---
 
 ### 2. How does the Cost-Based Optimizer (CBO) decide between a `Seq Scan` and an `Index Scan`, and why might it choose a sequential scan on an indexed column?
+
+> **Cost-Based Optimizer (CBO)**: The PostgreSQL query planner module that estimates disk I/O and CPU costs across candidate execution trees using table statistics (`pg_statistic`).
 
 The Cost-Based Optimizer estimates the total cost of candidate execution plans in arbitrary cost units based on the cost of disk page fetches and CPU tuple processing. Key parameters include `seq_page_cost` (default 1.0) and `random_page_cost` (default 4.0, reflecting mechanical disk random access or cached SSD reads).
 

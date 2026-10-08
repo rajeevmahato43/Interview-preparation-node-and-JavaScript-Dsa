@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Design robust, production-grade REST API contracts featuring standardized JSON data envelopes, pagination metadata, and RFC 7807 error structures.
-- Evaluate the algorithmic performance and operational tradeoffs between **Offset Pagination** ($O(N)$ index scans, page drift) and **Keyset/Cursor Pagination** ($O(\log N)$ index seeks, stable windows).
-- Construct opaque, tamper-resistant cursor tokens that maintain deterministic sort orders across multi-column composite database keys.
-- Deconstruct the formal mathematical and HTTP definitions of **Idempotency** across `GET`, `PUT`, `DELETE`, `POST`, and `PATCH`.
-- Architect an enterprise **Idempotency Key State Machine** (IETF draft standard) using Redis or relational database leases to safely deduplicate concurrent and retried write requests.
-- Guard against payload tampering by binding idempotency keys to cryptographic SHA-256 request payload fingerprints.
-
----
-
 ## Prerequisites
 
 Before diving into API contracts and idempotency, review:
@@ -26,25 +13,13 @@ Before diving into API contracts and idempotency, review:
 - [Day 15: Express Routing and Route Parameters](day-15-express-routing-and-route-parameters.md) for query parameter handling.
 - [Day 16: Express Input Validation and Serialization](day-16-express-input-validation-and-serialization.md) for request validation and DTO response shaping.
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) for centralized error envelopes.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **API Contract** | The formal specification defining URI paths, HTTP methods, headers, schemas, status codes, and error formats for a service interface. | Treating an API as just code; modifying response fields without versioning or breaking mobile clients. |
-| **Offset Pagination** | A pagination pattern using `LIMIT count OFFSET skip` to bypass a fixed number of rows in a database query. | Using offset pagination on tables with millions of rows; database reads and discards all skipped rows, causing $O(N)$ disk I/O. |
-| **Page Drift (Window Bug)**| A phenomenon where items shift positions across pages during offset pagination due to concurrent row inserts or deletions. | Wondering why mobile users see duplicate items when scrolling infinite lists; caused by page drift in offset pagination. |
-| **Cursor Pagination** | A pagination pattern using an opaque, indexed pointer (such as `WHERE id > cursor LIMIT 20`) to resume reading at a specific position. | Attempting to jump directly to "Page 15" using cursor pagination; cursor models only support forward/backward sequential paging. |
-| **Idempotency** | The property of an operation where applying it multiple times produces the identical side-effect state as applying it once ($f(f(x)) = f(x)$). | Assuming `POST` requests are safe to retry on network timeouts; retrying without idempotency keys creates duplicate charges/orders. |
-| **Request Fingerprinting**| Computing a SHA-256 hash of the request body and URI to verify that an idempotency key is not being reused with conflicting payloads. | Caching responses based solely on an `Idempotency-Key` string without checking if the client changed the order amount. |
-
 ---
 
 ## Core Concepts
 
 ### 1. Modern API Contract Design and Data Enveloping
+
+> **API Contract**: The formal specification defining URI paths, HTTP methods, headers, schemas, status codes, and error formats for a service interface.
 
 A production REST API should never return a bare JSON array as a top-level response (`[{ id: 1 }, { id: 2 }]`). 
 
@@ -72,6 +47,10 @@ Top-level arrays cannot be safely extended with metadata (pagination, counts, fi
 ---
 
 ### 2. Offset Pagination vs Keyset / Cursor Pagination
+
+> **Cursor Pagination**: A pagination pattern using an opaque, indexed pointer (such as `WHERE id > cursor LIMIT 20`) to resume reading at a specific position.
+
+> **Offset Pagination**: A pagination pattern using `LIMIT count OFFSET skip` to bypass a fixed number of rows in a database query.
 
 Pagination is an architectural database design decision, not merely an HTTP query formatting convention.
 
@@ -130,6 +109,8 @@ Never paginate on non-unique columns (like `created_at` or `status`) alone. Mult
 ---
 
 ### 4. Idempotency Across HTTP Verbs
+
+> **Idempotency**: The property of an operation where applying it multiple times produces the identical side-effect state as applying it once ($f(f(x)) = f(x)$).
 
 Idempotency guarantees that executing an operation $N$ times leaves the system in the identical business state as executing it once:
 
@@ -817,6 +798,8 @@ LIMIT 20;
 Because the database has a composite B-Tree index on `(created_at, id)`, the query engine performs a binary index seek directly to the exact index leaf page corresponding to the cursor tuple in $O(\log N)$ time, and then scans forward exactly 20 index entries. The database never reads or discards previous rows, guaranteeing identical single-digit millisecond query latency regardless of whether you are reading page 1 or page 50,000.
 
 ### 2. What is the Page Drift (Sliding Window) problem, and how does it impact user experience in real-time applications?
+
+> **Page Drift (Window Bug)**: A phenomenon where items shift positions across pages during offset pagination due to concurrent row inserts or deletions.
 
 The **Page Drift Problem** occurs in offset pagination when data rows are added or deleted while a client is actively paginating through a dataset.
 

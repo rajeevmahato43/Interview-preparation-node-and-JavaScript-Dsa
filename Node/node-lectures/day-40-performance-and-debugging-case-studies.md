@@ -6,38 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Apply a scientific, evidence-driven debugging methodology to isolate performance bottlenecks across CPU, I/O, event-loop lag, memory, and database connections.
-- Diagnose and remediate the **"Low CPU, Sky-High Latency"** anomaly caused by database connection pool starvation and missing query statement timeouts.
-- Identify and eliminate **Event-Loop Freezes (100% CPU)** triggered by catastrophic Regular Expression Denial of Service (ReDoS) and synchronous JSON/crypto operations using CPU profiling.
-- Track down insidious **Memory Leaks and OOM Kills (`Exit Code 137`)** using V8 Heap Snapshots, retaining path inspection, and `AsyncLocalStorage` leak checks.
-- Resolve runaway memory spikes during large file exports by enforcing **Stream Backpressure** via `stream.pipeline()`.
-- Author blameless, production-grade Postmortem Incident Reports featuring the "5 Whys" root cause analysis, telemetry timelines, and preventive action items.
-
----
-
 ## Prerequisites
 
 - [Day 02: Event Loop and Scheduling](day-02-event-loop-and-scheduling.md) — Event-loop phases, microtasks, and thread pool starvation.
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) — `highWaterMark`, backpressure signals, and `pipeline()`.
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) — Heap snapshots, flamegraphs, and `monitorEventLoopDelay`.
 - [Day 30: SQL Composition and Performance Awareness](day-30-sql-composition-and-performance-awareness.md) — `EXPLAIN (ANALYZE, BUFFERS)` and query planning.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **OOM Killer (Exit Code 137)** | The Linux kernel Out-Of-Memory subsystem terminating a process (`SIGKILL` = 128 + 9 = 137) when its cgroup memory limit is exceeded. | Results in immediate, abrupt pod restarts with zero graceful shutdown drain or error logs. |
-| **Retaining Path** | The chain of live object references in V8 heap memory preventing an unreachable object from being reclaimed by the Garbage Collector. | Identifying the root retainer in a Chrome DevTools Heap Snapshot reveals the exact bug causing a memory leak. |
-| **Flamegraph** | A visual representation of profiled software call stacks where the X-axis shows percentage of CPU time and the Y-axis shows call stack depth. | Wide plateaus on top of the graph instantly reveal synchronous CPU hogs blocking the Node.js event loop. |
-| **Pool Starvation** | A condition where all available database connections in `pg.Pool` are checked out, forcing incoming queries to queue in memory indefinitely. | Causes API latency to spike by thousands of milliseconds while Node.js CPU utilization remains near 0%. |
-| **Stream Backpressure** | The flow control mechanism signaling a fast data producer to pause when the consumer's buffer (`highWaterMark`) is saturated. | Violating backpressure buffers gigabytes of chunks in RAM, triggering immediate process crashes. |
-
 ---
 
 ## Core Concepts
@@ -69,6 +43,8 @@ By the end of this lecture, you should be able to:
 ---
 
 ## Case Study 1: The "Low CPU, Sky-High Latency" Pool Starvation
+
+> **Pool Starvation**: A condition where all available database connections in `pg.Pool` are checked out, forcing incoming queries to queue in memory indefinitely.
 
 ### Incident Profile
 - **Symptom:** User-facing p99 response times spike from 25ms to 9,500ms. Ingress gateways return `504 Gateway Timeout`.
@@ -230,6 +206,8 @@ export function attachAuditListener(auditBus, req, res) {
 ---
 
 ## Case Study 4: The Stream Backpressure Memory Spike
+
+> **Stream Backpressure**: The flow control mechanism signaling a fast data producer to pause when the consumer's buffer (`highWaterMark`) is saturated.
 
 ### Incident Profile
 - **Symptom:** When an administrator clicks "Export All Customers to CSV", the Node.js container memory spikes by **1.8GB in 4 seconds** and crashes immediately with `JavaScript heap out of memory`.
@@ -421,6 +399,8 @@ When latency spikes while CPU remains low, the Node.js event loop is idle and un
 ---
 
 ### 2. How do you identify and fix a memory leak in a production Node.js microservice that crashes every few days with Linux Exit Code 137?
+
+> **OOM Killer (Exit Code 137)**: The Linux kernel Out-Of-Memory subsystem terminating a process (`SIGKILL` = 128 + 9 = 137) when its cgroup memory limit is exceeded.
 
 Linux **Exit Code 137** indicates the process was killed by `SIGKILL` (signal 9: $128 + 9 = 137$), triggered by the Linux kernel **Out-Of-Memory (OOM) Killer** when the container exceeded its cgroup memory limit.
 

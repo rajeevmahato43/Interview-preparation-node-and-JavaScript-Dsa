@@ -5,41 +5,12 @@
 [Previous: Prefix Sum and Cumulative Totals](day-15-prefix-sum-and-range-queries.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Valid Parentheses and Expression Parsing](day-17-valid-parentheses-and-expressions.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain the **Last-In, First-Out (LIFO)** data processing principle and its core primitives (`push`, `pop`, `peek`, `isEmpty`).
-- Compare memory allocation and performance between a dynamic array stack and a singly linked list stack in V8.
-- Convert deep recursion algorithms prone to `RangeError: Maximum call stack size exceeded` into heap-allocated explicit stacks.
-- Prevent V8 array head shifting traps caused by accidental usage of `shift()` and `unshift()`.
-- Design an in-memory **Undo / Redo History Manager** using two coupled LIFO stacks.
-- Reclaim backing store memory in long-lived Node.js stacks using `stack.length = 0` and reference dropping.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Array internal element kinds and backing memory.
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Call stack activation records and stack overflow limits.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **LIFO (Last-In, First-Out)** | An access model where the most recently added item is the first item removed. | Foundation of function call execution, syntax parsing, undo buffers, and backtracking. |
-| **Amortized Append** | Adding to an array in $O(1)$ average time despite occasional $O(n)$ backing buffer capacity doubling. | Explains why `arr.push()` is fast in V8, while linked lists guarantee strict non-amortized $O(1)$ operations. |
-| **Explicit Heap Stack** | Simulating execution frames manually using a JavaScript array residing on the V8 heap. | Bypasses the ~10,000-frame call stack ceiling, enabling processing of millions of nested data structures. |
-| **Backing Store Retention** | The V8 engine maintaining an array's pre-allocated memory capacity even after elements are popped. | Requires resetting `stack.length = 0` to free retained memory in long-running Node.js daemon workers. |
-| **Array Head Shift Hazard** | Using `unshift()` and `shift()` to implement a stack, forcing $O(n)$ index reassignment per operation. | Degrades stack processing from $O(n)$ to $O(n^2)$, freezing the Node.js event loop on large datasets. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -58,7 +29,9 @@ By the end of this lecture, you should be able to:
   peek()   ──> returns 20 without mutating the stack.
 ```
 
-### 1. The LIFO Principle and Stack Primitives
+## 1. The LIFO Principle and Stack Primitives
+
+> **LIFO (Last-In, First-Out)**: An access model where the most recently added item is the first item removed.
 
 A **Stack** is a linear collection governed by the Last-In, First-Out (LIFO) protocol: the newest element pushed onto the stack is the first element popped off.
 
@@ -71,7 +44,7 @@ All fundamental stack operations execute in **$O(1)$ constant time**:
 
 ---
 
-### 2. Implementation Paradigms: Dynamic Array vs Singly Linked List
+## 2. Implementation Paradigms: Dynamic Array vs Singly Linked List
 
 | Criterion | Dynamic Array (`Array.prototype`) | Singly Linked List (`StackNode`) |
 |---|---|---|
@@ -171,7 +144,9 @@ console.log("New top:", stack.peek());  // 10
 
 ---
 
-### 3. Explicit Heap Stack vs V8 Call Stack Limits
+## 3. Explicit Heap Stack vs V8 Call Stack Limits
+
+> **Explicit Heap Stack**: Simulating execution frames manually using a JavaScript array residing on the V8 heap.
 
 In Node.js, every function call allocates a stack frame on the V8 engine's physical Call Stack. The physical call stack has a strict limit of ~1 MB (~10,000 frames).
 
@@ -211,7 +186,7 @@ console.log("Processed deep tree nodes:", traverseWithExplicitStack(deepTree)); 
 
 ---
 
-### 4. Undo / Redo History Manager Pattern
+## 4. Undo / Redo History Manager Pattern
 
 In stateful backend systems (e.g., collaborative editors or transactional staging), user actions are managed via two coupled LIFO stacks:
 1. `undoStack`: Stores chronological actions executed by the user.

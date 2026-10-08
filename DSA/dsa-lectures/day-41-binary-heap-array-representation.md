@@ -7,42 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Complete Binary Tree** structural invariant that allows binary heaps to map directly to contiguous memory arrays without pointer nodes.
-- Derive and prove the 0-indexed arithmetic formulas for mapping parents and children: `(i - 1) >> 1`, `(i << 1) + 1`, and `(i << 1) + 2`.
-- Contrast **Min-Heap** and **Max-Heap** ordering invariants against Binary Search Trees (BSTs).
-- Evaluate hardware-level CPU cache locality and V8 heap memory savings of contiguous array heaps over linked pointer trees.
-- Analyze the internal timer heap architecture in `libuv` / Node.js runtime that coordinates `setTimeout()` and `setInterval()`.
-- Validate whether an arbitrary array satisfies the binary heap property in linear $O(n)$ time.
-
----
-
 ## Prerequisites
 
 - [Day 02: Arrays, Sets, Maps, and Hash Tables](day-02-arrays-sets-maps-and-hash-tables.md) — Contiguous array allocation, cache lines, and memory buffers.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Tree terminology, depth, height, and complete vs. full binary trees.
 - [Day 40: Topological Sort: Kahn's Algorithm and DFS](day-40-topological-sort-kahns-and-dfs.md) — Dependency hierarchies and queue-driven traversal.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Complete Binary Tree and Implicit Array Mapping
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Complete Binary Tree** | A binary tree where every level except possibly the last is completely filled, and all leaf nodes on the last level are as far left as possible. | The structural prerequisite that guarantees a gap-free mapping into a 1D array. |
-| **Heap-Order Invariant** | For every node $i$ other than the root: `heap[parent(i)] <= heap[i]` (Min-Heap) or `heap[parent(i)] >= heap[i]` (Max-Heap). | Guarantees that the minimum or maximum element is always available at index 0 in $O(1)$ time. |
-| **Array-Backed Tree** | Storing a tree implicitly in a flat array using index arithmetic rather than pointer objects (`{ val, left, right }`). | Eliminates pointer memory overhead (~60% RAM reduction) and provides L1/L2 cache prefetching. |
-| **Bitwise Division (`>> 1`)** | Arithmetic right-shift operation equivalent to `Math.floor(x / 2)` for non-negative integers. | Micro-optimization commonly used in high-frequency heap loops to compute parent indices. |
-| **Height of Heap** | The maximum number of edges from the root to any leaf: $h = \lfloor \log_2 n \rfloor$. | Bounds worst-case insertion and extraction operations to $O(\log n)$. |
-| **Timer Wheel / Min-Heap** | Data structure used by operating systems and runtimes (`libuv`) to order scheduled timer events by expiration timestamp. | Powers `setTimeout` scheduling in Node.js event loop timers phase. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Complete Binary Tree and Implicit Array Mapping
+> **Complete Binary Tree**: A binary tree where every level except possibly the last is completely filled, and all leaf nodes on the last level are as far left as possible.
 
 A **Binary Heap** is a complete binary tree stored implicitly inside a flat, contiguous 1D array. Because a complete binary tree has no missing intermediate nodes at any level and fills its bottom level strictly from left to right, its nodes can be mapped 1-to-1 to array indices without storing left or right child pointers.
 
@@ -67,7 +41,7 @@ Notice: No holes, no gaps, no null pointers!
 
 ---
 
-### 2. 0-Indexed Arithmetic Indexing Formulas
+## 2. 0-Indexed Arithmetic Indexing Formulas
 
 In JavaScript, arrays are natively 0-indexed. Given a node located at array index $i$:
 1. **Parent Index**:
@@ -92,7 +66,7 @@ Node at Index 2 (Value = 7):
 
 ---
 
-### 3. Min-Heap vs. Max-Heap vs. Binary Search Tree (BST)
+## 3. Min-Heap vs. Max-Heap vs. Binary Search Tree (BST)
 
 A common interview trap is confusing a Binary Heap with a Binary Search Tree (BST).
 - **BST Invariant**: For every node $x$, all keys in the left subtree are smaller than $x$, and all keys in the right subtree are larger than $x$. Searching takes $O(\log n)$ average time.
@@ -122,7 +96,7 @@ In-order traversal of BST:              In-order traversal of Heap:
 
 ---
 
-### 4. Cache Locality and V8 Heap Architecture
+## 4. Cache Locality and V8 Heap Architecture
 
 In Node.js, storing 1,000,000 nodes as objects:
 ```javascript
@@ -146,7 +120,7 @@ Consumes exactly 4 bytes per element. Elements are contiguous in physical RAM, a
 
 ---
 
-### 5. Linear Time Heap Validation
+## 5. Linear Time Heap Validation
 
 Validating whether an array represents a valid Min-Heap requires checking that for every node $i$, its children (if they exist) are $\ge \text{heap}[i]$.
 **Optimization**: Leaf nodes have no children. Any node with index $i \ge \lfloor n / 2 \rfloor$ is guaranteed to be a leaf node! Thus, we only need to inspect parent nodes from index $0$ to $\lfloor n / 2 \rfloor - 1$.

@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Manage transactional boundaries safely in Node.js using dedicated checked-out clients, preventing connection pool corruption caused by executing `BEGIN` on `pool.query()`.
-- Explain PostgreSQL's Multi-Version Concurrency Control (MVCC) internals, including tuple header fields (`xmin`, `xmax`, `ctid`), snapshot isolation, and `VACUUM` dead-tuple cleanup.
-- Differentiate PostgreSQL isolation levels (`Read Committed`, `Repeatable Read`, `Serializable`) and identify the exact anomalies they permit or prevent.
-- Prevent and resolve concurrency race conditions using explicit row-level locks (`FOR UPDATE`, `FOR NO KEY UPDATE`, `SKIP LOCKED`, `NOWAIT`).
-- Prevent deadlocks in concurrent distributed transactions by implementing deterministic resource lock ordering and designing automated retry loops for SQLSTATE `40P01` (deadlock) and `40001` (serialization failure).
-- Leverage PostgreSQL Advisory Locks (`pg_advisory_xact_lock`) for application-level distributed synchronization without introducing external Redis dependencies.
-
----
-
 ## Prerequisites
 
 - [Day 27: PostgreSQL and `pg` Pool Lifecycle](day-27-postgresql-and-pg-pool-lifecycle.md) — Pool checkouts, client leaks, and error handling.
 - [Day 30: SQL Composition and Performance Awareness](day-30-sql-composition-and-performance-awareness.md) — Query execution, Cost-Based Optimizer, and access paths.
 - [Day 25: MongoDB Atomicity, Transactions, and Retries](day-25-mongodb-atomicity-transactions-and-retries.md) — Distributed transactions and retry loops.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **MVCC (Multi-Version Concurrency Control)** | A concurrency mechanism where updates create new tuple versions while retaining older versions marked with transaction IDs (`xmin`, `xmax`). | Ensures readers never block writers, and writers never block readers, maximizing read throughput under heavy concurrent writes. |
-| **`xmin` and `xmax`** | 32-bit transaction IDs recorded in each tuple's physical header denoting the creating and deleting/updating transaction boundaries. | Establishes tuple visibility for transaction snapshots without requiring shared read locks across table pages. |
-| **Dead Tuple Bloat** | Outdated row versions created by updates or deletes that remain on disk until reclaimed by `VACUUM`. | Excessive bloat expands table page count, degrading cache hit ratios and turning fast index scans into sluggish sequential reads. |
-| **`FOR UPDATE`** | An explicit row-level lock blocking concurrent updates, deletes, or locking reads on the selected rows until transaction termination. | Eliminates Lost Update anomalies in read-modify-write workflows, serializing concurrent writes at the row level. |
-| **`SKIP LOCKED`** | A locking modifier instructing the engine to silently skip rows already locked by concurrent transactions rather than blocking. | Enables high-concurrency worker job queues and task polling directly in PostgreSQL without race conditions or contention. |
-| **Advisory Lock** | An application-defined concurrency lock managed by the PostgreSQL lock manager: `pg_advisory_xact_lock(key)`. | Provides distributed synchronization for background jobs, cron executions, and resource mutexes without needing Redis. |
-
 ---
 
 ## Core Concepts
@@ -114,6 +87,8 @@ export async function withTransaction(pool, callback) {
 
 ### 2. MVCC Mechanics: `xmin`, `xmax`, and Table Bloat
 
+> **MVCC (Multi-Version Concurrency Control)**: A concurrency mechanism where updates create new tuple versions while retaining older versions marked with transaction IDs (`xmin`, `xmax`).
+
 PostgreSQL implements concurrency using Multi-Version Concurrency Control (MVCC). Instead of locking tables or rows during read operations, PostgreSQL preserves historical row versions (tuples) in the table heap:
 
 Every row tuple contains internal header fields:
@@ -167,6 +142,8 @@ BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 ---
 
 ### 4. Row-Level Locks: `FOR UPDATE` vs `FOR NO KEY UPDATE`
+
+> **`FOR UPDATE`**: An explicit row-level lock blocking concurrent updates, deletes, or locking reads on the selected rows until transaction termination.
 
 When executing a read-modify-write workflow in the default `Read Committed` isolation level, you must acquire an explicit row-level lock during the read phase to prevent concurrent processes from modifying the row:
 
@@ -269,6 +246,8 @@ export async function transferFundsDeterministic(client, fromId, toId, amount) {
 ## Detailed Explanations and Traces
 
 ### Advisory Locks: Distributed Locks via PostgreSQL
+
+> **Advisory Lock**: An application-defined concurrency lock managed by the PostgreSQL lock manager: `pg_advisory_xact_lock(key)`.
 
 In Node.js architectures, developers frequently add Redis to implement distributed locks (e.g., Redlock) for background synchronization. However, PostgreSQL possesses a built-in, distributed lock manager: **PostgreSQL Advisory Locks**.
 

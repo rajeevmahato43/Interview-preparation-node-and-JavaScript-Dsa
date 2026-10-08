@@ -5,40 +5,12 @@
 [Previous: Group Anagrams and Frequency Vectors](day-08-group-anagrams-and-frequency-vectors.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Select the optimal duplicate detection strategy among Hash Sets ($O(n)$ time, $O(n)$ space), In-Place Sorting ($O(n \log n)$ time, $O(1)$ space), and Index Negation ($O(n)$ time, $O(1)$ space).
-- Implement both variants of array intersection: Unique Elements (Intersection I) and Frequency-Preserving (Intersection II).
-- Optimize auxiliary memory by sizing frequency maps to the smaller array ($\min(n, m)$).
-- Apply the **Bounded Sliding Window Set** pattern (Contains Duplicate II) to cap memory consumption at $O(k)$.
-- Implement production stream deduplication and idempotency in Node.js using Redis atomic primitives (`SET NX EX`) and Bloom filters.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary space.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — `Set` mechanics and reference equality.
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Multi-set counting and map decrements.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Set Membership** | A hash-indexed collection storing unique values with $O(1)$ average insertion, lookup, and deletion. | Replaces nested array searches (`.includes()`), dropping runtime from $O(n^2)$ to $O(n)$. |
-| **Multiset Intersection** | An intersection operation that preserves element multiplicity based on the minimum frequency across both sets. | Requires a frequency map or sorted two pointers rather than a basic uniqueness `Set`. |
-| **Bounded Window Set** | A `Set` that maintains at most $k$ elements by ejecting the oldest item whenever its size exceeds $k$. | Guarantees $O(\min(n, k))$ auxiliary space when evaluating proximity constraints ($|i - j| \le k$). |
-| **Index Negation Pattern** | An in-place encoding trick using array signs as boolean visited flags when numbers fall in the range $[1, n]$. | Achieves $O(n)$ time and $O(1)$ extra space without allocating secondary sets or maps. |
-| **Idempotency** | The property of an operation where applying it multiple times produces the identical result as applying it once. | Essential in Node.js message queues to filter duplicate webhook deliveries without data corruption. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -60,7 +32,7 @@ By the end of this lecture, you should be able to:
            └───┴───┘             Probe nums[3]=1  -> Not in {2, 3}    -> Add 1 -> Set: { 2, 3, 1 }
 ```
 
-### 1. Duplicate Detection Paradigms
+## 1. Duplicate Detection Paradigms
 
 When checking whether an array contains any duplicate values, choose the approach based on memory constraints:
 
@@ -101,7 +73,7 @@ console.log(containsDuplicateFast([1, 2, 3, 4])); // false
 
 ---
 
-### 2. Intersection of Two Arrays: Unique vs Frequency-Preserving
+## 2. Intersection of Two Arrays: Unique vs Frequency-Preserving
 
 #### Pattern A: Intersection I — Unique Common Elements (LeetCode 349)
 Each element in the result must be unique, and results may appear in any order.
@@ -166,7 +138,7 @@ console.log(intersect([1, 2, 2, 1], [2, 2])); // [ 2, 2 ]
 
 ---
 
-### 3. Pre-Sorted Arrays: The Two-Pointer Intersection Alternative
+## 3. Pre-Sorted Arrays: The Two-Pointer Intersection Alternative
 
 If both input arrays are already sorted, we can avoid allocating a hash map entirely by using the **Two-Pointer technique**, reducing auxiliary space from $O(n)$ to $O(1)$.
 
@@ -199,7 +171,7 @@ console.log(intersectSorted([1, 1, 2, 2], [2, 2])); // [ 2, 2 ]
 
 ---
 
-### 4. Proximity Deduplication: Bounded Sliding Window Set (Contains Duplicate II)
+## 4. Proximity Deduplication: Bounded Sliding Window Set (Contains Duplicate II)
 
 Given an array `nums` and an integer `k`, determine if there are two distinct indices $i$ and $j$ such that `nums[i] === nums[j]` and $|i - j| \le k$.
 

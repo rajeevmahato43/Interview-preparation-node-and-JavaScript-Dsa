@@ -8,42 +8,16 @@
 
 ---
 
-## What You Will Learn Today
+## Prerequisites
 
-By the end of this lecture, you should be able to:
-
-- Define what Node.js is and explain how it executes JavaScript outside a web browser.
-- Delineate the distinct responsibilities of the V8 engine, Node.js core C++ bindings/APIs, and libuv.
-- Explain the single-threaded JavaScript execution model and why it does not mean Node.js is purely single-threaded.
-- Distinguish concurrency (interleaved progress) from parallelism (simultaneous hardware execution).
-- Identify operations that block the main event loop versus non-blocking operations that wait asynchronously.
-- Apply the 7-question Request Path Mental Model to trace backend operations from transport to cleanup.
-- Choose between the main event loop, Worker Threads, and Child Processes for CPU-intensive workloads.
-- Debug high-latency production incidents by separating event loop CPU starvation from external I/O waits.
-
-**Prerequisites:** Familiarity with JavaScript values, functions, async execution, Promises, and microtasks ([JS Day 03: Values, Types, and Literals](../../Javascript/javascript-lectures/day-03-values-types-and-literals.md), [JS Day 08: Closures, Execution Context, and this](../../Javascript/javascript-lectures/day-08-closures-execution-context-and-this.md), [JS Day 18: Promises and Composition](../../Javascript/javascript-lectures/day-18-promises-and-composition.md), [JS Day 19: Async/Await, Errors, and Cleanup](../../Javascript/javascript-lectures/day-19-async-await-errors-and-cleanup.md), and [JS Day 20: Jobs, Microtasks, and Scheduling](../../Javascript/javascript-lectures/day-20-jobs-microtasks-and-scheduling.md)).  
-*Upcoming Connections:* [Day 02](day-02-event-loop-and-scheduling.md) details libuv event loop phases and microtask queues; [Day 08](day-08-streams-and-backpressure.md) covers non-blocking streaming data; [Day 11](day-11-worker-threads-and-child-processes.md) provides deep architectural patterns for worker threads and child processes.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **Node.js** | An open-source, cross-platform JavaScript runtime environment built on Chrome's V8 engine that executes JavaScript outside the browser. |
-| **V8 Engine** | Google’s open-source high-performance JavaScript engine that parses source code, allocates the JS heap, and executes machine code. |
-| **libuv** | A multi-platform C support library that provides Node.js with an event loop, asynchronous I/O abstractions, and an internal worker thread pool. |
-| **Main JS Thread** | The single execution thread where application JavaScript code, callbacks, and promise continuations execute sequentially. |
-| **Event Loop** | A semi-infinite loop managed by libuv that orchestrates and dispatches asynchronous callbacks across various phases. |
-| **Non-Blocking I/O** | System calls that return control immediately to the calling thread without waiting for disk or network operations to finish. |
-| **Concurrency** | The ability of a system to manage multiple tasks in overlapping periods by interleaving their execution. |
-| **Parallelism** | The simultaneous physical execution of multiple computations at the exact same instant on separate CPU cores or hardware threads. |
-| **Thread Pool** | A fixed pool of background OS threads (default size 4) maintained by libuv to handle blocking system tasks like file I/O, DNS lookup, and crypto. |
-| **Worker Threads** | A Node.js module (`node:worker_threads`) enabling parallel JavaScript execution across multiple threads within the same OS process. |
+- Familiarity with JavaScript values, functions, async execution, Promises, and microtasks ([JS Day 03: Values, Types, and Literals](../../Javascript/javascript-lectures/day-03-values-types-and-literals.md), [JS Day 08: Closures, Execution Context, and this](../../Javascript/javascript-lectures/day-08-closures-execution-context-and-this.md), [JS Day 18: Promises and Composition](../../Javascript/javascript-lectures/day-18-promises-and-composition.md), [JS Day 19: Async/Await, Errors, and Cleanup](../../Javascript/javascript-lectures/day-19-async-await-errors-and-cleanup.md), and [JS Day 20: Jobs, Microtasks, and Scheduling](../../Javascript/javascript-lectures/day-20-jobs-microtasks-and-scheduling.md)).  
+- *Upcoming Connections:* [Day 02](day-02-event-loop-and-scheduling.md) details libuv event loop phases and microtask queues; [Day 08](day-08-streams-and-backpressure.md) covers non-blocking streaming data; [Day 11](day-11-worker-threads-and-child-processes.md) provides deep architectural patterns for worker threads and child processes.
 
 ---
 
 ## 1. Node.js
+
+> **Node.js**: An open-source, cross-platform JavaScript runtime environment built on Chrome's V8 engine that executes JavaScript outside the browser.
 
 **Node.js is a runtime environment that executes JavaScript code outside a browser**, giving your code direct access to the underlying operating system, filesystem, network interfaces, and system processes.
 
@@ -108,9 +82,13 @@ try {
 
 ## 2. Core Architecture: V8, Node.js APIs, and libuv
 
+> **libuv**: A multi-platform C support library that provides Node.js with an event loop, asynchronous I/O abstractions, and an internal worker thread pool.
+
 Node.js combines Chrome's V8 engine with a C++ abstraction library called libuv, gluing them together with Node's internal C++ bindings and built-in JavaScript modules.
 
 ### V8 Engine
+
+> **V8 Engine**: Google’s open-source high-performance JavaScript engine that parses source code, allocates the JS heap, and executes machine code.
 V8 is responsible for executing JavaScript. It parses source text, builds Abstract Syntax Trees (AST), compiles code to machine instructions via Just-In-Time (JIT) compilation, allocates memory on the JavaScript heap, and manages garbage collection.  
 *V8 has no concept of an HTTP request, a filesystem path, or a TCP socket.* When your code calls `fs.readFile()` or `http.createServer()`, V8 simply executes the JavaScript wrapper that delegates to Node's internal C++ bindings.
 
@@ -203,6 +181,10 @@ for (let i = 0; i < 3; i++) {
 ---
 
 ## 4. Concurrency vs. Parallelism
+
+> **Parallelism**: The simultaneous physical execution of multiple computations at the exact same instant on separate CPU cores or hardware threads.
+
+> **Concurrency**: The ability of a system to manage multiple tasks in overlapping periods by interleaving their execution.
 
 Understanding the distinction between concurrency and parallelism is fundamental for backend architecture:
 
@@ -408,6 +390,8 @@ When designing or debugging any backend operation in Node.js, senior engineers t
 ---
 
 ## 8. Offloading CPU-Heavy Work: Worker Threads & Processes
+
+> **Worker Threads**: A Node.js module (`node:worker_threads`) enabling parallel JavaScript execution across multiple threads within the same OS process.
 
 When your application *must* perform CPU-heavy calculations (e.g., image thumbnail generation, PDF rendering, machine learning inference, cryptographic hashing, or massive JSON transformations), you must move that work off the main JavaScript thread.
 

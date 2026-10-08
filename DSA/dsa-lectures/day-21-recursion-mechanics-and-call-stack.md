@@ -5,43 +5,14 @@
 [Previous: Stack and Queue Design Patterns](day-20-stack-and-queue-design-patterns.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the two fundamental phases of every recursive call: the **Winding Phase** (descent) and the **Unwinding Phase** (resolution).
-- Calculate auxiliary space complexity directly from the maximum depth of the recursion tree ($O(h)$) rather than total function calls.
-- Design base conditions that guard against negative inputs, invalid states, and stack overflow exceptions.
-- Explain the engine-level reality of **Tail Call Optimization (TCO)** in V8 and why it remains disabled in standard Node.js runtime environments.
-- Transform deep recursive traversals into iterative heap-allocated stack loops and trampolines to protect Node.js microservices from `RangeError: Maximum call stack size exceeded`.
-- Protect recursive algorithms against circular object graphs using visited reference tracking.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Baseline call stack frames.
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO execution and call stack frames.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Winding Phase** | The downward execution phase where new activation records are pushed onto the call stack before hitting a base condition. | Consumes call stack memory linearly with recursion depth. |
-| **Unwinding Phase** | The upward execution phase where base case values return, suspended calculations resolve, and activation frames are popped. | Where cumulative return computations (e.g., $n \times \text{factorial}(n - 1)$) actually take place. |
-| **Call Stack Frame** | A contiguous block of thread execution memory storing local variables, arguments, and return addresses. | V8 caps the call stack size at approximately 10,000 frames (~1 MB) before throwing `RangeError`. |
-| **Tail Call Optimization (TCO)** | A compiler optimization that overwrites the current stack frame if the recursive call is in the final tail position. | Specified in ES6 but intentionally **disabled** in V8/Node.js to preserve error stack traces. |
-| **Trampoline** | A higher-order design pattern that converts recursive calls into thunk functions executed iteratively inside a while loop. | Allows arbitrary recursive depth in Node.js without call stack overflow. |
-
----
-
-## Core Concepts
-
-### 1. Anatomy of a Recursive Call: Winding vs Unwinding
+## 1. Anatomy of a Recursive Call: Winding vs Unwinding
 
 A **recursive function** is a function that solves a problem by invoking smaller instances of itself until it encounters a terminating **base condition** that returns without further self-invocation.
 
@@ -104,7 +75,7 @@ traceRecursion(3);
 
 ---
 
-### 2. Space Complexity = Maximum Recursion Tree Depth
+## 2. Space Complexity = Maximum Recursion Tree Depth
 
 The **auxiliary space complexity** of a recursive algorithm is strictly bounded by the maximum height ($h$) of its recursion tree—the maximum number of activation frames concurrently active on the call stack at any single point in time.
 
@@ -135,7 +106,9 @@ Maximum Concurrent Stack Depth:  O(n)   = 4 active frames max!
 
 ---
 
-### 3. The Reality of Tail Call Optimization (TCO) in Node.js
+## 3. The Reality of Tail Call Optimization (TCO) in Node.js
+
+> **Tail Call Optimization (TCO)**: A compiler optimization that overwrites the current stack frame if the recursive call is in the final tail position.
 
 **Tail Call Optimization (TCO)** is an execution strategy where the runtime reuses the current function's activation frame instead of allocating a new one, provided the recursive invocation is the final operation before returning.
 
@@ -163,7 +136,9 @@ factorialTail(20000);
 
 ---
 
-### 4. Eliminating Deep Recursion: Explicit Heap Stacks and Trampolines
+## 4. Eliminating Deep Recursion: Explicit Heap Stacks and Trampolines
+
+> **Trampoline**: A higher-order design pattern that converts recursive calls into thunk functions executed iteratively inside a while loop.
 
 To execute deep traversals safely without overflowing the thread's call stack, developers must convert recursive logic into **heap-allocated iterative loops** or use a **Trampoline function**.
 
@@ -407,6 +382,8 @@ function solve(state, ...context) {
 ## Interview Questions
 
 ### 1. What does a call stack frame contain, and why does recursion cause a stack overflow in V8?
+
+> **Call Stack Frame**: A contiguous block of thread execution memory storing local variables, arguments, and return addresses.
 
 **Question:** Explain what a Call Stack Frame contains and why creating too many frames causes a stack overflow error in the V8 engine.
 

@@ -5,40 +5,12 @@
 [Previous: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Group Anagrams and Frequency Vectors](day-08-group-anagrams-and-frequency-vectors.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the **Hash Complement Pattern** ($\text{complement} = \text{target} - \text{current}$) to eliminate quadratic nested loops ($O(n^2) \to O(n)$).
-- Implement the canonical **Two Sum** in a single pass in $O(n)$ time and $O(n)$ auxiliary space.
-- Distinguish between single-pass and two-pass hash table strategies, preventing self-pairing and duplicate overwrites.
-- Solve Two Sum variations: returning original indices vs values, counting total pairs, and handling pre-sorted arrays with Two Pointers.
-- Apply hash-indexed in-memory joins in Node.js microservices to merge detached dataset streams without blocking the event loop.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic complexity and memory scaling.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — JavaScript `Map` operations and key typing.
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Hash bucket indexing and collision resolution.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Hash Complement** | The calculated difference ($\text{target} - x$) required to satisfy a sum equality with value $x$. | Inverts forward pair searches into instantaneous $O(1)$ historical lookups. |
-| **Self-Pairing Trap** | A bug where an element pairs with itself because the hash table is pre-populated with all indices. | Occurs in naive two-pass algorithms when testing numbers whose complement equals themselves ($6 - 3 = 3$). |
-| **Single-Pass Hash Map** | An algorithm that checks for the complement before inserting the current element into the map. | Naturally prevents self-pairing, correctly handles duplicate numbers, and enables early termination. |
-| **Falsy Index Bug** | Evaluating index existence via `if (map[key])` which evaluates index `0` as `false`. | Causes silent lookups failures when an answer index is `0`; resolved via `map.has(key)` or `map[key] !== undefined`. |
-| **In-Memory Hash Join** | Indexing one relational dataset into a hash map by foreign key to join with another dataset in $O(n + m)$ time. | Replaces quadratic nested loops in Node.js backends when combining disparate microservice payloads. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -63,7 +35,7 @@ By the end of this lecture, you should be able to:
     RETURN: [ seen.get(2), 2 ] ──> [ 1, 2 ]
 ```
 
-### 1. Inverting Search: The Complement Insight
+## 1. Inverting Search: The Complement Insight
 
 Given an array `nums = [2, 7, 11, 15]` and a target sum `target = 9`.
 
@@ -77,7 +49,7 @@ Because hash map lookups take $O(1)$ average time, checking history for each of 
 
 ---
 
-### 2. Single-Pass vs Two-Pass Hash Map Architectures
+## 2. Single-Pass vs Two-Pass Hash Map Architectures
 
 #### The Two-Pass Flaw and the Self-Pairing Bug
 In a two-pass approach:
@@ -132,7 +104,7 @@ console.log("Single-pass result:", twoSumSinglePass([3, 2, 4], 6)); // [1, 2]
 
 ---
 
-### 3. Asymptotic Trade-Offs: Hash Map vs Sorted Two Pointers
+## 3. Asymptotic Trade-Offs: Hash Map vs Sorted Two Pointers
 
 | Technique | Time Complexity | Auxiliary Space | Index Preservation | Best Scenario |
 |---|---|---|---|---|
@@ -170,7 +142,7 @@ console.log("Sorted two-pointer result:", twoSumSorted([2, 7, 11, 15], 9)); // [
 
 ---
 
-### 4. Node.js Backend Application: In-Memory Relational Hash Join
+## 4. Node.js Backend Application: In-Memory Relational Hash Join
 
 In microservice architectures, an API aggregator service often retrieves related data from different backend services (e.g., an array of `orders` from an order service and an array of `users` from an auth service).
 

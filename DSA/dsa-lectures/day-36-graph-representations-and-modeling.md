@@ -7,41 +7,13 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Understand core graph theory terminology: vertices ($V$), directed and undirected edges ($E$), edge weights, paths, cycles, degrees, and connected components.
-- Implement graph data structures in JavaScript using both **Adjacency Lists** (`Map` and array of arrays) and **Adjacency Matrices** (`2D TypedArray` or regular arrays).
-- Formally evaluate time and space complexity tradeoffs ($O(V + E)$ vs. $O(V^2)$) to pick the optimal representation for dense versus sparse topologies.
-- Convert raw tabular edge lists (`[u, v, weight]`) into normalized, high-performance graph structures with constant-time neighbor iteration.
-- Model production backend domains (microservice call dependency graphs, permission DAGs, social network connections) in Node.js while profiling V8 heap memory overhead.
-- Diagnose and prevent graph anti-patterns in JavaScript including shared row references, implicit object string keys, and quadratic memory allocation crashes.
-
----
-
 ## Prerequisites
 
 - [Day 02: Arrays, Sets, Maps, and Hash Tables](day-02-arrays-sets-maps-and-hash-tables.md) — Fundamental key-value lookups, hash collision internals, and `Map`/`Set` memory overhead.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Node-and-pointer data structures and recursion over connected hierarchical nodes.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Vertex / Node ($V$)** | An individual entity or data point within a network. | Determines the space baseline of graph storage and memory allocations. |
-| **Edge ($E$)** | A link connecting two vertices; can be directed, undirected, weighted, or unweighted. | Governs traversal bounds and memory consumption; a simple graph has at most $V(V-1)/2$ undirected edges. |
-| **Adjacency List** | A collection where each vertex maps directly to a list or array of its adjacent neighbors. | Optimal $O(V + E)$ space for sparse graphs ($E \ll V^2$); standard default in 95% of engineering interviews. |
-| **Adjacency Matrix** | A $V \times V$ 2D matrix where cell `[u][v]` stores the boolean existence or numerical weight of edge $(u, v)$. | Provides $O(1)$ edge existence checks, but consumes rigid $O(V^2)$ memory and $O(V)$ neighbor iteration. |
-| **Sparse vs. Dense** | A sparse graph has $E \approx O(V)$; a dense graph approaches $E \approx O(V^2)$. | Choosing a matrix for a sparse graph with $V = 100,000$ exhausts V8 heap memory instantly. |
-| **In-Degree / Out-Degree** | Number of directed edges entering (in) or leaving (out) a specific vertex. | Fundamental invariant for Kahn's topological sort and dependency resolution engines. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Mathematical Definitions and Graph Morphologies
+## 1. Mathematical Definitions and Graph Morphologies
 
 A **Graph** $G = (V, E)$ is a non-linear data structure consisting of a finite set of vertices $V$ and a collection of edges $E$ connecting pairs of vertices. Unlike trees—which are restricted to being connected, acyclic, undirected graphs with exactly $|V| - 1$ edges and a single root—general graphs permit arbitrary interconnection topologies, disconnected partitions, self-loops, and cycles.
 
@@ -63,7 +35,11 @@ In undirected graphs, an edge between $u$ and $v$ denotes a symmetric relationsh
 
 ---
 
-### 2. Adjacency List vs. Adjacency Matrix Tradeoffs
+## 2. Adjacency List vs. Adjacency Matrix Tradeoffs
+
+> **Adjacency Matrix**: A $V \times V$ 2D matrix where cell `[u][v]` stores the boolean existence or numerical weight of edge $(u, v)$.
+
+> **Adjacency List**: A collection where each vertex maps directly to a list or array of its adjacent neighbors.
 
 An **Adjacency Matrix** is a 2D grid of dimensions $|V| \times |V|$ where cell `matrix[u][v]` is non-zero if an edge exists from $u$ to $v$. An **Adjacency List** associates each vertex $u$ with an array or linked list containing only its outgoing neighbors.
 
@@ -90,7 +66,9 @@ Representation A: Adjacency Matrix           Representation B: Adjacency List
 
 ---
 
-### 3. Sparse vs. Dense Topology and V8 Heap Impact
+## 3. Sparse vs. Dense Topology and V8 Heap Impact
+
+> **Sparse vs. Dense**: A sparse graph has $E \approx O(V)$; a dense graph approaches $E \approx O(V^2)$.
 
 A graph is **sparse** when $|E| \ll |V|^2$ (typically $|E| \approx O(|V|)$), which describes almost all real-world software graphs: social networks, web page hyper-links, road transport nets, and microservice topologies. A graph is **dense** when $|E| \approx |V|^2$, meaning nearly all possible vertex pairs share an edge.
 
@@ -122,7 +100,7 @@ console.log(`Sparse list vertices allocated: ${list.length}`);
 
 ---
 
-### 4. Implementation: Production-Grade Graph Class
+## 4. Implementation: Production-Grade Graph Class
 
 An idiomatic, flexible JavaScript graph representation must support both directed and undirected edges, optional edge weights, and string or integer vertex keys using `Map`.
 
@@ -237,7 +215,9 @@ console.log('Has edge auth -> user-db?', network.hasEdge('auth-service', 'user-d
 
 ---
 
-### 5. Converting Tabular Edge Lists to Adjacency Structures
+## 5. Converting Tabular Edge Lists to Adjacency Structures
+
+> **Edge ($E$)**: A link connecting two vertices; can be directed, undirected, weighted, or unweighted.
 
 In interview challenges (LeetCode / HackerRank) and database query results, graphs arrive as a list of edge pairs: `edges = [[0, 1], [0, 2], [1, 2], [2, 3]]`. Converting edge lists to normalized adjacency lists in $O(V + E)$ time is step zero for any graph traversal algorithm.
 

@@ -7,41 +7,15 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Distinguish the mathematical and structural mechanics of cycles in **undirected** versus **directed** graphs.
-- Implement undirected graph cycle detection using DFS with **parent pointer tracking** to prevent false trivial back-traversals.
-- Validate tree structures (**Graph Valid Tree**) by combining the edge count invariant ($|E| = |V| - 1$) with cycle-free connectivity tests.
-- Master the **3-Color State Machine** (White/Gray/Black or 0/1/2) for detecting back-edges in directed graphs.
-- Solve **Course Schedule I** to verify the validity of prerequisite DAGs before job pipeline execution.
-- Model and prevent circular deadlocks and wait-for graph freezes in Node.js event-driven services and distributed transaction managers.
-
----
-
 ## Prerequisites
 
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Adjacency list construction and directed vs. undirected edges.
 - [Day 38: Graph Traversal: DFS and Connected Components](day-38-graph-traversal-dfs-and-components.md) — DFS recursion, backtracking, and visited state management.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Undirected vs. Directed Cycle Mechanics
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Cycle** | A closed path in a graph where a non-empty sequence of edges starts and ends at the same vertex with no repeated edges. | Indicates fatal deadlocks, infinite loops, or invalid tree structures. |
-| **Parent Pointer** | Tracking the immediate predecessor vertex during undirected DFS to avoid misinterpreting the bidirectional reverse edge as a cycle. | Without this, every single undirected edge `(u, v)` would register as a false cycle. |
-| **Back-Edge** | An edge in a directed DFS tree that points from a descendant node back to an active ancestor on the recursion stack. | The definitive indicator of a directed cycle; discovered when encountering a **Gray** node. |
-| **3-Color States** | A vertex classification tri-state: 0 (White/Unvisited), 1 (Gray/Visiting on Stack), 2 (Black/Fully Explored). | Standard algorithm for directed cycle detection in $O(V + E)$ time without duplicate exploration. |
-| **Graph Valid Tree** | A connected, undirected graph with no cycles, which strictly satisfies $|E| = |V| - 1$. | Verifies whether a network topology forms a valid hierarchical tree. |
-| **Wait-For Graph** | A directed graph modeling resource allocations where edge $A \to B$ means transaction $A$ waits for transaction $B$. | A directed cycle in a wait-for graph indicates an unresolvable distributed deadlock. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Undirected vs. Directed Cycle Mechanics
+> **Cycle**: A closed path in a graph where a non-empty sequence of edges starts and ends at the same vertex with no repeated edges.
 
 In an **undirected graph**, an edge between $u$ and $v$ allows bidirectional movement. When traversing from $u$ to $v$, vertex $v$ naturally contains $u$ in its neighbor list. Encountering $u$ is not a cycle; it is simply looking backward along the edge you just crossed. A cycle only occurs if you encounter an already-visited vertex $w$ that is **not your parent**.
 
@@ -63,7 +37,7 @@ Undirected Cycle vs. Directed Diamond vs. Directed Cycle:
 
 ---
 
-### 2. Undirected Cycle Detection via Parent Tracking
+## 2. Undirected Cycle Detection via Parent Tracking
 
 When exploring vertex $u$:
 1. Mark $u$ as visited.
@@ -113,7 +87,9 @@ function hasUndirectedCycle(numVertices, adjList) {
 
 ---
 
-### 3. Graph Valid Tree Invariant
+## 3. Graph Valid Tree Invariant
+
+> **Graph Valid Tree**: A connected, undirected graph with no cycles, which strictly satisfies $
 
 In **Graph Valid Tree** (LeetCode 261), we are given $n$ nodes labeled $0$ to $n-1$ and a list of undirected edges. We must determine if these edges form a valid tree.
 
@@ -174,7 +150,7 @@ console.log('Is valid tree [5, cycle]:', validTree(5, [[0, 1], [1, 2], [2, 3], [
 
 ---
 
-### 4. Directed Cycle Detection: The 3-Color State Machine
+## 4. Directed Cycle Detection: The 3-Color State Machine
 
 To detect cycles in directed graphs (e.g., **Course Schedule I**, LeetCode 207), we assign each vertex one of three states:
 - **0 (WHITE)**: Unvisited. Not yet explored.
@@ -251,6 +227,8 @@ console.log('Can finish [cycle 1<->0]:', canFinish(2, [[1, 0], [0, 1]])); // fal
 ## Detailed Node.js Relevance
 
 ### Distributed Wait-For Graphs and Deadlock Resolution
+
+> **Wait-For Graph**: A directed graph modeling resource allocations where edge $A \to B$ means transaction $A$ waits for transaction $B$.
 
 In enterprise Node.js microservices handling distributed transactions (e.g., orchestrating PostgreSQL row locks across multiple tables):
 

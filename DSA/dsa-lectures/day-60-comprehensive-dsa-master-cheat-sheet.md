@@ -7,38 +7,12 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Big-O Master Reference Matrix** covering all fundamental data structures, operations, and sorting algorithms.
-- Review and internalize the **17 Core Algorithmic Patterns** with their trigger clues, code templates, and complexity guarantees.
-- Retain canonical implementation templates for two pointers, sliding window, binary search, monotonic stacks, heaps, graphs, DSU, and dynamic programming.
-- Follow a structured **12-Week Spaced Repetition Revision Calendar** to retain all 60 days of concepts for technical interviews.
-- Bridge theoretical algorithmic complexity directly into production Node.js V8 execution realities and engineering trade-offs.
-
----
-
 ## Prerequisites
 
 - [Day 01 through Day 59: Complete 12-Week Curriculum](day-01-big-o-notation-and-algorithm-analysis-in-v8.md) — All foundational, intermediate, and advanced DSA topics.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Big-O Master Matrix** | The definitive operational complexity reference across all major data structures and sorting algorithms. | Serves as the ultimate verification scorecard for evaluating algorithm performance. |
-| **Algorithmic Archetype** | One of 17 foundational problem patterns (e.g., Two Pointers, Monotonic Stack, DSU) that categorize 95% of interview questions. | Instant pattern recognition transforms novel, complex questions into solved paradigms. |
-| **Space-Time Tradeoff** | Exchanging auxiliary memory (e.g., Hash Tables, Precomputed Prefix Arrays) to eliminate exponential nested scans. | The universal mechanism powering high-performance software engineering. |
-| **V8 Execution Optimization** | The mechanical sympathy between JavaScript code and the V8 runtime (Hidden Classes, TypedArrays, event loop budgets). | Separates junior coders from senior backend systems engineers. |
-| **Spaced Repetition Review** | A progressive learning cadence that reinforces weak pattern recognitions at escalating time intervals. | Prevents decay of 60 days of algorithmic intuition before interview loops. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Data Structures Master Reference Matrix
+## 1. Data Structures Master Reference Matrix
 
 A data structure master reference matrix is a unified asymptotic complexity lookup system that maps fundamental abstract data types to their operational Big-O runtimes and space constraints across average and worst-case execution conditions.
 
@@ -61,7 +35,7 @@ A data structure master reference matrix is a unified asymptotic complexity look
 
 ---
 
-### 2. Sorting Algorithms Master Matrix
+## 2. Sorting Algorithms Master Matrix
 
 A sorting algorithm master matrix is a systematic comparison framework documenting the asymptotic time complexities, auxiliary memory bounds, and stability characteristics of canonical data ordering procedures.
 
@@ -75,7 +49,7 @@ A sorting algorithm master matrix is a systematic comparison framework documenti
 
 ---
 
-### 3. The 17 Core Algorithmic Patterns Master Reference
+## 3. The 17 Core Algorithmic Patterns Master Reference
 
 Algorithmic design patterns are reusable structural templates that map recurring computational problems to optimal space-time strategies, abstracting specific input details into standardized algorithmic paradigms.
 
@@ -101,7 +75,7 @@ Algorithmic design patterns are reusable structural templates that map recurring
 
 ---
 
-### 4. Canonical Algorithmic Code Templates
+## 4. Canonical Algorithmic Code Templates
 
 Canonical algorithmic code templates are standardized, language-idiomatic implementation skeletons that encapsulate the invariant loop structures, boundary conditions, and state transitions of core computational patterns.
 
@@ -234,7 +208,7 @@ class DisjointSetUnion {
 
 ---
 
-### 5. 12-Week Post-Course Revision Plan & Pre-Interview Checklist
+## 5. 12-Week Post-Course Revision Plan & Pre-Interview Checklist
 
 A structured revision roadmap is a spaced-repetition retention schedule that organizes comprehensive computer science curriculum topics into prioritized review blocks, benchmark challenges, and time-boxed mock interviews.
 

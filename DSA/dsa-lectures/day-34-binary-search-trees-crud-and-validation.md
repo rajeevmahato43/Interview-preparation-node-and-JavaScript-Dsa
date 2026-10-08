@@ -5,42 +5,15 @@
 [Previous: Tree Depth, Diameter, and Path Sums](day-33-tree-depth-diameter-and-path-sums.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Lowest Common Ancestor and Tree Serialization](day-35-lowest-common-ancestor-and-serialization.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the **Binary Search Tree (BST)** invariant: every left subtree key $< \text{node.val} <$ every right subtree key.
-- Implement BST Search and Insertion in $O(h)$ time ($O(\log n)$ balanced, $O(n)$ degenerate).
-- Master BST Deletion across all 3 structural cases: leaf node, single child, and two children with **In-Order Successor** replacement.
-- Implement **Validate Binary Search Tree** (LeetCode 98) using boundary propagation `(min, max)` and in-order monotonicity.
-- Explain why local child checks (`node.val > node.left.val`) fail to detect deep subtree ancestor violations.
-- Connect BST search invariants to relational database B-Tree index pages in Node.js backend architectures.
-
----
-
 ## Prerequisites
 
 - [Day 26: Binary Search Bounds and Intervals](day-26-binary-search-bounds-and-intervals.md) — Binary search comparison principles.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Recursive and iterative In-Order traversals.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The Binary Search Tree Global Invariant
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Binary Search Tree (BST)** | A binary tree where for every node, all keys in its left subtree are strictly smaller, and all keys in its right subtree are strictly larger. | Enables logarithmic $O(\log n)$ search, insert, and delete operations when balanced. |
-| **Global BST Invariant** | The requirement that ordering constraints apply across all transitive descendants, not merely immediate children. | Validating a BST requires passing ancestor bounds `(min, max)` downwards rather than inspecting local children. |
-| **In-Order Successor** | The node with the smallest value that is strictly greater than the current node's value (the leftmost node in its right subtree). | Serves as the drop-in replacement when deleting a node possessing two active children. |
-| **In-Order Predecessor** | The node with the largest value that is strictly smaller than the current node's value (the rightmost node in its left subtree). | Symmetrical alternative drop-in replacement for two-child node deletions. |
-| **Degenerate BST** | An unbalanced BST where nodes form a linear chain (height $h = n$), typically created by inserting elements in sorted order. | Degrades search performance from $O(\log n)$ to $O(n)$, motivating self-balancing trees (AVL / Red-Black). |
-
----
-
-## Core Concepts
-
-### 1. The Binary Search Tree Global Invariant
+> **Binary Search Tree (BST)**: A binary tree where for every node, all keys in its left subtree are strictly smaller, and all keys in its right subtree are strictly larger.
 
 A **Binary Search Tree (BST)** is an ordered hierarchical data structure where every node satisfies a strict global ordering constraint across its entire left and right subtrees:
 $$\forall x \in \text{LeftSubtree}(N): \text{key}(x) < \text{key}(N)$$
@@ -62,7 +35,7 @@ Valid BST:                          INVALID BST (Subtree Violation):
 
 ---
 
-### 2. BST Search and Insertion in $O(h)$ Time
+## 2. BST Search and Insertion in $O(h)$ Time
 
 Because keys are partitioned, search and insertion discard half the remaining tree at each decision node:
 - If `val === curr.val`: Target found.
@@ -105,7 +78,7 @@ function insertIntoBST(root, val) {
 
 ---
 
-### 3. BST Deletion: The Three Structural Cases
+## 3. BST Deletion: The Three Structural Cases
 
 Deleting a node from a BST (LeetCode 450) must preserve the global ordering invariant. It breaks down into three distinct structural cases:
 
@@ -171,7 +144,7 @@ function deleteNode(root, key) {
 
 ---
 
-### 4. Validate Binary Search Tree: Why Local Checks Fail
+## 4. Validate Binary Search Tree: Why Local Checks Fail
 
 A common interview mistake is checking only immediate child relationships:
 ```javascript
@@ -384,6 +357,8 @@ The proof proceeds by structural induction on tree height:
 ---
 
 ### 2. When deleting a node with two children, why is the In-Order Successor guaranteed to have at most one child?
+
+> **In-Order Successor**: The node with the smallest value that is strictly greater than the current node's value (the leftmost node in its right subtree).
 
 **Question:** In BST deletion, explain why the In-Order Successor (the smallest node in the right subtree) is mathematically guaranteed to have at most one child, and identify which child that can be.
 

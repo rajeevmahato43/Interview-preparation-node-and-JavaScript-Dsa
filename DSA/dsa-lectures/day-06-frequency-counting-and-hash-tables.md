@@ -5,41 +5,12 @@
 [Previous: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain how hash tables compute bucket indices to achieve $O(1)$ average-time lookups, insertions, and deletions.
-- Analyze hash collisions and separate chaining resolution under worst-case adversarial conditions ($O(n)$ degradation).
-- Implement the **Frequency Counter Pattern** to reduce quadratic nested searches ($O(n^2)$) to linear passes ($O(n)$).
-- Choose between a JavaScript `Map`, a plain object `{}`, and a fixed-size `Int32Array(26)` based on memory layout, key types, and V8 garbage collection overhead.
-- Protect Node.js backends against prototype pollution vulnerabilities and hash-flooding Denial-of-Service attacks.
-- Solve canonical frequency problems: First Unique Character, Ransom Note, and Majority Element (comparing Hash Maps to Boyer-Moore Voting).
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis, average vs worst-case complexity.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — JavaScript collection primitives and prototype traps.
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Linear scans vs indexed lookups.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Hash Table** | A data structure that maps keys to bucket indices using a hash function, storing key-value pairs in memory. | Provides $O(1)$ average-time search, insert, and delete operations. |
-| **Separate Chaining** | A collision resolution strategy where each bucket in the hash table contains a linked list or tree of colliding entries. | If all keys collide into the same bucket, lookup performance degrades from $O(1)$ to $O(n)$. |
-| **Frequency Counter Pattern** | An algorithmic design pattern that collects item counts in a hash map to compare or filter datasets in $O(n)$ time. | Eliminates nested-loop comparisons, reducing algorithms from $O(n^2)$ to $O(n)$. |
-| **Null-Prototype Object** | An object created via `Object.create(null)` that does not inherit properties from `Object.prototype`. | Prevents prototype pollution and accidental collisions with built-ins like `toString` and `constructor`. |
-| **Boyer-Moore Voting Algorithm** | An optimal streaming algorithm that finds the majority element in an array in $O(n)$ time and $O(1)$ auxiliary space. | Avoids allocating an $O(n)$ frequency map when an element appears strictly more than $\lfloor n / 2 \rfloor$ times. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -58,7 +29,9 @@ By the end of this lecture, you should be able to:
   • Adversarial Worst Case: All keys collide into Bucket 1 -> O(n) linked list traversal.
 ```
 
-### 1. Hash Table Architecture and Collision Mechanics
+## 1. Hash Table Architecture and Collision Mechanics
+
+> **Hash Table**: A data structure that maps keys to bucket indices using a hash function, storing key-value pairs in memory.
 
 A Hash Table is an associative data structure that stores key-value pairs and computes array indices using a hash function.
 
@@ -74,7 +47,9 @@ When an entry is stored:
 
 ---
 
-### 2. The Frequency Counter Pattern ($O(n^2) \to O(n)$)
+## 2. The Frequency Counter Pattern ($O(n^2) \to O(n)$)
+
+> **Frequency Counter Pattern**: An algorithmic design pattern that collects item counts in a hash map to compare or filter datasets in $O(n)$ time.
 
 In many problems, questions arise such as:
 - *"Does array A contain the exact same frequencies as array B?"*
@@ -128,7 +103,7 @@ console.log("Fast result:", findFirstUniqueFast(text)); // 2 ('v')
 
 ---
 
-### 3. Collection Selection: Plain Object vs `Map` vs Fixed Vector
+## 3. Collection Selection: Plain Object vs `Map` vs Fixed Vector
 
 Choosing the correct dictionary structure in Node.js determines both algorithmic correctness and engine memory efficiency:
 
@@ -157,7 +132,7 @@ console.log(safeMap.has("toString")); // false -> Safe!
 
 ---
 
-### 4. Canonical Problems: Ransom Note and Majority Element
+## 4. Canonical Problems: Ransom Note and Majority Element
 
 #### Problem A: Ransom Note (Multi-Set Decrement Pattern)
 Given two strings `ransomNote` and `magazine`, return `true` if `ransomNote` can be constructed using the letters from `magazine` (each letter in `magazine` can only be used once).
@@ -406,6 +381,8 @@ console.log("✅ All rate-limiter frequency counting tests passed successfully!"
 
 ### 1. How does a hash table resolve collisions using Separate Chaining, and what happens to asymptotic complexity under an adversarial attack?
 
+> **Separate Chaining**: A collision resolution strategy where each bucket in the hash table contains a linked list or tree of colliding entries.
+
 **Question:** Explain the internal mechanics of Separate Chaining in hash tables and analyze how hash-flooding attacks affect runtime complexity.
 
 **Answer:** A hash table maps keys to bucket indices using a hash function: $\text{index} = \text{hash}(\text{key}) \pmod{\text{capacity}}$. When two distinct keys yield the same index, this is a **collision**. Under **Separate Chaining**, each array bucket contains a pointer to a linked list (or balanced red-black tree in engines like Java's HashMap or modern V8 map variants) holding all key-value entries mapped to that bucket.
@@ -439,6 +416,8 @@ The code prints: `2 1`.
 ---
 
 ### 3. What is the Boyer-Moore Voting Algorithm, and how does it find the majority element in $O(1)$ space compared to a frequency map?
+
+> **Boyer-Moore Voting Algorithm**: An optimal streaming algorithm that finds the majority element in an array in $O(n)$ time and $O(1)$ auxiliary space.
 
 **Question:** Explain the mathematical intuition behind the Boyer-Moore Voting Algorithm and implement it in JavaScript.
 

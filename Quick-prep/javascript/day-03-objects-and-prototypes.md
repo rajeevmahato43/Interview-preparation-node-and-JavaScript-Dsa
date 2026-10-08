@@ -1,122 +1,214 @@
-# Day 3: Objects, Collections, and Serialization
+# Day 3: Objects, Prototypes, Classes, and Arrays
 
-## Objects and property behavior
+Quick review of main-course lectures 9–12. Designed for rapid interview revision: property descriptors, object immutability, prototype delegation chains, ES6 classes with private fields (`#`), mutating vs non-mutating array methods, and array sorting traps.
 
-**1. Creation and keys**
+## Objects, property descriptors, and mutability
 
-Object literals create objects; property keys are strings or symbols.
+**1. Property descriptors: Data vs Accessor**
 
-```js
-const fieldName = "status";
-const item = { [fieldName]: "ready" };
-```
-
-**2. Property access**
-
-Dot access names a fixed property; brackets support computed keys.
+Every object property has metadata attributes configured via `Object.defineProperty()`:
+- **Data Descriptors:** `value`, `writable` (can change value), `enumerable` (shows in loops/keys), `configurable` (can delete property or alter descriptor).
+- **Accessor Descriptors:** `get`, `set`, `enumerable`, `configurable`.
 
 ```js
-user.name;      // fixed key
-user[field];    // computed key
+const config = {};
+Object.defineProperty(config, "apiKey", {
+  value: "secret-key-123",
+  writable: false,      // Read-only
+  enumerable: false,    // Hidden from Object.keys() and JSON.stringify()
+  configurable: false   // Cannot be deleted or reconfigured
+});
+
+config.apiKey = "new-key"; // Fails silently in sloppy mode; throws TypeError in strict mode
+console.log(config.apiKey); // "secret-key-123"
 ```
 
-**3. Own, inherited, and missing properties**
+**1.1 Shallow immutability: Freeze vs Seal**
 
-Lookup checks own properties then prototypes; a missing property reads `undefined`.
+- `Object.freeze()`: Prevents adding, removing, or modifying properties (`writable: false, configurable: false`).
+- `Object.seal()`: Prevents adding or removing properties, but existing writable properties can still be updated.
+- Both methods are strictly **shallow**; nested objects remain fully mutable.
 
 ```js
-Object.hasOwn(user, "role"); // distinguish absent from present-undefined
+const user = Object.freeze({ name: "Bob", settings: { theme: "dark" } });
+user.name = "Alice";               // Fails / Throws in strict mode
+user.settings.theme = "light";     // Mutates successfully! (nested object is not frozen)
 ```
 
-**4. Getters and setters**
+[Objects and descriptors](../../Javascript/javascript-lectures/day-09-objects-and-property-access.md)
 
-Accessors run code on property read/write rather than storing a plain field.
+## Prototypes and delegation chains
+
+**1. The prototype delegation mechanism**
+
+JavaScript objects do not copy behavior from classes; they delegate property lookups up the prototype chain (`[[Prototype]]` link). When reading `obj.prop`, V8 checks `obj`, then `Object.getPrototypeOf(obj)`, continuing until found or terminating at `null`.
 
 ```js
-get fullName() { return first + " " + last; }
+const animal = {
+  makeSound() { return this.sound; }
+};
+
+// Delegate directly via Object.create
+const dog = Object.create(animal);
+dog.sound = "Woof!";
+console.log(dog.makeSound()); // "Woof!" (delegated up the chain)
+console.log(Object.getPrototypeOf(dog) === animal); // true
 ```
 
-**5. Methods and spread**
+**1.1 `Object.create(null)` for dictionary lookups**
 
-Method shorthand creates a function-valued property; object spread copies enumerable own fields shallowly.
+Objects created with `Object.create(null)` have no prototype chain (`[[Prototype]] === null`). They are impervious to Prototype Pollution attacks and contain no inherited methods (like `toString` or `valueOf`).
 
 ```js
-const updated = { ...user, active: true };
+const map = Object.create(null);
+map["key"] = 100;
+console.log(map.toString); // undefined - completely clean dictionary
 ```
 
-**6. Property descriptors**
+**1.2 Introspection: `Object.hasOwn` vs `hasOwnProperty`**
 
-`writable`, `enumerable`, and `configurable` control property behavior; omitted descriptor flags default to false in `Object.defineProperty`.
-
-**7. Extension, sealing, and freezing**
-
-`preventExtensions` blocks additions; `seal` also blocks deletion/configuration; `freeze` also blocks top-level writes. These are shallow.
+Use `Object.hasOwn(obj, prop)` (ES2022) to check if a property belongs directly to an object rather than its prototype. Unlike `obj.hasOwnProperty()`, it does not fail on `Object.create(null)` objects.
 
 ```js
-const config = Object.freeze({ nested: {} });
-config.nested.value = 1; // nested object remains mutable
+const proto = { inherited: true };
+const child = Object.create(proto);
+child.own = true;
+
+console.log(Object.hasOwn(child, "own"));       // true
+console.log(Object.hasOwn(child, "inherited")); // false
 ```
 
-[Objects](../../Javascript/javascript-lectures/day-09-objects-and-property-access.md) | [Descriptors](../../Javascript/javascript-lectures/day-11-property-descriptors-and-immutability.md)
+[Prototypes and inheritance](../../Javascript/javascript-lectures/day-10-prototypes-classes-and-inheritance.md)
 
-## Prototypes and classes
+## Classes, inheritance, and private fields
 
-**1. Prototype lookup**
+**1. ES6 Class syntax and prototype sugar**
 
-Missing-property reads walk `[[Prototype]]`; an own property shadows the inherited one.
+Classes are syntactic sugar over prototype delegation, but enforce strict rules: they run in strict mode by default and throw a `TypeError` if invoked without `new`.
 
 ```js
-delete item.name; // an inherited base.name may now appear
+class Service {
+  static version = "1.0"; // Bound to constructor, not instance
+  constructor(name) {
+    this.name = name;
+  }
+  execute() { return `${this.name} running`; }
+}
 ```
 
-**2. Constructor and `new`**
+**1.1 Truly private fields (`#`)**
 
-`new C()` creates an instance linked to `C.prototype`, calls `C` with it, and normally returns that instance.
-
-**3. Class members**
-
-Instance methods are usually on the prototype; static methods belong to the class.
+Prefixing identifiers with `#` creates language-enforced private fields and methods. They cannot be inspected, accessed, or overridden outside the class body, even via `Object.keys()` or bracket notation (`this[#field]` is a syntax error).
 
 ```js
-class User { static fromJSON(data) { return new User(data); } }
+class BankAccount {
+  #balance = 0; // Private field
+
+  deposit(amount) {
+    if (amount <= 0) throw new Error("Invalid deposit");
+    this.#balance += amount;
+  }
+
+  getBalance() {
+    return this.#balance;
+  }
+}
+
+const account = new BankAccount();
+account.deposit(50);
+console.log(account.getBalance()); // 50
+// console.log(account.#balance);  // SyntaxError: Private field '#balance' must be declared in an enclosing class
 ```
 
-**4. Inheritance and `super`**
+**1.2 Subclasses and `super` constructor requirements**
 
-`extends` links prototype chains; `super()` calls the parent constructor, and `super.method()` calls inherited behavior.
+In a derived class constructor, you must call `super(...args)` before accessing `this`; the parent constructor creates and initializes the instance before the derived class binds its fields.
 
-**5. Private fields and overriding**
+```js
+class BaseLogger {
+  constructor(prefix) { this.prefix = prefix; }
+}
 
-`#field` is accessible only by its declaring class; an override replaces inherited method lookup for that name.
+class CustomLogger extends BaseLogger {
+  constructor(prefix, tag) {
+    // this.tag = tag; // ReferenceError: Must call super constructor before accessing 'this'
+    super(prefix);
+    this.tag = tag;
+  }
+}
+```
 
-**6. Composition**
+[Classes and OOP](../../Javascript/javascript-lectures/day-11-property-descriptors-and-immutability.md)
 
-Composition combines collaborators without forcing an inheritance hierarchy; `OrderService` can receive a `PaymentClient`.
+## Arrays, methods, and memory layout
 
-[Full topic](../../Javascript/javascript-lectures/day-10-prototypes-classes-and-inheritance.md)
+**1. Mutating vs non-mutating array methods**
 
-## Built-in data and serialization
+Modern JavaScript provides immutable copying counterparts (ES2023) for classic mutating methods:
+- **Mutating:** `push`, `pop`, `shift`, `unshift`, `splice`, `reverse`, `sort`.
+- **Non-mutating (Copying):** `slice`, `concat`, `toSpliced()`, `toReversed()`, `toSorted()`.
 
-1. **Array indexing and length:** Arrays are indexed objects; assigning a distant index creates holes and can increase `length`. Example: `const a=[]; a[2]=7;` has holes at 0 and 1.
-2. **Mutation and iteration:** Methods such as `push` mutate; `map` returns a new array; sparse holes differ from explicit `undefined`.
-3. **Sorting:** `sort()` mutates and compares as strings by default; numeric order needs `(a, b) => a - b`.
-4. **Strings and Unicode:** Strings are immutable UTF-16 code-unit sequences; `"😀".length` is `2`, though it is one code point.
-5. **Numbers and special values:** Floating point has rounding; `NaN`, infinities, and signed zero have special comparisons. Example: `Number.isNaN(NaN)` is true.
-6. **`BigInt`:** Holds arbitrary-size integers but cannot mix directly with `number`; `10n + 2n` works, `10n + 2` throws.
-7. **`Map` and `Set`:** `Map` associates arbitrary keys to values; `Set` stores unique values. Example: two `{}` object keys remain distinct by identity.
-8. **Weak collections:** `WeakMap`/`WeakSet` hold object keys/values weakly and are not enumerable; useful for metadata without owning object lifetime.
-9. **JSON serialization:** JSON supports a limited value set; undefined object properties are omitted, `BigInt` throws, and cycles throw. [Full topic](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md)
+```js
+const original = [3, 1, 2];
+
+// Mutating: changes original in-place
+// original.sort(); // original is now [1, 2, 3]
+
+// Non-mutating (ES2023): returns a sorted shallow copy
+const sorted = original.toSorted((a, b) => a - b);
+console.log(original); // [3, 1, 2]
+console.log(sorted);   // [1, 2, 3]
+```
+
+**2. The `.sort()` numeric sorting trap**
+
+By default, `.sort()` converts all elements to strings and compares their UTF-16 code units lexicographically. Numeric sorting requires an explicit comparator `(a, b) => a - b`.
+
+```js
+// Lexicographical default sort
+const numbers = [10, 5, 40, 25];
+numbers.sort();
+console.log(numbers); // [10, 25, 40, 5] ('25' < '40' < '5')
+
+// Correct numeric sort
+numbers.sort((a, b) => a - b);
+console.log(numbers); // [5, 10, 25, 40]
+```
+
+**3. Sparse arrays and empty slots**
+
+An array with empty slots (created via `new Array(3)` or deleting an index) differs from an array filled with `undefined`. Methods like `map()`, `filter()`, and `forEach()` skip empty slots completely.
+
+```js
+const sparse = [1, , 3]; // index 1 is an empty hole
+console.log(sparse.length); // 3
+console.log(sparse.map((x) => x * 2)); // [2, <empty>, 6]
+```
+
+[Arrays and collections](../../Javascript/javascript-lectures/day-12-built-in-data-structures-and-serialization.md)
 
 ## Tricky points
 
-1. **Objects and properties**
-	1.1 **Missing versus undefined:** Both read as `undefined`; use `Object.hasOwn` to distinguish an absent own property from a present one.
-	1.2 **Spread:** `{ ...source }` does not copy the prototype, descriptors, or nested object graph.
-	1.3 **Freezing:** `Object.freeze` blocks top-level changes only; nested objects can still mutate.
+1. **Objects and descriptors**
+
+**1.1 Shallow freeze mutating nested properties**
+Applying `Object.freeze()` to a configuration object does not freeze nested arrays or objects. Use a recursive deep-freeze utility for true immutability.
+
+**1.2 Non-configurable property traps**
+Once a property is defined with `configurable: false`, its `enumerable` attribute cannot be changed, and it cannot be switched between data and accessor descriptors.
+
 2. **Prototypes and classes**
-	2.1 **Shadowing:** Deleting an own property can reveal a same-named inherited property.
-	2.2 **`instanceof`:** It follows prototype relationships and may not work across separate realms.
-3. **Collections and serialization**
-	3.1 **Sparse arrays:** Some array callbacks skip holes; do not treat holes and explicit `undefined` as interchangeable.
-	3.2 **Sorting:** `[10, 2].sort()` is lexicographic; use `(a, b) => a - b` for numbers.
-	3.3 **JSON:** `BigInt` throws by default, `undefined` object properties are omitted, and circular references throw.
+
+**1.3 Prototype pollution vulnerability**
+Merging unvalidated user payloads recursively into objects (`target[key] = val`) allows attackers to inject `__proto__.isAdmin = true`, polluting every object across the entire application runtime.
+
+**1.4 Calling class constructors without `new`**
+Unlike standard functions which bind to the global receiver when invoked as `Fn()`, class constructors throw `TypeError: Class constructor cannot be invoked without 'new'`.
+
+3. **Arrays and mutation**
+
+**1.5 Mutating arrays during `.forEach` or `.filter` loops**
+Calling `.splice()` on an array while iterating over it causes the iterator index to skip the immediately following element as array indices shift left.
+
+**1.6 Empty slots vs `undefined` in array methods**
+`[1, , 3].indexOf(undefined)` returns `-1` because the empty slot does not exist on the array, whereas `[1, undefined, 3].indexOf(undefined)` returns `1`.

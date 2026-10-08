@@ -132,14 +132,21 @@ function merge(left, right) {
 ## Tricky points
 
 1. **Complexity and space**
+
    **1.1 Output storage:** Returning a new array of size $N$ is required output, not auxiliary space; distinguish auxiliary working memory from output return storage.
+
    **1.2 Recursion stack:** Recursive algorithms consume $O(d)$ auxiliary stack memory even if no arrays or objects are allocated.
 
 2. **JavaScript collections**
+
    **2.1 Numeric sorting:** `[10, 2, 5].sort()` produces `[10, 2, 5]` because strings are compared; always pass `(a, b) => a - b`.
+
    **2.2 In-place mutation:** `.sort()` and `.reverse()` mutate the array in place; use `.slice().sort(...)` or `.toSorted(...)` if immutability is required.
+
    **2.3 Object keys:** Plain object keys coerce numbers to strings (`{ 1: "a" }` has key `"1"`), whereas `Map` preserves numeric and object reference identity.
 
 3. **Hashing invariants**
+
    **3.1 Lookup before insert:** In complement-searching (Two Sum), inserting before checking causes an element to match with itself if `target === 2 * val`.
+   
    **3.2 Hash collisions:** Object/Map operations run expected $O(1)$, but worst-case degraded hash chains can reach $O(n)$ if keys collide maliciously.

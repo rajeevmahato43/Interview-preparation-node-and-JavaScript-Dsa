@@ -7,41 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Greedy Choice Property**: proving why locally optimal decisions yield globally optimal solutions without backtracking.
-- Memorize the sorting decision rule: when to sort by **Start Time** versus sorting by **End Time**.
-- Solve **Merge Intervals** by maintaining and extending contiguous active temporal ranges.
-- Solve **Non-overlapping Intervals** (Erase Overlap Intervals) by greedily selecting intervals with the earliest finish times.
-- Solve **Meeting Rooms II** using the two-pointer sweep-line event coordinate technique.
-- Apply interval algorithms to hotel bookings, resource reservations, and rate-limiting sliding windows in Node.js backend services.
-
----
-
 ## Prerequisites
 
 - [Day 05: Sorting Basics and Built-in Sort](day-05-sorting-basics-and-built-in-sort.md) — JavaScript comparator functions and TimSort time complexity.
 - [Day 10: Merge Sort and Divide-and-Conquer](day-10-merge-sort-and-divide-and-conquer.md) — Interval division and range merges.
 - [Day 50: 2D DP: Longest Common Subsequence and Knapsack](day-50-2d-dp-longest-common-subsequence-knapsack.md) — Combinatorial optimization trade-offs (DP vs. Greedy).
-
 ---
 
-## Quick Vocabulary Card
+## 1. Interval Relationships and the Sorting Invariant
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Greedy Choice Property** | The heuristic property that a globally optimal solution can be reached by making locally optimal choices at each step. | Transforms exponential search $O(2^n)$ into $O(n \log n)$ sorting without dynamic programming tables. |
-| **Interval** | A continuous range represented by `[start, end]` where $\text{start} \le \text{end}$. | Core data structure for calendar events, memory segments, and time series ranges. |
-| **Merge Intervals** | Combining overlapping or adjacent intervals into single maximal continuous ranges. | Requires sorting by **Start Time** to process intervals in chronological arrival order. |
-| **Earliest End Time** | Prioritizing the interval that terminates earliest among all compatible options. | The mathematically proven greedy invariant that maximizes total non-overlapping intervals. |
-| **Sweep-Line Algorithm** | Treating interval boundaries as discrete start and end events sorted chronologically along a 1D timeline. | Calculates maximum concurrent overlaps (Meeting Rooms II) in $O(n \log n)$ time without 2D checks. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Interval Relationships and the Sorting Invariant
+> **Interval**: A continuous range represented by `[start, end]` where $\text{start} \le \text{end}$.
 
 Two intervals $A = [s_A, e_A]$ and $B = [s_B, e_B]$ (with $s_A \le s_B$) can relate in three distinct ways:
 
@@ -66,7 +41,9 @@ Interval Spatial Topologies:
 
 ---
 
-### 2. Merge Intervals (LeetCode 56)
+## 2. Merge Intervals (LeetCode 56)
+
+> **Merge Intervals**: Combining overlapping or adjacent intervals into single maximal continuous ranges.
 
 Given an array of `intervals`, merge all overlapping intervals and return an array of the non-overlapping intervals that cover all the input intervals.
 
@@ -122,7 +99,7 @@ console.log('Merged:', merge([[1, 3], [2, 6], [8, 10], [15, 18]])); // [[1,6], [
 
 ---
 
-### 3. Non-Overlapping Intervals (LeetCode 435)
+## 3. Non-Overlapping Intervals (LeetCode 435)
 
 Given an array of intervals, find the minimum number of intervals you need to remove to make the rest of the intervals non-overlapping.
 
@@ -165,7 +142,7 @@ console.log('Removed count for [[1,2],[2,3],[3,4],[1,3]]:', eraseOverlapInterval
 
 ---
 
-### 4. Meeting Rooms II: Sweep-Line Concurrent Overlaps
+## 4. Meeting Rooms II: Sweep-Line Concurrent Overlaps
 
 Given an array of meeting time intervals `intervals = [[s_1, e_1], [s_2, e_2], ...]`, find the minimum number of conference rooms required.
 This is mathematically equivalent to finding the **maximum number of concurrent overlapping intervals** at any point in time.

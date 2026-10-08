@@ -114,19 +114,21 @@ Use this structure:
 
 ### 9. Finish with recall-friendly summaries
 Every lesson should end with:
-- Summary bullets
-- A quick cheat sheet
+- Detailed Summary: A comprehensive, in-depth bullet recap covering every core concept, formula, complexity, rule, and runtime behavior from the lecture (not just 3-4 high-level bullets).
+- A quick cheat sheet with reference tables
 - Common pitfalls list
-- Interview questions
-- Navigation or next-step links
+- Interview questions (without difficulty tags)
+- Navigation links
 
-This helps the learner retain the idea and use it later under pressure.
+This helps the learner retain the ideas and use them later under pressure.
 
 ## Decision points and branch logic
 
 ### If the topic is abstract or confusing
-- Define it plainly first
-- Explain the mental model
+- Define it plainly first in basic everyday English
+- Explain what it is, what it does, and what it does NOT do
+- Add an in-place definition callout block (`> **Term**: 1-line definition`)
+- Explain the mental model with a guiding intuition callout (`> When input doubles...`)
 - Add a short real-world analogy
 - Show a small code example
 - Call out the failure mode
@@ -157,16 +159,17 @@ This helps the learner retain the idea and use it later under pressure.
 ## Required quality bar
 
 A high-quality lecture should include all of these in order:
-1. Title and learning outcomes
+1. Title (`# Day XX: <Topic Title>`) with top navigation links (`<nav>`)
 2. Prerequisites
-3. Quick vocabulary card
-4. Core concepts with definitions and subtopics
-5. Tricky points
-6. Hands-on exercise
-7. Summary
-8. Cheat Sheet with Common Pitfalls
-9. Interview Questions
-10. Navigation links
+3. Core concepts with simple, plain English definitions, consistent heading hierarchy (`##` -> `###` -> `####`), in-place term callouts, and ✅/❌ code examples
+4. Tricky Points and Edge Cases (rich in detail with code examples and consequences)
+5. Hands-on exercise (scenario, buggy code, criteria, solution)
+6. Summary (comprehensive, detailed recap of all covered concepts)
+7. Cheat Sheet with Common Pitfalls
+8. Interview Questions (Q&A format)
+9. Navigation links (`<nav>`)
+
+*Note: Never include "Learning Outcomes" or standalone "Quick Vocabulary Card" tables. Define terms in-place where they occur.*
 
 ## A strong content checklist
 

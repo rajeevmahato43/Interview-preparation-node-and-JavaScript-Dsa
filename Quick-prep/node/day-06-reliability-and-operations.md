@@ -1,75 +1,183 @@
-# Day 6: Architecture, Reliability, and Operations
+# Day 6: Architecture, Resilience, Caching, Queues, and Observability
 
-## Service architecture
+Quick review of main-course lectures 33–38. Designed for rapid interview revision: Layered backend architecture, timeouts with AbortSignal, exponential backoff with jitter, Cache-Aside pattern, BullMQ job queues, structured logging, and health probes.
 
-**1. Layered architecture**
+## Layered architecture and service boundaries
 
-Separate transport/controllers, business services, and repositories; inject dependencies rather than importing hidden singletons.
+**1. Separation of concerns: Controller, Service, Repository**
 
-```text
-HTTP route -> service/use case -> repository -> database
+Decouple HTTP protocol concerns from core business logic and database drivers.
+- **Controller:** Inspects HTTP request, validates schema, delegates to service, formats HTTP status and headers.
+- **Service:** Implements business rules, transaction orchestration, domain validation. Agnostic of Express `req` and `res`.
+- **Repository:** Manages database queries, persistence queries, and entity mapping.
+
+```js
+// Service layer: Pure business logic, unit-testable without Express
+export class OrderService {
+  constructor(private orderRepo, private paymentGateway) {}
+
+  async placeOrder(userId, items) {
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const order = await this.orderRepo.create({ userId, total, status: "PENDING" });
+    await this.paymentGateway.charge(userId, total);
+    return this.orderRepo.updateStatus(order.id, "PAID");
+  }
+}
 ```
 
-**2. Deadlines and retries**
+[Layered backend architecture](../../Node/node-lectures/day-33-layered-backend-architecture.md)
 
-Bound total request time; retry transient failures with backoff/jitter only when the operation is safe or idempotent.
+## Resilience: Deadlines, retries, and circuit breakers
 
-**3. Caching and rate limits**
+**1. Upstream timeouts via `AbortSignal`**
 
-Cache repeated reads with freshness/invalidation rules; rate-limit by a defined identity/key and shared state when distributed.
+Never execute unbounded network requests. Use `AbortSignal.timeout(ms)` to terminate hanging outbound HTTP calls and release sockets.
 
-**4. Queues and background work**
+```js
+async function fetchWithDeadline(url, timeoutMs = 3000) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return await res.json();
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new Error(`Upstream request to ${url} exceeded deadline of ${timeoutMs}ms`);
+    }
+    throw err;
+  }
+}
+```
 
-Move slow/bursty work off request paths; handle redelivery, bounded backlog, dead letters, and worker shutdown.
+**2. Exponential backoff with jitter**
 
-[Architecture](../../Node/node-lectures/day-33-layered-backend-architecture.md) | [Retries](../../Node/node-lectures/day-34-deadlines-retries-and-idempotency.md) | [Cache/rate limits](../../Node/node-lectures/day-35-caching-and-rate-limiting.md) | [Queues](../../Node/node-lectures/day-36-queues-and-background-work.md)
+When retrying transient failures (e.g., 503, connection drops), apply exponential backoff combined with randomized jitter to prevent "thundering herd" retry storms from overwhelming struggling downstream dependencies.
 
-## Operations and security
+```js
+async function retryWithBackoff(fn, retries = 3, baseDelayMs = 100) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      // Exponential delay + Full Jitter
+      const delay = Math.random() * (baseDelayMs * Math.pow(2, attempt));
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+```
 
-**1. Observability**
+[Deadlines, retries, and idempotency](../../Node/node-lectures/day-34-deadlines-retries-and-idempotency.md)
 
-Use correlated structured logs, metrics, and traces to connect requests to latency/errors/saturation; redact secrets and PII.
+## Caching and rate limiting
 
-**2. Security review**
+**1. Cache-Aside pattern and cache stampede defense**
 
-Validate input, authorize resources, protect secrets, bound resource use, and return safe errors.
+Query cache first; on miss, fetch from database and populate cache with a Time-To-Live (TTL). To prevent cache stampede (hundreds of concurrent requests hitting DB simultaneously when cache expires), use a distributed lock or early probabilistic expiration.
 
-**3. Dependency failure behavior**
+```js
+async function getCachedUser(userId) {
+  const cacheKey = `user:${userId}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
 
-Define degraded responses and recovery for cache, database, and queue failures rather than assuming dependencies are infallible.
+  // Cache miss: Acquire brief lock to prevent stampede
+  const user = await userRepo.findById(userId);
+  if (user) {
+    await redis.set(cacheKey, JSON.stringify(user), "EX", 300); // 5 min TTL
+  }
+  return user;
+}
+```
 
-[Operations](../../Node/node-lectures/day-37-observability-and-production-operations.md) | [Security](../../Node/node-lectures/day-38-security-review-of-a-node-backend.md)
+**2. Sliding window rate limiting**
+
+Rate limiters protect API resources against brute force and DoS. Implement sliding window counters using Redis sorted sets (`ZADD`, `ZREMRANGEBYSCORE`, `ZCARD`) to avoid fixed-window boundary burst spikes.
+
+```js
+async function isRateLimited(userId, limit = 100, windowSec = 60) {
+  const key = `ratelimit:${userId}`;
+  const now = Date.now();
+  const windowStart = now - windowSec * 1000;
+
+  const multi = redis.multi();
+  multi.zremrangebyscore(key, 0, windowStart); // Evict timestamps outside window
+  multi.zadd(key, now, `${now}-${Math.random()}`); // Record current hit
+  multi.zcard(key); // Count hits in window
+  multi.expire(key, windowSec);
+
+  const results = await multi.exec();
+  const currentHits = results[2][1];
+  return currentHits > limit;
+}
+```
+
+[Caching and rate limiting](../../Node/node-lectures/day-35-caching-and-rate-limiting.md)
+
+## Background queues and observability
+
+**1. Asynchronous job queues (BullMQ)**
+
+Offload heavy or latency-sensitive work (emails, image processing, webhook delivery) from HTTP request loops to persistent Redis-backed queues.
+
+```js
+import { Queue, Worker } from "bullmq";
+
+const emailQueue = new Queue("emails", { connection: redisConnection });
+
+// In HTTP request controller: Fast enqueue (<5ms)
+await emailQueue.add("sendWelcome", { email: "user@example.com" }, {
+  attempts: 5,
+  backoff: { type: "exponential", delay: 1000 },
+  removeOnComplete: true
+});
+
+// In background worker process:
+const worker = new Worker("emails", async (job) => {
+  await mailer.send(job.data.email, "Welcome!");
+}, { connection: redisConnection, concurrency: 10 });
+```
+
+**2. Production health probes and structured logging**
+
+Separate Kubernetes health probes into **Liveness** (is the process alive or deadlocked?) and **Readiness** (are database connection pools and caches ready to accept user traffic?).
+
+```js
+// Liveness probe: Immediate lightweight check
+app.get("/healthz/liveness", (req, res) => res.status(200).send("OK"));
+
+// Readiness probe: Checks dependencies before routing traffic to this replica
+app.get("/healthz/readiness", async (req, res) => {
+  try {
+    await pool.query("SELECT 1"); // Verify PostgreSQL connection pool
+    await redis.ping();          // Verify Redis connection
+    res.status(200).send("READY");
+  } catch (err) {
+    res.status(503).json({ error: "Dependency Unavailable", message: err.message });
+  }
+});
+```
+
+[Queues and background work](../../Node/node-lectures/day-36-queues-and-background-work.md) | [Observability and operations](../../Node/node-lectures/day-37-observability-and-production-operations.md) | [Security review](../../Node/node-lectures/day-38-security-review-of-a-node-backend.md)
 
 ## Tricky points
 
-1. **Architecture**
+1. **Architecture and retries**
 
-**1.1 Layers**
+**1.1 Retrying non-idempotent operations**
+Blindly retrying non-idempotent endpoints (e.g., `POST /orders/checkout` after a socket timeout) when the server actually processed the initial payment causes duplicate charges. Only retry safe idempotent queries or endpoints protected by idempotency keys.
 
-A repository/service split helps only when responsibilities and dependency direction are clear.
+**1.2 Thundering herd during cache invalidation**
+Invalidating a high-traffic cache key simultaneously causes hundreds of concurrent requests to experience cache misses, overwhelming the underlying database with identical queries and causing cascading outages.
 
-**1.2 Retries**
+2. **Queues and workers**
 
-Retrying all errors or retrying without a deadline can amplify an outage.
+**2.1 Missing job deduplication**
+Enqueueing duplicate jobs during network retries without setting unique `jobId` parameters produces redundant background work (e.g., sending multiple emails or double-processing billing runs).
 
-**1.3 Cache**
+**2.2 Memory exhaustion from unbounded queue producers**
+When background workers process jobs slower than incoming HTTP traffic enqueues them, the queue buffer in Redis grows indefinitely, ultimately triggering Redis Out-Of-Memory eviction.
 
-A cache is a performance layer, not the source of truth unless deliberately designed as one.
+3. **Observability and health probes**
 
-**1.4 Queues**
-
-Enqueue acceptance does not mean a job completed; expose job state and failure handling.
-
-2. **Operations and security**
-
-**2.1 Secrets**
-
-Logs and exception messages can leak credentials or personal data.
-
-**2.2 Metrics**
-
-Average latency hides tail latency; monitor percentiles and saturation signals.
-
-**2.3 Rate limits**
-
-A per-process counter does not enforce a global limit across multiple instances.
+**3.1 Coupling readiness probes to third-party APIs**
+Checking third-party external services (e.g., Stripe, Twilio) inside the `/healthz/readiness` probe causes your entire microservice cluster to fail readiness checks and reboot whenever the external vendor suffers downtime.

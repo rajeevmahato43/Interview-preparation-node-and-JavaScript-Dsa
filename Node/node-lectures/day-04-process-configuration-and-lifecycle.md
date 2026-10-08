@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Model and manage the complete lifecycle of a Node.js process from startup validation to graceful termination.
-- Parse and strictly validate environment variables (`process.env`) and command-line arguments (`process.argv`) before opening network or database resources.
-- Understand standard I/O streams (`stdin`, `stdout`, `stderr`) and explain the performance impacts of synchronous vs. asynchronous logging.
-- Handle operating system termination signals (`SIGINT`, `SIGTERM`) and implement idempotent, deadline-bounded graceful shutdown routines.
-- Differentiate between expected operational failures, `uncaughtException`, and `unhandledRejection`, and explain why dying cleanly is safer than limping along.
-- Choose correctly between setting `process.exitCode` and calling `process.exit()`.
-- Identify what handles keep the event loop alive and safely decouple background workers using `unref()`.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be familiar with:
@@ -32,24 +16,6 @@ Before studying this lecture, you should be familiar with:
 *Upcoming Connections:*
 - [Day 05: Files, Paths, URLs, and Safe I/O](day-05-files-paths-urls-and-safe-io.md) covers safe file descriptor management and atomic file writes.
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) expands on enterprise telemetry, heap snapshots, and production crash diagnostics.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **`process` Global** | A built-in Node.js EventEmitter providing access to the current OS process environment, runtime configuration, and execution lifecycle. |
-| **Fail-Fast Principle** | Halting process execution immediately upon detecting missing or invalid configuration before initializing external resources. |
-| **Graceful Shutdown** | Stopping the ingestion of new traffic, allowing in-flight requests to complete within a strict deadline, and cleanly releasing sockets and database connections. |
-| **POSIX Signal** | An asynchronous notification sent by the OS kernel to a process (e.g., `SIGTERM`, `SIGINT`) to trigger termination or lifecycle hooks. |
-| **`process.exitCode`** | An integer property specifying the exit status code Node will return to the OS when the event loop naturally empties. |
-| **`process.exit()`** | A method that terminates the process immediately, bypassing pending async callbacks and discarding unwritten stream buffers. |
-| **`uncaughtException`** | An unhandled synchronous JavaScript error that bubbled all the way past V8's call stack without being caught by a `try/catch` block. |
-| **`unhandledRejection`** | A Promise rejection that occurred without an attached `.catch()` handler or `try/catch` block at the microtask checkpoint. |
-| **Active Handle** | A libuv reference (e.g., an open TCP socket, active HTTP server, or running timer) that keeps the event loop alive and prevents process exit. |
-| **`unref()`** | A method on timers and network handles that instructs libuv not to keep the event loop alive solely on their account. |
-
 ---
 
 ## 1. The Process Lifecycle Architecture
@@ -330,6 +296,8 @@ logError("Database connection timed out", new Error("ETIMEDOUT"), { poolSize: 10
 
 ## 5. Process Signals & Graceful Shutdown Orchestration
 
+> **Graceful Shutdown**: Stopping the ingestion of new traffic, allowing in-flight requests to complete within a strict deadline, and cleanly releasing sockets and database connections.
+
 A **POSIX signal** is an asynchronous hardware or software interrupt sent by the operating system to notify a process of a system event.
 
 ### 5.1 Common Signals in Backend Engineering
@@ -435,6 +403,10 @@ process.on("SIGINT", () => executeGracefulShutdown("SIGINT"));
 
 ## 6. Fatal Errors: `uncaughtException` vs. `unhandledRejection`
 
+> **`unhandledRejection`**: A Promise rejection that occurred without an attached `.catch()` handler or `try/catch` block at the microtask checkpoint.
+
+> **`uncaughtException`**: An unhandled synchronous JavaScript error that bubbled all the way past V8's call stack without being caught by a `try/catch` block.
+
 An **unhandled fatal error** occurs when an exception is thrown or a Promise rejects without an active catch handler anywhere on the call stack.
 
 ### 6.1 `uncaughtException`: Why the Process MUST Die
@@ -482,6 +454,8 @@ process.on("unhandledRejection", (reason, promise) => {
 ```
 
 ### 6.3 `process.exitCode` vs. `process.exit()`
+
+> **`process.exitCode`**: An integer property specifying the exit status code Node will return to the OS when the event loop naturally empties.
 
 | Feature | `process.exitCode = code` | `process.exit(code)` |
 | :--- | :--- | :--- |
@@ -562,6 +536,8 @@ console.log(process.env.DEBUG); // undefined
 ```
 
 ### 2. Windows Does Not Support POSIX Signals
+
+> **POSIX Signal**: An asynchronous notification sent by the OS kernel to a process (e.g., `SIGTERM`, `SIGINT`) to trigger termination or lifecycle hooks.
 Windows does not implement standard POSIX signaling. When running on Windows:
 - `SIGINT` works in the console via `Ctrl + C`.
 - `SIGTERM` and `SIGHUP` are not natively emitted by the OS; Windows sends shutdown events via console control handlers.

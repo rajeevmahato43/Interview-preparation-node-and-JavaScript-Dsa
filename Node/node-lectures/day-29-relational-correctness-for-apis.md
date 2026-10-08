@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Articulate why application-layer validation (Zod/Joi) is structurally incapable of preventing race conditions and data corruption without relational database constraints.
-- Architect robust relational schemas utilizing `PRIMARY KEY`, `FOREIGN KEY`, `UNIQUE`, `CHECK`, and `EXCLUSION` constraints to enforce business invariants at the database boundary.
-- Select the appropriate referential action (`ON DELETE RESTRICT`, `NO ACTION`, `CASCADE`, `SET NULL`) to prevent orphan records or catastrophic recursive cascading deletions.
-- Design partial unique indexes (`WHERE deleted_at IS NULL`) to resolve the canonical uniqueness conflict when implementing soft-deletes in relational systems.
-- Execute zero-downtime PostgreSQL schema migrations for constraints and column additions using the `NOT VALID` and `VALIDATE CONSTRAINT` two-phase pattern to avoid catalog lock starvation.
-- Translate relational constraint violations into semantic HTTP domain responses (`400 Bad Request`, `409 Conflict`, `422 Unprocessable Entity`).
-
----
-
 ## Prerequisites
 
 - [Day 28: Parameterized SQL CRUD](day-28-parameterized-sql-crud.md) — Extended query protocol, SQLSTATE mapping, and atomic DML statements.
 - [Day 16: Express Input Parsing, Validation, and Serialization](day-16-express-input-validation-and-serialization.md) — Request payload schemas, parameter boundaries, and DTO projections.
 - [Day 17: Async Express and Centralized Errors](day-17-async-express-and-centralized-errors.md) — Operational exception mapping and centralized error dispatching.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Relational Invariant** | A condition or business rule guaranteed by the database catalog to remain permanently true across all concurrent transactions. | Eliminates silent data corruption caused by application race conditions, partial failures, or bypassing APIs. |
-| **Referential Action** | The automated cascade policy (`RESTRICT`, `CASCADE`, `SET NULL`) executed by the database when a referenced primary key is updated or deleted. | Prevents dangling foreign key pointers while protecting critical financial records from accidental recursive cascading deletion. |
-| **Check Constraint** | A database rule evaluating a boolean expression on column values before allowing any `INSERT` or `UPDATE` operation to succeed. | Guarantees scalar invariants (e.g., `price >= 0`, `end_date > start_date`) even if buggy application code attempts invalid writes. |
-| **Partial Unique Index** | An index enforcing uniqueness exclusively across a filtered subset of rows using a predicate clause: `CREATE UNIQUE INDEX ... WHERE clause`. | Enables multi-version uniqueness, soft-deletes (`deleted_at IS NULL`), and single-active-state constraints on multi-state tables. |
-| **`NOT VALID` Constraint** | A PostgreSQL DDL feature allowing constraints to be added without performing an immediate full-table validation scan. | Prevents long-running `ACCESS EXCLUSIVE` table locks during production migrations on large datasets, preventing API downtime. |
-| **Table Lock Starvation** | A scenario where a DDL operation waiting for an `ACCESS EXCLUSIVE` lock queues behind long-running queries, blocking all incoming API requests. | Causes cascading pool exhaustion and total API outages if migrations are executed without strict `lock_timeout` controls. |
-
 ---
 
 ## Core Concepts
@@ -150,6 +123,8 @@ export async function safeRegisterUser(pool, rawInput) {
 
 ### 2. Foreign Key Semantics and Referential Actions
 
+> **Referential Action**: The automated cascade policy (`RESTRICT`, `CASCADE`, `SET NULL`) executed by the database when a referenced primary key is updated or deleted.
+
 A `FOREIGN KEY` constraint establishes a relational link between a child column and a parent table's primary or unique key. It guarantees that a child record cannot reference a non-existent parent entity.
 
 When the referenced parent row is updated or deleted, PostgreSQL enforces the configured **referential action**:
@@ -195,6 +170,8 @@ In this schema:
 
 ### 3. Partial Unique Indexes and the Soft-Delete Dilemma
 
+> **Partial Unique Index**: An index enforcing uniqueness exclusively across a filtered subset of rows using a predicate clause: `CREATE UNIQUE INDEX ... WHERE clause`.
+
 A partial unique index is a PostgreSQL B-Tree index that enforces uniqueness only on the subset of rows matching a boolean `WHERE` filter expression:
 
 ```sql
@@ -228,6 +205,8 @@ By applying a partial unique index, multiple historical deleted rows can coexist
 ---
 
 ### 4. CHECK Constraints vs Database ENUMs
+
+> **Check Constraint**: A database rule evaluating a boolean expression on column values before allowing any `INSERT` or `UPDATE` operation to succeed.
 
 Enforcing status lifecycles and domain values requires choosing between PostgreSQL `ENUM` types, `CHECK` constraints, or Lookup Tables:
 
@@ -634,6 +613,8 @@ PostgreSQL's B-Tree engine only includes rows in the index structure that satisf
 ---
 
 ### 4. What is table lock starvation during database migrations, and how does the two-phase `NOT VALID` / `VALIDATE CONSTRAINT` pattern prevent API outages?
+
+> **Table Lock Starvation**: A scenario where a DDL operation waiting for an `ACCESS EXCLUSIVE` lock queues behind long-running queries, blocking all incoming API requests.
 
 When an `ALTER TABLE ... ADD CONSTRAINT` statement is executed naively, PostgreSQL attempts to acquire an `ACCESS EXCLUSIVE` lock on the table. This lock conflicts with all other lock types, meaning no other transaction can read or write to the table while it is held. If long-running queries are executing on the table when the DDL starts, the `ALTER TABLE` statement must wait. Crucially, PostgreSQL queues all subsequent queries behind the waiting DDL. As a result, incoming API queries (`SELECT`, `INSERT`) get stuck behind the `ALTER TABLE` lock request in the queue. Within seconds, all connections in the Node.js pool become blocked waiting for locks, leading to complete API lock starvation and service failure. Furthermore, verifying existing table data against the new constraint requires a full sequential scan while holding this exclusive lock.
 

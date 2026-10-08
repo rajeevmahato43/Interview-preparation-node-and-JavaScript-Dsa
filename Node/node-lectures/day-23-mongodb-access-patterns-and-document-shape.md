@@ -6,39 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Apply the core NoSQL data modeling rule: **Data that is queried together should be stored together**.
-- Evaluate the technical tradeoffs between **Embedding** (denormalized, single-document atomicity) and **Referencing** (normalized, cross-collection links) across 1-to-1, 1-to-Few, 1-to-Many, and 1-to-Squillions relationships.
-- Guard against the **Unbounded Array Anti-Pattern** and prevent hitting MongoDB's hard 16MB BSON document limit.
-- Implement production schema patterns: the **Subset Pattern**, the **Extended Reference Pattern**, the **Bucket Pattern**, and the **Schema Versioning Pattern**.
-- Architect non-blocking, zero-downtime schema evolution in Node.js using polymorphic document adapters and `$jsonSchema` collection validation.
-- Minimize WiredTiger cache churn and document fragmentation caused by dynamic document growth.
-
----
-
 ## Prerequisites
 
 Before diving into document design, review:
 - [Day 18: API Contracts, Pagination, and Idempotency](day-18-api-contracts-pagination-and-idempotency.md) for cursor pagination and sub-resource modeling.
 - [Day 21: MongoDB Driver Lifecycle and BSON](day-21-mongodb-driver-lifecycle-and-bson.md) for BSON size limits, `ObjectId`, and `Decimal128`.
 - [Day 22: MongoDB CRUD from Node](day-22-mongodb-crud-from-node.md) for `$push`, `$addToSet`, and atomic single-document updates.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Embedding** | Storing related sub-entities directly inside the parent document as nested BSON objects or arrays. | Embedding unbounded collections (e.g. storing all user activity logs in an array inside the `User` document). |
-| **Referencing** | Storing the `_id` of a related document in another collection, resolved via application joins or `$lookup`. | Normalizing all entities into separate tables (3NF style) as if MongoDB were a relational database, requiring multiple round-trips for every query. |
-| **Unbounded Array** | An array within a document that grows indefinitely over time without a fixed maximum capacity. | Pushing comments or audit entries into a document array forever; eventually breaches the 16MB BSON limit and causes severe WiredTiger cache thrashing. |
-| **16MB BSON Limit** | The hard maximum size limit for any single document in MongoDB, designed to prevent RAM monopolization. | Assuming documents can be arbitrarily large; large documents degrade disk I/O, network bandwidth, and memory caches. |
-| **Subset Pattern** | Embedding only the most frequently accessed subset of data (e.g. top 5 reviews) in the main document, storing the rest in a separate collection. | Loading a product document containing 10,000 embedded customer reviews just to display the product title and price. |
-| **Extended Reference** | Denormalizing a few immutable or slow-changing fields from a referenced entity directly into the host document. | Executing a separate database lookup to fetch a customer's name for every order in a dashboard listing. |
-
 ---
 
 ## Core Concepts
@@ -73,6 +46,10 @@ Single B-Tree index seek! Entire user profile read in 1ms!
 
 Choosing between Embedding and Referencing is determined by relationship cardinality and data lifecycle:
 
+> **Referencing**: Storing the `_id` of a related document in another collection, resolved via application joins or `$lookup`.
+
+> **Embedding**: Storing related sub-entities directly inside the parent document as nested BSON objects or arrays.
+
 ```text
 Relationship Cardinality Guide:
 ├── 1-to-1 (e.g. User -> Preferences) ──────────────► EMBED
@@ -92,6 +69,8 @@ Relationship Cardinality Guide:
 ---
 
 ### 3. The 16MB Limit and the Unbounded Array Anti-Pattern
+
+> **Unbounded Array**: An array within a document that grows indefinitely over time without a fixed maximum capacity.
 
 MongoDB enforces a strict **16MB limit per BSON document**. 
 
@@ -152,6 +131,8 @@ Supports continuous, zero-downtime application deployments without running block
 
 ### 1. The Extended Reference Pattern for E-Commerce Orders
 
+> **Extended Reference**: Denormalizing a few immutable or slow-changing fields from a referenced entity directly into the host document.
+
 Storing an immutable customer snapshot inside an order document.
 
 ```js
@@ -205,6 +186,8 @@ export class OrderService {
 ---
 
 ### 2. The Subset Pattern: Bounded Embedded Reviews
+
+> **Subset Pattern**: Embedding only the most frequently accessed subset of data (e.g. top 5 reviews) in the main document, storing the rest in a separate collection.
 
 Embedding the 5 most recent reviews in the Product document while storing all historical reviews in a separate collection.
 

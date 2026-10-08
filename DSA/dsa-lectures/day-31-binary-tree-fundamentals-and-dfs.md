@@ -5,44 +5,17 @@
 [Previous: Linked List Fast & Slow Pointers and Reversals](day-30-linked-list-fast-slow-and-reversals.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Level-Order Traversal (BFS) and Tree Views](day-32-level-order-traversal-bfs-and-views.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master hierarchical tree structures, terminologies (root, leaf, ancestor, descendant, depth, height), and binary tree constraints.
-- Implement the three fundamental **Depth-First Search (DFS)** traversals: **Pre-Order**, **In-Order**, and **Post-Order**.
-- Eliminate V8 call stack limits by converting deep recursive tree traversals into iterative stack-based loops on the heap.
-- Explain why In-Order traversal strictly produces monotonic ascending sequences on Binary Search Trees.
-- Connect binary tree hierarchy to real-world Node.js infrastructure: Abstract Syntax Trees (ASTs in Babel/ESLint) and directory sizing.
-- Avoid performance anti-patterns, including quadratic array spreads (`[...left, val, ...right]`) during tree accumulation.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic complexity and tree height bounds.
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Winding and unwinding stack frames.
 - [Day 16: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md) — LIFO execution and heap arrays.
 - [Day 29: Singly and Doubly Linked Lists](day-29-singly-and-doubly-linked-lists.md) — Reference-based node pointer structures.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Anatomy of a Binary Tree: Properties, Heights, and Bounds
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Binary Tree** | A hierarchical data structure consisting of nodes where each node has at most two disjoint child subtrees (`left` and `right`). | The foundational structure for search trees, expression parsers, and priority queues. |
-| **Pre-Order Traversal** | Visiting the current node before traversing its left and right subtrees ($N \to L \to R$). | Used for tree cloning, prefix notation, and AST serialization. |
-| **In-Order Traversal** | Traversing the left subtree, visiting the current node, and then traversing the right subtree ($L \to N \to R$). | Visits nodes of a Binary Search Tree in strictly non-decreasing sorted order. |
-| **Post-Order Traversal** | Traversing both left and right subtrees before visiting the current node ($L \to R \to N$). | Essential for bottom-up computation (e.g., subtree heights, directory sizing, and node deletion). |
-| **Degenerate (Skewed) Tree** | A binary tree where each parent node has only one child, reducing the tree topology to a linear linked list. | Degrades search and traversal operations from $O(\log n)$ to $O(n)$ time and space. |
-
----
-
-## Core Concepts
-
-### 1. Anatomy of a Binary Tree: Properties, Heights, and Bounds
+> **Binary Tree**: A hierarchical data structure consisting of nodes where each node has at most two disjoint child subtrees (`left` and `right`).
 
 A **Binary Tree** is a connected, acyclic hierarchical graph where a single distinguished node is designated as the `root`, and every node contains at most two children labeled `left` and `right`.
 
@@ -66,7 +39,7 @@ Key Definitions:
 
 ---
 
-### 2. The Three DFS Traversal Invariants
+## 2. The Three DFS Traversal Invariants
 
 Depth-First Search (DFS) systematically visits every node in a binary tree by prioritizing depth over breadth. The three classic traversals differ strictly in **when the parent node is processed relative to its children**:
 
@@ -141,7 +114,9 @@ function postorderTraversal(root) {
 
 ---
 
-### 3. Iterative In-Order Traversal: Eliminating Call Stack Limits
+## 3. Iterative In-Order Traversal: Eliminating Call Stack Limits
+
+> **In-Order Traversal**: Traversing the left subtree, visiting the current node, and then traversing the right subtree ($L \to N \to R$).
 
 In production Node.js backends, recursive DFS relies on the engine's internal C++ execution call stack. If a tree degenerates into a skewed list with $20,000$ nodes, the runtime throws:
 `RangeError: Maximum call stack size exceeded`.
@@ -199,7 +174,7 @@ function inorderIterative(root) {
 
 ---
 
-### 4. AST Visitors and File System Tree Walkers in Node.js
+## 4. AST Visitors and File System Tree Walkers in Node.js
 
 In Node.js developer tooling (Babel transpilers, ESLint analyzers, TypeScript compilers), source code is parsed into an **Abstract Syntax Tree (AST)** conforming to the ESTree specification:
 
@@ -237,6 +212,8 @@ Babel / ESLint Visitor:
 ## Hands-On Exercise
 
 ### Scenario: Single-Stack Iterative Post-Order Traversal
+
+> **Post-Order Traversal**: Traversing both left and right subtrees before visiting the current node ($L \to R \to N$).
 
 Implement an iterative Post-Order traversal (`postorderIterative`) using a **single explicit stack** without allocating a second reversal stack. You must track a `lastVisited` node pointer to distinguish between ascending from the left child versus ascending from the right child.
 

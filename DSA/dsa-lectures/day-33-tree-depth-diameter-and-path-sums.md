@@ -5,43 +5,18 @@
 [Previous: Level-Order Traversal (BFS) and Tree Views](day-32-level-order-traversal-bfs-and-views.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Binary Search Trees: CRUD and Validation](day-34-binary-search-trees-crud-and-validation.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Calculate **Maximum Depth** and **Minimum Depth** of a binary tree using bottom-up post-order recursion.
-- Solve **Diameter of a Binary Tree** (LeetCode 543) by aggregating subtree heights in $O(n)$ time.
-- Implement **Path Sum I** (boolean existence) and **Path Sum II** (full path backtracking).
-- Master **Path Sum III** (arbitrary downward paths) using the **Prefix Sum Hash Map** pattern with state rollback on trees.
-- Avoid common interview pitfalls, including the single-child Minimum Depth bug and prefix sum leakage across sibling subtrees.
-- Model nested route middleware execution latency and RBAC permission trees in Node.js.
-
----
-
 ## Prerequisites
 
 - [Day 15: Prefix Sum and Cumulative Totals](day-15-prefix-sum-and-range-queries.md) — Prefix sum hash map complement pattern.
 - [Day 22: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md) — State mutation and rollback.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Recursive DFS traversals and tree height definitions.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Maximum Depth vs. Minimum Depth: The Single-Child Trap
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Maximum Depth** | The number of nodes along the longest path from the root down to the farthest leaf node. | Computable in $O(n)$ time via bottom-up post-order recursion: `1 + Math.max(left, right)`. |
-| **Minimum Depth** | The number of nodes along the shortest path from the root down to the nearest leaf node. | Requires special branching when a node has only one child to avoid falsely terminating on non-leaf nodes. |
-| **Tree Diameter** | The length (number of edges) of the longest path between any two arbitrary nodes in a binary tree. | The path may or may not pass through the root, requiring a running global maximum during height calculation. |
-| **Path Sum Invariant** | A constraint verifying whether node values along a directional path accumulate to an exact target sum. | Backtracking preserves path arrays across branches, while prefix sum maps isolate paths in linear time. |
-| **Tree Prefix Backtracking** | Incrementing the prefix sum frequency in a hash map during descent and decrementing it during unwinding. | Prevents prefix sums from leaking into unrelated sibling or cousin subtrees. |
+> **Minimum Depth**: The number of nodes along the shortest path from the root down to the nearest leaf node.
 
----
-
-## Core Concepts
-
-### 1. Maximum Depth vs. Minimum Depth: The Single-Child Trap
+> **Maximum Depth**: The number of nodes along the longest path from the root down to the farthest leaf node.
 
 The **Maximum Depth** of a binary tree is the length of the longest path from the root to any leaf node:
 $$\text{maxDepth}(\text{node}) = 1 + \max(\text{maxDepth}(\text{left}), \text{maxDepth}(\text{right}))$$
@@ -108,7 +83,7 @@ function minDepth(root) {
 
 ---
 
-### 2. Diameter of a Binary Tree (LeetCode 543)
+## 2. Diameter of a Binary Tree (LeetCode 543)
 
 The **Diameter of a Binary Tree** is the length of the longest path between any two nodes in a tree, measured in edges. This path may or may not pass through the root.
 
@@ -161,7 +136,7 @@ function diameterOfBinaryTree(root) {
 
 ---
 
-### 3. Path Sum I & II: Root-to-Leaf Backtracking
+## 3. Path Sum I & II: Root-to-Leaf Backtracking
 
 - **Path Sum I (LeetCode 112)**: Returns `true` if there exists a root-to-leaf path summing to `targetSum`.
 - **Path Sum II (LeetCode 113)**: Returns all root-to-leaf paths as arrays of values summing to `targetSum`.
@@ -202,7 +177,7 @@ function pathSumII(root, targetSum) {
 
 ---
 
-### 4. Path Sum III: Prefix Sum Map on Trees (LeetCode 437)
+## 4. Path Sum III: Prefix Sum Map on Trees (LeetCode 437)
 
 In **Path Sum III**, paths do not need to start at the root or end at a leaf; they only need to travel downwards from parent to child.
 

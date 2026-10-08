@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish caching (read optimization and latency reduction) from rate limiting (system protection and resource fairness) across architectural boundaries.
-- Compare caching topologies: in-memory process caches (LRU) vs distributed shared caches (Redis) vs multi-tier L1/L2 hybrid architectures.
-- Mitigate catastrophic cache failure modes: Cache Stampede (via Single-Flight coalescing and probabilistic early recomputation), Cache Penetration (Bloom filters/null caching), and Cache Avalanche (TTL jitter).
-- Formulate safe cache invalidation strategies that avoid the dual-write inconsistency trap between databases and cache stores.
-- Implement production-grade rate limiting algorithms: Fixed Window, Sliding Window Log, Sliding Window Counter, and Token Bucket.
-- Execute atomic distributed rate limiting in Express using Redis Lua scripts, emitting standard IETF `RateLimit-*` and `Retry-After` HTTP headers.
-
----
-
 ## Prerequisites
 
 - [Day 18: API Contracts, Pagination, and Idempotency](day-18-api-contracts-pagination-and-idempotency.md) — HTTP header specifications and response contracts.
 - [Day 20: Express Security and HTTP Testing](day-20-express-security-and-http-testing.md) — Defense-in-depth, IP spoofing, and middleware order.
 - [Day 33: Layered Backend Architecture](day-33-layered-backend-architecture.md) — Infrastructure abstractions and repository boundaries.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Cache Stampede (Thundering Herd)** | A failure mode where the expiration of a hot cache key causes thousands of concurrent requests to miss simultaneously and overwhelm the primary database. | Can exhaust connection pools, spike database CPU to 100%, and cause total API failure. |
-| **Single-Flight Coalescing** | An in-memory concurrency pattern where duplicate concurrent requests for an identical missing key share a single in-flight Promise. | Completely prevents database stampedes during cache misses by ensuring exactly one backend fetch occurs per Node process. |
-| **Cache Penetration** | Requests querying non-existent keys that never exist in the database, continuously bypassing the cache and hitting the primary database. | Exploit vector for denial-of-service attacks; mitigated by caching empty sentinel values (`null`) with short TTLs or Bloom filters. |
-| **Cache Avalanche** | The simultaneous expiration of thousands of cached keys configured with identical static TTLs, creating a massive synchronized database load spike. | Mitigated by adding randomized TTL jitter ($\text{TTL} + \text{rand}(0, \Delta)$) to spread expirations evenly across time. |
-| **Sliding Window Counter** | A rate limiting algorithm that calculates an estimated request count by blending the previous window's count with the current window's count based on elapsed time. | Prevents the 2x burst vulnerability of Fixed Window limiters while consuming minimal Redis memory compared to Sliding Window Logs. |
-| **Redis Lua Atomicity** | Executing multiple Redis commands inside a server-side Lua script to guarantee atomic evaluation without network roundtrips. | Eliminates check-then-act race conditions between `GET`, `INCR`, and `EXPIRE` during distributed rate limiting. |
-
 ---
 
 ## Core Concepts
@@ -502,6 +475,10 @@ export function createSlidingWindowRateLimiter({ redis, limit = 100, windowSecon
 
 ### 1. What is a Cache Stampede (or Thundering Herd), and what are the architectural trade-offs between Single-Flight Coalescing and Probabilistic Early Recomputation (XFetch)?
 
+> **Single-Flight Coalescing**: An in-memory concurrency pattern where duplicate concurrent requests for an identical missing key share a single in-flight Promise.
+
+> **Cache Stampede (Thundering Herd)**: A failure mode where the expiration of a hot cache key causes thousands of concurrent requests to miss simultaneously and overwhelm the primary database.
+
 A **Cache Stampede** occurs when a heavily accessed cache key (such as the homepage catalog or trending articles) expires under high concurrent traffic. When thousands of requests arrive in the same millisecond and observe a cache miss, all of them bypass the cache and query the underlying database simultaneously. This sudden wave of identical complex queries causes CPU spikes, exhausts the connection pool, and can crash the primary database.
 
 Two primary patterns mitigate this:
@@ -534,6 +511,8 @@ Regardless of network order, the cache key remains deleted. The very next read r
 ---
 
 ### 3. What is the boundary burst vulnerability of the Fixed Window rate limiter, and how does the Sliding Window Counter resolve it?
+
+> **Sliding Window Counter**: A rate limiting algorithm that calculates an estimated request count by blending the previous window's count with the current window's count based on elapsed time.
 
 A **Fixed Window Counter** tracks request counts within fixed calendar buckets (e.g., 12:00:00 to 12:00:59 with a limit of 100 requests).
 The boundary burst vulnerability occurs when a client concentrates traffic around the window boundary:

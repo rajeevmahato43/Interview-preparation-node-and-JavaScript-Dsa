@@ -7,41 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Two-Sequence String Alignment Pattern** in **Longest Common Subsequence (LCS)** using a 2D matrix.
-- Formulate the classical **0/1 Knapsack Problem** decision model (include vs. exclude) under capacity constraints.
-- Mathematically prove why 1D space optimization in 0/1 Knapsack strictly requires **reverse (backward) loop iteration**.
-- Reduce the **Partition Equal Subset Sum** problem to a 0/1 Knapsack decision model.
-- Trace string alignment operations to understand diff engines (like `git diff`) and text reconciliation.
-- Optimize high-throughput payload packing and rate-limiter cost allocations in Node.js backend microservices.
-
----
-
 ## Prerequisites
 
 - [Day 03: String Manipulation and Two Pointers](day-03-string-manipulation-and-two-pointers.md) — Substrings vs. subsequences and string indexing.
 - [Day 46: Dynamic Programming: Memoization and Tabulation](day-46-dynamic-programming-memo-and-tabulation.md) — Multi-variable DP state formulations.
 - [Day 49: 2D DP: Grid Paths and Minimum Path Sum](day-49-2d-dp-grid-paths-and-minimum-path-sum.md) — 2D matrix navigation and rolling array space optimizations.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Longest Common Subsequence (LCS) Mechanics
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Longest Common Subsequence (LCS)** | The longest sequence of characters appearing in both strings in the same relative order without needing to be contiguous. | Foundation for `git diff`, document comparison, DNA sequencing, and Levenshtein Edit Distance. |
-| **0/1 Knapsack Problem** | Choosing a subset from $N$ items with given weights and values to maximize total value without exceeding capacity $W$; each item can be picked **at most once**. | Core combinatorial optimization archetype; directly models cloud resource budgeting. |
-| **Backward Loop Iteration** | Iterating capacity $w$ backwards from $W$ down to $\text{weight}_i$ when using a 1D DP array. | Critical invariant: prevents an item from being reused multiple times within the same round. |
-| **Subset Sum Partitioning** | Determining if an array can be partitioned into two subsets with equal sum $S / 2$. | NP-complete decision problem solved in pseudo-polynomial $O(N \cdot S)$ time via 0/1 Knapsack. |
-| **Diagonal Transition** | The state transition $dp[i][j] = 1 + dp[i-1][j-1]$ occurring when characters at current indices match ($s_1[i-1] === s_2[j-1]$). | Signals that both strings can consume one matching character together. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Longest Common Subsequence (LCS) Mechanics
+> **Longest Common Subsequence (LCS)**: The longest sequence of characters appearing in both strings in the same relative order without needing to be contiguous.
 
 In **Longest Common Subsequence** (LeetCode 1143), given strings `text1` and `text2`, we seek the length of their longest common subsequence.
 
@@ -97,7 +72,9 @@ console.log('LCS of "abcde" and "ace":', longestCommonSubsequence('abcde', 'ace'
 
 ---
 
-### 2. The 0/1 Knapsack Problem and Backward Iteration
+## 2. The 0/1 Knapsack Problem and Backward Iteration
+
+> **0/1 Knapsack Problem**: Choosing a subset from $N$ items with given weights and values to maximize total value without exceeding capacity $W$; each item can be picked **at most once**.
 
 Given $N$ items where item $i$ has weight $w_i$ and value $v_i$, maximize total value within capacity limit $W$. Each item can be chosen **at most once** ($0$ times or $1$ time).
 
@@ -153,7 +130,7 @@ console.log('Max value:', knapsack01([1, 3, 4, 5], [1, 4, 5, 7], 7)); // 9 (weig
 
 ---
 
-### 3. Partition Equal Subset Sum (LeetCode 416)
+## 3. Partition Equal Subset Sum (LeetCode 416)
 
 Given a non-empty array `nums` containing only positive integers, determine if the array can be partitioned into two subsets such that the sum of elements in both subsets is equal.
 

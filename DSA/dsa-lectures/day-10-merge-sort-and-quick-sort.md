@@ -5,42 +5,12 @@
 [Previous: Duplicate Detection and Array Intersections](day-09-duplicate-detection-and-intersections.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the **Divide-and-Conquer** algorithmic paradigm across recursive sorting algorithms.
-- Implement **Merge Sort** and explain why its deterministic $O(n \log n)$ worst-case guarantee necessitates $O(n)$ auxiliary buffer memory.
-- Implement in-place **Quick Sort** using Lomuto and Hoare partitioning schemes, explaining how poor pivot selection causes $O(n^2)$ time degradation.
-- Analyze **Sort Stability** and its criticality in preserving pre-existing ordering across multi-column data models.
-- Explain why naive functional Quick Sort (`filter` + spread) is an anti-pattern in JavaScript, destroying cache locality and causing excessive allocations.
-- Implement the Dutch National Flag 3-way partition algorithm to sort duplicate-dense collections in $O(n)$ time and $O(1)$ memory.
-- Architect an External Merge Sort pipeline in Node.js to sort gigabyte-scale datasets under strict process RAM limits.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary space.
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Stack frame allocation and `RangeError` depth limits.
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Sorting stability and comparator contracts.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Divide-and-Conquer** | An algorithmic paradigm that partitions a problem into smaller subproblems, solves them recursively, and combines their solutions. | Foundation of $O(n \log n)$ sorting algorithms (Merge Sort and Quick Sort). |
-| **Pivot Element** | A selected reference value used in Quick Sort to partition an array into smaller and greater subsets. | Choosing a poor pivot (e.g., minimum or maximum element) degrades Quick Sort from $O(n \log n)$ to $O(n^2)$. |
-| **In-Place Partitioning** | Rearranging array elements within their existing allocated memory addresses via two-pointer index swaps. | Enables Quick Sort to operate in $O(1)$ auxiliary buffer memory and $O(\log n)$ call stack space. |
-| **Sort Stability** | The guarantee that records with identical sort keys maintain their relative sequence from the input. | Required when chaining sorts across multiple fields (e.g., sort by timestamp, then by priority). |
-| **Dutch National Flag (3-Way Partition)** | A single-pass partitioning algorithm that groups identical keys into a central partition bounded by three pointers. | Eliminates quadratic degradation in Quick Sort when arrays contain massive quantities of duplicate keys. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -61,7 +31,9 @@ By the end of this lecture, you should be able to:
      --> Average O(n log n) time, O(1) buffer space, O(log n) stack frames. Unstable!
 ```
 
-### 1. The Divide-and-Conquer Strategy
+## 1. The Divide-and-Conquer Strategy
+
+> **Divide-and-Conquer**: An algorithmic paradigm that partitions a problem into smaller subproblems, solves them recursively, and combines their solutions.
 
 Both Merge Sort and Quick Sort follow the three-phase Divide-and-Conquer structure:
 1. **Divide:** Split the problem into smaller subproblems.
@@ -74,7 +46,7 @@ Both Merge Sort and Quick Sort follow the three-phase Divide-and-Conquer structu
 
 ---
 
-### 2. Comprehensive Comparison Matrix
+## 2. Comprehensive Comparison Matrix
 
 | Property | Merge Sort | Quick Sort (In-Place) | TimSort (V8 Native) |
 |---|---|---|---|
@@ -88,7 +60,7 @@ Both Merge Sort and Quick Sort follow the three-phase Divide-and-Conquer structu
 
 ---
 
-### 3. Merge Sort Implementation and Trace
+## 3. Merge Sort Implementation and Trace
 
 Merge Sort guarantees $O(n \log n)$ time across all inputs. Because merging two sublists cannot be performed in-place without $O(n)$ shifting overhead, it allocates an auxiliary buffer array of size $n$.
 
@@ -144,7 +116,7 @@ console.log("Merge Sort:", mergeSort([38, 27, 43, 3, 9, 82, 10]));
 
 ---
 
-### 4. Quick Sort Implementation (In-Place Lomuto Partitioning)
+## 4. Quick Sort Implementation (In-Place Lomuto Partitioning)
 
 Quick Sort avoids allocating temporary arrays by partitioning elements directly inside the original array via pointer swaps.
 
@@ -264,17 +236,17 @@ function sortColors(nums) {
   // nums[mid ... high] are unclassified
   // nums[high + 1 ... n - 1] are all 2s
   while (mid <= high) {
-    if (nums[mid] === 0) {
+    if (nums=== 0) {
       // Swap with low pointer and advance both
-      [nums[low], nums[mid]] = [nums[mid], nums[low]];
+      [nums[low], nums] = [nums, nums[low]];
       low++;
       mid++;
-    } else if (nums[mid] === 1) {
+    } else if (nums=== 1) {
       // 1 is in its correct middle partition; simply advance scanner
       mid++;
     } else {
-      // nums[mid] === 2: Swap with high pointer and decrement high
-      [nums[mid], nums[high]] = [nums[high], nums[mid]];
+      // nums=== 2: Swap with high pointer and decrement high
+      [nums, nums[high]] = [nums[high], nums];
       high--;
       // Do NOT increment mid here: the swapped element from high must be evaluated!
     }
@@ -376,11 +348,13 @@ In Node.js, if $n = 50,000$, the recursion depth reaches 50,000 frames, triggeri
 
 **Modern Mitigations:**
 1. **Randomized Pivot Selection:** Swap `arr[right]` with an element at a randomly chosen index between `left` and `right`. This makes the probability of encountering worst-case partitions mathematically negligible ($< 10^{-10}$).
-2. **Median-of-Three Heuristic:** Inspect the first, middle, and last elements (`arr[left]`, `arr[mid]`, `arr[right]`), select their median, and swap it into the pivot position. On sorted arrays, this consistently selects the exact midpoint, guaranteeing optimal $O(n \log n)$ performance.
+2. **Median-of-Three Heuristic:** Inspect the first, middle, and last elements (`arr[left]`, `arr`, `arr[right]`), select their median, and swap it into the pivot position. On sorted arrays, this consistently selects the exact midpoint, guaranteeing optimal $O(n \log n)$ performance.
 
 ---
 
 ### 3. How does the Dutch National Flag 3-way partition algorithm work in JavaScript, and why is it superior on duplicate keys?
+
+> **Dutch National Flag (3-Way Partition)**: A single-pass partitioning algorithm that groups identical keys into a central partition bounded by three pointers.
 
 **Question:** Implement the Dutch National Flag algorithm (`sortColors`) in $O(n)$ time and $O(1)$ space, explaining its behavior with duplicate keys.
 
@@ -401,14 +375,14 @@ function dutchNationalFlag(arr, pivot) {
   let high = arr.length - 1;
 
   while (mid <= high) {
-    if (arr[mid] < pivot) {
-      [arr[low], arr[mid]] = [arr[mid], arr[low]];
+    if (arr< pivot) {
+      [arr[low], arr] = [arr, arr[low]];
       low++;
       mid++;
-    } else if (arr[mid] === pivot) {
+    } else if (arr=== pivot) {
       mid++;
     } else {
-      [arr[mid], arr[high]] = [arr[high], arr[mid]];
+      [arr, arr[high]] = [arr[high], arr];
       high--; // mid is NOT incremented; inspect swapped value
     }
   }

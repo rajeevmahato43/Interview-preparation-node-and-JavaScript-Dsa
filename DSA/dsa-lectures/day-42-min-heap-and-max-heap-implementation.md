@@ -7,40 +7,12 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Implement a robust, generic `PriorityQueue` class in JavaScript supporting both Min-Heap and Max-Heap behaviors via custom comparator functions.
-- Master the **Bubble-Up (Sift-Up)** algorithm to restore the heap invariant in $O(\log n)$ time after inserting a new element.
-- Master the **Bubble-Down (Sift-Down)** algorithm to restore the heap invariant in $O(\log n)$ time after extracting the root element.
-- Derive the mathematical proof demonstrating why bottom-up **Heapify (`buildHeap`)** runs in $O(n)$ linear time rather than $O(n \log n)$.
-- Handle edge cases including root extractions on empty heaps, single-element structures, and comparator tie-breakers.
-- Build priority-based background job schedulers for Node.js worker threads and microservice message queues.
-
----
-
 ## Prerequisites
 
 - [Day 41: Binary Heap and Array Representation](day-41-binary-heap-array-representation.md) — Complete binary tree array indexing, parent/child arithmetic, and heap invariants.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Bubble-Up (Sift-Up)** | Moving a newly inserted element up the tree by repeatedly swapping with its parent until the heap-order property is satisfied. | Runs in $O(\log n)$ time; triggered immediately on `insert(val)`. |
-| **Bubble-Down (Sift-Down)** | Moving the replacement root element down the tree by repeatedly swapping with its most qualified child until the heap-order property is satisfied. | Runs in $O(\log n)$ time; triggered immediately on `poll()` / `extractMin()`. |
-| **Linear Heapify (`buildHeap`)** | Transforming an arbitrary unsorted array into a valid heap in-place by applying sift-down to all internal nodes in reverse order. | Runs in strictly $O(n)$ time; much faster than $n$ sequential insertions ($O(n \log n)$). |
-| **Comparator Function** | A function `(a, b) => a - b` (Min-Heap) or `(a, b) => b - a` (Max-Heap) determining the relative priority of two elements. | Enables priority queues to rank arbitrary JavaScript objects by composite fields (e.g., priority, deadline). |
-| **Shape Invariant** | The structural property requiring the heap to remain a complete binary tree with no missing nodes. | Preserved by always inserting at the end of the array and swapping root with the last element on deletion. |
-| **Root Extraction** | Removing and returning the top-priority element at index 0. | Core operation for priority schedulers, Dijkstra's algorithm, and merge-k-lists. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Heap Mutation Mechanics: Insert and Extract
+## 1. Heap Mutation Mechanics: Insert and Extract
 
 A Binary Heap must preserve two invariants simultaneously:
 1. **The Complete Binary Tree Shape Invariant**: Handled by array length manipulation (`push` and `pop`).
@@ -73,7 +45,7 @@ Heap Mutation Step-by-Step Traces:
 
 ---
 
-### 2. Implementation: Production-Grade Heap Class
+## 2. Implementation: Production-Grade Heap Class
 
 A production-ready JavaScript implementation must accept a custom comparator, providing support for numbers, strings, and complex domain objects.
 
@@ -201,7 +173,7 @@ console.log('Next min:', minH.poll());   // 5
 
 ---
 
-### 3. Linear Time $O(n)$ Heapify Mathematical Proof
+## 3. Linear Time $O(n)$ Heapify Mathematical Proof
 
 Constructing a heap from an unsorted array of size $n$ can be done in two ways:
 1. **$n$ Sequential Insertions**: For each element, call `push(val)`. Total time is:

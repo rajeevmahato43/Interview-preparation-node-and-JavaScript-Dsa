@@ -5,43 +5,16 @@
 [Previous: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Subsets and Power Sets](day-23-subsets-and-power-sets.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master the universal 3-step backtracking lifecycle: **Choose $\to$ Explore $\to$ Unchoose (Undo)**.
-- Formulate decision states and model problem domains as traversals over state-space search trees.
-- Understand why in-place array mutation with $O(1)$ rollback (`pop()`) is asymptotically superior to continuous array cloning (`[...path]`).
-- Apply **Pruning (Bounding Conditions)** before recursive calls to eliminate invalid search subtrees early.
-- Solve **Generate Parentheses** (LeetCode 22) within Catalan number complexity $O(\frac{4^n}{\sqrt{n}})$ using balance invariants.
-- Safeguard Node.js backend processes against event loop starvation during deep combinatorial searches using concurrency bounds.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and search tree branching.
 - [Day 04: Recursion and Call Stack](day-04-recursion-and-call-stack.md) — Call stack activation frames.
 - [Day 21: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md) — Winding and unwinding execution phases.
-
 ---
 
-## Quick Vocabulary Card
+## 1. What Backtracking Really Is: Recursion with State Rollback
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Backtracking** | An algorithmic design paradigm that incrementally builds candidates toward a solution and abandons a candidate ("backtracks") as soon as it violates constraints. | Transforms $O(m^n)$ brute-force searches into pruned state explorations that run orders of magnitude faster. |
-| **State-Space Tree** | An implicit tree representing all possible configurations, where the root is the initial state and edges represent decision choices. | Visualizes the search path and guides asymptotic bounding of recursion depth. |
-| **Pruning (Bounding)** | Evaluating candidate feasibility before recursing and skipping branches that cannot yield valid solutions. | The primary technique for preventing combinatorial explosion in exponential search problems. |
-| **In-Place Rollback** | Mutating a shared state collection during the winding phase and reverting the mutation during the unwinding phase using $O(1)$ operations (`pop()`). | Keeps auxiliary space at $O(h)$ (recursion height) and avoids allocating millions of temporary arrays in V8. |
-| **Solution Snapshotting** | Creating a shallow or deep copy of the mutable path array upon reaching a valid leaf node (`result.push([...path])`). | Prevents reference aliasing bugs where all stored solutions point to an empty array. |
-
----
-
-## Core Concepts
-
-### 1. What Backtracking Really Is: Recursion with State Rollback
+> **Backtracking**: An algorithmic design paradigm that incrementally builds candidates toward a solution and abandons a candidate ("backtracks") as soon as it violates constraints.
 
 **Backtracking** is a systematic depth-first search strategy that constructs a solution path element-by-element, reverting the most recent decision whenever a partial configuration violates problem constraints or reaches a dead end.
 
@@ -80,7 +53,7 @@ The Backtracking Execution Triangle:
 
 ---
 
-### 2. The Universal Backtracking Skeleton
+## 2. The Universal Backtracking Skeleton
 
 Every production-grade backtracking algorithm conforms to a unified architectural template:
 
@@ -161,7 +134,9 @@ console.log("Correct:", correctBacktrack(2)); // [[0, 1]]
 
 ---
 
-### 3. Pruning (Bounding Conditions): Search Space Reduction
+## 3. Pruning (Bounding Conditions): Search Space Reduction
+
+> **Pruning (Bounding)**: Evaluating candidate feasibility before recursing and skipping branches that cannot yield valid solutions.
 
 **Pruning** is the strategic elimination of decision tree branches prior to recursive descent by checking whether a partial candidate violates invariants.
 
@@ -185,7 +160,7 @@ Decision Tree With Pruning:
 
 ---
 
-### 4. Problem Study: Generate Parentheses (LeetCode 22)
+## 4. Problem Study: Generate Parentheses (LeetCode 22)
 
 Given $n$ pairs of parentheses, generate all combinations of well-formed parentheses strings.
 

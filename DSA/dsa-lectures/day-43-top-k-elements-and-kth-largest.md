@@ -7,41 +7,18 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Top 'K' Elements Pattern** using bounded priority queues to achieve $O(n \log K)$ time and $O(K)$ space complexity.
-- Understand the **Inversion Invariant**: why finding the $K$ largest elements requires a **Min-Heap**, while finding the $K$ smallest requires a **Max-Heap**.
-- Solve **Kth Largest Element in an Array** using bounded heaps and compare trade-offs against QuickSelect ($O(n)$ average).
-- Solve **Top K Frequent Elements** using both heap-based and linear-time **Bucket Sort** ($O(n)$) strategies.
-- Maintain top-ranking streaming metrics in constant $O(K)$ memory without buffering unbounded datasets in the Node.js V8 heap.
-- Build live API heavy-hitter and rate-limiting monitors for production Express / Fastify gateway clusters.
-
----
-
 ## Prerequisites
 
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Frequency maps and aggregation mechanics.
 - [Day 41: Binary Heap and Array Representation](day-41-binary-heap-array-representation.md) — Heap array properties and index formulas.
 - [Day 42: Min-Heap and Max-Heap Implementation](day-42-min-heap-and-max-heap-implementation.md) — `push()`, `poll()`, and `peek()` operations.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The Bounded Heap Mechanics & Inversion Invariant
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Bounded Heap** | A heap whose capacity is capped at size $K$; inserting an element beyond $K$ immediately triggers an eviction of the root. | Keeps auxiliary memory bounded to $O(K)$ regardless of how many millions of items arrive in the stream. |
-| **Inversion Invariant** | To find the $K$ largest elements, maintain a **Min-Heap** of size $K$. The root will always represent the $K$-th largest element. | Common candidate mistake: using a Max-Heap requires storing all $N$ elements, wasting $O(N)$ memory. |
-| **QuickSelect** | A divide-and-conquer selection algorithm based on QuickSort partitioning that finds the $k$-th smallest/largest element. | Operates in $O(n)$ average time and $O(1)$ space, but degrades to $O(n^2)$ worst-case and mutates input arrays. |
-| **Bucket Sort for Frequency** | Grouping elements into an array of buckets where bucket index $i$ stores all elements with frequency $i$. | Eliminates logarithmic sorting; achieves $O(n)$ deterministic time for Top K Frequent Elements. |
-| **Heavy Hitters** | Elements that appear with the highest frequency in a stream of events. | Standard problem in distributed telemetry, DDoS detection, and API usage analytics. |
+> **Inversion Invariant**: To find the $K$ largest elements, maintain a **Min-Heap** of size $K$. The root will always represent the $K$-th largest element.
 
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Bounded Heap Mechanics & Inversion Invariant
+> **Bounded Heap**: A heap whose capacity is capped at size $K$; inserting an element beyond $K$ immediately triggers an eviction of the root.
 
 To find the $K$ largest elements in an array or stream of size $n$, sorting the entire array takes $O(n \log n)$ time and $O(n)$ space.
 By using a **Min-Heap of size $K$**, we maintain only the top $K$ largest elements encountered so far:
@@ -70,7 +47,7 @@ Time: O(n log K) vs O(n log n). Space: O(K) vs O(n).
 
 ---
 
-### 2. Kth Largest Element in an Array (LeetCode 215)
+## 2. Kth Largest Element in an Array (LeetCode 215)
 
 ```javascript
 // Node.js code: Kth Largest using Min-Heap
@@ -144,7 +121,7 @@ console.log('3rd largest in [3,2,1,5,6,4]:', findKthLargest([3, 2, 1, 5, 6, 4], 
 
 ---
 
-### 3. Top K Frequent Elements: Heap vs. Bucket Sort
+## 3. Top K Frequent Elements: Heap vs. Bucket Sort
 
 In **Top K Frequent Elements** (LeetCode 347), we must return the $k$ most frequent numbers in an array.
 
@@ -445,6 +422,8 @@ To maintain the $K$ largest elements:
 ---
 
 ### 2. What are the key trade-offs between QuickSelect and a Bounded Heap for finding the Kth largest element?
+
+> **QuickSelect**: A divide-and-conquer selection algorithm based on QuickSort partitioning that finds the $k$-th smallest/largest element.
 **Question:** Compare QuickSelect against a Min-Heap of size $K$ for LeetCode 215 across time complexity, space complexity, data mutability, and streaming support.
 
 **Answer:**

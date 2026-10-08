@@ -7,41 +7,16 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Trie (Prefix Tree)** data structure and its node-and-pointer mechanical hierarchy.
-- Implement core Trie operations—`insert`, `search`, and `startsWith`—in $O(L)$ time, where $L$ is the string length.
-- Contrast child pointer storage trade-offs in JavaScript: **`Map` / Plain Object** versus **Fixed 26-Element Array**.
-- Solve **Word Search II** by coupling Trie prefix pruning with 2D Grid Backtracking.
-- Understand how Radix Trees (compressed Tries) power URL routing in high-performance Node.js frameworks like Fastify and Hono.
-- Build search-as-you-type autocomplete engines and IP routing tables with sub-millisecond retrieval latency.
-
----
-
 ## Prerequisites
 
 - [Day 03: String Manipulation and Two Pointers](day-03-string-manipulation-and-two-pointers.md) — Character encoding, strings, and prefix matching.
 - [Day 25: Grid Backtracking and N-Queens](day-25-grid-backtracking-and-n-queens.md) — 2D matrix exploration and backtracking state restoration.
 - [Day 31: Binary Tree Fundamentals and DFS](day-31-binary-tree-fundamentals-and-dfs.md) — Tree nodes, recursive traversal, and pointer navigation.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Trie Anatomy and Prefix Sharing
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Trie (Prefix Tree)** | An $N$-ary tree where each node represents a character, and the path from root to node represents a common prefix. | Enables $O(L)$ lookups and prefix matching independent of total dictionary size. |
-| **`isEndOfWord`** | A boolean flag marking whether a specific node corresponds to the termination of a complete valid word. | Distinguishes between standalone words and mere prefixes (e.g., `"app"` vs. `"apple"`). |
-| **Radix Tree / Patricia Trie** | A space-optimized Trie where every node with only one child is merged with its child. | The exact internal routing mechanism behind Fastify, Express routers, and Linux routing tables. |
-| **Alphabet Indexing** | Mapping `'a'` through `'z'` to indices $0 \dots 25$ using `char.charCodeAt(0) - 97`. | Provides constant-time indexing and contiguous memory locality in V8 engines. |
-| **Prefix Pruning** | Abandoning recursive search branches immediately when the current character sequence does not exist in the Trie. | Reduces Word Search II from exponential $O(M \cdot N \cdot 4^L)$ to microseconds. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Trie Anatomy and Prefix Sharing
+> **Trie (Prefix Tree)**: An $N$-ary tree where each node represents a character, and the path from root to node represents a common prefix.
 
 A **Trie** organizes a set of strings hierarchically:
 - The **Root Node** is an empty sentinel containing no character.
@@ -71,7 +46,7 @@ Notice:
 
 ---
 
-### 2. Node Implementation: Map vs. Fixed Array
+## 2. Node Implementation: Map vs. Fixed Array
 
 ```text
 Child Storage Comparison:
@@ -162,7 +137,7 @@ console.log('Search "app" after insert:', trie.search('app')); // true
 
 ---
 
-### 3. Word Search II: Trie Pruning with 2D Backtracking
+## 3. Word Search II: Trie Pruning with 2D Backtracking
 
 In **Word Search II** (LeetCode 212), given an $M \times N$ board of characters and a dictionary `words`, find all words on the board.
 - Naive search: Run 2D backtracking for every word independently $\implies O(K \cdot M \cdot N \cdot 4^L)$, which times out.
@@ -485,6 +460,8 @@ console.log('✅ All AutocompleteEngine assertions passed successfully!');
 ---
 
 ### 3. How do you implement prefix pruning in Word Search II to achieve top runtime performance?
+
+> **Prefix Pruning**: Abandoning recursive search branches immediately when the current character sequence does not exist in the Trie.
 **Question:** In LeetCode 212, what optimization prevents redundant traversals after a word has already been discovered?
 
 **Answer:**

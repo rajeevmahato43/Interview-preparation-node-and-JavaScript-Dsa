@@ -5,42 +5,13 @@
 [Previous: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Two Pointers: Same-Direction / Fast & Slow](day-12-two-pointers-fast-and-slow.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain how monotonic sorted data allows opposing pointers (`left` and `right`) to eliminate an entire row of candidates in $O(1)$ time.
-- Implement **Two Sum II (Sorted Array)** in $O(n)$ time with strictly $O(1)$ auxiliary space.
-- Derive and prove the greedy shrinkage invariant in **Container With Most Water**.
-- Implement **3Sum** ($O(n^2)$) and generalize to $K$-Sum, systematically eliminating duplicate tuples across all pointer boundaries.
-- Solve **Valid Palindrome** and **Valid Palindrome II** using inward two-pointer scans with character skips.
-- Prevent V8 garbage collection latency spikes in high-throughput Node.js microservices by leveraging zero-allocation stack pointers.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
 - [Day 05: Sorting and Searching Basics](day-05-sorting-and-searching-basics.md) — Sorting arrays with numeric comparators.
 - [Day 07: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md) — Pair matching and complement logic.
 - [Day 10: Merge Sort and Quick Sort](day-10-merge-sort-and-quick-sort.md) — Sorting in-place and partitioning.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Opposing Two Pointers** | An algorithmic technique where two index markers start at opposite ends of a sequence and converge inward. | Reduces $O(n^2)$ pair searches to $O(n)$ linear scans on sorted or symmetric collections. |
-| **Monotonicity Invariant** | A property where elements strictly increase or decrease along an index trajectory. | Guarantees that moving `left++` only increases sums, and moving `right--` only decreases sums. |
-| **Greedy Pruning** | Discarding a set of candidates without explicit evaluation because a mathematical bound proves none can beat the current optimum. | Enables solving Container With Most Water in $O(n)$ time without testing all $O(n^2)$ coordinate pairs. |
-| **Duplicate Pruning** | Advancing pointers past identical values to prevent redundant combinations or duplicate output tuples. | Essential in 3Sum and 4Sum to guarantee strictly unique output sets without allocating secondary Hash Sets. |
-| **Zero-Allocation Scan** | An algorithm that manipulates primitive number variables on the call stack without creating heap objects. | Prevents V8 garbage collection scavenges, keeping 99th-percentile (p99) API latency flat in Node.js. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -64,7 +35,7 @@ By the end of this lecture, you should be able to:
   Step 5: sum = 5 + 8  = 13. MATCH! Return indices [ 2, 3 ].
 ```
 
-### 1. Opposing Pointers on Monotonic Sequences
+## 1. Opposing Pointers on Monotonic Sequences
 
 When an array is sorted in ascending order, the array possesses **monotonicity**:
 - Incrementing `left` strictly increases or maintains the sum of `arr[left] + arr[right]`.
@@ -104,7 +75,9 @@ console.log("Two Sum Sorted:", twoSumSorted([2, 7, 11, 15], 9)); // [1, 2]
 
 ---
 
-### 2. Container With Most Water: The Greedy Pruning Proof
+## 2. Container With Most Water: The Greedy Pruning Proof
+
+> **Greedy Pruning**: Discarding a set of candidates without explicit evaluation because a mathematical bound proves none can beat the current optimum.
 
 Given an array of non-negative integers `height` where each represents a vertical line:
 $$\text{Area}(L, R) = \min(\text{height}[L], \text{height}[R]) \times (R - L)$$
@@ -159,7 +132,9 @@ console.log("Max Water:", maxArea([1, 8, 6, 2, 5, 4, 8, 3, 7])); // 49
 
 ---
 
-### 3. 3Sum: Reducing $O(n^3)$ to $O(n^2)$ with Duplicate Pruning
+## 3. 3Sum: Reducing $O(n^3)$ to $O(n^2)$ with Duplicate Pruning
+
+> **Duplicate Pruning**: Advancing pointers past identical values to prevent redundant combinations or duplicate output tuples.
 
 Given an array `nums`, find all unique triplets `[nums[i], nums[j], nums[k]]` such that $i \ne j \ne k$ and $\text{nums}[i] + \text{nums}[j] + \text{nums}[k] = 0$.
 
@@ -212,7 +187,7 @@ console.log("3Sum:", threeSum([-1, 0, 1, 2, -1, -4]));
 
 ---
 
-### 4. Zero-Allocation In-Memory Financial Order Matching in Node.js
+## 4. Zero-Allocation In-Memory Financial Order Matching in Node.js
 
 In high-frequency trading or matching engines, transactions are stored in pre-sorted ring buffers or arrays. Using two-pointer convergence to match buy and sell orders avoids allocating intermediate objects or arrays, completely eliminating V8 Garbage Collection pauses on the main thread:
 

@@ -6,38 +6,11 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Distinguish the distributed systems semantics of local timeouts, cooperative cancellation (`AbortController`), and end-to-end deadline propagation.
-- Implement deadline propagation across downstream HTTP calls and database queries (`statement_timeout`, `maxTimeMS`) to prevent zombie background processing.
-- Architect safe retry policies that classify transient vs permanent errors and eliminate retry storms using Exponential Backoff with Full Jitter.
-- Implement retry budgets and circuit breakers to prevent failing downstream dependencies from being overwhelmed by retrying clients.
-- Design and implement an atomic, production-grade Idempotency State Machine (`PENDING`, `COMPLETED`, `FAILED`) using request fingerprinting (SHA-256) and database/Redis locks.
-- Handle concurrent in-flight requests sharing an identical `Idempotency-Key` without race conditions or double mutations.
-
----
-
 ## Prerequisites
 
 - [Day 10: Networking, DNS, TLS, and Timeouts](day-10-networking-dns-tls-and-timeouts.md) — Socket timeouts, DNS lookups, and TCP teardown.
 - [Day 18: API Contracts, Pagination, and Idempotency](day-18-api-contracts-pagination-and-idempotency.md) — Idempotency headers and API response envelopes.
 - [Day 28: Parameterized SQL CRUD](day-28-parameterized-sql-crud.md) — Atomic transactions and conflict resolution.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **Local Timeout** | A relative duration limit after which an initiating caller terminates its local wait promise. | Stops local thread blocking, but **does not stop** the downstream remote worker from continuing expensive work. |
-| **End-to-End Deadline** | An absolute timestamp (`epoch_ms`) passed across service boundaries indicating the ultimate cutoff for an entire distributed operation. | Allows downstream microservices and database queries to abort immediately if the remaining time budget has expired. |
-| **Cooperative Cancellation** | A cancellation pattern using `AbortController` and `AbortSignal` where downstream tasks actively listen for termination signals. | Reclaims CPU, sockets, and memory by halting in-flight processing as soon as a client disconnects. |
-| **Retry Storm** | A cascading system failure where hundreds of clients simultaneously retry requests against a struggling downstream service, driving it to 100% failure. | Can transform a 100ms transient network glitch into a catastrophic multi-hour outage across all dependent services. |
-| **Full Jitter Backoff** | A randomized exponential backoff formula: $t = \text{random}(0, \min(\text{cap}, \text{base} \times 2^{\text{attempt}}))$. | Spreads retried requests uniformly across time, breaking up synchronization pulses and eliminating thundering herds. |
-| **Idempotency State Machine** | A persistent record tracking the lifecycle (`PENDING` $\to$ `COMPLETED` / `FAILED`) of an operation keyed by a client-provided UUID. | Guarantees exactly-once execution semantics for non-idempotent operations like payment charges and order placements. |
-
 ---
 
 ## Core Concepts
@@ -119,6 +92,10 @@ Retrying is a policy designed strictly for **transient network and infrastructur
 
 ### 3. Preventing Retry Storms: Full Jitter Backoff
 
+> **Full Jitter Backoff**: A randomized exponential backoff formula: $t = \text{random}(0, \min(\text{cap}, \text{base} \times 2^{\text{attempt}}))$.
+
+> **Retry Storm**: A cascading system failure where hundreds of clients simultaneously retry requests against a struggling downstream service, driving it to 100% failure.
+
 When a downstream service degrades or restarts, all connected clients encounter failures simultaneously. If clients use a standard fixed backoff (e.g., retry every 500ms) or pure exponential backoff without randomness, their retries align into synchronized pulses—a **Thundering Herd** or **Retry Storm**. The struggling service is repeatedly hammered by traffic spikes every time clients retry.
 
 ```
@@ -153,6 +130,8 @@ To protect infrastructure from endless retries, implement a **Retry Budget** (us
 ---
 
 ### 4. The Idempotency State Machine
+
+> **Idempotency State Machine**: A persistent record tracking the lifecycle (`PENDING` $\to$ `COMPLETED` / `FAILED`) of an operation keyed by a client-provided UUID.
 
 An operation is **idempotent** if performing it once produces the exact same side-effects and outcome as performing it multiple times with identical parameters ($f(x) = f(f(x))$).
 
@@ -255,6 +234,8 @@ When a client experiences a network timeout or connection reset while waiting fo
 ## Tricky Points and Edge Cases
 
 ### 1. Cooperative Cancellation with Node.js Streams
+
+> **Cooperative Cancellation**: A cancellation pattern using `AbortController` and `AbortSignal` where downstream tasks actively listen for termination signals.
 
 When a client closes an HTTP connection mid-stream (`req.on('close')`), Node.js does not automatically stop background asynchronous operations unless your code explicitly registers an abort listener:
 ```javascript

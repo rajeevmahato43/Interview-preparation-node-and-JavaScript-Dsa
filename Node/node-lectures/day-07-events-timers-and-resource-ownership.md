@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Explain the synchronous execution contract of Node's `EventEmitter` and trace listener dispatching on the V8 call stack.
-- Handle the special `'error'` event and utilize `events.errorMonitor` to prevent unhandled error crashes.
-- Diagnose and eliminate event listener memory leaks (`MaxListenersExceededWarning`) caused by per-request subscriptions and closure retention.
-- Understand listener identity and safely decouple event listeners using `off()`, `once()`, and `events.on()` async iterators.
-- Prevent timer drift and concurrency pileups by replacing overlapping `setInterval()` loops with self-scheduling `setTimeout()` chains.
-- Coordinate modern resource cancellation using `AbortController` and `AbortSignal` across timers, sockets, and event listeners.
-- Avoid the async event listener trap and handle promise rejections cleanly using `captureRejections: true`.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be comfortable with:
@@ -32,23 +16,6 @@ Before studying this lecture, you should be comfortable with:
 *Upcoming Connections:*
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) demonstrates how Streams inherit from `EventEmitter` to signal `'data'`, `'drain'`, and `'end'` events.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) uses event-driven request and response lifecycle listeners.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **`EventEmitter`** | A core Node.js class in `node:events` providing an in-memory Publish-Subscribe (Observer) mechanism for synchronous event delivery. |
-| **Synchronous Emission** | The guarantee that `emitter.emit('event')` executes all registered listener callbacks synchronously one after another on the active call stack. |
-| **The `'error'` Event** | A special Node.js event that, if emitted without at least one attached `'error'` listener, throws an unhandled exception and crashes the process. |
-| **`errorMonitor`** | A special symbol listener (`emitter.on(events.errorMonitor, fn)`) that observes `'error'` events for diagnostics without consuming or intercepting them. |
-| **`MaxListenersExceededWarning`** | A memory-leak warning emitted when more than 10 listeners (by default) are registered to a single event on an emitter. |
-| **Listener Closure Leak** | A memory leak occurring when an event listener's closure retains references to large request objects, preventing V8 garbage collection. |
-| **Timer Drift** | The discrepancy between scheduled timer execution times and real elapsed wall-clock time caused by event loop lag or blocking work. |
-| **`AbortController`** | A standard Web API controller providing an `AbortSignal` to coordinate cooperative cancellation across asynchronous operations. |
-| **`captureRejections`** | An `EventEmitter` option (`{ captureRejections: true }`) that automatically catches rejected Promises returned by `async` listeners. |
-
 ---
 
 ## 1. What is an EventEmitter? The Synchronous Execution Contract
@@ -99,6 +66,8 @@ console.log("3. After emit() - Runs ONLY after listener completes!");
 ---
 
 ## 2. The Special `'error'` Event & `errorMonitor`
+
+> **`errorMonitor`**: A special symbol listener (`emitter.on(events.errorMonitor, fn)`) that observes `'error'` events for diagnostics without consuming or intercepting them.
 
 In Node.js, the event name `'error'` has special treatment baked directly into the C++ runtime.
 
@@ -158,6 +127,8 @@ emitter.emit("error", new Error("Socket timeout"));
 ---
 
 ## 3. Event Listener Memory Leaks & `MaxListenersExceededWarning`
+
+> **`MaxListenersExceededWarning`**: A memory-leak warning emitted when more than 10 listeners (by default) are registered to a single event on an emitter.
 
 By default, an `EventEmitter` prints a warning to `stderr` if you attach more than **10 listeners** for a single event:
 
@@ -321,6 +292,8 @@ executePeriodicTask();
 
 ## 6. Resource Cancellation via `AbortController`
 
+> **`AbortController`**: A standard Web API controller providing an `AbortSignal` to coordinate cooperative cancellation across asynchronous operations.
+
 An **`AbortController`** is a standardized Web API object that allows you to broadcast a cancellation signal to asynchronous operations, timers, and event listeners simultaneously.
 
 ### Canceling Timers, Streams, and Emitters Together
@@ -363,6 +336,8 @@ performTaskWithTimeout();
 ---
 
 ## 7. The Async Listener Trap & `captureRejections`
+
+> **`captureRejections`**: An `EventEmitter` option (`{ captureRejections: true }`) that automatically catches rejected Promises returned by `async` listeners.
 
 Many developers write `async` event listeners:
 
@@ -632,6 +607,8 @@ server.listen(3000, () => {
 ---
 
 ### 2. Predict the Output: `EventEmitter` Execution Order and Exceptions
+
+> **`EventEmitter`**: A core Node.js class in `node:events` providing an in-memory Publish-Subscribe (Observer) mechanism for synchronous event delivery.
 **Question:** What will the following code output, and why? Explain what happens when Listener 2 throws an error:
 
 ```js

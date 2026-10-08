@@ -6,22 +6,6 @@
 
 </nav>
 
----
-
-## What You Will Learn Today
-
-By the end of this lecture, you should be able to:
-
-- Explain what binary data is in Node.js and how the `Buffer` class allocates memory outside the V8 garbage-collected heap.
-- Contrast `Buffer.alloc()` against `Buffer.allocUnsafe()` and prevent sensitive memory leaks.
-- Understand Node's internal 8KB buffer pool (`Buffer.poolSize`) and explain how slicing vs. copying affects memory retention.
-- Differentiate between character counts (`string.length`) and byte lengths (`Buffer.byteLength()`) across variable-width encodings like UTF-8.
-- Resolve multi-byte character corruption across streaming chunk boundaries using `node:string_decoder`.
-- Encode and decode data safely across binary, hexadecimal, and Base64 representations without introducing memory blowup.
-- Defend JSON input boundaries against payload bomb attacks, unhandled `BigInt` crashes, and object prototype corruption.
-
----
-
 ## Prerequisites
 
 Before studying this lecture, you should be comfortable with:
@@ -32,24 +16,6 @@ Before studying this lecture, you should be comfortable with:
 *Upcoming Connections:*
 - [Day 07: Events, Timers, and Resource Ownership](day-07-events-timers-and-resource-ownership.md) explores `EventEmitter` data events and buffer emission patterns.
 - [Day 08: Streams and Backpressure](day-08-streams-and-backpressure.md) covers stream chunk buffers, `highWaterMark`, and objectMode vs. buffer mode.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Definition |
-| :--- | :--- |
-| **`Buffer`** | A global Node.js class representing a fixed-length sequence of raw binary bytes allocated outside V8's heap in native memory. |
-| **`Buffer.alloc(size)`** | Allocates a zero-initialized buffer of the specified size, ensuring no old memory remnants are exposed. |
-| **`Buffer.allocUnsafe(size)`** | Allocates an uninitialized buffer from the internal memory pool; fast, but contains un-cleared memory that may leak secrets. |
-| **`Buffer.poolSize`** | The default size (8,192 bytes / 8KB) of Node's pre-allocated internal memory slab used to fast-allocate small buffers. |
-| **`Buffer.subarray()`** | Returns a new Buffer that references the exact same memory slice as the original buffer without copying bytes. |
-| **Encoding** | A bidirectional mapping between human-readable characters and machine-readable binary bytes (e.g., UTF-8, ASCII, Base64). |
-| **`StringDecoder`** | A utility from `node:string_decoder` that preserves incomplete multi-byte UTF-8 sequences across stream chunks. |
-| **Replacement Character (``)** | Unicode `U+FFFD`, emitted when an invalid or incomplete byte sequence is incorrectly decoded as UTF-8. |
-| **Base64** | A binary-to-text encoding scheme that translates 3 binary bytes into 4 ASCII characters, incurring a ~33% size overhead. |
-| **JSON Payload Bomb** | A Denial-of-Service attack where a client sends a massive or deeply nested JSON payload to exhaust server memory and CPU. |
-
 ---
 
 ## 1. What is a Buffer? Native Memory Allocation
@@ -131,6 +97,12 @@ unsafeBuf.fill(0); // Zero it out manually before any exposure
 
 ### 2.2 The 8KB Buffer Pool (`Buffer.poolSize`)
 
+> **`Buffer.poolSize`**: The default size (8,192 bytes / 8KB) of Node's pre-allocated internal memory slab used to fast-allocate small buffers.
+
+> **`Buffer.allocUnsafe(size)`**: Allocates an uninitialized buffer from the internal memory pool; fast, but contains un-cleared memory that may leak secrets.
+
+> **`Buffer.alloc(size)`**: Allocates a zero-initialized buffer of the specified size, ensuring no old memory remnants are exposed.
+
 For allocations smaller than half of `Buffer.poolSize` (`8192 / 2 = 4096 bytes`), Node slices small allocations from a single pre-allocated 8KB slab of native memory. This avoids the overhead of making constant `malloc()` system calls for tiny 20-byte buffers.
 
 ---
@@ -173,6 +145,8 @@ idSlice.copy(independentId);
 ---
 
 ## 4. Characters vs. Bytes: Variable-Width Encodings
+
+> **Encoding**: A bidirectional mapping between human-readable characters and machine-readable binary bytes (e.g., UTF-8, ASCII, Base64).
 
 A **character** is an abstract human symbol (e.g., `'A'`, `'€'`, `'🚀'`), whereas a **byte** is an 8-bit number (0–255). An **encoding** defines how characters are mapped to bytes.
 
@@ -253,6 +227,8 @@ console.log("Decoder Final flush:", decoder.end());    // Logs: ""
 ---
 
 ## 6. Binary Encodings: Hexadecimal & Base64
+
+> **Base64**: A binary-to-text encoding scheme that translates 3 binary bytes into 4 ASCII characters, incurring a ~33% size overhead.
 
 Node supports several native encodings out of the box:
 
@@ -635,6 +611,8 @@ Length C: 10
 ---
 
 ### 3. How does `StringDecoder` prevent multi-byte UTF-8 corruption across stream chunks?
+
+> **`StringDecoder`**: A utility from `node:string_decoder` that preserves incomplete multi-byte UTF-8 sequences across stream chunks.
 **Question:** Why does calling `chunk.toString('utf8')` on stream data chunks risk corrupting text, and how does `node:string_decoder` solve this problem internally?
 
 **Answer:**

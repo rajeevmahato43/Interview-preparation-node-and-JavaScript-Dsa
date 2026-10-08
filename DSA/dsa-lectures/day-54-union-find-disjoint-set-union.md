@@ -7,40 +7,15 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Disjoint Set Union (DSU)** data structure for partitioning elements into non-overlapping connected equivalence sets.
-- Implement `find` with **Path Compression** to permanently collapse pointer depths to 1 during lookups.
-- Implement `union` with **Union by Rank / Size** to prevent skewed tree degradation.
-- Understand the **Inverse Ackermann Function $\alpha(n)$** and why DSU achieves near-$O(1)$ amortized runtime per operation.
-- Dynamically track connected component counts during continuous edge stream ingestion.
-- Model multi-tenant network partitioning and dynamic cluster membership in Node.js distributed systems.
-
----
-
 ## Prerequisites
 
 - [Day 36: Graph Representations and Modeling](day-36-graph-representations-and-modeling.md) — Vertices, edges, and connectivity.
 - [Day 38: Graph Traversal: DFS and Connected Components](day-38-graph-traversal-dfs-and-components.md) — Connected components in static graphs.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The Disjoint Set Mechanics and Forest Representation
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Disjoint Set** | A collection of sets where no two sets share a common element (pairwise intersection is empty). | Ideal for grouping connected networks and clustering equivalence partitions. |
-| **Representative (Root)** | The unique canonical leader element that identifies a specific disjoint set partition. | Two elements $u$ and $v$ belong to the same set if and only if $\text{find}(u) === \text{find}(v)$. |
-| **Path Compression** | Updating the parent pointer of every node along the lookup path directly to the root during `find`. | Flattens tree height; reduces future lookups to constant time. |
-| **Union by Rank** | Attaching the root of the shallower tree under the root of the deeper tree when merging two sets. | Bounds tree height to $O(\log n)$ even before path compression is applied. |
-| **Inverse Ackermann $\alpha(n)$** | An extremely slow-growing mathematical function where $\alpha(10^{80}) \le 4$. | Proves DSU operations run in practical amortized $O(1)$ constant time. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. The Disjoint Set Mechanics and Forest Representation
+> **Disjoint Set**: A collection of sets where no two sets share a common element (pairwise intersection is empty).
 
 A **Disjoint Set Union (DSU)** maintains elements $0 \dots N - 1$ grouped into disjoint sets. It supports two primary operations:
 1. **`find(x)`**: Finds the representative root of the set containing element $x$.
@@ -64,7 +39,11 @@ Components count = 3
 
 ---
 
-### 2. Dual Optimizations: Path Compression and Union by Rank
+## 2. Dual Optimizations: Path Compression and Union by Rank
+
+> **Union by Rank**: Attaching the root of the shallower tree under the root of the deeper tree when merging two sets.
+
+> **Path Compression**: Updating the parent pointer of every node along the lookup path directly to the root during `find`.
 
 #### A. The Naive Stick Degradation Problem:
 Without balancing, successive unions can create a linear chain: $(4) \to (3) \to (2) \to (1) \to (0)$. In this degenerate tree, calling `find(4)` takes $O(n)$ linear time.
@@ -112,7 +91,7 @@ Attach B under A (Rank of A remains 2! Tree does not grow taller!)
 
 ---
 
-### 3. Implementation: Production-Grade DSU Class
+## 3. Implementation: Production-Grade DSU Class
 
 ```javascript
 // Node.js code: Complete Disjoint Set Union (DSU) Class
@@ -205,7 +184,7 @@ console.log('Remaining components:', dsu.getComponentsCount()); // 3: {0,1,2}, {
 
 ---
 
-### 4. Complexity and the Inverse Ackermann Function $\alpha(n)$
+## 4. Complexity and the Inverse Ackermann Function $\alpha(n)$
 
 When both Path Compression and Union by Rank are applied together:
 - Any sequence of $M$ operations on $N$ elements executes in $O(M \cdot \alpha(N))$ time.

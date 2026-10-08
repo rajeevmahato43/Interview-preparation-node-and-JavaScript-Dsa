@@ -5,42 +5,12 @@
 [Previous: Sliding Window: Variable Size](day-14-sliding-window-variable-size.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Stack Fundamentals and LIFO Architecture](day-16-stack-fundamentals-and-lifo.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Explain the **Cumulative Prefix Sum** principle: trading a one-time $O(n)$ precomputation for instant $O(1)$ range queries.
-- Implement 1-indexed Prefix Sum arrays with a leading zero (`size = n + 1`) to eliminate boundary conditional branching.
-- Explain why **Prefix Sum + Hash Map** works seamlessly with negative numbers where Sliding Window fails due to broken monotonicity.
-- Solve **Subarray Sum Equals K** in $O(n)$ time by tracking prefix sum frequency distributions.
-- Solve **Product of Array Except Self** in $O(n)$ time and $O(1)$ auxiliary space without using the division operator.
-- Implement 2D Matrix Prefix Sums using the Principle of Inclusion-Exclusion.
-- Architect high-throughput real-time timeseries metrics aggregators in Node.js using in-memory prefix tables.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary space.
 - [Day 06: Frequency Counting and Hash Tables](day-06-frequency-counting-and-hash-tables.md) — Hash bucket indexing and frequency maps.
 - [Day 07: Two Sum and Hash Map Complements](day-07-two-sum-and-hash-complements.md) — The complement lookup pattern.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Prefix Sum Array** | An array where each index $k$ stores the cumulative sum of all elements from index $0$ to $k - 1$. | Reduces range sum queries over arbitrary intervals $[i, j]$ from $O(n)$ to $O(1)$ time. |
-| **Leading Zero Invariant** | Prepending a zero at index `0` of the prefix array (`size = n + 1`). | Guarantees that ranges beginning at index `0` evaluate as `pref[j + 1] - pref[0]` without edge-case branching. |
-| **Prefix Complement Pattern** | The algebraic identity: $\text{currentSum} - \text{previousSum} = k \iff \text{previousSum} = \text{currentSum} - k$. | Solves subarray sum problems with negative numbers in $O(n)$ time where sliding window fails. |
-| **Prefix/Suffix Product** | Multiplying elements from the left and right in two passes to calculate cumulative products excluding index $i$. | Computes product of array except self without relying on division or risking division-by-zero crashes. |
-| **Inclusion-Exclusion Principle** | Calculating 2D subgrid areas by combining overlapping bounding rectangles: $A + D - B - C$. | Enables $O(1)$ rectangular range queries over 2D grids and geo-spatial matrices. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -61,7 +31,7 @@ By the end of this lecture, you should be able to:
                = 10 - 3 = 7   <-- Instant O(1) evaluation!
 ```
 
-### 1. Cumulative Range Queries: The Odometer Principle
+## 1. Cumulative Range Queries: The Odometer Principle
 
 If your vehicle's odometer reads $10,000\text{ km}$ at departure and $10,450\text{ km}$ upon arrival, you calculate trip distance by subtracting initial from final: $10,450 - 10,000 = 450\text{ km}$. You do not measure individual meters.
 
@@ -108,7 +78,9 @@ console.log("Sum(0 to 2):", table.sumRange(0, 2)); // 3 + 1 + 4 = 8
 
 ---
 
-### 2. The Leading Zero Invariant (`size = n + 1`)
+## 2. The Leading Zero Invariant (`size = n + 1`)
+
+> **Leading Zero Invariant**: Prepending a zero at index `0` of the prefix array (`size = n + 1`).
 
 Always allocate the prefix array with size **$n + 1$** and initialize `pref[0] = 0`.
 - If a query requests the sum from $0$ to $j$:
@@ -117,7 +89,7 @@ Always allocate the prefix array with size **$n + 1$** and initialize `pref[0] =
 
 ---
 
-### 3. Prefix Sum + Hash Map: Subarray Sum Equals K
+## 3. Prefix Sum + Hash Map: Subarray Sum Equals K
 
 Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals `k`.
 
@@ -165,7 +137,7 @@ console.log("Subarrays with negatives:", subarraySum([1, -1, 0], 0)); // 3 ([1, 
 
 ---
 
-### 4. Product of Array Except Self ($O(1)$ Auxiliary Space)
+## 4. Product of Array Except Self ($O(1)$ Auxiliary Space)
 
 Given an array `nums`, return an array `output` such that `output[i]` is equal to the product of all elements of `nums` except `nums[i]`, without using the division operator:
 
@@ -206,7 +178,9 @@ console.log("Product Except Self:", productExceptSelf([1, 2, 3, 4])); // [ 24, 1
 
 ---
 
-### 5. 2D Matrix Prefix Sum: Inclusion-Exclusion Principle
+## 5. 2D Matrix Prefix Sum: Inclusion-Exclusion Principle
+
+> **Inclusion-Exclusion Principle**: Calculating 2D subgrid areas by combining overlapping bounding rectangles: $A + D - B - C$.
 
 For a 2D matrix, range sum queries over subgrids from $(r_1, c_1)$ to $(r_2, c_2)$ are evaluated in $O(1)$ time using the **Principle of Inclusion-Exclusion**:
 

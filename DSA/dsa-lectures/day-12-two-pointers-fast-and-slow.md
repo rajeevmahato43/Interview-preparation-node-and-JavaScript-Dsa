@@ -5,41 +5,12 @@
 [Previous: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Sliding Window: Fixed Size](day-13-sliding-window-fixed-size.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Apply the **Read/Write Pointer Pattern** to filter and compact array elements in place in $O(n)$ time and $O(1)$ space.
-- Eliminate costly $O(n^2)$ array-shifting performance bottlenecks caused by in-loop `Array.prototype.splice()` operations.
-- Implement in-place compaction problems: **Remove Duplicates from Sorted Array** (I and II) and **Move Zeroes**.
-- Derive the boundary-shrinkage invariant in **Trapping Rain Water**, reducing auxiliary space from $O(n)$ (prefix/suffix arrays) to $O(1)$.
-- Implement the **Dutch National Flag (3-Pointer Partition)** algorithm for single-pass multi-category segregation.
-- Apply in-place compaction to Node.js `Buffer` and typed array network streams to eliminate garbage collection latency.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Asymptotic analysis and auxiliary memory.
 - [Day 02: Arrays, Objects, Sets, and Maps](day-02-arrays-objects-sets-maps.md) — Array element kinds and memory allocation.
 - [Day 11: Two Pointers: Opposing Pointers](day-11-two-pointers-opposing.md) — Boundary pointer mechanics.
-
 ---
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-|---|---|---|
-| **Read/Write Pointers** | A two-pointer pattern where a `read` pointer scans forward across all elements while a `write` pointer marks the destination of valid elements. | Achieves in-place array transformation in $O(n)$ time with $O(1)$ memory without allocating new arrays. |
-| **Array Splicing Trap** | The hidden quadratic degradation ($O(n^2)$) caused by calling `arr.splice(i, 1)` inside a loop, forcing subsequent elements to copy leftward. | Freezes the Node.js event loop on large arrays; solved by overwriting valid elements via a write pointer. |
-| **Boundary Shrinkage** | A convergence technique where the smaller of two outer boundary maxima (`leftMax`, `rightMax`) is processed first. | Solves Trapping Rain Water in $O(n)$ time and $O(1)$ auxiliary space without precomputing prefix/suffix arrays. |
-| **Array Truncation** | Mutating `arr.length = write` to drop trailing elements without re-allocating a new array instance. | Instantly truncates the V8 backing store in place, generating zero garbage collection pressure. |
-| **3-Way Partitioning** | Using three synchronized pointers (`low`, `mid`, `high`) to segregate an array into three discrete segments in a single pass. | Categorizes multi-value streams in $O(n)$ time and $O(1)$ space without secondary collections. |
-
----
-
-## Core Concepts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -58,7 +29,7 @@ By the end of this lecture, you should be able to:
   Time: O(n), Space: O(1)
 ```
 
-### 1. In-Place Compaction: The Read/Write Pointer Pattern
+## 1. In-Place Compaction: The Read/Write Pointer Pattern
 
 In technical interviews and systems programming, problems frequently demand:
 > *"Modify the input array in place such that duplicates or target elements are removed. Return the new valid length without allocating extra space."*
@@ -106,7 +77,7 @@ console.log("Compacted array:", sample); // [ 1, 2, 3, 4 ]
 
 ---
 
-### 2. Move Zeroes (In-Place Compaction and Tail Flushing)
+## 2. Move Zeroes (In-Place Compaction and Tail Flushing)
 
 Given an array `nums`, move all `0`s to the end of the array while maintaining the relative order of the non-zero elements.
 
@@ -152,7 +123,9 @@ console.log("Move Zeroes:", moveZeroes(data)); // [ 1, 3, 12, 0, 0 ]
 
 ---
 
-### 3. Trapping Rain Water: Two-Pointer Boundary Shrinkage
+## 3. Trapping Rain Water: Two-Pointer Boundary Shrinkage
+
+> **Boundary Shrinkage**: A convergence technique where the smaller of two outer boundary maxima (`leftMax`, `rightMax`) is processed first.
 
 Given $n$ non-negative integers representing an elevation map where the width of each bar is 1, compute how much water can be trapped after raining.
 
@@ -211,7 +184,7 @@ console.log("Trapped Water:", trap([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])); // 6
 
 ---
 
-### 4. Node.js In-Place Buffer Compaction for High-Throughput Streams
+## 4. Node.js In-Place Buffer Compaction for High-Throughput Streams
 
 In networking and message protocol parsing (e.g., stripping escape bytes or delimiters from raw TCP payloads), allocating new `Buffer` slices via `.slice()` or `Buffer.concat()` causes memory fragmentation and triggers garbage collection pauses.
 
@@ -388,6 +361,8 @@ console.log("✅ All in-place telemetry compaction assertions passed successfull
 ## Interview Questions
 
 ### 1. Why does calling `Array.prototype.splice()` inside a loop cause $O(n^2)$ performance degradation, and how do Read/Write pointers resolve this?
+
+> **Read/Write Pointers**: A two-pointer pattern where a `read` pointer scans forward across all elements while a `write` pointer marks the destination of valid elements.
 
 **Question:** Analyze the internal V8 memory behavior of calling `arr.splice(i, 1)` inside a loop and explain the mechanical advantage of Read/Write pointers.
 

@@ -7,40 +7,15 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **2D Grid Dynamic Programming Pattern** where transitions propagate across orthogonal matrix coordinates $(r, c)$.
-- Solve **Unique Paths I** and compress auxiliary memory from $O(M \times N)$ 2D matrix down to an $O(N)$ 1D rolling array.
-- Handle obstacle boundaries and unreachable regions in **Unique Paths II**.
-- Implement **Minimum Path Sum** using bottom-up cost minimization: $dp[r][c] = \text{grid}[r][c] + \min(dp[r - 1][c], dp[r][c - 1])$.
-- Profile V8 memory overhead and cache locality when navigating row-major vs. column-major 2D array layouts in Node.js.
-- Apply 2D grid DP to multi-hop API gateway latency routing and cloud delivery cost optimization.
-
----
-
 ## Prerequisites
 
 - [Day 25: Grid Backtracking and N-Queens](day-25-grid-backtracking-and-n-queens.md) — 2D matrix coordinate navigation and boundary checks.
 - [Day 46: Dynamic Programming: Memoization and Tabulation](day-46-dynamic-programming-memo-and-tabulation.md) — Tabulation and space optimization fundamentals.
-
 ---
 
-## Quick Vocabulary Card
+## 1. Spatial Transitions in Grid DP
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Grid DP** | Dynamic programming where states represent coordinates $(r, c)$ on an $M \times N$ matrix. | Common model for spatial optimization, board games, and path minimization. |
-| **Unique Paths** | The total number of distinct monotonic paths from top-left $(0, 0)$ to bottom-right $(M-1, N-1)$ moving only Right and Down. | Solved via $dp[r][c] = dp[r-1][c] + dp[r][c-1]$ in $O(M \times N)$ time. |
-| **1D Rolling Array** | Maintaining a single array of size $N$ where `dp[c]` holds the state from the previous row before being updated with the left cell. | Reduces auxiliary memory from $O(M \times N)$ to $O(N)$, saving millions of V8 heap allocations. |
-| **Obstacle Grid** | A matrix containing barrier cells that cannot be traversed ($dp[r][c] = 0$). | Requires boundary checks; an obstacle in the first row or column permanently blocks all subsequent cells in that line. |
-| **Minimum Path Sum** | The minimum cumulative cell weight encountered traveling from top-left to bottom-right. | Canonical problem for path minimization in $O(M \times N)$ time and $O(N)$ space. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Spatial Transitions in Grid DP
+> **Grid DP**: Dynamic programming where states represent coordinates $(r, c)$ on an $M \times N$ matrix.
 
 When an agent moves on an $M \times N$ grid from top-left $(0, 0)$ to bottom-right $(M - 1, N - 1)$ moving strictly **Right** and **Down**:
 - Any cell $(r, c)$ can only be reached from two possible predecessors:
@@ -64,7 +39,9 @@ When an agent moves on an $M \times N$ grid from top-left $(0, 0)$ to bottom-rig
 
 ---
 
-### 2. Space Optimization: The 1D Rolling Array Pattern
+## 2. Space Optimization: The 1D Rolling Array Pattern
+
+> **1D Rolling Array**: Maintaining a single array of size $N$ where `dp[c]` holds the state from the previous row before being updated with the left cell.
 
 In standard 2D DP, allocating an $M \times N$ table takes $O(M \times N)$ space.
 Notice that computing row $r$ **only** references:
@@ -120,7 +97,9 @@ console.log('Unique paths for 3x7 grid:', uniquePaths(3, 7)); // 28
 
 ---
 
-### 3. Unique Paths II: Obstacles and Path Termination
+## 3. Unique Paths II: Obstacles and Path Termination
+
+> **Unique Paths**: The total number of distinct monotonic paths from top-left $(0, 0)$ to bottom-right $(M-1, N-1)$ moving only Right and Down.
 
 In **Unique Paths II** (LeetCode 63), cells with `obstacleGrid[r][c] === 1` represent walls that cannot be traversed.
 
@@ -172,7 +151,9 @@ console.log('Paths with obstacle:', uniquePathsWithObstacles([[0,0,0],[0,1,0],[0
 
 ---
 
-### 4. Minimum Path Sum (LeetCode 64)
+## 4. Minimum Path Sum (LeetCode 64)
+
+> **Minimum Path Sum**: The minimum cumulative cell weight encountered traveling from top-left to bottom-right.
 
 Given an $M \times N$ grid filled with non-negative numbers, find a path from $(0, 0)$ to $(M - 1, N - 1)$ minimizing the sum of all numbers along its path.
 

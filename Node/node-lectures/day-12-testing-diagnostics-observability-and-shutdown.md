@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Structure enterprise Node.js test suites using native `node:test` and `node:assert/strict`, isolating HTTP application factories from port-binding listeners.
-- Profile event-loop delay histograms with `perf_hooks.monitorEventLoopDelay()` to isolate CPU blocking from upstream dependency latency.
-- Capture and analyze V8 heap snapshots and Node.js diagnostic reports (`process.report`) to pinpoint memory leaks and dangling asynchronous handles.
-- Architect high-fidelity observability pipelines incorporating structured NDJSON logging, context propagation via `AsyncLocalStorage`, and bounded-cardinality Prometheus metrics.
-- Distinguish Kubernetes Liveness (`/livez`) and Readiness (`/readyz`) probe semantics to prevent catastrophic cascading container restart storms during database outages.
-- Implement an idempotent, multi-stage graceful shutdown coordinator that stops traffic ingress, drains in-flight requests, closes database pools, and enforces strict termination deadlines.
-
----
-
 ## Prerequisites
 
 Before diving into diagnostics and shutdown architecture, review:
@@ -26,20 +13,6 @@ Before diving into diagnostics and shutdown architecture, review:
 - [Day 04: Process, Configuration, and Lifecycle](day-04-process-configuration-and-lifecycle.md) for OS signals (`SIGTERM`, `SIGINT`), exit codes, and process teardown.
 - [Day 07: Events, Timers, and Resource Ownership](day-07-events-timers-and-resource-ownership.md) for active handle leaks and unref timers.
 - [Day 09: Node HTTP Fundamentals](day-09-node-http-fundamentals.md) for `server.close()` and `server.closeIdleConnections()`.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **Event-Loop Delay** | The extra latency between when a timer or I/O callback was scheduled to run and when the event loop actually executes it. | Conflating event loop delay with HTTP response latency; low CPU with high response latency indicates waiting on external network/DB I/O. |
-| **Active Handle** | An open libuv reference (TCP socket, server listener, active timer, child process pipe) that keeps the Node.js event loop alive. | Wondering why test suites hang indefinitely without exiting; forgetting to close a database pool or clear an interval timer. |
-| **Diagnostic Report** | A human-readable JSON snapshot generated via `process.report.writeReport()` detailing OS metrics, stack traces, native memory, and libuv handles. | Relying solely on `console.log` during production crashes instead of capturing automated diagnostic core dumps and reports. |
-| **Cardinality Explosion** | A condition where high-uniqueness values (UUIDs, timestamps, raw query strings) are used as metric label values, exhausting TSDB memory. | Tagging Prometheus metrics with `path: "/users/123e4567-e89b-12d3"` instead of normalized parameter paths `path: "/users/:id"`. |
-| **Liveness vs Readiness** | Liveness determines if the container process is alive and should not be killed; Readiness determines if the instance should receive inbound traffic. | Checking downstream database health inside the `/livez` probe; an intermittent DB glitch causes Kubernetes to kill and restart all API pods simultaneously. |
-| **Graceful Drain** | The process of ceasing to accept new connections while allowing in-flight transactions to conclude before terminating process execution. | Calling `process.exit(0)` immediately upon receiving `SIGTERM`, severing active client connections and corrupting in-flight writes. |
-
 ---
 
 ## Core Concepts
@@ -129,6 +102,8 @@ Production observability combines structured logging, distributed context, and a
 ---
 
 ### 5. High-Availability Health Checks: Liveness vs Readiness
+
+> **Liveness vs Readiness**: Liveness determines if the container process is alive and should not be killed; Readiness determines if the instance should receive inbound traffic.
 
 In containerized environments (Kubernetes, ECS), misconfigured health check probes frequently cause catastrophic cluster-wide outages.
 
@@ -265,6 +240,8 @@ describe('User API Integration Tests', () => {
 ### 2. High-Precision Event-Loop Latency Monitoring
 
 Instrumenting event-loop delay histograms and exporting percentiles to detect main thread stalls.
+
+> **Event-Loop Delay**: The extra latency between when a timer or I/O callback was scheduled to run and when the event loop actually executes it.
 
 ```js
 // Node.js code
@@ -791,6 +768,8 @@ By comparing the two metrics, you can immediately identify the root cause of an 
 ### 3. What is the root cause of test suites hanging after all assertions pass, and how do you diagnose and prevent it?
 
 A Node.js process exits when its libuv event loop has **zero active handles and zero active requests**. If a test suite passes every assertion but fails to terminate, at least one asynchronous resource is holding an active handle open on the event loop.
+
+> **Active Handle**: An open libuv reference (TCP socket, server listener, active timer, child process pipe) that keeps the Node.js event loop alive.
 
 Common culprits include:
 1. **Dangling Intervals**: A `setInterval()` called in an imported utility or metric reporter that was never cleared with `clearInterval()` or detached with `.unref()`.

@@ -6,38 +6,12 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Synthesize layered architecture, concurrency controls, caching, queues, and observability into a unified, fault-tolerant backend system design.
-- Distinguish system **Availability** from **Reliability** and enforce business correctness under network partitions and infrastructure crashes.
-- Contain failure blast radiuses using the **Bulkhead Pattern** and **Circuit Breaker Pattern** (`Closed` $\to$ `Open` $\to$ `Half-Open`).
-- Resolve the classic distributed two-phase failure: external payment gateway succeeds, but the local database crashes before committing the order.
-- Implement **Graceful Degradation** strategies (stale-while-revalidate caches, degraded mode responses, load shedding) during dependency outages.
-- Formulate complete technical system design specifications evaluated against senior backend engineering criteria.
-
----
-
 ## Prerequisites
 
 - [Day 33: Layered Backend Architecture](day-33-layered-backend-architecture.md) — DTO boundaries, services, and repositories.
 - [Day 34: Deadlines, Retries, and Idempotency](day-34-deadlines-retries-and-idempotency.md) — Distributed deadlines and state machines.
 - [Day 35: Caching and Rate Limiting](day-35-caching-and-rate-limiting.md) — Single-flight caching and sliding window limiting.
 - [Day 36: Queues and Background Work](day-36-queues-and-background-work.md) — Transactional Outbox and idempotent consumers.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Production Impact |
-|---|---|---|
-| **System Reliability** | The probability that a system executes its specified business function correctly without data corruption over a defined time interval. | A system returning `200 OK` while silently losing customer financial records is available, but completely unreliable. |
-| **Circuit Breaker** | A state machine pattern (`Closed`, `Open`, `Half-Open`) that trips after consecutive failures to immediately reject requests to a failing dependency. | Prevents cascading socket pool exhaustion and frees calling services from waiting on dead downstream servers. |
-| **Bulkhead Pattern** | Partitioning system resources (connection pools, worker threads, memory buffers) into isolated pools so failures in one cannot exhaust others. | Prevents a surge in slow reporting queries from starving critical user checkout operations. |
-| **Load Shedding** | An intentional defensive strategy where a saturated service deliberately drops lower-priority requests with `503 Service Unavailable`. | Keeps core transaction pathways operational and prevents the entire Node.js event loop from collapsing under overload. |
-| **Reconciliation Job** | A background polling worker that cross-references local transaction records against external provider logs to resolve asynchronous discrepancies. | Guarantees eventual consistency when distributed systems crash midway through multi-step workflows. |
-
 ---
 
 ## Core Concepts
@@ -101,6 +75,8 @@ In enterprise engineering, **Reliability strictly trumps Availability**. Failing
 ---
 
 ### 2. Failure Isolation: Bulkheads and Circuit Breakers
+
+> **Circuit Breaker**: A state machine pattern (`Closed`, `Open`, `Half-Open`) that trips after consecutive failures to immediately reject requests to a failing dependency.
 
 When a downstream dependency (e.g., an external fraud detection service or email gateway) degrades, calling services naturally queue requests waiting for socket data. Within seconds, all Node.js connections and pool clients become exhausted, causing a **Cascading Failure**.
 
@@ -216,6 +192,8 @@ This pattern eliminates the distributed two-phase commit trap without requiring 
 ---
 
 ### 4. Graceful Degradation and Load Shedding
+
+> **Load Shedding**: An intentional defensive strategy where a saturated service deliberately drops lower-priority requests with `503 Service Unavailable`.
 
 When systems face traffic surges exceeding database or compute capacity, the application must **degrade gracefully** rather than crash:
 
@@ -563,6 +541,8 @@ export class ResilientOrderService {
 ## Interview Questions
 
 ### 1. In enterprise system design, why does System Reliability strictly trump System Availability, and what is the danger of optimizing purely for 99.99% Availability?
+
+> **System Reliability**: The probability that a system executes its specified business function correctly without data corruption over a defined time interval.
 
 Availability is mathematically defined as the ratio of non-5xx responses over total requests. An engineering team optimizing purely for availability can easily configure endpoints to "fail open," suppress exceptions, or return `200 OK` regardless of internal consistency:
 - For example, if a payment charge succeeds but the database write fails, an availability-driven service might return a fallback `200 OK` with a message: "Order received!" However, if the order was never saved to the database, warehouse workers never ship the package, but the customer was billed.

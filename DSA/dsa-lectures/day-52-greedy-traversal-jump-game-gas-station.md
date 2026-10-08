@@ -7,40 +7,13 @@
 </nav>
 
 ---
-
-## Learning Outcomes
-
-- Master the **Greedy Frontier Reachability Pattern** to solve navigation problems without exponential branching.
-- Solve **Jump Game I** in $O(n)$ time and $O(1)$ space using an evolving `maxReach` horizon.
-- Solve **Jump Game II** (minimum jumps) in $O(n)$ time by modeling level-by-level BFS window boundaries.
-- Prove the two fundamental circuit invariants of the **Gas Station** problem (Total Deficit Invariant and Sub-Route Elimination).
-- Prevent quadratic $O(n^2)$ simulation pitfalls by converting circular traversals into single-pass linear scans.
-- Apply greedy traversal principles to circuit breaker retry budgets and resource depletion monitors in Node.js microservices.
-
----
-
 ## Prerequisites
 
 - [Day 11: Two Pointers: Opposite and Same Direction](day-11-two-pointers-opposite-and-same-direction.md) — Window scanning and boundary increments.
 - [Day 51: Greedy: Interval Scheduling and Overlaps](day-51-greedy-interval-scheduling.md) — The Greedy Choice property and optimality preservation.
-
 ---
 
-## Quick Vocabulary Card
-
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Max Reach Frontier** | The farthest array index reachable from any previously visited index: $\max(i + \text{nums}[i])$. | If the current index exceeds `maxReach`, future progress is impossible. |
-| **BFS Jump Window** | The contiguous segment of array indices reachable with the current number of jumps. | Advancing `currentEnd = farthest` represents taking another jump in $O(n)$ time. |
-| **Total Deficit Invariant** | If total gas available is $\ge$ total gas consumed, a valid starting station is mathematically guaranteed to exist. | Allows a single linear pass to find the starting station without simulating full circular trips. |
-| **Sub-Route Elimination** | If travelling from station $A$ runs out of fuel at station $B$, no station between $A$ and $B$ can be a valid starting point. | Eliminates quadratic $O(n^2)$ trial runs; resets search candidate directly to $B + 1$. |
-| **Greedy Choice (Jumps)** | You don't need to choose the exact landing cell; you only need to observe the farthest point reachable from anywhere within your current window. | Avoids evaluating all combinatorial landing decisions. |
-
----
-
-## Core Concepts & Mechanical Architecture
-
-### 1. Jump Game I: The Reachability Frontier
+## 1. Jump Game I: The Reachability Frontier
 
 In **Jump Game I** (LeetCode 55), given an array `nums` where each element represents the maximum jump length from that position, determine if you can reach the last index starting from index 0.
 
@@ -93,7 +66,9 @@ console.log('Can jump [3,2,1,0,4]:', canJump([3, 2, 1, 0, 4])); // false
 
 ---
 
-### 2. Jump Game II: Minimum Jumps via BFS Windows
+## 2. Jump Game II: Minimum Jumps via BFS Windows
+
+> **Greedy Choice (Jumps)**: You don't need to choose the exact landing cell; you only need to observe the farthest point reachable from anywhere within your current window.
 
 In **Jump Game II** (LeetCode 45), determine the **minimum number of jumps** needed to reach the last index.
 
@@ -151,7 +126,7 @@ console.log('Min jumps for [2,3,1,1,4]:', jump([2, 3, 1, 1, 4])); // 2
 
 ---
 
-### 3. The Gas Station Problem (LeetCode 134)
+## 3. The Gas Station Problem (LeetCode 134)
 
 There are $n$ gas stations along a circular route. Station $i$ has `gas[i]` units of gas and costs `cost[i]` to travel to station $i + 1$. Return the starting gas station's index if you can travel around the circuit once clockwise; otherwise, return `-1`.
 
@@ -386,6 +361,8 @@ console.log('✅ All analyzeRelayPipeline assertions passed successfully!');
 ---
 
 ### 2. Can you mathematically prove the Gas Station Sub-Route Elimination property?
+
+> **Sub-Route Elimination**: If travelling from station $A$ runs out of fuel at station $B$, no station between $A$ and $B$ can be a valid starting point.
 **Question:** Provide a rigorous proof for why if starting at station $A$ runs out of fuel at station $B$, no station $K \in (A, B)$ can successfully complete the circuit.
 
 **Answer:**

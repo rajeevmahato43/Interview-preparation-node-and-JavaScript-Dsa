@@ -5,43 +5,16 @@
 [Previous: Combinations and Permutations](day-24-combinations-and-permutations.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Binary Search Bounds and Intervals](day-26-binary-search-bounds-and-intervals.md)
 
 </nav>
-
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Master **2D Grid Backtracking** using coordinate offsets and strict boundary condition guards.
-- Apply **In-Place Visited Marking** (`board[r][c] = '#'`) with state restoration to achieve $O(1)$ auxiliary memory beyond call stack depth.
-- Solve **Word Search** (LeetCode 79) in $O(m \cdot n \cdot 4^L)$ time and implement prefix frequency pruning to defeat pathological test cases.
-- Derive the mathematical collision equations for **N-Queens** ($r + c$ and $r - c$) to test diagonal threats in $O(1)$ time.
-- Implement **Rat in a Maze** returning lexicographically ordered movement paths.
-- Architect CPU-intensive 2D spatial search algorithms in Node.js using `worker_threads` to avoid event loop stalls.
-
----
-
 ## Prerequisites
 
 - [Day 01: Big O and Problem Solving](day-01-big-o-and-problem-solving.md) — Grid dimensions and exponential state branching.
 - [Day 21: Recursion Mechanics and Call Stack](day-21-recursion-mechanics-and-call-stack.md) — Auxiliary stack depth and unwinding.
 - [Day 22: Backtracking Core: Decision State, Choices, and Undo](day-22-backtracking-fundamentals.md) — State mutation and rollback.
-
 ---
 
-## Quick Vocabulary Card
+## 1. The 2D Grid Backtracking Pattern: Vectors and Boundary Guards
 
-| Term | Engineering Definition | Practical / Interview Impact |
-| :--- | :--- | :--- |
-| **Grid Backtracking** | A depth-first traversal across 2D matrix coordinates exploring adjacent cells and reverting visited marks upon failure. | Standard technique for pathfinding, word searches, and constraint satisfaction over planar grids. |
-| **In-Place Marking** | Temporarily overwriting a matrix cell with a sentinel character (`'#'`) during exploration and restoring the original value during unwinding. | Eliminates the $O(m \times n)$ heap allocation of a secondary `visited` boolean matrix. |
-| **Cardinal Direction Vectors** | Paired delta arrays (`dr = [-1, 1, 0, 0]`, `dc = [0, 0, -1, 1]`) representing Up, Down, Left, and Right spatial steps. | Encapsulates geometric movement cleanly inside a 4-iteration loop, eliminating duplicate code. |
-| **Anti-Diagonal Invariant** | A geometric property of 2D grids where all cells on a forward-slanted diagonal ($\nearrow$) share an identical coordinate sum: $r + c = k$. | Allows testing top-right to bottom-left queen threats in $O(1)$ time. |
-| **Main Diagonal Invariant** | A geometric property of 2D grids where all cells on a backward-slanted diagonal ($\searrow$) share an identical coordinate difference: $r - c = k$. | Allows testing top-left to bottom-right queen threats in $O(1)$ time. |
-
----
-
-## Core Concepts
-
-### 1. The 2D Grid Backtracking Pattern: Vectors and Boundary Guards
+> **Grid Backtracking**: A depth-first traversal across 2D matrix coordinates exploring adjacent cells and reverting visited marks upon failure.
 
 A **2D Grid Backtracking** algorithm traverses a matrix of dimensions $m \times n$ by treating each coordinate cell $(r, c)$ as a decision node that can branch into four adjacent orthogonal directions: Up, Down, Left, and Right.
 
@@ -67,7 +40,7 @@ dc = [  0, 0, -1, 1 ]   // Col changes: Up, Down, Left, Right
 
 ---
 
-### 2. In-Place Visited Marking vs Secondary Matrices
+## 2. In-Place Visited Marking vs Secondary Matrices
 
 Allocating a separate $m \times n$ boolean matrix `visited[r][c]` creates an $O(m \cdot n)$ memory footprint on every search or requires manual resets between queries.
 
@@ -124,7 +97,7 @@ function safeDfs(board, r, c, word, index) {
 
 ---
 
-### 3. Word Search: Frequency Pre-Checks and Word Inversion
+## 3. Word Search: Frequency Pre-Checks and Word Inversion
 
 In **Word Search** (LeetCode 79), we determine whether a given word exists in an $m \times n$ character grid. A path may not revisit the same cell twice.
 
@@ -204,7 +177,7 @@ function exist(board, word) {
 
 ---
 
-### 4. N-Queens: Diagonal Collision Mathematics
+## 4. N-Queens: Diagonal Collision Mathematics
 
 The **N-Queens** problem requires placing $n$ non-attacking queens on an $n \times n$ chessboard such that no two queens share the same row, column, or diagonal.
 

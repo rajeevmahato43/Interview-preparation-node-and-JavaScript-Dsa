@@ -6,19 +6,6 @@
 
 </nav>
 
-## Learning Outcomes
-
-By the end of this lecture, you should be able to:
-
-- Deconstruct the process-per-connection architecture of PostgreSQL and explain why unbounded Node.js database connections exhaust server RAM and CPU.
-- Configure enterprise connection pooling using `pg.Pool` (`max`, `min`, `idleTimeoutMillis`, `connectionTimeoutMillis`).
-- Differentiate implicit client checkout (`pool.query()`) from manual client acquisition (`pool.connect()`), eliminating connection pool leaks via strict `try/finally` patterns.
-- Handle idle socket drops and network failures by listening to `pool.on('error')` to prevent unhandled process crashes.
-- Calculate optimal database connection pool sizes mathematically across multi-replica container deployments using the HikariCP formula.
-- Implement an idempotent, bounded graceful teardown sequence using `pool.end()`.
-
----
-
 ## Prerequisites
 
 Before diving into PostgreSQL pool internals, review:
@@ -26,25 +13,13 @@ Before diving into PostgreSQL pool internals, review:
 - [Day 10: Networking, DNS, TLS, and Timeouts](day-10-networking-dns-tls-and-timeouts.md) for TCP sockets and connection timeouts.
 - [Day 12: Testing, Diagnostics, Observability, and Shutdown](day-12-testing-diagnostics-observability-and-shutdown.md) for open handle tracking and ephemeral port teardown.
 - [Day 13: Express Application Structure](day-13-express-application-structure.md) for Composition Root dependency wiring.
-
----
-
-## Quick Vocabulary Card
-
-| Term | Programming Definition | Anti-Pattern / Misconception |
-| :--- | :--- | :--- |
-| **`pg.Pool`** | An in-memory connection pool managing a set of reusable, persistent TCP clients connected to PostgreSQL. | Creating `new Pool()` inside route handlers or repository methods; opens hundreds of redundant database connection pools. |
-| **Process-Per-Connection**| PostgreSQL's native process model where each connected client spawns a dedicated OS backend process (`postgres: worker`). | Treating PostgreSQL connections like lightweight green threads; each connection allocates ~5–10MB of server RAM. |
-| **Client Leak** | Checking out a client via `pool.connect()` and failing to call `client.release()` in a `finally` block. | Forgetting `client.release()`; after $N$ unreleased requests (where $N = \text{max}$), the pool permanently deadlocks. |
-| **`pool.query()`** | A convenience method that automatically checks out a client, executes a query, and releases the client back to the pool. | Using `pool.query()` for multi-step SQL transactions (`BEGIN ... COMMIT`); each `pool.query()` may execute on a different client socket! |
-| **`connectionTimeoutMillis`**| The duration a query waits in the pool's FIFO queue for a free connection before throwing an error. | Omitting connection timeouts (default: 0 = wait forever); causes HTTP request queues to hang indefinitely during pool starvation. |
-| **PgBouncer** | A lightweight external connection pooler proxying thousands of client connections to a small set of PostgreSQL backend workers. | Increasing Postgres `max_connections` to 2,000 instead of placing PgBouncer in front of multi-pod Kubernetes clusters. |
-
 ---
 
 ## Core Concepts
 
 ### 1. PostgreSQL's Process-Per-Connection Architecture
+
+> **Process-Per-Connection**: PostgreSQL's native process model where each connected client spawns a dedicated OS backend process (`postgres: worker`).
 
 Unlike Node.js (which uses a single-threaded non-blocking event loop) or threaded databases, PostgreSQL uses a **process-based concurrency architecture**:
 
@@ -173,6 +148,8 @@ pool.on('error', (err, client) => {
 ## Code Snippets and Demonstrations
 
 ### 1. Enterprise `pg.Pool` Database Manager
+
+> **`pg.Pool`**: An in-memory connection pool managing a set of reusable, persistent TCP clients connected to PostgreSQL.
 
 Configuring timeouts, pool limits, and idle error listeners with graceful drain capabilities.
 
@@ -336,6 +313,8 @@ export async function executeRiskyQuery(dbManager, sqlText) {
 ## Edge Cases and Tricky Scenarios
 
 ### 1. The Missing `connectionTimeoutMillis` Infinite Hang
+
+> **`connectionTimeoutMillis`**: The duration a query waits in the pool's FIFO queue for a free connection before throwing an error.
 
 By default in `pg`, `connectionTimeoutMillis` is `0` (disabled).
 - **The Failure**: Under peak traffic, all connections in the pool become checked out.
