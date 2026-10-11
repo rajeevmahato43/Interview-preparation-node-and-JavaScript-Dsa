@@ -23,7 +23,7 @@ The workspace is organized into progressive, day-wise learning tracks with compr
 | :--- | :--- | :--- | :--- | :--- |
 | **Track 1: JavaScript Mastery** | Language internals, memory, event loop, prototypes, closures, and async patterns | 28 Days | [javascript-roadmap.md](Javascript/javascript-roadmap.md) | [Javascript/javascript-lectures/](Javascript/javascript-lectures/) |
 | **Track 2: Node.js Backend & Architecture** | Node runtime, libuv, Express APIs, MongoDB, PostgreSQL, queues, caching, and system design | 42 Days | [node-roadmap.md](Node/node-roadmap.md) | [Node/node-lectures/](Node/node-lectures/) |
-| **Track 3: Data Structures & Algorithms** | Algorithmic patterns, Big O, linear and non-linear structures, dynamic programming, and backend use cases | 60 Days | [javascript-dsa-roadmap.md](DSA/javascript-dsa-roadmap.md) | [DSA/dsa-lectures/](DSA/dsa-lectures/) |
+| **Track 3: Data Structures & Algorithms** | Algorithmic patterns, Big O, linear and non-linear structures, dynamic programming, and backend use cases | 30 Days (4 Weeks) | [javascript-dsa-roadmap.md](DSA/javascript-dsa-roadmap.md) | [DSA/dsa-lectures/](DSA/dsa-lectures/) |
 | **Track 4: System Design** | Requirements, estimation, data, distributed systems, reliability, operations, and interview case studies | 42 Days | [system-design-roadmap.md](SystemDesign/system-design-roadmap.md) | [system-design-lectures/](SystemDesign/system-design-lectures/) |
 | **Quick interview prep** | Six independent, high-yield one-week interview sprints | 7 Days per track | [Quick-prep index](Quick-prep/README.md) | [Quick-prep lectures](Quick-prep/) |
 
@@ -60,16 +60,13 @@ The workspace is organized into progressive, day-wise learning tracks with compr
 
 ---
 
-### 3. JavaScript Data Structures & Algorithms (60 Days)
-*Focus: Pattern-based DSA mastery with native JavaScript idioms and direct backend applications.*
+### 3. JavaScript Data Structures & Algorithms (30 Days Master Plan)
+*Focus: Instant pattern recognition, clean algorithmic problem-solving, V8 engine memory internals, and single-threaded Node.js event-loop throughput.*
 
-- **Days 01–05: Problem Solving & Complexity** — Big O time/space analysis, V8 array internals, hash collisions, call-stack recursion mechanics, and basic sorting.
-- **Days 06–15: Core Two-Pointer & Windowing Patterns** — Frequency maps, hash complements (Two Sum), group anagrams, opposing two pointers, fast & slow pointers, fixed/variable sliding windows, and prefix sum arrays.
-- **Days 16–25: Linear Structures & Backtracking** — Stack evaluation, monotonic stacks, circular queues, deques, backtracking trees, power sets, combinations, permutations, and grid exploration.
-- **Days 26–35: Logarithmic Search & Tree Hierarchies** — Boundary binary search, search on answer spaces, linked list reversals, binary tree DFS/BFS, binary search trees (BST), and LCA algorithms.
-- **Days 36–45: Graphs & Priority Queues** — Adjacency lists/matrices, BFS shortest path, cycle detection (directed/undirected), Topological Sort (Kahn's algorithm), Binary Heaps, and Priority Queue patterns.
-- **Days 46–55: Dynamic Programming & Advanced Structures** — Memoization, 1D/2D tabulation (House Robber, LIS, Knapsack), greedy interval scheduling, Tries (prefix trees), and Disjoint Set Union (Union-Find).
-- **Days 56–60: Production Readiness & Interview Frameworks** — Mixed-pattern recognition under time constraints, senior interview communication frameworks, and practical DSA patterns used in high-throughput backend services.
+- **Days 01–07: Foundations, Primitive Memory, Searching/Sorting & Hashing** — Big O analysis, constraint decoding ($N \le 10^5 \implies O(N)$), V8 packed vs holey arrays, linear & binary search, elementary sorting, Kadane's, Maps, Sets, frequency counters, and two pointers.
+- **Days 08–15: Windows, Ranges, Linked Structures, Stacks & Queues** — Fixed/variable sliding windows, prefix sums, linked list reversals and Floyd's cycle detection, monotonic stacks, circular queues, and custom container design.
+- **Days 16–22: Search, Recursion, Trees & Divide-and-Conquer** — Binary search on bounds and solution space, recursion execution frames, Merge Sort and QuickSort in-place partitioning, recursion trees, and combinatorial/2D grid backtracking.
+- **Days 23–30: Hierarchies, Graphs, Dynamic Programming & Senior Systems Capstone** — Binary tree DFS/BFS, BST invariants, unweighted BFS shortest path, cycle detection, topological sorting, array-backed binary heaps, 1D/2D dynamic programming, tries, union-find, and production Node.js cooperative event-loop chunking.
 
 👉 **View full roadmap:** [DSA/javascript-dsa-roadmap.md](DSA/javascript-dsa-roadmap.md)  
 📁 **Lectures:** [DSA/dsa-lectures/](DSA/dsa-lectures/)
@@ -173,8 +170,8 @@ Follow the natural dependency order across all three tracks:
 │   ├── react/                   # React working-fluency quick prep
 │   └── angular/                 # Angular working-fluency quick prep
 └── DSA/
-    ├── javascript-dsa-roadmap.md # 60-Day JavaScript DSA roadmap
-    └── dsa-lectures/          # Day 01 to Day 60 Markdown lectures
+    ├── javascript-dsa-roadmap.md # 30-Day Master JavaScript DSA roadmap
+    └── dsa-lectures/          # Day 01 to Day 30 Markdown lectures
 ```
 
 ---

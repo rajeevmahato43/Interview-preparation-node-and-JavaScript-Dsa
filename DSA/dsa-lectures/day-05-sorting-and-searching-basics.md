@@ -76,7 +76,7 @@ console.log("Found 40:", binarySearch(numbers, 40));         // -1
 ```
 
 > [!NOTE]
-> Never sort an unsorted array merely to perform a single search query. Sorting costs $O(n \log n)$, which is asymptotically slower than a direct $O(n)$ linear scan. Only pre-sort if the array will be queried repeatedly ($k \times O(\log n)$ amortizes the initial sort).
+> If you only need to search once in an unsorted array, don't sort it first. Scanning the array from start to finish is usually faster overall. Sort the array only when you'll search in it many times.
 
 ---
 

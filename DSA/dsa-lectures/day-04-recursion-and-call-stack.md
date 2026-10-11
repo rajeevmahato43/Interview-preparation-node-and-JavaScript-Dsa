@@ -31,13 +31,14 @@
 
 ## 1. Anatomy of Recursion: Base Case and Recursive Step
 
-> **Base Case**: The terminating condition that produces an immediate non-recursive result without further calls.
+Recursion is a technique where a function solves a problem by calling itself with a smaller version of the same problem until it reaches a point where it can stop.
 
-Recursion is a problem-solving technique where a function solves a subproblem by calling itself with smaller or partitioned input.
+> Think of recursion as: **"Solve a small part of the problem, then let the same function solve the rest."**
 
 Every valid recursive function must possess two invariant elements:
-1. **Base Case:** A terminating branch that halts recursion and returns a concrete value when the subproblem is trivial.
-2. **Recursive Step:** The code path that divides the problem, invokes the function on the reduced problem space, and advances strictly toward the base case.
+1. **Base Case:** is the condition that tells the function when to stop calling itself. Without a base case, the function would continue forever and cause a stack overflow.
+
+2. **Recursive Step:** is where the function calls itself with a smaller or simpler input.This moves the problem closer to the base case.
 
 ```javascript
 // Node.js code
@@ -54,7 +55,7 @@ function countdown(n) {
   // Action before recursive call (executes on the way DOWN the stack)
   console.log("T-minus:", n);
 
-  // 2. Recursive step: Decrement input toward the base case
+  // 2. Each call decreases n by 1, bringing it closer to 0.
   countdown(n - 1);
 }
 
@@ -70,9 +71,15 @@ countdown(3);
 
 ## 2. The Execution Call Stack and Activation Records
 
-> **Activation Record (Stack Frame)**: A discrete memory block allocated on the execution call stack storing arguments, local variables, and the return address.
 
-JavaScript executes code synchronously on a single thread. When a function is called, the V8 engine pushes an **activation record** (stack frame) onto the Call Stack.
+JavaScript runs code **one task at a time** on a **single thread**.
+
+Whenever a function is called, JavaScript places information about that function on the **Call Stack**.
+
+This information is stored in a **Stack Frame** (also called an **Activation Record**).
+
+> Think of a stack frame as a folder that contains everything a function needs while it is runnin.
+A discrete memory block allocated on the execution of call stack storing arguments, local variables, and the return address
 
 Each stack frame encapsulates:
 - The function arguments and parameters.
@@ -92,20 +99,89 @@ function factorial(n) {
 console.log(factorial(3)); // 6
 ```
 
-#### Execution Lifecycle: Stack Buildup and Unwinding
+### How it Works
+```text
+factorial(3)
+= 3 * factorial(2)
+= 3 * 2 * factorial(1)
+= 3 * 2 * 1
+= 6
+```
+**Base Case**
+```javascript
+if (n <>= 1) {
+  return 1;
+}
+```
+**Recursive Step**
 
-| Step | Call Stack State | Action / Evaluation | Phase |
-|---|---|---|---|
-| 1 | `[factorial(3)]` | Calls `factorial(2)` (Suspends frame 3) | Buildup |
-| 2 | `[factorial(3), factorial(2)]` | Calls `factorial(1)` (Suspends frame 2) | Buildup |
-| 3 | `[factorial(3), factorial(2), factorial(1)]` | Hits base case: returns `1` | Base Case |
-| 4 | `[factorial(3), factorial(2)]` | Evaluates $2 \times 1 = 2$; returns `2` | Unwinding |
-| 5 | `[factorial(3)]` | Evaluates $3 \times 2 = 6$; returns `6` | Unwinding |
-| 6 | `[]` | Result `6` received by caller | Complete |
+```javascript
+return n * factorial(n - 1);
+```
 
-The auxiliary space complexity of recursion is strictly governed by the **maximum stack depth** attained during execution, not the total number of calls executed.
+The extra memory used by a recursive function depends on the **deepest number of function calls stored on the Call Stack at one time**, not on how many total calls are made.
 
----
+> In simple terms: Recursion uses memory based on **how deep it goes**, not **how many times it runs**.
+
+
+# Base Case, State, and Transition
+
+These are the **3 key things** to identify when solving a problem using recursion.
+
+
+## 1. Base Case
+
+The **base case** is the condition that tells the recursion **when to stop**.
+
+> Think: **"When can I answer the problem directly?"**
+
+```javascript
+function factorial(n) {
+  if (n === 1) return 1; // Base Case
+
+  return n * factorial(n - 1);
+}
+```
+
+Here, when `n` becomes `1`, we already know the answer, so recursion stops.
+
+## 2. State
+
+The **state** is the information needed to solve the current problem.
+
+> Think: **"What changes in each recursive call?"**
+
+```javascript
+function factorial(n) {
+  // n is the state
+}
+
+// For the calls:
+// factorial(5)
+// factorial(4)
+// factorial(3)
+// factorial(2)
+// factorial(1)
+```
+
+The state is `n`, because its value changes in every call.
+
+## 3. Transition
+
+The **transition** is how we move from the current state to the next state.
+
+> Think: **"How do I get closer to the base case?"**
+
+```javascript
+factorial(n - 1)
+
+// Here the transition is:
+
+// n → n - 1
+```
+
+Each call reduces `n` and moves closer to the base case (`n === 1`).
+
 
 ## 3. Stack Depth Limits and V8 `RangeError`
 
@@ -129,9 +205,8 @@ If recursion exceeds this allocation, V8 terminates execution with:
 `RangeError: Maximum call stack size exceeded`
 
 > [!WARNING]
-> Never use recursion for linear traversals over large arrays or unbounded streams. Processing a list of 20,000 items recursively crashes the Node.js process unless an iterative loop is used.
+> Do not rely on recursion for sequential processing of large collections or infinite streams. For example, recursively traversing 20,000 items may exhaust the call stack and terminate the Node.js process, whereas an iterative approach avoids this risk.
 
----
 
 ## 4. Branching Recursion vs Memoization ($O(2^n) \to O(n)$)
 
@@ -178,7 +253,6 @@ console.log("Result:", fibMemo(45)); // 1134903170
 console.timeEnd("fibMemo(45)"); // ~1ms
 ```
 
----
 
 ## 5. Logarithmic Recursion: Divide and Conquer (`myPow`)
 
@@ -205,7 +279,6 @@ console.log(myPow(2, -3)); // 0.125
 - **Time Complexity:** $O(\log n)$ — input exponent is halved on each step.
 - **Auxiliary Space:** $O(\log n)$ stack frames. For $n = 1,000,000$, call stack depth is only $\approx 20$ frames.
 
----
 
 ## 6. Converting Recursion to Heap-Allocated Iteration
 
@@ -249,7 +322,7 @@ function traverseIterative(root) {
 traverseIterative(root);
 ```
 
----
+
 
 ## Tricky Points and Edge Cases
 
