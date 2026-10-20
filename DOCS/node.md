@@ -1,25 +1,30 @@
 # Node.js Domain Instructions
 
-Teach Node.js as a JavaScript runtime and backend platform. Explain how runtime behavior affects correctness, latency, reliability, and operations.
+Teach Node.js as a high-performance, single-threaded, event-driven backend platform from first principles.
 
-## Required scope
+Follow the shared rules in [content-rules.md](content-rules.md), [example-rules.md](example-rules.md), and [interview-rules.md](interview-rules.md).
 
-Cover the event loop and scheduling, V8 boundaries, CommonJS and ESM, package resolution, `package.json`, filesystem and process APIs, buffers, streams and backpressure, events, timers, HTTP and networking, workers and child processes, environment configuration, testing, debugging, observability, security, and graceful shutdown.
+---
 
-## Teaching requirements
+## Foundational Philosophy
 
-- Distinguish JavaScript language behavior from Node-provided APIs.
-- Explain concurrency versus parallelism and why blocking work harms an event-driven server.
-- Show error, cancellation, timeout, retry, and resource-cleanup behavior for async operations.
-- Discuss stream backpressure, memory limits, process lifecycle, and failure isolation at senior depth.
-- State compatibility assumptions when CommonJS, ESM, runtime APIs, or built-in test tooling differ.
-- Connect Node.js behavior back to the JavaScript concepts that cause it, especially promises, closures, events, modules, and object behavior.
-- Include a DSA or algorithmic connection when it clarifies event-loop work, queues, caching, scheduling, stream processing, or performance.
+> **"Never teach a Node.js API or mechanism without first teaching how the single thread, libuv event loop, and OS thread pool interact under load."**
 
-## Cheat sheet guidance
+Strictly reject superficial API memorization. Explain how incoming network packets turn into events, why synchronous loops block the event loop, how stream backpressure protects server memory, and how worker threads offload CPU-heavy computation.
 
-Include concise revision material for event-loop phases, async scheduling, streams, backpressure, error handling, process lifecycle, module systems, and production diagnostics. Include decision cues rather than an unexplained API list.
+---
 
-## Boundaries
+## Required Scope
 
-Use [javascript.md](javascript.md) for language semantics, [express.md](express.md) for framework middleware and routing, and the database files for persistence behavior. Do not treat Node.js as a database, framework, or deployment platform; identify those boundaries explicitly.
+Cover the Node.js architecture (V8 + libuv), the 6 phases of the event loop (timers, pending callbacks, idle/prepare, poll, check, close), `process.nextTick` vs `setImmediate`, CommonJS vs ESM, Buffers and binary encodings, Streams and backpressure pipelines, EventEmitter lifecycle, child processes and worker threads, clustering, graceful shutdown, diagnostic memory snapshots, and security realities.
+
+---
+
+## Teaching Standards
+
+1. **Basic English Definitions:** Explain every runtime mechanism in simple, clear everyday words. Explain what it is, what it does, and what it does NOT do.
+2. **In-Place Term Callouts:** Define every specialized term (like `Backpressure`, `libuv`, `Thread Pool`, `Worker Thread`) right where it appears using a 1-line callout block.
+3. **Event Loop State Diagrams:** Use clean ASCII diagrams showing phase transitions and queue drainage.
+4. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` (e.g., non-blocking stream pipeline) alongside `❌ ANTI-PATTERN / COMMON BUG` (e.g., loading 500MB into memory with `fs.readFileSync`) with inline explanations.
+5. **Production Systems Reality:** Detail how latency spikes happen when the main thread is blocked, and how Kubernetes health checks fail when synchronous code starves the event loop.
+6. **13-Section Blueprint:** Follow the exact 13-section lecture blueprint from Top Navigation to Bottom Navigation. Target ~650–850 lines per lecture.

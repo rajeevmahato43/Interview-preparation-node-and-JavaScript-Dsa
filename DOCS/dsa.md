@@ -1,59 +1,95 @@
 # Data Structures and Algorithms Domain Instructions
 
-Teach DSA as a reasoning and pattern-recognition process for solving constrained problems, from beginner fundamentals to master-level interview depth.
+Teach Data Structures and Algorithms (DSA) as a first-principles problem-solving and pattern-recognition process, building from raw human intuition to mid-to-senior technical interview mastery.
 
-## Course structure and consolidation
+Follow the shared standards in [content-rules.md](content-rules.md), [example-rules.md](example-rules.md), and [interview-rules.md](interview-rules.md).
 
-- Organize the curriculum into **30 comprehensive master lecture files** (`day-01-topic.md` through `day-30-topic.md`), consolidating multiple connected topics per file.
-- The 30-day file division represents self-contained study units, regardless of whether a learner completes them over 30 days, 6 weeks, or 6 months.
-- Never compromise depth when consolidating: every file must provide exhaustive explanations, diagrams, concrete code, edge cases, and interview preparation spanning beginner to senior level.
+---
 
-## Required scope
+## Foundational Philosophy
 
-Cover asymptotic analysis, arrays and strings, hashing, linked lists, stacks, queues, trees, heaps, tries, graphs, sorting, searching, recursion, backtracking, greedy methods, dynamic programming, intervals, and common problem-solving patterns.
+> **"Never teach what the solution is without first teaching how to arrive at that solution from scratch using raw human intuition, brute-force reasoning, and bottleneck diagnosis."**
 
-## Lecture progression structure (Basics First, Advanced at End)
+Strictly reject:
+- Rote memorization of code templates.
+- Unexplained "magic trick" algorithms.
+- Solutions presented without showing the naive brute-force first.
 
-To keep lectures beginner-accessible while achieving senior depth, strictly structure the core content in three progressive phases:
+The goal is to forge an autonomous engineer who can walk up to an unfamiliar problem on a whiteboard, break it down using basic human intuition, discover the optimal pattern independently, and defend system-level trade-offs.
 
-### Phase 1: Absolute basics, intuition & pattern recognition (Top of Lecture)
-1. **Mental model & everyday intuition**: Begin with clear, everyday analogies and visual ASCII diagrams. Explain what the concept does and why it exists in plain, jargon-free English.
-2. **How the algorithm works**: Walk through the step-by-step mechanics conceptually before writing complex code.
-3. **Instant pattern recognition ("How to spot this pattern")**: Teach the candidate how to immediately recognize when to use this pattern upon seeing a new problem:
-   - Diagnostic triggers: *Is this hashing? Sliding window? Two pointers? Monotonic stack?*
-   - Problem statement keywords (e.g., "contiguous subarray" $\to$ sliding window; "sorted pair" $\to$ two pointers).
-   - Constraint-to-complexity hints (e.g., $N \le 10^5 \implies O(n)$ or $O(n \log n)$).
+---
 
-### Phase 2: Clean problem solving & complexity derivation (Middle)
-4. **Brute-force baseline**: Start with the naive solution ($O(n^2)$), explaining why it works and why it fails at scale.
-5. **The optimized insight**: Identify the wasted work eliminated by the pattern.
-6. **Clean JavaScript solution**: Write production-grade, readable JavaScript with descriptive variable names and loop invariant comments.
-7. **Step-by-step complexity derivation**: Show how to count time steps and auxiliary memory allocations, including call-stack frames.
+## Course Structure: The 30-Day Master Curriculum
 
-### Phase 3: Deep-dive engine mechanics, tricky points & practice (End of Lecture)
-8. **Under the Hood: Engine & Runtime Mechanics**: Place low-level engine details (packed vs holey arrays, SMI vs double, hidden classes, garbage collection) and Node.js concurrency realities (event loop blocking, worker threads) here so beginners are not blocked upfront.
-9. **Tricky points and edge cases**: Substantially expanded section detailing subtle traps, off-by-one errors, type coercion surprises, mutation hazards, and adversarial inputs.
-10. **Hands-on exercises**: Provide 3 scaffolded problem tiers: Warm-Up (Easy), Core Challenge (Medium), and Scaled Follow-Up (Hard).
-11. **Comprehensive summary & cheat sheet**: Exhaustive recaps, decision matrices, reusable code skeletons, and quick-scan invariants.
-12. **Technical Discussion & Deep Q&A**: Include 45-second technical walkthroughs, trade-off evaluations, and conceptual discussion questions with deep answers.
-13. **LeetCode Practice Problems**: A dedicated section at the very end listing curated practice problems with problem statement, difficulty, sample input, and expected output **without answers or code**, allowing learners to practice independently.
+- Organize the curriculum into **30 comprehensive master lecture files** (`day-01-topic.md` through `day-30-topic.md`) in `DSA/DSA_V2/`.
+- Each numbered day represents a complete, self-contained master study unit.
+- **Moderate length target (~650–850 lines):** Balance deep technical rigor with student focus. Do not write shallow summaries (<300 lines) and avoid overwhelming walls of text (>1,000 lines).
+- Balanced topic coverage: When a day covers multiple subjects (e.g., `Objects, Maps, Sets & Hash Tables`), cover all named topics thoroughly rather than narrowing focus to just one algorithm.
 
-## Problem explanation format
+---
 
-For each problem in the core concepts, avoid using "LeetCode XX" in the main section title (use clean names like `Problem 1: Valid Palindrome`). Require: restated goal, assumptions, examples, baseline, insight, algorithm, proof sketch or invariant, implementation, complexity, tests, and follow-up variations. Keep domain knowledge separate from [javascript.md](javascript.md), while still explaining JavaScript details that affect the solution.
+## Universal 5-Step "Logic Discovery Engine"
 
-## Cheat sheet requirements
+Every problem explained inside a lecture MUST follow this 5-step progression:
 
-Every DSA lecture cheat sheet should include:
-- Pattern-recognition cues and signals in the problem statement.
-- When to choose each relevant data structure.
-- Common operation time and space complexity.
-- Reusable algorithm or implementation templates.
-- Invariants, proof reminders, or correctness checks.
-- Important edge cases and failure cases.
-- JavaScript pitfalls such as mutation, numeric limits, sorting, recursion depth, and reference behavior.
-- Common very hard follow-up variations.
+1. **Step 1: Physical Human Simulation (Pen & Paper Intuition)**
+   - State the problem using small concrete numbers or physical items (playing cards, coins, blocks, books).
+   - Trace what human eyes and hands naturally do to solve it. Write zero code and mention zero data structures.
+2. **Step 2: The Raw Brute Force (Naive Code)**
+   - Translate raw human instinct into simple code using basic nested loops or straightforward recursion.
+   - Explain why it works and calculate its time and space bounds ($O(n^2)$ or $O(2^n)$).
+3. **Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?")**
+   - Point out the exact wasted work: Is the CPU scanning the same list again and again ($O(n)$ search)? Is it recalculating the same subproblem? Is it sorting data that was already sorted?
+4. **Step 4: The Pattern Discovery Moment ("The Aha! Bridge")**
+   - Present the algorithm or data structure not as a clever trick, but as the natural cure for that specific bottleneck:
+     - Repeated lookup bottleneck? $\to$ Need instant recall $\to$ Hash Map / Set ($O(1)$).
+     - Range recalculation bottleneck? $\to$ Move boundaries $\to$ Sliding Window.
+     - Sorted search space bottleneck? $\to$ Cut search space in half $\to$ Binary Search.
+     - Nearest smaller/greater element bottleneck? $\to$ Monotonic Stack.
+5. **Step 5: The Optimal Solution & Loop Invariant**
+   - Implement the clean, production-grade JavaScript solution with descriptive variable names, dual cases, and an explicit loop invariant comment.
 
-## Boundaries
+---
 
-Use database-specific files for query planning and data modeling. Use [node.md](node.md) for runtime performance and production concurrency. DSA examples may support backend interview preparation but should not be presented as production architecture by themselves.
+## Required 13-Section Lecture Blueprint
+
+Every DSA lecture must follow this exact section sequence:
+
+1. **Title & Top Navigation:** `# Day XX: <Topic Title>` and `<nav aria-label="Lecture navigation">`.
+2. **Prerequisites:** Clear bullet links to prior days or required baseline concepts.
+3. **1. What is <Topic>?:** Plain English definition, real-world physical comparison (cards, boxes, books), clean ASCII diagram.
+4. **2. How <Topic> Works Step-by-Step:** How the data structure or algorithm moves step-by-step in memory.
+5. **3. How to Spot <Topic> in Problems:** Diagnostic triggers, problem keywords, $10^7$ constraints rule, when to use vs. when NOT to use.
+6. **4. Problem 1: <Name>:** Follows the 5-Step Logic Discovery Engine from physical simulation to optimal code with loop invariant.
+7. **5. Problem 2: <Name>:** Follows the 5-Step Logic Discovery Engine for a scaled challenge or secondary variation.
+8. **6. Under the Hood: V8 Engine & Node.js Backend Realities:** V8 memory (SMI, Double, packed vs holey arrays, hash map buckets), event loop blocking risks, single-thread safety, database offloading trade-offs.
+9. **7. Hands-On Exercise:** Realistic scenario, buggy code, acceptance criteria, verified solution using `node:assert`.
+10. **8. Tricky Points and Edge Cases:** Subtle traps, off-by-one errors, type coercion surprises, mutation hazards, with runnable ✅/❌ code.
+11. **9. Comprehensive Summary:** Detailed bullet recap covering all mechanisms, formulas, numbers, and complexities.
+12. **10. Cheat Sheet:** Algorithm decision table, common pitfalls list, reusable code template.
+13. **11. Interview Q&A:** 45-second technical pitch + 4 deep questions (mental model, trace/output, debugging, backend scale trade-off).
+Ending with:
+- **12. Practice Problems:** 3 curated problems with test-case inputs and expected outputs (no code answers).
+- **Bottom Navigation:** `<nav aria-label="Lecture navigation">`.
+
+---
+
+## Language & Definition Standards
+
+- **Basic English Only:** Write in simple, direct English. Avoid heavy words, fancy vocabulary, and confusing academic speech.
+- **In-Place Term Callouts:** Define every specialized term right where it appears using:
+  ```markdown
+  > **Term**: 1-line plain definition explaining what it is and what it does.
+  ```
+- **Dual-Case Implementations:** Every code example must show both:
+  - `✅ CORRECT / POSITIVE CASE`: The clean, working solution.
+  - `❌ ANTI-PATTERN / COMMON BUG`: The common mistake or performance trap, with inline comments explaining why it fails.
+- **Production Runnable Code:** All code must run directly in Node.js and be verified with `const assert = require("node:assert/strict");`.
+
+---
+
+## Scope Boundaries
+
+- DSA examples should use JavaScript and connect to Node.js backend realities (memory usage, event loop blocking).
+- Advanced database query optimization belongs in [postgresql.md](postgresql.md) and [mongodb.md](mongodb.md).
+- Distributed system architecture belongs in system design documentation, not individual DSA unit lectures.

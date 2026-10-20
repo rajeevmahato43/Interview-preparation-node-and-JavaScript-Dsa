@@ -1,19 +1,31 @@
-# Accuracy Rules
+# Accuracy Rules & Technical Correctness
 
-Technical correctness has priority over confident wording.
+Getting the technical facts right is always more important than sounding confident.
 
-## Version policy
+---
 
-This project does not lock itself to a single runtime, framework, or database version. When behavior can differ by version, state that fact, identify the relevant version family if known, and avoid presenting a recent feature as universal. Prefer stable concepts for the main explanation.
+## Simple Language Policy
 
-## Sources
+- **Basic English First:** Explain technical accuracy in simple, clear words. Never use heavy academic words or confusing jargon.
+- **Explain Version Differences:** Do not lock explanations to one single version. When behavior changes across versions (such as Node.js 18 vs Node.js 20, or ES2015 vs ES2023), state that clearly with the version number.
+- **Use Authoritative Sources:** Base all claims on official documentation:
+  - ECMAScript and MDN for JavaScript language rules.
+  - Node.js documentation for Node runtime and event loop behavior.
+  - Express documentation for HTTP framework behavior.
+  - MongoDB documentation for document storage and queries.
+  - PostgreSQL documentation for SQL, indexes, and transactions.
 
-Use authoritative documentation for version-sensitive or implementation-specific claims: ECMAScript and MDN for JavaScript, Node.js documentation for Node behavior, Express documentation for Express behavior, MongoDB documentation for MongoDB, and PostgreSQL documentation for PostgreSQL. Link to sources when references are requested or when a claim is difficult to verify from the explanation alone.
+---
 
-## Uncertainty
+## Separating Language Rules from Engine Behavior
 
-Separate specification guarantees from common implementation behavior. Say when a result depends on an engine, driver, optimizer, configuration, workload, isolation level, or undocumented behavior. Never fabricate benchmark numbers, API signatures, or source links.
+- Always separate what the ECMAScript standard guarantees from how specific engines (like V8) optimize code.
+- Say clearly when a behavior depends on the engine, the operating system, the database query planner, or memory garbage collection.
+- Never make up benchmark numbers, fake method signatures, or broken documentation links.
 
-## Corrections
+---
 
-When an existing note is inaccurate, identify the exact claim, explain the correction, and preserve the original file unless the user explicitly requests an edit. Do not silently propagate an uncertain statement into new material.
+## Correcting Inaccuracies
+
+- When an older note or example is incorrect, explain the correction clearly with a concrete code demonstration.
+- Never copy an unverified claim into new study material.

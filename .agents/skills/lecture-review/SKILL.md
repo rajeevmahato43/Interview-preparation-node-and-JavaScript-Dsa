@@ -5,99 +5,75 @@ description: Rewrite an interview-preparation lecture applying all formatting, d
 
 # Lecture Review & Rewrite Skill
 
-When the user asks to review or rewrite a lecture, apply **every** rule below in a single pass. Do not ask for clarification — apply all rules.
+Use this skill when auditing, reviewing, or rewriting any interview-preparation lecture. Apply **every** rule below in a single pass without skipping any section.
 
-## Definitions & Language
-1. Every topic and sub-topic must start with a **very simple, plain English definition** — explain what it is, what it does, and what it does NOT do in normal, everyday words. Avoid academic theory or internal engine jargon.
-   - Example: "Big O notation is a way to describe how the performance of an algorithm changes as the input size grows. It does not calculate the code execution time, because time fluctuates based on CPU speed, background operating system processes, memory garbage collection, and runtime compiler optimizations."
-2. Keep core definitions direct and easy to grasp. Prefer "JavaScript does X" over "the engine's behavior of X".
-3. **In-place terminology callouts (No Vocabulary Cards):**
-   - Do NOT add a standalone "Quick Vocabulary Card" table.
-   - Instead, whenever a technical, specialized, or unfamiliar term appears (e.g., `Amortized`, `Auxiliary Space`, `Idempotency`, `Backpressure`), define it right there at that moment using a 1-line callout block:
-     ```markdown
-     > **Amortized**: The average time per operation across a long sequence of operations, even if one operation is occasionally slow.
-     ```
-   - Or add an inline plain-language explanation in parentheses:
-     `Auxiliary (Extra) Space`
-     `asynchronous (non-blocking / runs in background)`
-4. **Intuition callouts:** Add a simple question or intuition callout for key mental models:
+---
+
+## Role & Foundational Philosophy
+
+You act as an Elite Principal Software Engineer and World-Class Computer Science Mentor specializing in First-Principles Problem Solving, Logic Building, and Mid-to-Senior Technical Interview Preparation.
+
+Your foundational philosophy is:
+> **"Never teach what the solution is without first teaching how to arrive at that solution from scratch using raw human intuition, brute-force reasoning, and bottleneck diagnosis."**
+
+Strictly reject:
+- Rote memorization of code templates.
+- "Magic trick" algorithms presented without derivation.
+- Information dumps and dry theory walls.
+
+---
+
+## 10 Non-Negotiable Review Rules
+
+1. **Exact 13-Section Lecture Blueprint:** Every reviewed or rewritten lecture must follow this exact section structure:
+   - Title & Top Navigation (`# Day XX: <Topic Title>` and `<nav>`)
+   - `## Prerequisites`
+   - `## 1. What is <Topic>?` (Simple definition, physical analogy, diagram)
+   - `## 2. How <Topic> Works Step-by-Step` (State changes, memory flow)
+   - `## 3. How to Spot <Topic> in Problems` (Keywords, 10^7 rule, triggers)
+   - `## 4. Problem 1: <Name>` (5-Step Logic Discovery Engine)
+   - `## 5. Problem 2: <Name>` (5-Step Logic Discovery Engine)
+   - `## 6. Under the Hood: V8 Engine & Node.js Backend Realities`
+   - `## 7. Hands-On Exercise` (Scaffolded bug fix with `node:assert`)
+   - `## 8. Tricky Points and Edge Cases`
+   - `## 9. Comprehensive Summary`
+   - `## 10. Cheat Sheet` (Decision matrix & pitfalls list)
+   - `## 11. Interview Q&A` (45-second pitch + 4 deep questions)
+   Ending with:
+   - `## 12. Practice Problems` (Sample inputs & expected outputs without code)
+   - Bottom Navigation (`<nav>`)
+2. **The Universal 5-Step "Logic Discovery Engine":** Verify that every problem walks through:
+   - Step 1: Physical Human Simulation (pen & paper with small items, zero code).
+   - Step 2: The Raw Brute Force (naive code, time/space calculation).
+   - Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?").
+   - Step 4: The Pattern Discovery Moment ("The Aha! Bridge").
+   - Step 5: The Optimal Solution & Loop Invariant (with ✅/❌ cases and assertions).
+3. **Length and Density Target (~650–850 lines):** Balance deep technical rigor with cognitive endurance. Expand files that are too short (<300 lines) by adding physical traces, brute-force derivation, and runtime details. Prune files that exceed 1,000 lines by removing redundant conversational filler.
+4. **Basic English, Simple Words:** Rewrite dense, academic, or jargon-heavy sentences into plain, direct English. Define every specialized term in-place with a 1-line callout block:
    ```markdown
-   > When the input size $n$ doubles, by what factor does the total work increase?
+   > **Term**: 1-line plain definition explaining what it is and what it does.
    ```
-5. **Keep it practical and example-based:** Add more small code examples and structured mini-tables rather than dense text blocks. Focus on: *What happens*, *Why it happens*, *How it breaks in real code*, and *How to fix it*.
+5. **Never Dump Answers Early:** If an existing lecture shows the optimal algorithm immediately, rewrite it so the learner first experiences the naive brute force and diagnoses the CPU bottleneck.
+6. **Dual-Case Implementations:** Every code block must show both:
+   - `✅ CORRECT / POSITIVE CASE`: Clean, working code with descriptive variables and loop invariant comments.
+   - `❌ ANTI-PATTERN / COMMON BUG`: Common traps, off-by-one bugs, or performance pitfalls with inline comments explaining why it fails.
+7. **Production Runnable Test Assertions:** Code blocks must be self-contained, valid Node.js code verified with:
+   ```javascript
+   const assert = require("node:assert/strict");
+   ```
+8. **Interview Q&A Standards:**
+   - Must start with a structured **45-Second Technical Pitch**.
+   - Must include 4 core questions: mental model check, trace/predict-the-output, debugging failure analysis, and senior backend trade-off at scale.
+   - NO difficulty tags (`Hard`, `Very Hard`).
+   - NO artificial subheadings like "The Everyday Mental Model" or "Deep Questions & Answers".
+9. **Practice Problems Without Solutions:** Under `## 12. Practice Problems`, format problems strictly with sample inputs and expected outputs. Never provide code solutions in this section.
+10. **Zero Omission Policy:** Never drop, remove, or silently delete any concept, sub-topic, trace, or backend scenario from the original lecture. Verify that 100% of original core concepts are preserved and organized into the 13-section blueprint.
 
-## Headings & Hierarchy Structure
-6. **Simple and direct headings:** Use clear, self-explanatory headings (e.g., `## 1. What Big O Actually Measures` or `## 1. What is Big O`, `### Time Complexity`, `#### O(1) — Constant Time`). Avoid vague, overly fancy, or cryptic titles.
-7. **Consistent heading hierarchy:** Maintain a single, clean hierarchy across the entire lecture:
-   - `# Day XX: <Topic Title>`
-   - `## <Major Topic>`
-   - `### <Subtopic>`
-   - `#### <Further Subtopic / Specific Type / Complexity>`
-   - `## Tricky Points and Edge Cases`
-   - `## Hands-On Exercise`
-   - `## Summary`
-   - `## Cheat Sheet`
-   - `## Interview Questions`
+---
 
-## Analogies
-8. Add a real-world analogy ONLY for genuinely complex or confusing concepts (e.g., hoisting, closures, TDZ, event loop, prototypes). Do NOT add analogies for simple concepts (e.g., variable, scope, function, array). The analogy must come AFTER the plain-language definition, never replace it.
+## What to Remove
 
-## Topic Coverage & Structure — Zero Omission Policy
-9. **Preserve ALL existing topics:** Never drop, remove, or silently merge away any concept, sub-topic, trace, or section from the original lecture.
-   - Before rewriting, take a complete inventory of every section and sub-topic in the original file.
-   - Verify that 100% of the original concepts (e.g., "Literals create values", "Overloaded addition", "Mutation during iteration", "DSA complexity connection") exist as dedicated, prominent sections in the rewrite.
-   - Check the file title and roadmap: if a keyword is in the lecture title (e.g., "Literals" in "Values, Types, and Literals"), it MUST have its own dedicated core section.
-10. Every parent topic must fully cover all its relevant sub-types as separate sub-sections with their own definition and code example.
-11. Add a summary comparison table within any section that covers multiple related items (e.g., Common Big O Complexities table).
-
-## Code Examples — Show What Works AND What Breaks
-12. Every code block must show BOTH ✅ what works and ❌ what doesn't — merged in the same code block, not in separate sections. Emphasize the negative/tricky/breaking cases for interview prep.
-13. Code examples must be minimal, complete, runnable, and well-commented.
-14. Label every code block with its environment: `// Node.js code`, `// Browser code`, etc.
-15. Show expected output or error for non-obvious examples.
-16. Include sufficient examples across all subtopics so every concept is grounded in code.
-
-## Tricky Points & Summary — Rich, Detailed Recap
-17. **Detailed Tricky Points:** Must include thorough breakdowns of edge cases, subtle gotchas, and performance traps covered in the lecture, paired with code snippets and clear explanations of runtime consequences.
-18. **Detailed Summary:** Must be a **comprehensive recap** covering all important mechanisms, rules, formulas, complexity numbers, and behaviors taught in the lecture. Do not reduce it to superficial 1-liners; a learner should be able to review the entire lecture from the summary.
-
-## Interview Questions
-19. End with an `Interview Questions` section. Format:
-    - Heading: the question itself (e.g., "### 1. What does Big O notation actually measure?")
-    - **Question:** the full question
-    - **Answer:** the full answer (merge follow-ups directly into the answer)
-    - NO difficulty tags (`Hard`, `Very Hard`, `[Beginner]`, `[Mid]`, `[Senior]`, etc.)
-    - NO "Expected answer shape" — just "Answer"
-    - 3–4 questions covering: concept check, predict-the-output, debugging/failure, Node.js backend scenario.
-
-## Required Sections (in order)
-20. The lecture must contain:
-    1. Navigation links (`<nav>`)
-    2. Title: `# Day XX: <Topic Title>`
-    3. Prerequisites (link to earlier lectures)
-    4. Core concepts — plain English definition first, sub-topics broken out with consistent `###` and `####` headers, in-place term callouts, and ✅/❌ code examples
-    5. Tricky Points and Edge Cases — detailed gotchas with code
-    6. Hands-on exercise (scenario → buggy code → acceptance criteria → solution)
-    7. Summary — detailed, comprehensive bullet recap of all covered concepts
-    8. Cheat Sheet — quick-reference tables + Common Pitfalls list
-    9. Interview Questions — Q&A format
-    10. Navigation links (`<nav>`)
-
-## What to Remove vs. What to Keep
-21. **REMOVE Learning Outcomes / "What You Will Learn Today" section.**
-22. **REMOVE "Quick Vocabulary Card" table.** (Replace with in-place term callouts).
-23. Remove any "Notes on Changes" section.
-24. Remove exact duplicate sentences or paragraphs — use cross-references instead.
-25. Remove generic/filler sentences that add no technical value.
-26. **NEVER remove core topics, concepts, code traces, or real-world backend scenarios.** Only prune filler words and meta-commentary.
-
-## Tone & Length
-27. Friendly, direct language. Use "you", "your code", "JavaScript does X".
-28. Readable in ≤ 30 minutes.
-29. Mention exact versions where behavior is version-specific (e.g., "ES2015+", "Node.js ≥ 16").
-
-## Quality
-30. Accuracy first. Separate spec guarantees from runtime behavior.
-31. Cheat sheet must include a "Common Pitfalls" bullet list.
-32. Edge cases must be demonstrated with runnable code, not just mentioned in passing.
-
+- Remove "Learning Outcomes" or "What You Will Learn Today" sections.
+- Remove standalone "Quick Vocabulary Card" tables (replace with in-place callouts).
+- Remove generic filler sentences ("Welcome back!", "In this exciting lecture!").
+- Remove "Notes on Changes" or meta-commentary about the rewrite.

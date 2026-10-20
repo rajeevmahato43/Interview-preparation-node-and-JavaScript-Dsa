@@ -1,42 +1,46 @@
 # Skills Index
 
-This folder contains reusable Copilot skills for technical teaching, interview preparation, and senior engineering mentorship.
+This directory contains specialized Copilot and agentic skills engineered for first-principles computer science teaching, technical interview preparation, and senior engineering mentoring.
 
-## Core skills
+---
 
-- [world-class-teacher](world-class-teacher/SKILL.md) — Teach complex technical topics in a clear, practical, interview-ready way.
-- [lecture-review](lecture-review/SKILL.md) — Rewrite lecture content to match the repo's strict structural and content rules.
-- [course-builder-master](course-builder-master/SKILL.md) — Build complete learning systems, courses, lectures, roadmaps, and interview-ready material in one unified workflow.
+## Foundational Philosophy
 
-## Interview and prep skills
+All skills in this directory follow one core standard:
+> **"Never teach what the solution is without first teaching how to arrive at that solution from scratch using raw human intuition, brute-force reasoning, and bottleneck diagnosis."**
 
-- [interview-prep-architect](interview-prep-architect/SKILL.md) — Build structured interview-prep roadmaps for coding, backend, and system-level candidates.
-- [technical-interviewer](technical-interviewer/SKILL.md) — Run fair, high-signal technical interviews that assess reasoning, coding, and judgment.
+We strictly reject rote memorization, "magic trick" algorithms, and raw information dumps. All content is written in **basic, simple English** without heavy academic words or confusing jargon.
 
-## Coaching and mentoring skills
+---
 
-- [senior-engineering-mentor-coaching](senior-engineering-mentor-coaching/SKILL.md) — Coach engineers toward senior-level judgment, communication, and calm execution.
-- [code-review-mentor](code-review-mentor/SKILL.md) — Teach useful, respectful, and technically strong code review habits.
-- [technical-leadership-coach](technical-leadership-coach/SKILL.md) — Guide engineers toward technical leadership and decision-making under ambiguity.
+## Core Teaching & Content Skills
 
-## Use this decision guide
+- [world-class-teacher](world-class-teacher/SKILL.md) — Create deep, beginner-accessible, interview-ready lectures following the exact 13-Section Blueprint and Universal 5-Step Logic Discovery Engine.
+- [lecture-review](lecture-review/SKILL.md) — Audit, review, and rewrite existing lectures to strictly enforce the 13-Section Blueprint, ~650–850 line count target, dual-case examples, and runnable `node:assert` tests.
+- [course-builder-master](course-builder-master/SKILL.md) — Build end-to-end courses, day-wise master lecture tracks, and visual roadmap dependency graphs.
 
-- Need to create or explain a technical lesson? Use [world-class-teacher](world-class-teacher/SKILL.md).
-- Need to rewrite or improve an existing lecture file? Use [lecture-review](lecture-review/SKILL.md).
-- Need a full course, learning system, or lecture sequence? Use [course-builder-master](course-builder-master/SKILL.md).
-- Need a structured interview roadmap or prep plan? Use [interview-prep-architect](interview-prep-architect/SKILL.md).
-- Need to run or design a technical interview? Use [technical-interviewer](technical-interviewer/SKILL.md).
-- Need coaching for senior-level engineering growth? Use [senior-engineering-mentor-coaching](senior-engineering-mentor-coaching/SKILL.md).
-- Need better code review habits and review feedback? Use [code-review-mentor](code-review-mentor/SKILL.md).
-- Need guidance on becoming a stronger technical leader? Use [technical-leadership-coach](technical-leadership-coach/SKILL.md).
+---
 
-## Quick examples
+## Interview Preparation & Evaluation Skills
 
-- “Teach event loop in plain English and include code examples and interview questions.” → [world-class-teacher](world-class-teacher/SKILL.md)
-- “Rewrite this lecture to match the repo rules.” → [lecture-review](lecture-review/SKILL.md)
-- “Create a full JavaScript + Node.js course with lectures, exercises, and roadmap.” → [course-builder-master](course-builder-master/SKILL.md)
-- “Build a 6-week backend interview prep roadmap.” → [interview-prep-architect](interview-prep-architect/SKILL.md)
-- “Create a fair technical interview rubric.” → [technical-interviewer](technical-interviewer/SKILL.md)
-- “Coach a strong engineer who struggles with design trade-offs.” → [senior-engineering-mentor-coaching](senior-engineering-mentor-coaching/SKILL.md)
-- “Improve my code review process and coaching approach.” → [code-review-mentor](code-review-mentor/SKILL.md)
-- “Help an engineer grow into a technical lead.” → [technical-leadership-coach](technical-leadership-coach/SKILL.md)
+- [interview-prep-architect](interview-prep-architect/SKILL.md) — Design structured interview preparation roadmaps balancing first-principles logic derivation, 45-second technical pitches, and trade-off matrices.
+- [technical-interviewer](technical-interviewer/SKILL.md) — Conduct structured technical interviews using the 5-point first-principles rubric (physical intuition $\to$ brute force $\to$ bottleneck diagnosis $\to$ optimal invariant $\to$ system trade-offs).
+
+---
+
+## Coaching & Mentorship Skills
+
+- [senior-engineering-mentor-coaching](senior-engineering-mentor-coaching/SKILL.md) — Coach engineers toward senior-level judgment, technical decision-making, and calm execution.
+- [code-review-mentor](code-review-mentor/SKILL.md) — Teach high-signal, empathetic, and technically rigorous code review practices.
+- [technical-leadership-coach](technical-leadership-coach/SKILL.md) — Guide engineers toward technical leadership, system architecture, and stakeholder influence.
+
+---
+
+## Quick Selection Guide
+
+- Need to create or explain a technical lesson from first principles? → [world-class-teacher](world-class-teacher/SKILL.md)
+- Need to audit or rewrite a lecture to match the 13-section blueprint? → [lecture-review](lecture-review/SKILL.md)
+- Need to build a full multi-week course curriculum? → [course-builder-master](course-builder-master/SKILL.md)
+- Need to build a personalized interview prep plan? → [interview-prep-architect](interview-prep-architect/SKILL.md)
+- Need to run a structured, high-signal technical interview? → [technical-interviewer](technical-interviewer/SKILL.md)
+- Need senior-level engineering coaching? → [senior-engineering-mentor-coaching](senior-engineering-mentor-coaching/SKILL.md)

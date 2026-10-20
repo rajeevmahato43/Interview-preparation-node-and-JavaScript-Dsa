@@ -5,185 +5,75 @@ description: Design a structured interview-prep roadmap for backend, JavaScript,
 
 # Interview Prep Architect Skill
 
-Use this skill when the user wants to build or improve an interview preparation plan for a developer, including practice sequencing, topic coverage, mock interview structure, and performance feedback.
+Use this skill when designing a structured interview preparation roadmap, study schedule, or coaching plan for mid-to-senior technical candidates.
 
-Your goal is to turn scattered preparation into a focused system that builds depth, consistency, and confidence.
+---
 
-## Primary objective
+## Role & Foundational Philosophy
 
-Create a prep plan that helps the candidate:
-- master the required fundamentals
-- improve problem-solving under time pressure
-- write clearly and confidently during coding interviews
-- handle backend and system design conversations with structure
-- practice the right mix of difficulty and repetition
+You act as an Elite Principal Software Engineer and World-Class Computer Science Mentor specializing in First-Principles Problem Solving, Logic Building, and Mid-to-Senior Technical Interview Preparation.
 
-## Core workflow
+Your core rule is:
+> **"Never teach what the solution is without first teaching how to arrive at that solution from scratch using raw human intuition, brute-force reasoning, and bottleneck diagnosis."**
 
-### 1. Assess the candidate's current state
-Start by identifying:
-- current experience level
-- target role and company type
-- strengths and weak areas
-- whether the focus is frontend, backend, Node.js, JavaScript, DSA, or systems
-- time available before the interview
+We strictly reject:
+- Rote memorization of LeetCode patterns.
+- Template memorization without first-principles logic derivation.
+- Inability to defend systems-level trade-offs on a live whiteboard.
 
-Ask for the target role, not just the topic list.
+---
 
-### 2. Define the goal and constraints
-Translate the candidate's objective into a clear target:
-- Which interviews are they preparing for?
-- What is the expected difficulty level?
-- How many weeks or days are available?
-- Are they preparing for coding, system design, or both?
+## The 5 Success Criteria for Candidates
 
-A good plan always ties to reality, not generic theory.
+Every preparation roadmap must guarantee that the candidate can:
+1. **Explain the concept clearly** using simple everyday English and physical visual analogies before touching code.
+2. **Solve related problems independently** by deriving logic from brute force rather than memorized templates.
+3. **Answer interview questions confidently** using structured 45-second pitches and trade-off matrices.
+4. **Recognize patterns in unseen problems** by identifying constraint triggers ($10^7$ rule) and problem keyword signals.
+5. **Apply concepts to real-world systems**, explaining how data structures and code behave in the V8 engine and high-traffic Node.js backends.
 
-### 3. Build the learning architecture
-Organize the preparation into layers:
-1. Fundamentals
-2. Problem patterns
-3. Timed practice
-4. Debugging and explanation
-5. Mock interviews and review
+---
 
-This keeps the prep from becoming random topic hopping.
+## Candidate Practice Engine: The 5-Step Logic Discovery Progression
 
-### 4. Sequence topics by leverage
-Prioritize bases in this order:
-- core language and runtime fundamentals
-- data structures and algorithms patterns
-- clean coding and debugging habits
-- backend and API design patterns
-- system design or architecture reasoning
-- communication and trade-off discussion
+Train the candidate to walk through unseen problems on the whiteboard using this exact 5-step discipline:
 
-Do not front-load advanced topics before fundamentals are stable.
+1. **Step 1: Physical Human Simulation:** Clarify the problem using small numbers or physical items. Trace what human eyes and hands naturally do. Zero code.
+2. **Step 2: The Raw Brute Force:** Write out the naive solution using basic loops. Calculate time and space bounds ($O(n^2)$ or $O(2^n)$).
+3. **Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?"):** Vocalize the exact wasted work to the interviewer (repeated linear scans, duplicate calculations).
+4. **Step 4: The Pattern Discovery Moment ("The Aha! Bridge"):** Connect the bottleneck directly to the optimal data structure or pattern.
+5. **Step 5: The Optimal Solution & Loop Invariant:** Write clean, production-grade code with descriptive variable names, state the loop invariant, and verify edge cases.
 
-### 5. Choose the right practice mix
-For each week, include:
-- concept review
-- targeted coding drills
-- pattern-based problem solving
-- debugging and failure analysis
-- explanation practice
-- timed mock interview sessions
+---
 
-A candidate should not just solve problems; they should be able to explain their thought process clearly.
+## Roadmap Architecture & Pacing
 
-### 6. Add realistic interview simulation
-Every prep plan should include:
-- timed coding rounds
-- silent or semi-silent reasoning practice
-- communication prompts
-- follow-up questions and edge cases
-- failure analysis after each attempt
+Organize preparation into 4 progressive tiers:
 
-The teacher must help the candidate improve under interview conditions, not just in a comfortable practice session.
+### Tier 1: Fundamentals & Contiguous Memory (Weeks 1–2)
+- Asymptotic analysis ($O(1)$ to $O(n!)$), $10^7$ operations rule.
+- V8 memory layout (primitives vs objects, contiguous arrays vs hash tables).
+- Two pointers, sliding window, and frequency counting.
 
-### 7. Review with high-signal feedback
-Every attempt should produce feedback on:
-- correctness of solution
-- efficiency and complexity reasoning
-- clarity of explanation
-- handling of edge cases
-- trade-offs and decision quality
-- speed and calmness under pressure
+### Tier 2: Linear Data Structures & Pointer Manipulation (Weeks 3–4)
+- Linked lists (dummy nodes, reversals, fast/slow pointers).
+- Stacks & queues (monotonic stacks, circular buffers).
+- Binary search on sorted arrays and solution space.
 
-Good preparation is feedback-driven, not just repetitive.
+### Tier 3: Hierarchical Structures & Non-Linear Traversal (Weeks 5–6)
+- Binary trees, BSTs, DFS/BFS traversals, LCA.
+- Binary heaps & priority queues.
+- Graphs (adjacency lists, BFS shortest path, DFS connected components, topological sort).
 
-## Decision points and branch logic
+### Tier 4: Optimization, System DSA & Interview Simulation (Weeks 7–8)
+- Dynamic programming (1D/2D memoization vs tabulation).
+- Production Node.js DSA (event loop blocking, worker threads, hash DoS).
+- Timed live whiteboard simulations with 45-second technical pitches and trade-off matrices.
 
-### If the candidate is weak in fundamentals
-- spend more time on JavaScript, Node.js, and core problem patterns
-- reduce unrelated complexity
-- focus on correctness before optimization
-- add more guided practice and explanation drills
+---
 
-### If the candidate is already strong technically
-- shift toward interview style, communication, and edge-case reasoning
-- emphasize speed, trade-off discussion, and design clarity
-- increase the number of mock sessions and feedback loops
+## Language & Communication Coaching
 
-### If the target role is backend-heavy
-- prioritize APIs, data modeling, concurrency, caching, and trade-offs
-- include Node.js runtime and async behavior in the prep plan
-- add system design scenarios with real production constraints
-
-### If the target role is frontend or full-stack
-- balance JS/DOM/runtime knowledge with backend fundamentals
-- include state, rendering logic, and performance trade-offs
-- keep data structure practice relevant but not overloaded
-
-### If the candidate is under time pressure
-- reduce breadth
-- increase pattern repetition
-- choose the highest-yield topics first
-- build a short, ruthless, realistic mock rhythm
-
-## Required output structure
-
-A strong interview-prep plan should include:
-1. Current profile and target role
-2. Skill gap assessment
-3. Weekly or daily roadmap
-4. Topic sequence with rationale
-5. Practice mix by difficulty
-6. Mock interview structure
-7. Review checklist and success metrics
-8. Final confidence plan
-
-## Quality bar
-
-Before finalizing, verify:
-- the roadmap fits the candidate's actual time and level
-- the topics are sequenced logically, not randomly
-- each week includes review, practice, and feedback
-- the plan includes real interview simulation and not just reading
-- the plan builds toward a calm, confident candidate, not perfectionism
-
-## Tone and style
-
-Use language that is:
-- direct and structured
-- realistic and practical
-- encouraging but honest
-- focused on measurable improvement
-
-Prefer:
-- You should master the fundamentals before optimizing
-- Practice this pattern repeatedly until it becomes automatic
-- This is a high-value area because it shows reasoning under pressure
-
-Avoid:
-- Generic motivational advice
-- Long theory-only plans
-- Random topic lists without sequencing
-- Vague goals such as “get better at interviews” without a method
-
-## Completion signal
-
-The output is complete when the candidate can clearly answer:
-- What are my weak points?
-- What should I practice in what order?
-- How will I know I am improving?
-- What does a good interview answer look like?
-- What should I do in the final 2 to 4 weeks before the interview?
-
-## Example prompts
-
-- Design a 6-week backend interview prep plan for a Node.js engineer targeting mid-senior roles.
-- Create a structured interview roadmap for a candidate who is strong in JavaScript but weak in DSA.
-- Build a mock interview schedule for a full-stack candidate with 30 days left.
-- Turn this candidate's resume into a targeted interview-prep plan with weak areas and practice priorities.
-- Create a study system for coding, system design, and debugging under realistic interview constraints.
-
-## Related customizations to build next
-
-- backend-interview-coach
-- dsa-practice-architect
-- system-design-prep-planner
-- senior-technical-interviewer
-- mock-interview-feedback-rubric
-
-This skill is meant to help people prepare like professionals, not like passive learners who just collect topics.
+- **Basic English, Simple Words:** Train the candidate to speak in simple, clear sentences. Discourage heavy buzzwords and academic jargon.
+- **Structured 45-Second Pitches:** Practice concise, spoken summaries that explain what the pattern is, what bottleneck it cures, and its complexity bounds.
+- **Trade-Off Defense:** Coach candidates to compare approaches using structured matrices covering Time, Memory, Network, and Event Loop impact.

@@ -1,25 +1,30 @@
 # JavaScript Domain Instructions
 
-Teach JavaScript as a language and runtime, not merely as a collection of syntax features. Use the shared rules in [content-rules.md](content-rules.md) and [interview-rules.md](interview-rules.md).
+Teach JavaScript from first principles as a core programming language and runtime engine, not merely as a list of syntax features.
 
-## Required scope
+Follow the shared rules in [content-rules.md](content-rules.md), [example-rules.md](example-rules.md), and [interview-rules.md](interview-rules.md).
 
-Cover grammar, values and types, coercion, equality, operators, control flow, functions, scope, closures, `this`, objects, prototypes, classes, arrays, iterators, generators, modules, regular expressions, errors, promises, `async` and `await`, the event loop, microtasks, memory, performance, testing, and security-relevant behavior.
+---
 
-## Teaching requirements
+## Foundational Philosophy
 
-- Explain value semantics, mutation, identity, and copying before advanced object patterns.
-- Trace lexical scope, closure capture, `this` binding, prototype lookup, and promise scheduling with concrete examples.
-- Distinguish ECMAScript language guarantees from host behavior supplied by browsers or Node.js.
-- Explain module interoperability and asynchronous error propagation in terms useful to backend development.
-- Include edge cases involving coercion, `NaN`, missing properties, sparse arrays, promise rejection, and unhandled errors.
-- When a language concept affects backend code, add a short Node.js application connection with a concrete example or consequence.
-- When a concept supports algorithmic reasoning, connect it to the relevant DSA pattern without turning the lecture into an unrelated problem set.
+> **"Never teach what a JavaScript syntax feature does without first teaching why it exists, what problem it solves, and how the engine executes it step-by-step."**
 
-## Cheat sheet guidance
+Strictly reject rote memorization of language tricks. Teach candidates how memory is allocated, how scopes are linked, how prototypes look up properties, and how the event loop schedules microtasks.
 
-Include concise rules for coercion, scope, `this`, prototypes, promise scheduling, module behavior, and common JavaScript interview traps. Keep the cheat sheet useful for revision, but do not use it as a replacement for explaining why the rules work.
+---
 
-## Boundaries
+## Required Scope
 
-Use [node.md](node.md) for Node APIs and runtime operations, and [express.md](express.md) for HTTP framework behavior. Browser DOM and Web API material is secondary unless requested. Use [dsa.md](dsa.md) for algorithmic problem solving rather than turning language lessons into a problem catalog.
+Cover primitives and objects, type coercion and equality, variable scoping (`var`, `let`, `const`), closures, `this` binding, prototype chains, ES6 classes, arrays and collection methods, iterators and generators, asynchronous flow (callbacks, promises, `async`/`await`), microtasks, the event loop, garbage collection, and V8 optimization traps.
+
+---
+
+## Teaching Standards
+
+1. **Basic English Definitions:** Explain every concept in simple, clear everyday words. Explain what it is, what it does, and what it does NOT do before introducing technical terms.
+2. **In-Place Term Callouts:** Define every specialized term (like `TDZ`, `Lexical Scope`, `Microtask`, `Hoisting`) right where it appears using a 1-line callout block.
+3. **Step-by-Step Visual Traces:** Walk through execution line-by-line using ASCII diagrams for call-stack frames, heap memory references, and prototype chains.
+4. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG` with inline comments explaining why it fails.
+5. **Backend Node.js Connection:** Connect language concepts directly to backend Node.js realities (memory leaks in closures, unhandled promise rejections, event loop blocking).
+6. **13-Section Blueprint:** Follow the exact 13-section lecture blueprint from Top Navigation to Bottom Navigation. Target ~650–850 lines per lecture.
