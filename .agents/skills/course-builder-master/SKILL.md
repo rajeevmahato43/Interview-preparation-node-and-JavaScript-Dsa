@@ -47,24 +47,24 @@ Every course curriculum and day lecture produced must guarantee that the candida
 
 ### 3. Universal 5-Step Logic Discovery Engine
 Whenever introducing a coding problem in the curriculum, strictly apply:
-1. **Physical Human Simulation:** Pen & paper steps with small numbers/items, zero code.
-2. **The Raw Brute Force:** Naive code, why it works, time/space complexity calculation.
-3. **Socratic Bottleneck Diagnosis:** "Where is the CPU sweating?" Identify wasted work.
-4. **The Pattern Discovery Moment:** "The Aha! Bridge" showing the pattern as the natural mathematical cure.
-5. **The Optimal Solution & Loop Invariant:** Clean Node.js code with ✅ correct and ❌ bug, loop invariant comment, and assertions.
+1. **Step 1: Physical Simulation:** Small numbers or physical items (cards, blocks, books). Zero code. Zero data structures.
+2. **Step 2: Brute Force Approach:** Naive code, why it works, time/space complexity calculation.
+3. **Step 3: Bottleneck:** Pinpoint the exact wasted work (repeated linear scans, duplicate calculations).
+4. **Step 4: The Pattern Discovery:** Present the algorithmic pattern as the natural mathematical cure.
+5. **Step 5: The Optimal Solution:** Clean Node.js code with ✅ correct and ❌ bug, loop invariant comment, complexity derivations, and direct `console.log` example runs.
 
 ### 4. Standardized 13-Section Blueprint
 Every generated lecture file must strictly follow this exact 13-section structure:
 1. Title & Top Navigation (`# Day XX: <Topic Title>` and `<nav>`)
 2. `## Prerequisites`
-3. `## 1. Visual Mental Model & Core Intuition`
-4. `## 2. Step-by-Step Mechanics & Visual Diagram`
-5. `## 3. Pattern Recognition & Diagnostic Triggers`
+3. `## 1. What is <Topic>?` (Simple definition, physical analogy, diagram)
+4. `## 2. How <Topic> Works Step-by-Step` (State changes, memory flow)
+5. `## 3. Pattern Recognition of <Topic>` (Keywords, 10^7 rule, triggers)
 6. `## 4. Problem 1: <Name>` (5-Step Logic Discovery Engine)
 7. `## 5. Problem 2: <Name>` (5-Step Logic Discovery Engine)
-8. `## 6. Under the Hood: V8 Engine & Node.js Backend Realities`
-9. `## 7. Tricky Points and Edge Cases`
-10. `## 8. Hands-On Exercise` (Scaffolded bug fix with `node:assert`)
+8. `## 6. Under the Hood: V8 & Node.js`
+9. `## 7. Hands-On Exercise` (Scaffolded bug fix with direct test verification)
+10. `## 8. Tricky Points and Edge Cases`
 11. `## 9. Comprehensive Summary`
 12. `## 10. Cheat Sheet` (Decision matrix & pitfalls list)
 13. `## 11. Interview Q&A` (45-second pitch + 4 deep questions)
@@ -76,4 +76,4 @@ Ending with:
 - **Basic English, Simple Words:** Use plain, direct English. Avoid heavy words, academic vocabulary, or confusing jargon.
 - **In-Place Term Callouts:** Define every specialized term right where it appears (`> **Term**: 1-line definition`).
 - **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG`.
-- **Production Runnable Assertions:** Verify code with `const assert = require("node:assert/strict");`.
+- **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.

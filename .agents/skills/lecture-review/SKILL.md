@@ -30,11 +30,11 @@ Strictly reject:
    - `## Prerequisites`
    - `## 1. What is <Topic>?` (Simple definition, physical analogy, diagram)
    - `## 2. How <Topic> Works Step-by-Step` (State changes, memory flow)
-   - `## 3. How to Spot <Topic> in Problems` (Keywords, 10^7 rule, triggers)
+   - `## 3. Pattern Recognition of <Topic>` (Keywords, 10^7 rule, triggers)
    - `## 4. Problem 1: <Name>` (5-Step Logic Discovery Engine)
    - `## 5. Problem 2: <Name>` (5-Step Logic Discovery Engine)
-   - `## 6. Under the Hood: V8 Engine & Node.js Backend Realities`
-   - `## 7. Hands-On Exercise` (Scaffolded bug fix with `node:assert`)
+   - `## 6. Under the Hood: V8 & Node.js`
+   - `## 7. Hands-On Exercise` (Scaffolded bug fix with direct test verification)
    - `## 8. Tricky Points and Edge Cases`
    - `## 9. Comprehensive Summary`
    - `## 10. Cheat Sheet` (Decision matrix & pitfalls list)
@@ -43,11 +43,11 @@ Strictly reject:
    - `## 12. Practice Problems` (Sample inputs & expected outputs without code)
    - Bottom Navigation (`<nav>`)
 2. **The Universal 5-Step "Logic Discovery Engine":** Verify that every problem walks through:
-   - Step 1: Physical Human Simulation (pen & paper with small items, zero code).
-   - Step 2: The Raw Brute Force (naive code, time/space calculation).
-   - Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?").
-   - Step 4: The Pattern Discovery Moment ("The Aha! Bridge").
-   - Step 5: The Optimal Solution & Loop Invariant (with ✅/❌ cases and assertions).
+   - Step 1: Physical Simulation (pen & paper with small items, zero code).
+   - Step 2: Brute Force Approach (naive code, time/space calculation).
+   - Step 3: Bottleneck (pinpoint wasted work).
+   - Step 4: The Pattern Discovery (natural mathematical cure).
+   - Step 5: The Optimal Solution (clean Node.js code with ✅/❌ cases, complexity derivations, and direct console output).
 3. **Length and Density Target (~650–850 lines):** Balance deep technical rigor with cognitive endurance. Expand files that are too short (<300 lines) by adding physical traces, brute-force derivation, and runtime details. Prune files that exceed 1,000 lines by removing redundant conversational filler.
 4. **Basic English, Simple Words:** Rewrite dense, academic, or jargon-heavy sentences into plain, direct English. Define every specialized term in-place with a 1-line callout block:
    ```markdown
@@ -57,10 +57,7 @@ Strictly reject:
 6. **Dual-Case Implementations:** Every code block must show both:
    - `✅ CORRECT / POSITIVE CASE`: Clean, working code with descriptive variables and loop invariant comments.
    - `❌ ANTI-PATTERN / COMMON BUG`: Common traps, off-by-one bugs, or performance pitfalls with inline comments explaining why it fails.
-7. **Production Runnable Test Assertions:** Code blocks must be self-contained, valid Node.js code verified with:
-   ```javascript
-   const assert = require("node:assert/strict");
-   ```
+7. **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.
 8. **Interview Q&A Standards:**
    - Must start with a structured **45-Second Technical Pitch**.
    - Must include 4 core questions: mental model check, trace/predict-the-output, debugging failure analysis, and senior backend trade-off at scale.

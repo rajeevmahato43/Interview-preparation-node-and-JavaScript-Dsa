@@ -16,7 +16,7 @@ We strictly reject rote memorization, "magic trick" algorithms, and raw informat
 ## Core Teaching & Content Skills
 
 - [world-class-teacher](world-class-teacher/SKILL.md) — Create deep, beginner-accessible, interview-ready lectures following the exact 13-Section Blueprint and Universal 5-Step Logic Discovery Engine.
-- [lecture-review](lecture-review/SKILL.md) — Audit, review, and rewrite existing lectures to strictly enforce the 13-Section Blueprint, ~650–850 line count target, dual-case examples, and runnable `node:assert` tests.
+- [lecture-review](lecture-review/SKILL.md) — Audit, review, and rewrite existing lectures to strictly enforce the 13-Section Blueprint, ~650–850 line count target, dual-case examples, and direct clean runnable code.
 - [course-builder-master](course-builder-master/SKILL.md) — Build end-to-end courses, day-wise master lecture tracks, and visual roadmap dependency graphs.
 
 ---

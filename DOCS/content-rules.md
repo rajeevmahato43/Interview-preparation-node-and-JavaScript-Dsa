@@ -39,7 +39,7 @@ Every lecture must guarantee that the candidate can:
 - **Technical but Beginner-Friendly:** Define every specialized term in-place with a 1-line callout block. Use simple everyday language before introducing the technical label.
 - **Never Dump Answers Early:** Always let the learner see why a naive approach is slow before showing the pattern that fixes it.
 - **Dual-Case Implementations:** Always show the working pattern (`✅ CORRECT / POSITIVE CASE`) alongside the anti-pattern or trap (`❌ ANTI-PATTERN / COMMON BUG`) with clear inline comments.
-- **Production Runnable Test Assertions:** Code blocks must be self-contained, valid Node.js code verified with `node:assert`.
+- **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.
 
 ---
 

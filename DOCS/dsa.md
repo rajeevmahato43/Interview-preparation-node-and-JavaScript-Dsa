@@ -32,22 +32,22 @@ The goal is to forge an autonomous engineer who can walk up to an unfamiliar pro
 
 Every problem explained inside a lecture MUST follow this 5-step progression:
 
-1. **Step 1: Physical Human Simulation (Pen & Paper Intuition)**
+1. **Step 1: Physical Simulation**
    - State the problem using small concrete numbers or physical items (playing cards, coins, blocks, books).
    - Trace what human eyes and hands naturally do to solve it. Write zero code and mention zero data structures.
-2. **Step 2: The Raw Brute Force (Naive Code)**
+2. **Step 2: Brute Force Approach**
    - Translate raw human instinct into simple code using basic nested loops or straightforward recursion.
    - Explain why it works and calculate its time and space bounds ($O(n^2)$ or $O(2^n)$).
-3. **Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?")**
+3. **Step 3: Bottleneck**
    - Point out the exact wasted work: Is the CPU scanning the same list again and again ($O(n)$ search)? Is it recalculating the same subproblem? Is it sorting data that was already sorted?
-4. **Step 4: The Pattern Discovery Moment ("The Aha! Bridge")**
+4. **Step 4: The Pattern Discovery**
    - Present the algorithm or data structure not as a clever trick, but as the natural cure for that specific bottleneck:
      - Repeated lookup bottleneck? $\to$ Need instant recall $\to$ Hash Map / Set ($O(1)$).
      - Range recalculation bottleneck? $\to$ Move boundaries $\to$ Sliding Window.
      - Sorted search space bottleneck? $\to$ Cut search space in half $\to$ Binary Search.
      - Nearest smaller/greater element bottleneck? $\to$ Monotonic Stack.
-5. **Step 5: The Optimal Solution & Loop Invariant**
-   - Implement the clean, production-grade JavaScript solution with descriptive variable names, dual cases, and an explicit loop invariant comment.
+5. **Step 5: The Optimal Solution**
+   - Implement the clean, production-grade JavaScript solution with descriptive variable names, dual cases, loop invariant comments, complexity derivations, and direct `console.log` example runs.
 
 ---
 
@@ -59,11 +59,11 @@ Every DSA lecture must follow this exact section sequence:
 2. **Prerequisites:** Clear bullet links to prior days or required baseline concepts.
 3. **1. What is <Topic>?:** Plain English definition, real-world physical comparison (cards, boxes, books), clean ASCII diagram.
 4. **2. How <Topic> Works Step-by-Step:** How the data structure or algorithm moves step-by-step in memory.
-5. **3. How to Spot <Topic> in Problems:** Diagnostic triggers, problem keywords, $10^7$ constraints rule, when to use vs. when NOT to use.
-6. **4. Problem 1: <Name>:** Follows the 5-Step Logic Discovery Engine from physical simulation to optimal code with loop invariant.
+5. **3. Pattern Recognition of <Topic>:** Diagnostic triggers, problem keywords, $10^7$ constraints rule, when to use vs. when NOT to use.
+6. **4. Problem 1: <Name>:** Follows the 5-Step Logic Discovery Engine from physical simulation to optimal code.
 7. **5. Problem 2: <Name>:** Follows the 5-Step Logic Discovery Engine for a scaled challenge or secondary variation.
-8. **6. Under the Hood: V8 Engine & Node.js Backend Realities:** V8 memory (SMI, Double, packed vs holey arrays, hash map buckets), event loop blocking risks, single-thread safety, database offloading trade-offs.
-9. **7. Hands-On Exercise:** Realistic scenario, buggy code, acceptance criteria, verified solution using `node:assert`.
+8. **6. Under the Hood: V8 & Node.js:** V8 memory (SMI, Double, packed vs holey arrays, hash map buckets), event loop blocking risks, single-thread safety, database offloading trade-offs.
+9. **7. Hands-On Exercise:** Realistic scenario, buggy code, acceptance criteria, verified solution with clean test execution.
 10. **8. Tricky Points and Edge Cases:** Subtle traps, off-by-one errors, type coercion surprises, mutation hazards, with runnable ✅/❌ code.
 11. **9. Comprehensive Summary:** Detailed bullet recap covering all mechanisms, formulas, numbers, and complexities.
 12. **10. Cheat Sheet:** Algorithm decision table, common pitfalls list, reusable code template.
@@ -84,7 +84,7 @@ Ending with:
 - **Dual-Case Implementations:** Every code example must show both:
   - `✅ CORRECT / POSITIVE CASE`: The clean, working solution.
   - `❌ ANTI-PATTERN / COMMON BUG`: The common mistake or performance trap, with inline comments explaining why it fails.
-- **Production Runnable Code:** All code must run directly in Node.js and be verified with `const assert = require("node:assert/strict");`.
+- **Direct Clean Runnable Code:** All code must run directly in Node.js with clear `console.log` example calls showing expected outputs without requiring `assert` imports.
 
 ---
 

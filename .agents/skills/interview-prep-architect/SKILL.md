@@ -38,11 +38,11 @@ Every preparation roadmap must guarantee that the candidate can:
 
 Train the candidate to walk through unseen problems on the whiteboard using this exact 5-step discipline:
 
-1. **Step 1: Physical Human Simulation:** Clarify the problem using small numbers or physical items. Trace what human eyes and hands naturally do. Zero code.
-2. **Step 2: The Raw Brute Force:** Write out the naive solution using basic loops. Calculate time and space bounds ($O(n^2)$ or $O(2^n)$).
-3. **Step 3: Socratic Bottleneck Diagnosis ("Where is the CPU sweating?"):** Vocalize the exact wasted work to the interviewer (repeated linear scans, duplicate calculations).
-4. **Step 4: The Pattern Discovery Moment ("The Aha! Bridge"):** Connect the bottleneck directly to the optimal data structure or pattern.
-5. **Step 5: The Optimal Solution & Loop Invariant:** Write clean, production-grade code with descriptive variable names, state the loop invariant, and verify edge cases.
+1. **Step 1: Physical Simulation:** Clarify the problem using small numbers or physical items. Trace what human eyes and hands naturally do. Zero code.
+2. **Step 2: Brute Force Approach:** Write out the naive solution using basic loops. Calculate time and space bounds ($O(n^2)$ or $O(2^n)$).
+3. **Step 3: Bottleneck:** Vocalize the exact wasted work to the interviewer (repeated linear scans, duplicate calculations).
+4. **Step 4: The Pattern Discovery:** Connect the bottleneck directly to the optimal data structure or pattern.
+5. **Step 5: The Optimal Solution:** Write clean, production-grade code with descriptive variable names, dual cases, loop invariant comments, complexity derivations, and direct test verification.
 
 ---
 

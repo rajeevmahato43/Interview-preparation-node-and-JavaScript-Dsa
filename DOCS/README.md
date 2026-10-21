@@ -19,11 +19,11 @@ We strictly reject rote memorization, "magic trick" algorithms, and raw informat
 
 Every generated lecture must satisfy:
 1. **The 5 Success Criteria:** Plain English intuition before code, independent brute-force derivation, structured 45-second pitches, pattern recognition via constraint triggers, and V8/Node.js production application.
-2. **The Universal 5-Step Logic Discovery Engine:** Physical human simulation $\to$ Raw brute force $\to$ Bottleneck diagnosis ("Where is the CPU sweating?") $\to$ Pattern discovery ("The Aha! Bridge") $\to$ Optimal solution with loop invariant.
+2. **The Universal 5-Step Logic Discovery Engine:** Physical Simulation $\to$ Brute Force Approach $\to$ Bottleneck $\to$ The Pattern Discovery $\to$ The Optimal Solution.
 3. **The Exact 13-Section Lecture Blueprint:** Standardized 13-section structure from Top Navigation to Bottom Navigation.
 4. **Basic English Mandate:** Always use simple, clear words. Never use heavy academic words or confusing jargon.
 5. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG`.
-6. **Runnable Test Assertions:** Code blocks must be self-contained Node.js code verified with `node:assert`.
+6. **Direct Clean Runnable Code:** Code blocks must be self-contained Node.js functions with example calls (`console.log`) without requiring `assert` imports.
 
 ---
 
@@ -40,7 +40,7 @@ Every generated lecture must satisfy:
 
 - [content-rules.md](content-rules.md): Role & philosophy, 5 success criteria, core rules, 5-step logic discovery engine, 13-section blueprint, and simple English guidelines.
 - [interview-rules.md](interview-rules.md): 45-second pitches, trade-off matrices, interview Q&A progression, and practice problems formatting.
-- [example-rules.md](example-rules.md): Self-contained code, dual-case examples (`✅` and `❌`), and runnable `node:assert` verification.
+- [example-rules.md](example-rules.md): Self-contained code, dual-case examples (`✅` and `❌`), and direct `console.log` example execution.
 - [accuracy-rules.md](accuracy-rules.md): Authoritative sources, version-sensitive claims, and technical correctness.
 
 ---

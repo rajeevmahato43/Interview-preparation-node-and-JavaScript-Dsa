@@ -82,4 +82,4 @@ The Hands-On Exercise must follow a 4-part structure:
 1. **Scenario:** A realistic engineering situation.
 2. **Buggy Code:** A self-contained code snippet containing subtle real-world bugs.
 3. **Acceptance Criteria:** A numbered list of exact requirements.
-4. **Solution Code:** Clean, working code verified with `node:assert`.
+4. **Solution Code:** Clean, working code with direct test execution.
