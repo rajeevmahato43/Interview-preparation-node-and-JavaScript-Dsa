@@ -10,6 +10,7 @@
 
 - [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Trading precomputation space ($O(n)$) for instant query time ($O(1)$).
 - [Day 04: Objects, Maps, Sets & Hash Tables](day-04-objects-maps-sets-and-hash-tables.md) — Hash Map frequency accumulation.
+- [Day 09: Sliding Window: Variable Size](day-09-sliding-window-variable-size.md) — Monotonicity constraints and why sliding windows fail on negative numbers.
 
 ---
 
@@ -17,7 +18,25 @@
 
 A **Prefix Sum** is an array of cumulative running totals where each element stores the sum of all preceding values up to that position.
 
-> **Prefix Sum**: A precomputation technique where an auxiliary array $P$ is built such that $P[i]$ equals the sum of the first $i$ elements of the original array. This transforms any contiguous range sum query between index $L$ and index $R$ from an $O(n)$ linear scan into a single **$O(1)$ subtraction**: $P[R + 1] - P[L]$.
+> **Prefix Sum**: A precomputation technique where an array $P$ is constructed such that $P[i]$ equals the sum of all elements up to index $i - 1$, enabling any contiguous range sum from $L$ to $R$ to be answered in $O(1)$ time via subtraction: $P[R + 1] - P[L]$.
+
+> **Prefix Complement**: The mathematical difference $\text{currentPrefix} - k$ searched in a Hash Map to identify earlier prefix positions that form a valid target subarray.
+
+> **Difference Array**: The dual inverse of a prefix sum used to perform range updates in $O(1)$ time and reconstruct the final array via a prefix sweep.
+
+### The Prefix Sum Family Tree
+
+Before writing code, examine how prefix sums branch into range queries, hash complements, and higher dimensions:
+
+```mermaid
+graph TD
+    PSF["Prefix Sum Pattern Family"]
+    
+    PSF --> B1["1. 1D Immutable Prefix Sum<br><b>Formula:</b> P[R + 1] - P[L] in O(1) time"]
+    PSF --> B2["2. Prefix Sum + Hash Map<br><b>Focus:</b> Subarrays summing to K with negative numbers"]
+    PSF --> B3["3. 2D Matrix Prefix Sum<br><b>Focus:</b> Submatrix rectangle sums in O(1)"]
+    PSF --> B4["4. Difference Array<br><b>Focus:</b> Range update +x in O(1), sweep at end"]
+```
 
 ### The Automobile Odometer Analogy
 
@@ -53,9 +72,9 @@ Calculation: P[4] - P[1] = 11 - 2 = 9  --> O(1) Instant Lookup!
 
 ---
 
-## 2. How Prefix Sum Works Step-by-Step
+## 2. How Prefix Sum Works
 
-Understanding prefix sums requires mastering the 1-indexed $(n + 1)$ array standard:
+Prefix sum algorithms rely on the cumulative subtraction property to convert range summations into constant-time queries.
 
 ### The $(n + 1)$ Size Standard
 
@@ -63,19 +82,19 @@ Always allocate the prefix array with size **$n + 1$**:
 $$\text{prefix} = \text{new Array}(n + 1).\text{fill}(0)$$
 
 ```text
-+-----------------------------------------------------------------------+
-|                 WHY THE LEADING ZERO MATTERS                          |
-+-----------------------------------------------------------------------+
-|  prefix[0] = 0 represents the sum of zero elements.                   |
-|  prefix[1] = nums[0]                                                  |
-|  prefix[2] = nums[0] + nums[1]                                        |
-|  prefix[i] = sum of first i elements: nums[0 ... i - 1]               |
-+-----------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+|                        WHY THE LEADING ZERO MATTERS                                     |
++-----------------------------------------------------------------------------------------+
+|  prefix[0] = 0 represents the sum of zero elements.                                     |
+|  prefix[1] = nums[0]                                                                    |
+|  prefix[2] = nums[0] + nums[1]                                                          |
+|  prefix[i] = sum of first i elements: nums[0 ... i - 1]                                 |
++-----------------------------------------------------------------------------------------+
 ```
 
 ### Eliminating Conditional Edge Cases
 
-Without the leading zero at `prefix[0]`, querying a range that starts at the very beginning of the array ($L = 0$) requires a special `if/else` condition:
+Without the leading zero at `prefix[0]`, querying a range that starts at the very beginning of the array ($L = 0$) requires a special `if/else` branch:
 ```javascript
 // ❌ Clunky 0-indexed prefix array:
 const sum = L === 0 ? prefix[R] : prefix[R] - prefix[L - 1];
@@ -85,6 +104,31 @@ const sum = prefix[R + 1] - prefix[L]; // Works universally for all L >= 0!
 ```
 
 If $L = 0$ and $R = 2$, $\text{prefix}[3] - \text{prefix}[0] = \text{prefix}[3] - 0 = \text{prefix}[3]$. No branch instructions needed!
+
+### The Prefix Complement Invariant
+
+For problems finding subarrays summing to $k$:
+$$\text{Sum}(i \dots j) = P[j] - P[i] = k \iff P[i] = P[j] - k$$
+As we compute the running prefix sum $P[j]$, we query a Hash Map for how many times the complement $P[j] - k$ has appeared previously. Every previous appearance of $P[j] - k$ forms a valid contiguous subarray ending at $j$ that sums to $k$.
+
+### Language-Agnostic Pseudocode
+
+```text
+// 1. Building a 1D Prefix Array
+ALGORITHM BuildPrefixSum(nums):
+  n <- length(nums)
+  prefix <- Array of size (n + 1) initialized to 0
+
+  FOR i <- 0 TO n - 1 DO:
+    prefix[i + 1] <- prefix[i] + nums[i]
+  END FOR
+
+  RETURN prefix
+
+// 2. Querying Range Sum L to R
+ALGORITHM RangeSumQuery(prefix, L, R):
+  RETURN prefix[R + 1] - prefix[L]
+```
 
 ---
 
@@ -124,49 +168,46 @@ Calculate the sum of the elements of `nums` between indices `left` and `right` i
 
 Implement the `NumArray` class:
 - `NumArray(int[] nums)` Initializes the object with the integer array `nums`.
-- `int sumRange(int left, int right)` Returns the sum of the elements of `nums` between indices `left` and `right` inclusive (i.e. `nums[left] + nums[left + 1] + ... + nums[right]`).
+- `int sumRange(int left, int right)` Returns the sum of the elements of `nums` between indices `left` and `right` inclusive.
 
 - **Example 1:**
   ```text
   Input:
   ["NumArray", "sumRange", "sumRange", "sumRange"]
   [[[-2, 0, 3, -5, 2, -1]], [0, 2], [2, 5], [0, 5]]
-  Output:
-  [null, 1, -1, -3]
+  Output: [null, 1, -1, -3]
   Explanation:
-  NumArray numArray = new NumArray([-2, 0, 3, -5, 2, -1]);
-  numArray.sumRange(0, 2); // return (-2) + 0 + 3 = 1
-  numArray.sumRange(2, 5); // return 3 + (-5) + 2 + (-1) = -1
-  numArray.sumRange(0, 5); // return (-2) + 0 + 3 + (-5) + 2 + (-1) = -3
+  sumRange(0, 2) -> (-2) + 0 + 3 = 1
+  sumRange(2, 5) -> 3 + (-5) + 2 + (-1) = -1
+  sumRange(0, 5) -> (-2) + 0 + 3 + (-5) + 2 + (-1) = -3
   ```
-- **Constraints:** $1 \le nums.length \le 10^4$, $-10^5 \le nums[i] \le 10^5$, $0 \le left \le right < nums.length$. At most $10^4$ calls will be made to `sumRange`.
+- **Constraints:** $1 \le nums.length \le 10^4$, $-10^5 \le nums[i] \le 10^5$, $0 \le left \le right < nums.length$, at most $10^4$ calls to `sumRange`.
 
 ---
 
 ### Step 1: Physical Simulation
 
-Take the array: `[-2, 0, 3, -5, 2, -1]`.
-Create a notebook where each page records the cumulative total up to that point:
+Lay out numbers: `[ -2, 0, 3, -5, 2, -1 ]` (length 6)
+Build cumulative odometer:
+- Slot 0: `0`
+- Slot 1: `0 + (-2) = -2`
+- Slot 2: `-2 + 0 = -2`
+- Slot 3: `-2 + 3 = 1`
+- Slot 4: `1 + (-5) = -4`
+- Slot 5: `-4 + 2 = -2`
+- Slot 6: `-2 + (-1) = -3`
 
-- Page 0 (Before starting): `0`
-- Page 1 (After card 0): $0 + (-2) = -2$
-- Page 2 (After card 1): $-2 + 0 = -2$
-- Page 3 (After card 2): $-2 + 3 = 1$
-- Page 4 (After card 3): $1 + (-5) = -4$
-- Page 5 (After card 4): $-4 + 2 = -2$
-- Page 6 (After card 5): $-2 + (-1) = -3$
-
-When someone asks: *"What is the sum from card 2 to card 5?"*
-1. Open to Page 6 (after card 5): value is `-3`.
-2. Open to Page 2 (before card 2): value is `-2`.
-3. Subtract: $-3 - (-2) = -1$.
-You gave the exact answer in **one instant subtraction** without looking at cards 2, 3, 4, or 5!
+`prefix = [ 0, -2, -2, 1, -4, -2, -3 ]`
+- Query `(0, 2)`: `prefix[3] - prefix[0] = 1 - 0 = 1`.
+- Query `(2, 5)`: `prefix[6] - prefix[2] = -3 - (-2) = -1`.
+- Query `(0, 5)`: `prefix[6] - prefix[0] = -3 - 0 = -3`.
+Every range query is answered with a single subtraction!
 
 ---
 
 ### Step 2: Brute Force Approach
 
-Sum the elements from index `left` to `right` inside `sumRange()` on every call:
+The naive approach iterates through `nums` from `left` to `right` on every `sumRange` call:
 
 ```javascript
 // Node.js code
@@ -175,7 +216,7 @@ class NumArrayBruteForce {
     this.nums = nums;
   }
 
-  // ❌ O(n) loop on every query
+  // ❌ HIDDEN BOTTLENECK: O(n) scan on every single query
   sumRange(left, right) {
     let sum = 0;
     for (let i = left; i <= right; i++) {
@@ -187,94 +228,89 @@ class NumArrayBruteForce {
 ```
 
 #### Complexity Analysis:
-- **Build Time:** $O(1)$.
-- **Query Time:** $O(n)$ per call.
-- **Overall Time for $q$ queries:** $O(q \cdot n)$. For $10^4$ queries on $10^4$ elements, total operations reach $10^8$, creating unacceptable latency in APIs.
+- **Time Complexity:** Constructor takes $O(1)$. Each `sumRange` takes $O(n)$ time. For $q$ queries, total time is $O(q \cdot n)$. For $q = 10,000$ and $n = 10,000$, this executes $10^8$ operations, causing query lag.
+- **Space Complexity:** $O(1)$ auxiliary space.
 
 ---
 
-### Step 3: Bottleneck
+### Step 3: Why not use the brute force? (The Bottleneck)
 
-- If queries frequently request overlapping ranges (e.g., `sumRange(0, 5000)` followed by `sumRange(10, 5000)`), the brute force repeatedly re-adds thousands of identical numbers.
-- **The Wasted Work:** Redundant sequential addition over static, immutable data.
+- When multiple queries overlap (e.g., query `[0, 5]` and query `[2, 5]`), the brute force recalculates the exact same element sums repeatedly.
+- **The Wasted Work:** Re-scanning contiguous memory segments over and over across separate queries.
 
 ---
 
 ### Step 4: The Pattern Discovery
 
-- Precompute the prefix sums **once** in the constructor in $O(n)$ time.
-- Store the results in an array `prefix` of length $n + 1$.
-- Any subsequent `sumRange(left, right)` call calculates:
+- Trade $O(n)$ precomputation time and $O(n)$ space in the constructor to compute a prefix sum array of size $n + 1$.
+- Any range sum $[left, right]$ is answered in **$O(1)$ constant time** using:
   $$\text{prefix}[right + 1] - \text{prefix}[left]$$
-- Query runtime drops from **$O(n)$ to $O(1)$**!
+- Query time drops from **$O(n)$ to $O(1)$**!
 
 ---
 
-### Step 5: The Optimal Solution
+### Step 5: Solution using prefix sum
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) precomputation, O(1) query time prefix sum class
+// ✅ CORRECT: Optimal O(n) precomputation, O(1) query time using (n + 1) prefix array
 class NumArray {
   constructor(nums) {
-    // prefix[i] stores the sum of the first i elements
-    // Size is nums.length + 1 with leading 0 to eliminate edge cases
-    this.prefix = new Array(nums.length + 1).fill(0);
+    const n = Array.isArray(nums) ? nums.length : 0;
+    // Allocate (n + 1) slots with prefix[0] = 0
+    this.prefix = new Array(n + 1).fill(0);
 
-    for (let i = 0; i < nums.length; i++) {
+    for (let i = 0; i < n; i++) {
       this.prefix[i + 1] = this.prefix[i] + nums[i];
     }
   }
 
-  // Answer any range query in strictly O(1) time
   sumRange(left, right) {
+    // Formula: prefix[R + 1] - prefix[L]
     return this.prefix[right + 1] - this.prefix[left];
   }
 }
 
-// ❌ ANTI-PATTERN / COMMON BUG: 0-indexed prefix array with ternary check
-class BuggyNumArray {
+// ❌ ANTI-PATTERN / COMMON BUG: 0-indexed prefix array with ternary branches
+class BuggyNumArrayZeroIndexed {
   constructor(nums) {
-    this.prefix = new Array(nums.length);
-    let sum = 0;
-    for (let i = 0; i < nums.length; i++) {
-      sum += nums[i];
-      this.prefix[i] = sum;
+    this.prefix = [];
+    let current = 0;
+    for (let num of nums) {
+      current += num;
+      this.prefix.push(current);
     }
   }
+
   sumRange(left, right) {
-    // INFERIOR: Introduces branch prediction overhead on every query
-    if (left === 0) return this.prefix[right];
-    return this.prefix[right] - this.prefix[left - 1];
+    // BUG: Ternary branch instruction required on every query; prone to off-by-one errors
+    return left === 0 ? this.prefix[right] : this.prefix[right] - this.prefix[left - 1];
   }
 }
 
 // Example runs
-const obj = new NumArray([-2, 0, 3, -5, 2, -1]);
-console.log(obj.sumRange(0, 2)); // 1  ((-2) + 0 + 3)
-console.log(obj.sumRange(2, 5)); // -1 (3 + (-5) + 2 + (-1))
-console.log(obj.sumRange(0, 5)); // -3
-console.log(obj.sumRange(3, 3)); // -5 (single element)
+const numArray = new NumArray([-2, 0, 3, -5, 2, -1]);
+console.log(numArray.sumRange(0, 2)); // 1
+console.log(numArray.sumRange(2, 5)); // -1
+console.log(numArray.sumRange(0, 5)); // -3
 ```
 
 #### Complexity Derivation:
 - **Time Complexity:**
-  - `constructor`: $O(n)$ single linear pass to compute cumulative sums.
-  - `sumRange`: Strictly $O(1)$ constant time (two array lookups and one subtraction).
-  - Total for $q$ queries: $O(n + q)$, down from $O(q \cdot n)$.
-- **Space Complexity:** $O(n)$ auxiliary space to store the $(n + 1)$ prefix array.
+  - `constructor`: $O(n)$ linear time to build the prefix array once.
+  - `sumRange`: $O(1)$ constant time. Exactly one subtraction.
+- **Space Complexity:** $O(n)$ auxiliary space to store the prefix array of size $n + 1$.
 
 ---
 
 ## 5. Problem 2: Subarray Sum Equals K
 
 ### Problem Statement
-Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals to `k`.
-A subarray is a contiguous non-empty sequence of elements within an array.
+Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals to `k`. A subarray is a contiguous non-empty sequence of elements within an array. **Note that elements may be negative, zero, or positive.**
 
 - **Example 1:** `nums = [1, 1, 1]`, `k = 2` $\to$ `2`  
-  *(Subarrays: `[1, 1]` at indices 0-1, and `[1, 1]` at indices 1-2)*
+  *(Subarrays: `[1, 1]` at indices `0..1` and `[1, 1]` at indices `1..2`)*
 - **Example 2:** `nums = [1, 2, 3]`, `k = 3` $\to$ `2`  
-  *(Subarrays: `[1, 2]` at indices 0-1, and `[3]` at index 2)*
+  *(Subarrays: `[1, 2]` and `[3]`)*
 - **Example 3:** `nums = [1, -1, 0]`, `k = 0` $\to$ `3`  
   *(Subarrays: `[1, -1]`, `[0]`, `[1, -1, 0]`)*
 - **Constraints:** $1 \le nums.length \le 2 \times 10^4$, $-1000 \le nums[i] \le 1000$, $-10^7 \le k \le 10^7$.
@@ -283,178 +319,140 @@ A subarray is a contiguous non-empty sequence of elements within an array.
 
 ### Step 1: Physical Simulation
 
-Let `nums = [1, 2, 3]` and `k = 3`.
-Think of managing your bank account balance:
-- Start with balance $0$.
-- Day 1: Deposit $1 \to$ Balance = 1.
-- Day 2: Deposit $2 \to$ Balance = 3.
-- Day 3: Deposit $3 \to$ Balance = 6.
-
-How do you know if you received a net total of $k = 3$ over *some* continuous window?
-- At Balance = 3: Ask: *"Did my balance ever equal $3 - 3 = 0$ in the past?"* Yes, at the start! Subarray found: `[1, 2]`.
-- At Balance = 6: Ask: *"Did my balance ever equal $6 - 3 = 3$ in the past?"* Yes, on Day 2! Subarray found: `[3]`.
-Total matching subarrays = 2!
-
-Notice the mathematical relation:
-$$\text{Current Balance} - \text{Previous Balance} = k \iff \text{Previous Balance} = \text{Current Balance} - k$$
+Let `nums = [ 1, -1, 1, 1, 1 ]` and `k = 2`.
+Track the cumulative ledger balance as we move forward:
+- Before start: balance = 0 (seen 1 time).
+- Step 0 (value 1): balance = 1. Looking for balance $1 - 2 = -1$. Seen? No. Store balance `1: 1`.
+- Step 1 (value -1): balance = 0. Looking for balance $0 - 2 = -2$. Seen? No. Store balance `0: 2`.
+- Step 2 (value 1): balance = 1. Looking for balance $1 - 2 = -1$. Seen? No. Store balance `1: 2`.
+- Step 3 (value 1): balance = 2. Looking for balance $2 - 2 = 0$. Seen? Yes! Balance 0 was seen 2 times previously! Add 2 to our count. Store balance `2: 1`.
+- Step 4 (value 1): balance = 3. Looking for balance $3 - 2 = 1$. Seen? Yes! Balance 1 was seen 2 times previously! Add 2 to our count. Store balance `3: 1`.
+Total count of valid subarrays: $2 + 2 = 4$.
 
 ---
 
 ### Step 2: Brute Force Approach
 
-Check the sum of every possible contiguous subarray using nested loops:
+The naive approach evaluates all possible subarray pairs:
 
 ```javascript
 // Node.js code
 function subarraySumBruteForce(nums, k) {
   let count = 0;
-  for (let i = 0; i < nums.length; i++) {
-    let sum = 0;
-    for (let j = i; j < nums.length; j++) {
-      sum += nums[j];
-      if (sum === k) {
+
+  // ❌ HIDDEN BOTTLENECK: O(n^2) nested loop checking all pairs
+  for (let start = 0; start < nums.length; start++) {
+    let currentSum = 0;
+    for (let end = start; end < nums.length; end++) {
+      currentSum += nums[end];
+      if (currentSum === k) {
         count++;
       }
     }
   }
+
   return count;
 }
 ```
 
 #### Complexity Analysis:
-- **Time Complexity:** $O(n^2)$. Checks $\frac{n(n+1)}{2}$ subarrays.
+- **Time Complexity:** $O(n^2)$. For $n = 20,000$, takes $\approx 4 \times 10^8$ operations $\to$ TLE.
 - **Space Complexity:** $O(1)$.
-- **Scale Failure:** At $n = 20,000$, $n^2 = 4 \times 10^8$ operations. In Node.js, this takes over 1.8 seconds.
 
 ---
 
-### Step 3: Bottleneck
+### Step 3: Why not use the brute force? (The Bottleneck)
 
-Why can't we use a Sliding Window here?
-- **Crucial Constraint:** `nums` contains **negative numbers** ($-1000 \le nums[i] \le 1000$).
-- Sliding window requires sums to grow monotonically: expanding `right` must increase the sum, and contracting `left` must decrease it.
-- With negative numbers, adding a number can *decrease* the sum! Shrinking can *increase* it! A sliding window gets completely lost.
-- **The Wasted Work:** The brute force recalculates all subarray sums because it has no memory of prior prefix sums.
+- Why can't we use a Sliding Window here? Because `nums` contains **negative numbers**! A negative number decreases the sum, breaking the monotonic invariant where expanding `right` increases sum and contracting `left` decreases sum.
+- In brute force, we repeatedly recalculate intermediate sums for all overlapping pairs.
+- **The Wasted Work:** Recalculating range sums instead of using mathematical complements.
 
 ---
 
 ### Step 4: The Pattern Discovery
 
-Combine **Prefix Sum** with a **Hash Map** (Frequency Counter):
-- Let `runningSum` track the cumulative sum from index 0 to the current index.
-- If a subarray ending at current index sums to $k$, there must be an earlier prefix sum equal to:
-  $$\text{targetPrefix} = \text{runningSum} - k$$
-- Maintain a Hash Map `prefixCounts` storing:
-  $$\text{prefixSum} \to \text{how many times this sum has appeared}$$
-- On each step:
-  1. Add `nums[i]` to `runningSum`.
-  2. If `prefixCounts.has(runningSum - k)`, add `prefixCounts.get(runningSum - k)` to `count`!
-  3. Store or increment `runningSum` in `prefixCounts`.
-- **The Essential Base Case:** Before the loop starts, register `prefixCounts.set(0, 1)` to account for subarrays starting at index 0 whose sum directly equals $k$!
+- Recall Two Sum: to find if $x + y = k$, we store $x$ in a Map and search for complement $k - y$.
+- In prefix sums:
+  $$\text{Subarray Sum}(i \dots j) = \text{prefixSum}[j] - \text{prefixSum}[i] = k$$
+  $$\implies \text{prefixSum}[i] = \text{prefixSum}[j] - k$$
+- As we iterate, maintain a running `prefixSum`.
+- Check if `prefixSum - k` exists in our Hash Map:
+  - If yes, add its recorded frequency to `count`.
+- Record the current `prefixSum` into the Map.
+- **Base Case:** Initialize `map.set(0, 1)` to account for subarrays starting at index 0.
 - Runtime drops from **$O(n^2)$ to $O(n)$**!
 
 ---
 
-### Step 5: The Optimal Solution
+### Step 5: Solution using prefix sum
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(n) space Prefix Sum + Hash Map
+// ✅ CORRECT: Optimal O(n) time, O(n) space prefix sum + hash map
 function subarraySum(nums, k) {
+  if (!Array.isArray(nums) || nums.length === 0) return 0;
+
   // Map stores: prefixSum (number) -> frequencyCount (number)
-  const prefixCounts = new Map();
+  const prefixMap = new Map();
 
-  // BASE CASE: A prefix sum of 0 has occurred exactly once (before any elements are added)
-  prefixCounts.set(0, 1);
+  // BASE CASE: A prefix sum of 0 has occurred 1 time (before the array starts)
+  prefixMap.set(0, 1);
 
-  let runningSum = 0;
-  let totalSubarrays = 0;
+  let currentPrefixSum = 0;
+  let totalCount = 0;
 
   for (let i = 0; i < nums.length; i++) {
-    runningSum += nums[i];
+    currentPrefixSum += nums[i];
 
-    // If (runningSum - k) exists in our map, a valid subarray ending at i exists!
-    const neededPrefix = runningSum - k;
-    if (prefixCounts.has(neededPrefix)) {
-      totalSubarrays += prefixCounts.get(neededPrefix);
+    // Mathematical complement: prefix[i] = currentPrefixSum - k
+    const complement = currentPrefixSum - k;
+
+    if (prefixMap.has(complement)) {
+      totalCount += prefixMap.get(complement);
     }
 
-    // Record the current prefix sum in the map
-    prefixCounts.set(runningSum, (prefixCounts.get(runningSum) || 0) + 1);
+    // Record the current prefix sum frequency
+    prefixMap.set(currentPrefixSum, (prefixMap.get(currentPrefixSum) || 0) + 1);
   }
 
-  return totalSubarrays;
+  return totalCount;
 }
 
-// ❌ ANTI-PATTERN / COMMON BUG: Missing the base case prefixCounts.set(0, 1)
-function buggySubarraySumMissingBase(nums, k) {
-  const map = new Map();
-  // BUG: Forgot map.set(0, 1)!
-  // Any subarray starting at index 0 that sums to k will be completely missed!
-  let sum = 0, count = 0;
-  for (const num of nums) {
-    sum += num;
-    if (map.has(sum - k)) count += map.get(sum - k);
-    map.set(sum, (map.get(sum) || 0) + 1);
+// ❌ ANTI-PATTERN / COMMON BUG: Forgetting map.set(0, 1) base case
+function buggySubarraySumMissingBaseCase(nums, k) {
+  const prefixMap = new Map();
+  // BUG: Missing prefixMap.set(0, 1)!
+  // Any subarray starting at index 0 that sums to k will be missed!
+  let currentPrefixSum = 0;
+  let totalCount = 0;
+
+  for (let i = 0; i < nums.length; i++) {
+    currentPrefixSum += nums[i];
+    if (prefixMap.has(currentPrefixSum - k)) {
+      totalCount += prefixMap.get(currentPrefixSum - k);
+    }
+    prefixMap.set(currentPrefixSum, (prefixMap.get(currentPrefixSum) || 0) + 1);
   }
-  return count;
+
+  return totalCount;
 }
 
 // Example runs
-console.log(subarraySum([1, 1, 1], 2));        // 2
-console.log(subarraySum([1, 2, 3], 3));        // 2
-console.log(subarraySum([1, -1, 0], 0));       // 3 ([1, -1], [0], [1, -1, 0])
+console.log(subarraySum([1, 1, 1], 2));       // 2
+console.log(subarraySum([1, 2, 3], 3));       // 2
+console.log(subarraySum([1, -1, 0], 0));      // 3
 console.log(subarraySum([3, 4, 7, 2, -3, 1, 4, 2], 7)); // 4
 ```
 
 #### Complexity Derivation:
-- **Time Complexity:** $O(n)$. Single `for` loop executing $n$ iterations. In each iteration, `map.has()`, `map.get()`, and `map.set()` operate in $O(1)$ average time. Total time is $O(n)$.
-- **Space Complexity:** $O(n)$ auxiliary space. In the worst case (where every prefix sum is unique), the `Map` stores up to $n + 1$ entries.
+- **Time Complexity:** $O(n)$. Single `for` loop from index $0$ to $n - 1$. Each Hash Map lookup and insertion takes $O(1)$ amortized time. Total time: $O(n)$.
+- **Space Complexity:** $O(n)$ auxiliary space to store at most $n + 1$ unique prefix sums in the Map.
 
 ---
 
-## 6. Under the Hood: V8 & Node.js
-
-### 1. TypedArray Allocation for Prefix Sums
-
-In performance-critical Node.js services processing large datasets (e.g., millions of telemetry floats):
-- A regular JavaScript array `new Array(n + 1)` allocates an array of V8 object pointers.
-- Using **`Float64Array`** or **`Int32Array`** allocates a single contiguous block of C++ memory directly on the system heap:
-  ```javascript
-  const prefix = new Int32Array(nums.length + 1);
-  ```
-- This achieves:
-  - 4x to 8x lower RAM consumption.
-  - Zero pointer dereference overhead in CPU registers.
-  - Total immunity from V8 Garbage Collection pauses.
-
-```text
-Memory Layout Comparison in V8:
-Regular Array:  [ Pointer -> Object ] [ Pointer -> Object ] (Heap fragmentation)
-Int32Array:     [ 4 Bytes ][ 4 Bytes ][ 4 Bytes ][ 4 Bytes ] (Continuous C++ buffer)
-```
-
-### 2. Number Precision Boundaries in Cumulative Sums
-
-In JavaScript, all numbers are 64-bit IEEE-754 double-precision floats:
-- Integers up to **$2^{53} - 1$** (`9,007,199,254,740,991` or `Number.MAX_SAFE_INTEGER`) maintain exact integer precision.
-- However, V8 represents numbers smaller than $2^{31} - 1$ as **Smis (Small Integers)** in CPU registers.
-- When an accumulated prefix sum exceeds $2^{31} - 1$ ($\approx 2.14 \times 10^9$), V8 seamlessly boxes the value into a heap-allocated `HeapNumber`.
-- If you accumulate sums that could exceed `Number.MAX_SAFE_INTEGER`, use `BigInt` (`0n`) to prevent silent precision loss!
-
-### 3. Financial Ledgers and Double-Entry Invariants
-
-In Node.js backend systems handling payment ledgers:
-- Transactions represent credits (+) and debits (-).
-- Prefix sum arrays form the mathematical foundation of **Audit Ledgers**:
-  - Validating that an account balance never drops below zero ($P[i] \ge 0$ for all $i$).
-  - Proving double-entry balance across accounts ($P[n] === 0$).
-
----
-
-## 7. Hands-On Exercise: Financial Transaction Ledger Audit
+## 6. Hands-On Exercise: Real-Time Financial Ledger Reconciliation
 
 ### Scenario
-You are developing a financial compliance audit service in Node.js. Given an array of customer transactions (deposits as positive integers, withdrawals as negative integers), the compliance team needs to know how many continuous transaction windows resulted in a **net change of exactly zero dollars** (indicating a neutral wash cycle). A previous contractor wrote a solution using nested loops, which freezes during batch audits of 50,000 transactions. You must rewrite it to run in $O(n)$ time.
+You are developing a financial compliance audit service in Node.js. Given an array of customer transactions (deposits as positive integers, withdrawals as negative integers), the compliance team needs to know how many continuous transaction intervals resulted in a **net change of exactly zero dollars** (indicating a neutral wash cycle). A previous contractor wrote a solution using nested loops, which freezes during batch audits of 50,000 transactions. You must rewrite it to run in $O(n)$ time and $O(n)$ space.
 
 ### Buggy Code
 ```javascript
@@ -477,12 +475,13 @@ function countZeroNetWindowsBuggy(transactions) {
 ```
 
 ### Acceptance Criteria
-1. Must compute the count of zero-sum continuous windows in **$O(n)$ time**.
+1. Must compute the count of zero-sum continuous intervals in **$O(n)$ time**.
 2. Must handle negative, zero, and positive transactions correctly.
-3. Must use a **Prefix Sum + Hash Map** pattern.
+3. Must use a **Prefix Sum + Hash Map** pattern with base case `0: 1`.
 4. Must process a ledger of $50,000$ transactions in under 10 milliseconds.
+5. Must pass automated differential stress-testing (500+ iterations) against the comparator.
 
-### Solution Code
+### Verified Solution
 
 ```javascript
 // ✅ CORRECT: Optimal O(n) time, O(n) space ledger compliance auditor
@@ -491,7 +490,7 @@ function countZeroNetWindows(transactions) {
     return 0;
   }
 
-  // Map stores: balance (number) -> frequencyCount (number)
+  // Map stores: runningBalance (number) -> frequencyCount (number)
   const balanceCounts = new Map();
 
   // BASE CASE: Balance 0 occurred once before any transactions took place
@@ -518,192 +517,220 @@ function countZeroNetWindows(transactions) {
 // Example runs
 console.log(countZeroNetWindows([100, -100, 50, -50])); // 3 ([100, -100], [50, -50], [100, -100, 50, -50])
 console.log(countZeroNetWindows([50, -50, 0]));          // 4 ([50, -50], [0], [-50, 0, 50], [50, -50, 0])
-console.log(countZeroNetWindows([10, 20, 30]));          // 0
+console.log(countZeroNetWindows([1, 2, 3]));             // 0
 
 // Benchmark test: 50,000 transactions
-const testLedger = Array.from({ length: 50000 }, (_, i) => (i % 2 === 0 ? 50 : -50));
+const largeLedger = Array.from({ length: 50000 }, () => Math.floor(Math.random() * 201) - 100);
 const start = Date.now();
-const result = countZeroNetWindows(testLedger);
+const auditCount = countZeroNetWindows(largeLedger);
 const elapsed = Date.now() - start;
+console.log(`Audited 50,000 transactions in ${elapsed}ms! Found ${auditCount} zero-net intervals.`);
 
-console.log(`Audited 50,000 transactions in ${elapsed}ms! Found ${result} zero-net windows.`);
+// Automated Differential Stress-Testing Harness (Fuzzing)
+function runStressTest(testCount = 500) {
+  for (let t = 0; t < testCount; t++) {
+    const len = Math.floor(Math.random() * 40) + 1;
+    const txs = [];
+    for (let i = 0; i < len; i++) {
+      txs.push(Math.floor(Math.random() * 21) - 10);
+    }
+
+    const expected = countZeroNetWindowsBuggy(txs);
+    const actual = countZeroNetWindows(txs);
+
+    if (expected !== actual) {
+      console.error(`❌ Mismatch detected! Expected ${expected}, got ${actual}`);
+      return false;
+    }
+  }
+
+  console.log(`✅ Passed all ${testCount} randomized differential stress tests with zero failures!`);
+  return true;
+}
+runStressTest(500);
 ```
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 7. Tricky Points
 
-### 1. Forgetting the Base Case `map.set(0, 1)`
-This is the **#1 bug** in Subarray Sum interview questions:
-- If `nums = [3, 4]`, `k = 7`.
-- `runningSum` at index 1 is $3 + 4 = 7$.
-- Needed prefix: $7 - 7 = 0$.
-- If `map.set(0, 1)` is missing, `map.has(0)` returns `false`, and the subarray `[3, 4]` is completely skipped!
-- **Rule:** A prefix sum of 0 always exists **once** before processing the first element.
+### 1. The $(n + 1)$ Allocation Standard vs Off-by-One Errors
+Always allocate prefix sum arrays with size $n + 1$, setting index 0 to 0. Querying range $[L, R]$ becomes $\text{prefix}[R + 1] - \text{prefix}[L]$. This eliminates conditional ternary branching for $L = 0$ queries.
 
-### 2. 1-Indexed Prefix Array Math
-When using an $(n + 1)$ prefix array:
-- Range from index $L$ to index $R$ (inclusive) is calculated as:
-  $$\text{prefix}[R + 1] - \text{prefix}[L]$$
-- Do not subtract $\text{prefix}[L - 1]$. That causes an out-of-bounds error when $L = 0$!
+### 2. The Mandatory `map.set(0, 1)` Base Case
+In "Subarray Sum Equals K", forgetting `map.set(0, 1)` causes the algorithm to miss any subarray that begins at index 0. If `nums = [3, 4]` and `k = 7`, at index 1 `prefixSum = 7`, and `complement = 7 - 7 = 0`. Without the base case `0: 1`, this valid subarray is never counted!
 
-### 3. Zeros in the Input Array
-If `nums` contains zeros (e.g., `[0, 0, 0]`, `k = 0`):
-- Adding `0` does not change `runningSum`.
-- Therefore, the same prefix sum repeats multiple times.
-- The algorithm handles this naturally because the Map stores **frequencies**, correctly adding all previous matching instances!
+### 3. Number Precision and Safe Integer Boundaries in V8
+JavaScript stores numbers as 64-bit IEEE 754 floats. While safe integers reach $2^{53} - 1$ (`Number.MAX_SAFE_INTEGER`), V8 optimizes numbers smaller than $2^{31} - 1$ as Small Integers (**Smis**) in CPU registers. If accumulated prefix totals exceed $2^{53} - 1$, precision loss occurs. Use `BigInt` (`0n`) for high-precision financial ledgers.
+
+### 4. Why Sliding Window Fails on Arrays with Negative Numbers
+Sliding window requires monotonicity: adding an element must strictly increase the sum, and contracting `left` must strictly decrease it. When negative numbers are present, subtracting a negative number increases the sum, breaking the invariant and causing valid windows to be pruned prematurely.
+
+### 5. Memory Pre-Allocation in V8
+Dynamically growing a prefix array (`prefix.push()`) causes V8 to repeatedly resize the backing store. Allocating `new Array(n + 1).fill(0)` creates a contiguous, packed SMI array in memory, maximizing CPU L1 cache line prefetching.
 
 ---
 
-## 9. Comprehensive Summary
-
-- **Prefix Sum** precomputes cumulative totals in an $O(n)$ array, reducing any range query $(L \dots R)$ to an **$O(1)$ subtraction**: $P[R + 1] - P[L]$.
-- **The $(n + 1)$ Array Standard:** Starting with `prefix[0] = 0` eliminates conditional branching for queries starting at index 0.
-- **Overcoming Negative Numbers:** When array elements are negative, sliding window fails. Pairing **Prefix Sum with a Hash Map** solves subarray sum problems in linear $O(n)$ time.
-- **The Core Ledger Equation:**
-  $$\text{Current Prefix} - \text{Previous Prefix} = k \iff \text{Previous Prefix} = \text{Current Prefix} - k$$
-- **V8 TypedArray Optimization:** Using `Int32Array` or `Float64Array` creates contiguous memory buffers, reducing RAM by 80% and eliminating garbage collector pauses.
-
----
-
-## 10. Cheat Sheet
+## 8. Cheat Sheet
 
 ### Decision Table
 
-| Problem Characteristics | Target Complexity | Preferred Technique |
-| :--- | :---: | :--- |
-| **Immutable Range Sum Queries** | Build: $O(n)$, Query: $O(1)$ | $(n + 1)$ Prefix Sum Array |
-| **Subarray Sum Equals $k$ (Contains negative numbers)** | Time: $O(n)$, Space: $O(n)$ | Prefix Sum + Hash Map (with `map.set(0, 1)`) |
-| **Subarray Sum Equals $k$ (All positive numbers)** | Time: $O(n)$, Space: $O(1)$ | Variable Sliding Window (Day 09) |
-| **Find Pivot Index where Left Sum === Right Sum** | Time: $O(n)$, Space: $O(1)$ | Total sum minus left sum |
-| **Contiguous Array with equal 0s and 1s** | Time: $O(n)$, Space: $O(n)$ | Treat 0 as -1; Prefix Sum + Hash Map |
+| Problem Characteristics | Array Contents | Target Complexity | Preferred Technique |
+| :--- | :---: | :---: | :--- |
+| **Repeated range sum queries $[L, R]$** | Any numbers | Precompute: $O(n)$, Query: $O(1)$ | 1D Prefix Sum with $(n + 1)$ size array |
+| **Subarrays summing to $k$** | Contains negative numbers | Time: $O(n)$, Space: $O(n)$ | Prefix Sum + Hash Map with `map.set(0, 1)` |
+| **Subarrays summing to $k$** | Strictly positive numbers | Time: $O(n)$, Space: $O(1)$ | Variable Sliding Window (Day 09) |
+| **Subarrays with equal 0s and 1s** | Binary (`0` and `1`) | Time: $O(n)$, Space: $O(n)$ | Transform `0 -> -1`, Prefix Sum + Map for target 0 |
+| **Range update $+x$ across $[L, R]$** | Any numbers | Update: $O(1)$, Reconstruct: $O(n)$ | Difference Array: `diff[L] += x`, `diff[R + 1] -= x` |
 
 ### Common Pitfalls List
-- **Missing `map.set(0, 1)`:** Fails to detect valid subarrays that start at index 0.
-- **The Sliding Window Trap:** Attempting to use a sliding window on arrays with negative numbers.
-- **Off-by-One in Range Formula:** Writing `prefix[R] - prefix[L]` instead of `prefix[R + 1] - prefix[L]`.
-- **Heap Churn with Plain Objects:** Using `{}` instead of `new Map()`, causing string coercion and prototype property collisions.
+- **Missing Base Case:** Forgetting `map.set(0, 1)` in Subarray Sum Equals K.
+- **Using Sliding Window with Negatives:** Applying a sliding window when negative numbers break sum monotonicity.
+- **Off-by-One in Range Queries:** Writing `prefix[R] - prefix[L]` instead of `prefix[R + 1] - prefix[L]`.
+- **Dynamic Array Growth:** Using `.push()` in a loop instead of pre-allocating an $(n + 1)$ array.
 
-### Reusable Prefix Sum + Map Skeleton
+### Reusable Prefix Sum Skeletons
 
 ```javascript
-function prefixSumMapTemplate(nums, target) {
-  const prefixCounts = new Map();
-  prefixCounts.set(0, 1); // Crucial base case
-
-  let runningSum = 0;
-  let matches = 0;
-
-  for (let i = 0; i < nums.length; i++) {
-    runningSum += nums[i];
-
-    const complement = runningSum - target;
-    if (prefixCounts.has(complement)) {
-      matches += prefixCounts.get(complement);
+// Skeleton 1: Range Sum Query (Immutable)
+class PrefixSumRangeQuery {
+  constructor(nums) {
+    this.prefix = new Array(nums.length + 1).fill(0);
+    for (let i = 0; i < nums.length; i++) {
+      this.prefix[i + 1] = this.prefix[i] + nums[i];
     }
-
-    prefixCounts.set(runningSum, (prefixCounts.get(runningSum) || 0) + 1);
   }
 
-  return matches;
+  query(left, right) {
+    return this.prefix[right + 1] - this.prefix[left];
+  }
+}
+
+// Skeleton 2: Subarray Sum Equals K (Handles Negative Numbers)
+function subarraySumTemplate(nums, k) {
+  const prefixMap = new Map();
+  prefixMap.set(0, 1); // Base case
+
+  let prefixSum = 0;
+  let count = 0;
+
+  for (let i = 0; i < nums.length; i++) {
+    prefixSum += nums[i];
+    const complement = prefixSum - k;
+
+    if (prefixMap.has(complement)) {
+      count += prefixMap.get(complement);
+    }
+
+    prefixMap.set(prefixSum, (prefixMap.get(prefixSum) || 0) + 1);
+  }
+
+  return count;
 }
 ```
 
 ---
 
-## 11. Interview Q&A
+## 9. Summary
 
-### 45-Second Technical Pitch
-> *"The Prefix Sum pattern optimizes range queries and subarray sum problems by precomputing running cumulative totals in O(n) time. It converts range queries from linear scans into instant O(1) mathematical subtractions: P[R + 1] - P[L]. When paired with a Hash Map, it solves the classic 'Subarray Sum Equals K' problem in linear O(n) time even when arrays contain negative numbers, which breaks sliding window monotonicity. In Node.js backend systems, typed prefix arrays eliminate garbage collection churn and provide the foundational architecture for financial audit ledgers and real-time metric aggregators."*
-
----
-
-### 1. Why does the presence of negative numbers make Sliding Window fail and require Prefix Sum + Hash Map?
-**Answer:**
-A Sliding Window relies on **monotonicity**: expanding the right pointer must strictly increase or maintain the window sum, and contracting the left pointer must strictly decrease it. When an array contains negative numbers, adding an element might decrease the total sum, while removing an element might increase it. Because the sum can move unpredictably in either direction, the sliding window cannot make greedy decisions about when to shrink or expand. Prefix Sum with a Hash Map avoids this issue entirely by evaluating mathematical differences between cumulative checkpoints ($P[j] - P[i] = k$), working identically regardless of whether numbers are positive, negative, or zero.
+- **Prefix Sum** precomputes cumulative totals in $O(n)$ time to answer any range sum query in $O(1)$ constant time.
+- **$(n + 1)$ Size Standard:** Allocating an $(n + 1)$ sized array with `prefix[0] = 0` eliminates conditional edge cases for queries starting at index 0.
+- **Prefix Sum + Hash Map:** Solves subarray sum problems in $O(n)$ time even when arrays contain negative numbers, overcoming the monotonicity limitation of sliding windows.
+- **V8 Engine Internals:** Allocating packed SMI arrays (`new Array(n + 1).fill(0)`) optimizes V8 memory layout into contiguous memory buffers, preventing heap fragmentation and JIT de-optimizations.
+- **Systems Alignment:** Forms the mathematical architecture for financial ledgers, database LSM compaction sweeps, and time-series metrics monitoring (e.g., Prometheus rate metrics).
 
 ---
 
-### 2. Why must we initialize the prefix frequency map with `map.set(0, 1)`?
+## 10. Interview Q&A
+
+> *"The Prefix Sum pattern precomputes cumulative running totals to answer contiguous range queries in strictly O(1) time via subtraction: prefix[R + 1] - prefix[L]. When combined with a Hash Map to track prefix frequencies, it solves the 'Subarray Sum Equals K' problem in O(n) time and O(n) space even when arrays contain negative numbers—a scenario where two-pointer sliding windows mathematically fail due to loss of monotonicity. In Node.js backend systems, pre-allocating packed prefix arrays avoids V8 garbage collector churn and enables sub-millisecond audit calculations on large financial transaction batches."*
+
+---
+
+### 1. Why is `map.set(0, 1)` mathematically mandatory in "Subarray Sum Equals K"?
 **Answer:**
-The Hash Map stores past prefix sums to answer: *"Has there been a previous checkpoint such that `currentSum - previousSum === k`?"*
-If a valid subarray starts at index 0 and extends to index $i$, its sum is $nums[0] + ... + nums[i] = k$.
-At index $i$, `runningSum` equals $k$. The algorithm checks for `needed = runningSum - k = k - k = 0`.
-If the map does not contain `0`, it cannot match this subarray! The entry `map.set(0, 1)` represents the **empty prefix** before the array begins, ensuring that any subarray starting at index 0 is counted.
+A subarray starting at the very beginning of the array (index 0) has no preceding elements. Its sum is simply `prefixSum[j]`. For the equation $\text{prefixSum}[j] - \text{prefixSum}[i] = k$ to match when the subarray starts at index 0, the preceding prefix sum must be 0 ($\text{prefixSum}[j] - 0 = k$). If we do not record that a prefix sum of 0 has occurred once before the array begins (`map.set(0, 1)`), any valid subarray starting at index 0 will fail the complement lookup `map.has(prefixSum - k)` and will not be counted.
+
+---
+
+### 2. Why does Prefix Sum succeed when Sliding Window fails on arrays with negative numbers?
+**Answer:**
+A sliding window requires **monotonicity**: expanding the window must strictly increase or maintain the metric, and shrinking must strictly decrease it. When negative numbers exist, adding an element can decrease the sum, and shrinking can increase the sum. Thus, the decision to expand or shrink cannot be made greedily. Prefix Sum converts the problem from a greedy geometric search into an **exact algebraic lookup**:
+$$\text{prefixSum}[j] - \text{prefixSum}[i] = k \iff \text{prefixSum}[i] = \text{prefixSum}[j] - k$$
+Because hash lookups match exact values regardless of monotonic trends, Prefix Sum + Hash Map handles negative, zero, and positive values equally well.
 
 ---
 
 ### 3. What will this code output, and what bug does it contain?
 ```javascript
-function findPivotIndex(nums) {
-  let totalSum = 0;
-  for (const num of nums) totalSum += num;
-
-  let leftSum = 0;
+function findSubarrays(nums, k) {
+  const map = new Map();
+  let sum = 0, count = 0;
   for (let i = 0; i < nums.length; i++) {
-    if (leftSum === totalSum - leftSum) {
-      return i;
+    sum += nums[i];
+    map.set(sum, (map.get(sum) || 0) + 1);
+    if (map.has(sum - k)) {
+      count += map.get(sum - k);
     }
-    leftSum += nums[i];
   }
-  return -1;
+  return count;
 }
-console.log(findPivotIndex([1, 7, 3, 6, 5, 6]));
+console.log(findSubarrays([1, 2, 3], 3));
 ```
 **Answer:**
-It outputs `-1` instead of `3`!
-The bug is in the equation: `leftSum === totalSum - leftSum`.
-The pivot element `nums[i]` itself belongs to **neither** the left sum nor the right sum!
-The correct right sum is: $\text{rightSum} = \text{totalSum} - \text{leftSum} - nums[i]$.
-The condition must be:
-```javascript
-if (leftSum === totalSum - leftSum - nums[i]) {
-  return i;
-}
-```
-At index 3 (`val = 6`), $\text{leftSum} = 1 + 7 + 3 = 11$, and $\text{rightSum} = 28 - 11 - 6 = 11$. Correct pivot index is `3`.
+It outputs `1` instead of `2`!
+There are two bugs:
+1. `map.set(0, 1)` is missing. The subarray `[1, 2]` starting at index 0 is missed.
+2. The order of operations is reversed: the current prefix sum is added to the map *before* checking for the complement `sum - k`. If $k = 0$, an element would match with itself as a zero-length subarray. The correct order is to check `map.has(sum - k)` *first*, then record `map.set(sum, ...)`.
 
 ---
 
-### 4. How can Prefix Sum arrays be used to solve "Product of Array Except Self" in $O(n)$ time without division?
+### 4. How does pre-allocating an $(n + 1)$ array optimize V8 memory in high-concurrency Node.js microservices?
 **Answer:**
-We construct two arrays:
-1. **Prefix Products:** `leftProducts[i]` stores the product of all elements to the left of index $i$.
-2. **Suffix Products:** `rightProducts[i]` stores the product of all elements to the right of index $i$.
-For any index $i$, the product of all elements except `nums[i]` is simply:
-$$\text{result}[i] = leftProducts[i] \times rightProducts[i]$$
-By computing prefix products in a forward pass ($O(n)$) and suffix products in a backward pass ($O(n)$), we achieve $O(n)$ runtime and $O(1)$ auxiliary space (by writing directly into the output array) without ever using the division operator.
+When an array is built using repeated `.push()` calls, V8 starts with a small backing store and dynamically reallocates memory as it grows, copying existing elements to new memory locations. This creates young-generation heap churn and triggers garbage collection pauses. Pre-allocating `new Array(n + 1).fill(0)` informs V8 of the exact capacity upfront. V8 allocates a contiguous block of memory formatted as **Packed Small Integers (PACKED_SMI_ELEMENTS)**. This prevents reallocations, keeps numbers in CPU registers, and optimizes hardware L1 cache line prefetching.
 
 ---
 
-## 12. Practice Problems
+## 11. Practice Problems
 
 ### 1. Find Pivot Index - Easy
-Given an array of integers `nums`, calculate the **pivot index** of this array. The pivot index is the index where the sum of all the numbers strictly to the left of the index is equal to the sum of all the numbers strictly to the index's right. Return the leftmost pivot index. If no such index exists, return `-1`.
-- **Sample Input 1:** `nums = [1, 7, 3, 6, 5, 6]`
-- **Expected Output 1:** `3` (Left sum: $1+7+3=11$, Right sum: $5+6=11$)
-- **Sample Input 2:** `nums = [1, 2, 3]`
-- **Expected Output 2:** `-1`
-- **Sample Input 3:** `nums = [2, 1, -1]`
-- **Expected Output 3:** `0` (Left sum: 0, Right sum: $1+(-1)=0$)
+Given an array of integers `nums`, calculate the pivot index of this array. The pivot index is the index where the sum of all the numbers strictly to the left of the index is equal to the sum of all the numbers strictly to the index's right. If no such index exists, return `-1`. If there are multiple pivot indices, return the left-most one.
+- **Sample Input 1:** `nums = [1, 7, 3, 6, 5, 6]` $\to$ **Expected Output:** `3`  
+  *(Left sum = $1 + 7 + 3 = 11$, Right sum = $5 + 6 = 11$)*
+- **Sample Input 2:** `nums = [1, 2, 3]` $\to$ **Expected Output:** `-1`
+- **Sample Input 3:** `nums = [2, 1, -1]` $\to$ **Expected Output:** `0`  
+  *(Left sum = $0$, Right sum = $1 + (-1) = 0$)*
 
-### 2. Product of Array Except Self - Medium
-Given an integer array `nums`, return an array `answer` such that `answer[i]` is equal to the product of all the elements of `nums` except `nums[i]`. You must write an algorithm that runs in $O(n)$ time and without using the division operation.
-- **Sample Input 1:** `nums = [1, 2, 3, 4]`
-- **Expected Output 1:** `[24, 12, 8, 6]`
-- **Sample Input 2:** `nums = [-1, 1, 0, -3, 3]`
-- **Expected Output 2:** `[0, 0, 9, 0, 0]`
-- **Sample Input 3:** `nums = [2, 3]`
-- **Expected Output 3:** `[3, 2]`
+#### Socratic Hint Ladder:
+- **Hint 1 (Conceptual Bottleneck Nudge):** If you compute the total sum of the entire array upfront (`totalSum`), how can you calculate the right sum at index `i` if you know the left sum?
+- **Hint 2 (Monotonic Invariant Hint):** At any index `i`, the right sum is strictly $\text{totalSum} - \text{leftSum} - nums[i]$.
+- **Hint 3 (State Transition / Skeleton):** Initialize `leftSum = 0`. Iterate `i` from `0` to `n - 1`. If `leftSum === totalSum - leftSum - nums[i]`, return `i`. Otherwise, increment `leftSum += nums[i]`. If the loop finishes without a match, return `-1`.
 
-### 3. Contiguous Array (Equal 0s and 1s) - Medium
-Given a binary array `nums`, return the maximum length of a contiguous subarray with an equal number of `0` and `1`. (Hint: Treat 0 as -1 and use a prefix sum with a Hash Map storing the earliest index).
-- **Sample Input 1:** `nums = [0, 1]`
-- **Expected Output 1:** `2`
-- **Sample Input 2:** `nums = [0, 1, 0]`
-- **Expected Output 2:** `2` (Subarray `[0, 1]` or `[1, 0]`)
-- **Sample Input 3:** `nums = [0, 0, 0, 1, 1, 1]`
-- **Expected Output 3:** `6`
+---
+
+### 2. Contiguous Array (Equal 0s and 1s) - Medium
+Given a binary array `nums`, return the maximum length of a contiguous subarray with an equal number of `0` and `1`.
+- **Sample Input 1:** `nums = [0, 1]` $\to$ **Expected Output:** `2`
+- **Sample Input 2:** `nums = [0, 1, 0]` $\to$ **Expected Output:** `2`
+- **Sample Input 3:** `nums = [0, 0, 1, 0, 0, 0, 1, 1]` $\to$ **Expected Output:** `6`
+
+#### Socratic Hint Ladder:
+- **Hint 1 (Conceptual Bottleneck Nudge):** Transform the input: replace every `0` with `-1`. Now, finding a subarray with equal 0s and 1s is identical to finding a contiguous subarray whose sum is exactly `0`!
+- **Hint 2 (Monotonic Invariant Hint):** Use a Hash Map to store the *earliest index* where each prefix sum appeared. If prefix sum $S$ appears at index $j$ and was first seen at index $i$, the subarray from $i + 1$ to $j$ has a net sum of 0 and length $j - i$.
+- **Hint 3 (State Transition / Skeleton):** Initialize `map.set(0, -1)`. Maintain `prefixSum`. If `map.has(prefixSum)`, update `maxLen = Math.max(maxLen, i - map.get(prefixSum))`. Otherwise, set `map.set(prefixSum, i)` (do NOT overwrite an existing index so you preserve the maximum possible length!).
+
+---
+
+### 3. Subarray Sums Divisible by K - Medium
+Given an integer array `nums` and an integer `k`, return the number of non-empty subarrays that have a sum divisible by `k`.
+- **Sample Input 1:** `nums = [4, 5, 0, -2, -3, 1]`, `k = 5` $\to$ **Expected Output:** `7`
+- **Sample Input 2:** `nums = [5]`, `k = 9` $\to$ **Expected Output:** `0`
+- **Sample Input 3:** `nums = [-1, 2, 9]`, `k = 2` $\to$ **Expected Output:** `2`
+
+#### Socratic Hint Ladder:
+- **Hint 1 (Conceptual Bottleneck Nudge):** In modular arithmetic, if $(P[j] - P[i]) \pmod k === 0$, then $P[j] \pmod k === P[i] \pmod k$.
+- **Hint 2 (Monotonic Invariant Hint):** Subarrays divisible by $k$ correspond to pairs of prefix sums that have the exact same remainder modulo $k$. In JavaScript, beware of negative remainders: normalize them using `((sum % k) + k) % k`.
+- **Hint 3 (State Transition / Skeleton):** Maintain an array or map of size $k$ for remainder frequencies, initialized with `remainderCounts[0] = 1`. For each element, update `prefixSum`, calculate normalized `remainder`, add `remainderCounts[remainder]` to total count, and increment `remainderCounts[remainder]++`.
 
 ---
 
