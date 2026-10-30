@@ -33,161 +33,100 @@ Every lecture must guarantee that the candidate can:
 
 ## Core Lecture Rules (Non-Negotiable)
 
-- **Maximum Learning, Minimum Fluff:** Direct, high-density engineering guidance. No conversational filler ("Welcome back students!", "In this exciting chapter!").
-- **Deep but Concise (~650–850 lines):** Balance deep technical coverage with student energy. Do not write shallow summaries (<300 lines) and avoid overwhelming walls of text (>1,000 lines).
-- **Basic English, Simple Words:** Write in plain, direct English. Avoid heavy words, fancy academic words, or confusing buzzwords. Use words like *waste*, *steps*, *check*, *store*, and *build* rather than *redundancy*, *pedagogical*, *ascertain*, and *instantiate*.
-- **Technical but Beginner-Friendly:** Define every specialized term in-place with a 1-line callout block. Use simple everyday language before introducing the technical label.
-- **Never Dump Answers Early:** Always let the learner see why a naive approach is slow before showing the pattern that fixes it.
-- **Dual-Case Implementations:** Always show the working pattern (`✅ CORRECT / POSITIVE CASE`) alongside the anti-pattern or trap (`❌ ANTI-PATTERN / COMMON BUG`) with clear inline comments.
+- **Maximum Learning, Minimum Fluff:** Direct, high-density, actionable engineering language. No conversational filler ("Welcome back students!", "In this thrilling chapter!") and no artificial corporate story fluff.
+- **No Artificial Line Count Limits:** Never constrain lectures to arbitrary line counts. Lectures can be as long and comprehensive as necessary to deliver exhaustive, world-class depth, line-by-line mathematical derivations, and complete clarity without superficial summaries or forced truncation.
+- **Topic-Appropriate Architecture:** Not every lecture follows a rigid, one-size-fits-all template. Foundational theory and core concept lectures (such as Big O & Complexity Analysis, JavaScript Execution Model, or System Architecture) must focus 100% on their core subject matter—teaching line-by-line calculation, memory behavior, runtime internals, and analysis problems—without forcing artificial pattern overviews or unrelated algorithmic walkthroughs onto topics where they do not belong.
+- **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings (e.g., do NOT write `What Big O Actually Measures: Operations vs. Wall-Clock Time` or `Linear Search (The Linear Scan)`).
+- **No Preachy Meta-Interview Talk:** Avoid writing meta-interview filler like "In technical interviews, you must distinguish between...", "Interviewers will test you on...", or "A common interview trick is...". Deliver the engineering, computational, and systems insights directly.
+- **Strict Scope Discipline (Prevent Concept Bleed):** Keep each lecture strictly focused on its intended day's scope. Do not prematurely introduce complex mechanisms that belong in later dedicated lectures (e.g., recursion call stack memory belongs to Day 18; dynamic array resizing in V8 belongs to Day 2).
+- **Basic English, Simple Words:** Use plain, direct English. Define core concepts in simple everyday language. Avoid heavy words, academic vocabulary, or confusing jargon.
+- **Data Structures First, Patterns Second:** Always teach foundational data structures (e.g., `Map` and `Set`, `Array` and `String`) before introducing algorithmic patterns that utilize them (e.g., `Frequency Counter`, `Two Pointers`).
+- **Clean Numbering Hierarchy:** Use clean decimal numbering across sections, sub-topics, problem sub-steps, and challenges (`1.1`, `1.2`, `3.1.1` – `3.1.8`, `6.1` – `6.3`).
+- **No Meta-Labels in Headings:** Never use robotic labels in headings like `### Definition`, `### Basic Example`, or `### The Laundry Basket Analogy`. Analogies and definitions flow as natural prose directly under topic sections.
+- **Point-Based Families & Edge Cases:** Keep pattern families and tricky edge cases formatted as clean, punchy bullet points rather than bulky ASCII trees or excessive sub-headings.
+- **Essential Methods Reference Tables:** Every data structure section must conclude with a comprehensive reference table detailing key methods, runtime complexity ($O(1)$ vs $O(n)$), mutability, and quick code examples.
+- **Interactive Self-Check Callout Notes:** Place strategic 1-sentence questions formatted as `> [!NOTE]` callouts under key concepts and problems to test active recall.
+- **Dual-Case Implementations:** Always show the correct pattern (`✅ CORRECT`) alongside the anti-pattern or trap (`❌ ANTI-PATTERN / COMMON BUG`) with explicit inline explanations.
 - **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.
 
 ---
 
-## The Universal 5-Step "Logic Discovery Engine"
+## The 8-Part Logic-Building Problem Blueprint
 
-Whenever a coding problem is taught in a lecture, you MUST follow this exact 5-step progression:
+Whenever a coding problem is introduced in a lecture, you MUST follow this exact 8-part progression with clean sub-numbering (`X.Y.1` – `X.Y.8`):
 
-1. **Step 1: Physical Simulation**
-   - State the problem using small concrete numbers or everyday physical items (playing cards, coins, blocks, books).
-   - Walk through what human eyes and hands naturally do to solve it. Write zero code and mention zero data structures.
-2. **Step 2: Brute Force Approach**
-   - Translate that direct human instinct into basic code using simple nested loops or straightforward recursion.
-   - Explain why it works and calculate its time and space bounds ($O(n^2)$ or $O(2^n)$).
-3. **Step 3: Bottleneck**
-   - Point out the exact wasted work: Is the CPU scanning the same list again and again ($O(n)$ search)? Is it recalculating the same subproblem? Is it sorting data that was already sorted?
-4. **Step 4: The Pattern Discovery**
-   - Present the algorithm or data structure not as a clever trick, but as the natural fix for that specific bottleneck:
-     - Repeated lookup bottleneck? $\to$ Need instant recall $\to$ Hash Map / Set ($O(1)$).
-     - Range recalculation bottleneck? $\to$ Move boundaries $\to$ Sliding Window.
-     - Sorted search space bottleneck? $\to$ Cut the search space in half $\to$ Binary Search.
-     - Nearest smaller/greater element bottleneck? $\to$ Remember monotonic order $\to$ Monotonic Stack.
-5. **Step 5: The Optimal Solution**
-   - Write the clean, production-grade JavaScript solution with descriptive variable names, dual cases (correct vs bug), clean complexity derivation, and direct example runs (`console.log`) without requiring `assert` imports.
+1. **`X.Y.1 Problem Statement`:** Concise description, constraints, and clear sample inputs/outputs.
+2. **`X.Y.2 How to Think About It`:** Physical human eye & hand simulation (cards on a table, books on a shelf). Zero code. Zero data structures.
+3. **`X.Y.3 Brute Force Approach & Bottleneck`:** Translate raw human instinct into simple naive code, then pinpoint the exact wasted work (repeated linear scans, memory shifting, quadratic explosion).
+4. **`X.Y.4 The Pattern Insight`:** Present the algorithmic pattern as the natural mathematical cure for that specific bottleneck (why this approach makes logical sense).
+5. **`X.Y.5 Pseudocode`:** Clean, language-agnostic pseudocode so the logic is crystal clear before touching language-specific syntax.
+6. **`X.Y.6 Optimal Solution`:** Production-grade, boundary-safe JavaScript/Node.js implementation with descriptive variables and comments.
+7. **`X.Y.7 Common Anti-Pattern`:** The common trap, off-by-one bug, or memory-heavy alternative (e.g. `splice()` in loops, allocating `new Set()`) candidates write under pressure.
+8. **`X.Y.8 Complexity Derivation`:** Clear, separate mathematical derivations for Time Complexity and Auxiliary Space Complexity.
 
 ---
 
-## Exact 13-Section Lecture Blueprint
+## Topic-Appropriate Lecture Architecture
 
-Every generated lecture must follow this exact sequence:
+Rather than forcing a rigid, one-size-fits-all checklist onto every subject, structure each lecture according to its core discipline:
 
-```markdown
-# Day XX: <Topic Title>
+### Architecture A: Data Structure & Algorithmic Pattern Lectures
+Used for topics centered on data structures and problem-solving patterns (e.g., Arrays, Two Pointers, Sliding Window, Stacks, Trees):
+1. **Title & Top Navigation:** `# Day XX: <Topic Title>` and `<nav aria-label="Lecture navigation">`.
+2. **`## 1. <Primary Data Structure or Core Concept>`:**
+   - Concept explanation in plain English.
+   - Physical visual analogy woven directly into text.
+   - Clean, runnable basic example.
+   - Sub-Topics (`1.1`, `1.2`, ...) with focused explanations, ASCII traces, and `> [!NOTE]` Self-Check callouts.
+   - Essential Methods Reference Table (operations, complexities, mutability, code examples).
+3. **`## 2. <Secondary Data Structure or Pattern Overview>`:**
+   - Sub-topics and methods table (if covering a secondary data structure).
+   - Pattern Family (point-based).
+   - Pattern Recognition Table (`Problem Keywords` $\to$ `What It Asks` $\to$ `Recommended Approach`).
+   - Point-based "When to Use" vs. "When NOT to Use".
+   - The $10^7$ operations constraint rule.
+4. **`## 3. Problem Walkthroughs`:**
+   - Problems (`3.1`, `3.2`, `3.3`) strictly following the 8-Part Logic-Building Progression (`X.Y.1` – `X.Y.8`).
+5. **`## 4. Tricky Edge Cases`:**
+   - Clean bullet points covering boundary traps, off-by-one errors, empty/single-element inputs, and all-match/all-unique cases.
+6. **`## 5. Summary Cheat Sheet`:**
+   - High-density bullet list summarizing mechanics, complexity rules, and core pitfalls.
+7. **`## 6. Practice Problems`:**
+   - 3 curated challenges (`6.1 Easy/Warm-Up`, `6.2 Medium`, `6.3 Hard/Advanced`) with sample inputs, expected outputs, and 2-3 progressive Socratic hints.
+8. **Bottom Navigation:** `<nav aria-label="Lecture navigation">`.
 
-<nav aria-label="Lecture navigation">
-[Previous: <Topic>](day-XX-topic.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: <Topic>](day-XX-topic.md)
-</nav>
-
-## Prerequisites
-- Bullet links to prior days or basic mental models needed.
-
----
-
-## 1. What is <Topic>?
-- Simple English definition (what it is, what it does, what it does NOT do).
-- In-place term callout: `> **Term**: 1-line plain definition.`
-- Real-world physical comparison (cards, boxes, books).
-- Clean ASCII diagram showing layout and pointers.
-
----
-
-## 2. How <Topic> Works Step-by-Step
-- How the data structure or algorithm behaves step-by-step.
-- Concrete visual walk-through of state changes.
-- How elements are stored and manipulated in memory.
-
----
-
-## 3. Pattern Recognition of <Topic>
-- Diagnostic triggers: How to know this pattern applies within 30 seconds of reading a problem.
-- Problem keywords: Specific phrases that signal this technique.
-- Constraints trigger: Using the $10^7$ operations rule to choose target Big O from $n$.
-- When to use vs. when NOT to use (anti-triggers).
-
----
-
-## 4. Problem 1: <Problem Name>
-Follow the Universal 5-Step Logic Discovery Engine:
-- **Step 1: Physical Simulation:** Small numbers, manual visual steps, zero code.
-- **Step 2: Brute Force Approach:** Naive code, why it works, Big O calculation.
-- **Step 3: Bottleneck:** Pinpoint wasted work.
-- **Step 4: The Pattern Discovery:** Connecting bottleneck to pattern.
-- **Step 5: The Optimal Solution:** Clean Node.js code with ✅ correct and ❌ bug, complexity derivations, and direct console output.
-
----
-
-## 5. Problem 2: <Problem Name>
-Follow the same Universal 5-Step Logic Discovery Engine for a scaled challenge or secondary variation of the core pattern.
-
----
-
-## 6. Under the Hood: V8 & Node.js
-- V8 engine internals: Memory representation (SMI vs Double, packed vs holey arrays, hash map buckets, hidden classes).
-- Node.js runtime realities: Event loop blocking, why heavy synchronous operations block health checks, when to use Worker Threads, memory limits.
-- System decision matrix: In-memory JavaScript processing vs. database offloading (e.g., PostgreSQL `ORDER BY`).
-
----
-
-## 7. Hands-On Exercise
-- **Scenario:** Realistic backend engineering or algorithmic situation.
-- **Buggy Code:** Practical code sample containing subtle real-world bugs.
-- **Acceptance Criteria:** Exact requirements the solution must pass.
-- **Solution Code:** Clean, working implementation with direct benchmark or test execution.
-
----
-
-## 8. Tricky Points and Edge Cases
-- Specific traps, off-by-one errors, type coercion surprises, mutation hazards, empty/boundary inputs.
-- Show concrete code snippets for each trap with clear explanations of why it fails.
-
----
-
-## 9. Comprehensive Summary
-- Detailed, high-density recap covering all important mechanisms, rules, numbers, formulas, and complexities.
-- A learner must be able to review the entire day from this summary alone.
-
----
-
-## 10. Cheat Sheet
-- **Algorithm Decision Matrix:** Table matching problem traits to recommended techniques and Big O.
-- **Common Pitfalls List:** Quick-bullet warnings on common mistakes.
-- **Reusable Code Skeleton:** Clean template for the pattern.
-
----
-
-## 11. Interview Q&A
-- **45-Second Technical Pitch:** A word-for-word, structured pitch explaining the concept concisely.
-- **Question 1 (Core Mental Model):** Deep conceptual check.
-- **Question 2 (Predict the Output / Trace):** Observable code behavior trace.
-- **Question 3 (Debugging & Failure Analysis):** Spot the bug and fix it.
-- **Question 4 (Senior Backend Trade-Off):** Systems-level trade-off at scale.
-
----
-
-## 12. Practice Problems
-3 curated practice problems formatted strictly with multi-case input and expected output:
-### 1. Problem Name - Easy/Medium/Hard
-[Problem statement and constraints]
-- **Sample Input 1:** `...`
-- **Expected Output 1:** `...`
-- **Sample Input 2:** `...`
-- **Expected Output 2:** `...`
-*(Do NOT include code solutions here; this section is for independent practice).*
-
----
-
-<nav aria-label="Lecture navigation">
-[Previous: <Topic>](day-XX-topic.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: <Topic>](day-XX-topic.md)
-</nav>
-```
+### Architecture B: Foundational Theory & Runtime Internals Lectures
+Used for topics centered on computation theory, runtime mechanics, and architecture (e.g., Big O & Complexity Analysis, JavaScript Execution Model, Event Loop, Memory Management):
+1. **Title & Top Navigation:** `# Day XX: <Topic Title>` and `<nav aria-label="Lecture navigation">`.
+2. **`## 1. <Core Theory / Foundational Concept>`:**
+   - Plain English definition, operational mechanisms, and physical mental models.
+   - Sub-topics (`1.1`, `1.2`, ...) detailing mathematical definitions, execution mechanics, and in-place term callouts.
+3. **`## 2. <Runtime Internals & Engine Mechanics>`:**
+   - V8 memory layout, heap/stack behavior, event loop phases, or hardware abstraction.
+   - Clean ASCII visual diagrams and line-by-line operation traces.
+4. **`## 3. Calculation & Diagnostic Problems`:**
+   - Deep analysis problems (e.g., line-by-line complexity calculation, memory profiling, event loop output prediction).
+   - Stepped walkthroughs with explicit computational counts rather than LeetCode algorithmic patterns.
+5. **`## 4. Systems Realities & Failure Modes`:**
+   - Production failure cases (e.g., event loop starvation, memory leaks, unhandled rejections).
+   - Clear diagnostic code examples with `✅ CORRECT` vs `❌ ANTI-PATTERN / COMMON BUG`.
+6. **`## 5. Summary Cheat Sheet`:**
+   - High-density bullet list of core rules, asymptotic formulas, and runtime invariants.
+7. **`## 6. Practice & Analysis Exercises`:**
+   - 3 analysis challenges with sample code/scenarios, expected outputs/complexities, and progressive hints.
+8. **Bottom Navigation:** `<nav aria-label="Lecture navigation">`.
 
 ---
 
 ## What NOT to Include
 
-- **NO "Learning Outcomes" or "What You Will Learn Today" sections.** Jump straight from prerequisites into the core concepts.
+- **NO artificial line count limits or forced truncation.** Lectures can be as long as necessary for complete clarity.
+- **NO "Learning Outcomes" or "What You Will Learn Today" sections.** Jump straight from prerequisites or navigation into the core concepts.
 - **NO standalone "Quick Vocabulary Card" tables.** Define terms directly in-place where they appear.
-- **NO storytelling headings** like "The Everyday Mental Model". Use clean, direct titles.
-- **NO artificial subheadings** like "Deep Questions & Answers" under interview sections. Number questions directly (`### 1. Question Title`).
+- **NO long subtitles, colons, or parenthetical explanations in headings.** Keep headings short, direct, and clean (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`).
+- **NO preachy meta-interview filler words** like "In technical interviews, you must...", "Interviewers will test you on...", or "A common interview trick is...".
+- **NO premature topic bleed.** Keep each lecture strictly focused on its intended topic without pulling in mechanisms belonging to other lectures (e.g., call stack recursion limits belong to Day 18, dynamic array V8 heap doubling belongs to Day 2).
+- **NO artificial subheadings** like "The Everyday Mental Model" or "Deep Questions & Answers".
 - **NO code solutions in the Practice Problems section.** Keep that section strictly for independent practice.
 
 ---

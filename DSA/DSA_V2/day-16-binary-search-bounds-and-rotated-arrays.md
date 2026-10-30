@@ -6,33 +6,18 @@
 
 </nav>
 
-## Prerequisites
-
-- [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Logarithmic time complexity $O(\log n)$.
-- [Day 03: Searching & Elementary Sorting Algorithms](day-03-searching-and-sorting-algorithms.md) — Classic binary search fundamentals and loop invariants.
-
 ---
 
-## 1. What is Binary Search on Bounds & Rotated Arrays?
+## 1. Binary Search Bounds & Rotations Foundation
 
-Classic binary search finds an exact target match in a strictly sorted array. However, real-world systems often require locating **boundary thresholds** (the first or last occurrence of a value) or searching arrays that have been **rotated** around an unknown pivot point.
+Classic binary search locates an exact target value within a monotonically sorted collection by repeatedly halving the search space. In production systems and technical problem solving, data rarely stays in simple sorted form. Collections frequently contain duplicate values requiring **boundary thresholding** (isolating the first or last occurrence of a value), or they have been **rotated** around an unknown pivot point during caching or circular buffering.
 
-> **Lower Bound (First Occurrence / Bisect Left)**: The first index $i$ in a sorted array where `arr[i] >= target`. If all elements are smaller, returns `arr.length`.
+A **Rotated Sorted Array** is an array originally sorted in ascending order that has had a contiguous suffix sliced from the end and prepended to the front. For example, rotating `[0, 1, 2, 4, 5, 6, 7]` at pivot index `4` yields `[4, 5, 6, 7, 0, 1, 2]`. 
 
-> **Upper Bound (Bisect Right)**: The first index $i$ in a sorted array where `arr[i] > target`.
-
-> **Rotated Sorted Array**: An array originally sorted in ascending order that has had a suffix sliced and prepended to the front (e.g., `[0, 1, 2, 4, 5, 6, 7]` rotated at pivot `4` becomes `[4, 5, 6, 7, 0, 1, 2]`).
-
-> **Inflection Point (Pivot)**: The unique boundary in a rotated sorted array where `arr[i] > arr[i + 1]`. The minimum element of the entire array always sits immediately after the pivot.
-
-### Everyday Physical Analogies
-
-#### The Cut Deck of Cards (Rotated Array)
-Imagine a standard deck of cards sorted Ace to King:
-1. You cut the deck in the middle and place the bottom half on top.
-2. The cards are no longer monotonically sorted from top to bottom.
-3. However, wherever you cut the remaining deck in half, **at least one of the two halves is guaranteed to be completely sorted**!
-4. By checking whether your target card fits within the sorted half, you instantly know which half to keep and which half to discard.
+Imagine cutting a standard deck of cards sorted from Ace (1) to King (13) and placing the bottom half on top:
+- The deck is no longer monotonically sorted from top to bottom.
+- However, wherever you cut the remaining deck in half, **at least one of the two halves is guaranteed to be completely sorted**!
+- If you check whether your target card lies within the sorted half's lower and upper bounds, you know immediately whether to search that half or discard it.
 
 ```text
 ROTATED ARRAY STRUCTURE:
@@ -44,42 +29,10 @@ Rotated:   [ 4, 5, 6, 7 | 0, 1, 2 ]
           Zone A is strictly greater than Zone B!
 ```
 
----
-
-## 2. How Bounds & Rotated Search Work Step-by-Step
-
-### 1. Lower Bound vs Upper Bound
-
-When an array contains duplicate numbers (e.g., `[1, 2, 2, 2, 3, 5]`), classic binary search stops on an arbitrary match. Boundary search systematically shrinks the window to isolate the boundary.
-
-#### Step-by-Step Lower Bound Trace on `[1, 2, 2, 2, 3, 5]`, target = 2:
-```text
-Goal: Find the first index where arr[i] >= 2.
-low = 0, high = 5. ans = 6 (arr.length)
-
-Step 1:
-  mid = 0 + Math.floor((5 - 0) / 2) = 2. arr[2] = 2.
-  Is arr[2] >= 2? Yes!
-  Record candidate ans = 2.
-  Shrink search space to the LEFT to see if an earlier 2 exists: high = mid - 1 = 1.
-
-Step 2:
-  low = 0, high = 1. mid = 0. arr[0] = 1.
-  Is arr[0] >= 2? No!
-  Target must be to the right: low = mid + 1 = 1.
-
-Step 3:
-  low = 1, high = 1. mid = 1. arr[1] = 2.
-  Is arr[1] >= 2? Yes!
-  Record candidate ans = 1.
-  Shrink left: high = mid - 1 = 0.
-
-Termination: low (1) > high (0).
-Final Lower Bound = 1 (First index containing 2).
-```
+Baseline implementation of lower bound and upper bound in JavaScript:
 
 ```javascript
-// ✅ CORRECT: Lower bound binary search (first index where arr[i] >= target)
+// Lower bound: First index where arr[i] >= target
 function lowerBound(arr, target) {
   let low = 0;
   let high = arr.length - 1;
@@ -89,16 +42,16 @@ function lowerBound(arr, target) {
     const mid = low + Math.floor((high - low) / 2);
     if (arr[mid] >= target) {
       ans = mid;      // Candidate found
-      high = mid - 1; // Search left for earlier occurrence
+      high = mid - 1; // Squeeze search space left to check for earlier matches
     } else {
-      low = mid + 1;  // Search right
+      low = mid + 1;  // Target must be to the right
     }
   }
 
   return ans;
 }
 
-// ✅ CORRECT: Upper bound binary search (first index where arr[i] > target)
+// Upper bound: First index where arr[i] > target
 function upperBound(arr, target) {
   let low = 0;
   let high = arr.length - 1;
@@ -108,7 +61,7 @@ function upperBound(arr, target) {
     const mid = low + Math.floor((high - low) / 2);
     if (arr[mid] > target) {
       ans = mid;
-      high = mid - 1; // Search left for earlier strictly greater element
+      high = mid - 1; // Squeeze left for earlier strictly greater element
     } else {
       low = mid + 1;
     }
@@ -117,119 +70,147 @@ function upperBound(arr, target) {
   return ans;
 }
 
-// Example test run
 const sample = [1, 2, 2, 2, 3, 5];
 console.log(lowerBound(sample, 2)); // 1 (First 2 is at index 1)
 console.log(upperBound(sample, 2)); // 4 (First element > 2 is 3 at index 4)
 ```
 
----
+### 1.1 The One-Sorted-Half Invariant
 
-### 2. The One-Sorted-Half Invariant
+In any rotated sorted array containing distinct elements, any chosen midpoint `mid` partitions the array into two segments where **at least one half is strictly ascending**:
 
-In any rotated sorted array without duplicates, for any chosen midpoint `mid`:
-- If `arr[low] <= arr[mid]`, the **left half is normally sorted**.
-- Otherwise (`arr[low] > arr[mid]`), the **right half is normally sorted**.
-
-#### Why this invariant holds:
-A single rotation introduces only **one** point of disorder (the pivot). An array cut in half can contain the pivot in at most one of the halves. The other half is guaranteed to be completely clean and ascending!
+- If `nums[low] <= nums[mid]`, the **left half** (`nums[low ... mid]`) is sorted.
+- Otherwise (`nums[low] > nums[mid]`), the **right half** (`nums[mid ... high]`) is sorted.
 
 ```text
 EVALUATION LOGIC:
-1. Is Left Half Sorted? (arr[low] <= arr[mid])
-   - If YES: Does target lie inside [ arr[low] ... arr[mid] ]?
+1. Is Left Half Sorted? (nums[low] <= nums[mid])
+   - If YES: Does target lie inside [ nums[low] ... nums[mid] ]?
      - If YES: high = mid - 1 (search left half)
      - If NO:  low = mid + 1  (search right half)
-2. Otherwise, Right Half MUST be Sorted! (arr[mid] <= arr[high])
-   - Does target lie inside [ arr[mid] ... arr[high] ]?
+2. Otherwise, Right Half MUST be Sorted! (nums[mid] <= nums[high])
+   - Does target lie inside [ nums[mid] ... nums[high] ]?
      - If YES: low = mid + 1  (search right half)
      - If NO:  high = mid - 1 (search left half)
 ```
 
----
+> [!NOTE]
+> Self-Check: Why does a single rotation guarantee that at least one half is sorted?
+> Answer: A single rotation introduces exactly one point of disorder (the cliff where values drop from high to low). Dividing an array in half can trap that single cliff in at most one half. The other half remains completely sorted.
 
-### 3. Finding Peak Elements ($O(\log n)$ Slope Check)
+### 1.2 Mathematical Midpoint Calculation in JavaScript
 
-Binary search also works on unsorted arrays if an **incline/decline slope invariant** exists. In a mountain array:
-- If `arr[mid] < arr[mid + 1]`, we are on an upward slope; the peak MUST lie to the right $\to$ `low = mid + 1`.
-- If `arr[mid] > arr[mid + 1]`, we are on a downward slope or at the peak itself $\to$ `high = mid`.
+In JavaScript, all standard numbers are IEEE-754 double-precision 64-bit floats. Naively computing `(low + high) / 2` introduces two critical hazards:
+
+1. **Fractional Indices**: `(0 + 1) / 2` yields `0.5`. An index read `nums[0.5]` coerces the float to a string property key (`nums["0.5"]`), returning `undefined` and breaking loop invariants silently.
+2. **Bitwise 32-Bit Overflow**: Using bitwise right shifts `(low + high) >> 1` forces operands into signed 32-bit integers. If `low + high` exceeds $2^{31} - 1$, the sum wraps around to a negative integer, causing out-of-bounds errors.
+
+The robust, standard calculation across all JavaScript engines is:
+
+$$\text{mid} = \text{low} + \left\lfloor \frac{\text{high} - \text{low}}{2} \right\rfloor$$
 
 ```javascript
-// ✅ CORRECT: O(log n) Peak Finding using slope check
-function findPeakElement(nums) {
-  let low = 0;
-  let high = nums.length - 1;
-
-  while (low < high) {
-    const mid = low + Math.floor((high - low) / 2);
-    if (nums[mid] < nums[mid + 1]) {
-      low = mid + 1; // Climb upward toward peak
-    } else {
-      high = mid;    // mid could be the peak or peak is to the left
-    }
-  }
-
-  return low;
-}
-
-// Example test run
-console.log(findPeakElement([1, 2, 3, 1]));       // 2 (Peak is value 3 at index 2)
-console.log(findPeakElement([1, 2, 1, 3, 5, 6, 4])); // 5 (Peak is value 6 at index 5)
+// ✅ CORRECT: Safe midpoint calculation in JavaScript
+const mid = low + Math.floor((high - low) / 2);
 ```
 
+### 1.3 Bounds & Search Invariants Reference Table
+
+| Search Type | While Condition | Mid Assignment (Left Branch) | Mid Assignment (Right Branch) | Termination State |
+| :--- | :---: | :---: | :---: | :--- |
+| **Exact Match** | `low <= high` | `low = mid + 1` | `high = mid - 1` | Returns `mid` on hit, or `-1` |
+| **Lower Bound** | `low <= high` | `low = mid + 1` | `high = mid - 1` | Returns recorded `ans` |
+| **Upper Bound** | `low <= high` | `low = mid + 1` | `high = mid - 1` | Returns recorded `ans` |
+| **Find Minimum (Rotated)** | `low < high` | `low = mid + 1` | `high = mid` | `low === high` (Minimum index) |
+| **Find Peak Element** | `low < high` | `low = mid + 1` | `high = mid` | `low === high` (Peak index) |
+
 ---
 
-## 3. Pattern Recognition of Bounds & Rotations
+## 2. Rotated Search Patterns
 
-### Problem Triggers and Keywords
+### 2.1 Pattern Family
 
-| Problem Trigger | Underlying Requirement | Recommended Strategy |
+Boundary and rotated binary search patterns divide into four primary families:
+
+- **Sorted Half Discarding**: Checking whether the target lies inside the boundaries of the sorted half to eliminate $50\%$ of candidates per step.
+- **Cliff / Inflection Point Detection**: Comparing `nums[mid]` against `nums[high]` to detect whether the minimum element lies to the left or right of the cliff.
+- **Slope Incline Traversal**: Comparing `nums[mid]` against `nums[mid + 1]` to climb towards local peaks in unsorted mountain collections.
+- **Boundary Shrinking (Lower/Upper Bound)**: Squeezing search windows after finding a candidate to identify first or last occurrences.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Trigger / Keywords | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"Sorted array with duplicates"** | First or last index of target. | `lowerBound` / `upperBound` ($O(\log n)$). |
-| **"Search in rotated sorted array"** | Find target in shifted array. | Check sorted half invariant ($O(\log n)$). |
-| **"Find minimum in rotated array"** | Find inflection pivot point. | Compare `arr[mid]` against `arr[high]`. |
-| **"Find rotation count"** | Index of minimum element. | Index of inflection point. |
-| **"Find peak element"** | Local maximum in unsorted array. | Slope check: `arr[mid] < arr[mid + 1]`. |
+| "Search in rotated sorted array" | Locate target in shifted distinct array | Identify sorted half, test boundary containment |
+| "Find minimum in rotated sorted array" | Find global minimum / inflection point | Compare `nums[mid]` against `nums[high]` |
+| "First and last position in sorted array" | Find start and end range of duplicate value | Dual binary search: `lowerBound` and `upperBound - 1` |
+| "Find peak element in array" | Find index $i$ where $nums[i] > nums[i \pm 1]$ | Slope test: `nums[mid] < nums[mid + 1]` |
+| "Rotation count of sorted array" | Number of times array was shifted right | Index of global minimum element |
 
-### The $10^7$ Rule for Binary Search
-- Linear scans take $O(n)$ time. For $n = 10^7$, a linear scan takes $\approx 100\text{ms}$.
-- Binary Search runs in $O(\log n)$ time. For $n = 10^9$ (one billion items), Binary Search completes in at most **30 comparisons** ($\approx 0.001\text{ms}$).
+### 2.3 When to Use vs When NOT to Use
+
+- **When to Use**:
+  - The array is sorted, or consists of two sorted subarrays resulting from rotation.
+  - The problem requires $O(\log n)$ runtime on arrays with up to $10^9$ elements.
+  - Searching for boundary thresholds (first or last element satisfying a condition).
+  - Finding local peaks in mountain arrays without inspecting all items.
+
+- **When NOT to Use**:
+  - The array is completely unsorted with no monotonic slope properties (use a linear scan or hash map).
+  - Rotated arrays containing extensive duplicate values where `nums[low] === nums[mid] === nums[high]` (degrades to $O(n)$ linear scan).
+  - The collection is a linked list (cannot access midpoint in $O(1)$ time).
+
+### 2.4 The $10^7$ Operations Rule
+
+A linear scan inspecting $n = 10^7$ elements takes $\approx 100\text{ms}$ in Node.js. 
+
+Binary search cuts the candidate space in half on every step ($n \to n/2 \to n/4 \to \dots \to 1$), completing in $\lceil \log_2 n \rceil$ iterations. Even for $n = 10^9$ (one billion items), binary search executes at most **30 comparisons** ($\ll 10^7$ budget), finishing in under $0.005$ milliseconds.
 
 ---
 
-## 4. Problem 1: Search in Rotated Sorted Array (LeetCode 33)
+## 3. Problem Walkthroughs
 
-### Problem Statement
+### 3.1 Search in Rotated Sorted Array
+
+#### 3.1.1 Problem Statement
 Given an integer array `nums` sorted in ascending order (with **distinct** values) that has been rotated at an unknown pivot index, and an integer `target`, return the index of `target` if it is in `nums`, or `-1` if it is not in `nums`.
+
 You must write an algorithm with **$O(\log n)$ runtime complexity**.
 
 ```text
-Input: nums = [4, 5, 6, 7, 0, 1, 2], target = 0
-Output: 4
-
-Input: nums = [4, 5, 6, 7, 0, 1, 2], target = 3
-Output: -1
-
-Input: nums = [1], target = 0
-Output: -1
+Input: nums = [4, 5, 6, 7, 0, 1, 2], target = 0  ──> Output: 4
+Input: nums = [4, 5, 6, 7, 0, 1, 2], target = 3  ──> Output: -1
+Input: nums = [1], target = 0                    ──> Output: -1
 ```
 
-### Step 1: Physical Simulation
-Imagine a telephone book cut and re-stacked: `[4, 5, 6, 7, 0, 1, 2]`, `target = 0`.
-1. Put fingers on `low = 0` (4) and `high = 6` (2).
-2. Look at middle: `mid = 3` (value 7).
-3. Is `4 <= 7`? **Yes! The left half `[4, 5, 6, 7]` is normally sorted.**
-4. Ask: Does our target `0` fit between 4 and 7?
-   - `4 <= 0 <= 7` is False! Target `0` cannot possibly be in the left half.
-   - Discard the left half completely! Move `low = mid + 1 = 4`.
-5. Remaining window: `[0, 1, 2]`.
-   - `low = 4` (0), `high = 6` (2).
-   - `mid = 5` (1).
-   - Target `0 < 1`. Move `high = mid - 1 = 4`.
-6. `low = 4, high = 4, mid = 4`. `nums[4] === 0` -> MATCH FOUND! Return index 4.
+#### 3.1.2 How to Think About It
+Imagine a thick telephone directory cut in half and restacked: `[4, 5, 6, 7, 0, 1, 2]`. You want to find name `0`.
 
-### Step 2: Brute Force Approach
-Linear scan checking every element one-by-one:
+Place your left finger at index 0 (`4`) and your right finger at index 6 (`2`).
+1. Inspect the middle page: `mid = 3` (value `7`).
+2. Ask: "Is the left half normally sorted?"
+   `4 <= 7` is True. Yes, the left half `[4, 5, 6, 7]` is in standard alphabetical order.
+3. Now ask: "Does our target `0` fall between `4` and `7`?"
+   `4 <= 0 < 7` is False! Target `0` cannot possibly exist in the left half.
+4. Safely tear away the left half. Move your left finger past the middle: `low = mid + 1 = 4`.
+5. Remaining window is `[0, 1, 2]`. Inspect middle: `mid = 5` (value `1`).
+6. Left half `[0, 1]` is sorted. Target `0` falls in range `[0, 1]`. Squeeze right finger: `high = mid - 1 = 4`.
+7. `low = 4, high = 4, mid = 4`. `nums[4] === 0`. Found at index 4!
+
+```text
+Trace: [ 4, 5, 6, 7, 0, 1, 2 ], target = 0
+low = 0 (4), high = 6 (2), mid = 3 (7)
+Left half [4..7] is sorted. 0 is NOT in [4..7] -> low = mid + 1 = 4
+
+low = 4 (0), high = 6 (2), mid = 5 (1)
+Right half [1..2] is sorted. 0 is NOT in [1..2] -> high = mid - 1 = 4
+
+low = 4 (0), high = 4 (0), mid = 4 (0)
+nums[4] === 0 -> Return 4!
+```
+
+#### 3.1.3 Brute Force Approach & Bottleneck
+A brute-force scan checks each index sequentially:
 
 ```javascript
 function searchBrute(nums, target) {
@@ -239,20 +220,43 @@ function searchBrute(nums, target) {
   return -1;
 }
 ```
-- **Time Complexity**: $O(n)$ — Fails the interview's $O(\log n)$ requirement.
-- **Space Complexity**: $O(1)$.
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-Linear scan inspects all $n$ items, completely ignoring that the array consists of two pre-sorted segments.
+The bottleneck is $O(n)$ linear work. It inspects every element, ignoring the pre-existing sorted order of the two rotated segments and violating the logarithmic performance constraint.
 
-### Step 4: The Pattern Discovery
-At least one half is always sorted. By testing if the target lies within the boundaries of the sorted half, we can eliminate half of the search space in every single step ($O(\log n)$).
+#### 3.1.4 The Pattern Insight
+At every step, determine which half of the array is sorted. 
+- If the left half is sorted (`nums[low] <= nums[mid]`), check if the target is within `nums[low] <= target && target < nums[mid]`. If so, search left (`high = mid - 1`); otherwise search right (`low = mid + 1`).
+- If the right half is sorted, check if the target is within `nums[mid] < target && target <= nums[high]`. If so, search right (`low = mid + 1`); otherwise search left (`high = mid - 1`).
 
-### Step 5: The Optimal Solution
+#### 3.1.5 Pseudocode
+```text
+function search(nums, target):
+  low = 0, high = length(nums) - 1
+
+  while low <= high:
+    mid = low + floor((high - low) / 2)
+
+    if nums[mid] == target:
+      return mid
+
+    if nums[low] <= nums[mid]: // Left half sorted
+      if nums[low] <= target AND target < nums[mid]:
+        high = mid - 1
+      else:
+        low = mid + 1
+    else: // Right half sorted
+      if nums[mid] < target AND target <= nums[high]:
+        low = mid + 1
+      else:
+        high = mid - 1
+
+  return -1
+```
+
+#### 3.1.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: O(log n) Rotated Binary Search
+// ✅ CORRECT: One-pass binary search with sorted-half validation
 function search(nums, target) {
   let low = 0;
   let high = nums.length - 1;
@@ -264,85 +268,100 @@ function search(nums, target) {
       return mid;
     }
 
-    // Check if Left Half is sorted
+    // Check if the left half is sorted
     if (nums[low] <= nums[mid]) {
-      // Check if target lies within the sorted left half
+      // Check if target lies within the boundaries of the sorted left half
       if (nums[low] <= target && target < nums[mid]) {
-        high = mid - 1; // Search left
+        high = mid - 1;
       } else {
-        low = mid + 1;  // Search right
+        low = mid + 1;
       }
     } 
-    // Otherwise, Right Half must be sorted
+    // Otherwise, the right half must be sorted
     else {
-      // Check if target lies within the sorted right half
+      // Check if target lies within the boundaries of the sorted right half
       if (nums[mid] < target && target <= nums[high]) {
-        low = mid + 1;  // Search right
+        low = mid + 1;
       } else {
-        high = mid - 1; // Search left
+        high = mid - 1;
       }
     }
   }
 
-  return -1; // Target not found
+  return -1;
 }
 
-// ❌ ANTI-PATTERN: Comparing target with mid only (classic binary search fails on rotated data)
+// Example runs
+console.log(search([4, 5, 6, 7, 0, 1, 2], 0)); // 4
+console.log(search([4, 5, 6, 7, 0, 1, 2], 3)); // -1
+console.log(search([1], 0));                   // -1
+console.log(search([1, 3], 3));                // 1
+```
+
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Standard binary search without sorted-half check
 function buggyRotatedSearch(nums, target) {
   let low = 0, high = nums.length - 1;
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
     if (nums[mid] === target) return mid;
-    // BUG: Assuming arr is monotonically sorted discards the correct half!
+    // BUG: Assuming monotonicity causes target to be discarded
     if (nums[mid] < target) low = mid + 1;
     else high = mid - 1;
   }
   return -1;
 }
 
-// Example test runs
-console.log(search([4, 5, 6, 7, 0, 1, 2], 0)); // 4
-console.log(search([4, 5, 6, 7, 0, 1, 2], 3)); // -1
-console.log(search([1], 0));                   // -1
-console.log(search([1, 3], 3));                // 1
-console.log(buggyRotatedSearch([4, 5, 6, 7, 0, 1, 2], 0)); // -1 (BUG: failed on rotated array!)
+console.log(buggyRotatedSearch([4, 5, 6, 7, 0, 1, 2], 0)); // -1 (Failed on rotated array!)
 ```
 
-- **Time Complexity**: $O(\log n)$ — Window size halves on every iteration.
-- **Space Complexity**: $O(1)$ — Only three integer pointer variables.
+#### 3.1.8 Complexity Derivation
+- **Time Complexity**: $O(\log n)$. The search space is strictly cut in half on each step.
+- **Auxiliary Space Complexity**: $O(1)$. Uses three scalar pointer integers.
 
 ---
 
-## 5. Problem 2: Find Minimum in Rotated Sorted Array (LeetCode 153)
+### 3.2 Find Minimum in Rotated Sorted Array
 
-### Problem Statement
+#### 3.2.1 Problem Statement
 Given the sorted rotated array `nums` of **unique** elements, return the **minimum element** of this array.
+
 You must write an algorithm that runs in **$O(\log n)$ time**.
 
 ```text
-Input: nums = [3, 4, 5, 1, 2]
-Output: 1 (Original array was [1, 2, 3, 4, 5] rotated 3 times)
-
-Input: nums = [4, 5, 6, 7, 0, 1, 2]
-Output: 0
-
-Input: nums = [11, 13, 15, 17]
-Output: 11
+Input: nums = [3, 4, 5, 1, 2]          ──> Output: 1
+Input: nums = [4, 5, 6, 7, 0, 1, 2]    ──> Output: 0
+Input: nums = [11, 13, 15, 17]         ──> Output: 11
 ```
 
-### Step 1: Physical Simulation
-Imagine the values plotted as a line graph:
-`[4, 5, 6, 7, 0, 1, 2]`
-- Zone 1 rises: `4 -> 5 -> 6 -> 7`.
-- Sudden drop cliff: `7 -> 0` (**The Inflection Point**).
-- Zone 2 rises: `0 -> 1 -> 2`.
-- Notice: The minimum element `0` is the **only element in the entire array that is strictly smaller than the last element `nums[high]` (`2`)**!
-- Compare `nums[mid]` with `nums[high]`:
-  - If `nums[mid] > nums[high]`: `mid` is trapped up on the high cliff (Zone 1). The minimum must lie to the **right** (`low = mid + 1`).
-  - If `nums[mid] <= nums[high]`: `mid` is in Zone 2. The minimum could be `mid` itself or to the **left** (`high = mid`).
+#### 3.2.2 How to Think About It
+Imagine plotting the array values on a graph against their index: `[4, 5, 6, 7, 0, 1, 2]`.
+- Zone 1 rises steadily: `4 -> 5 -> 6 -> 7`.
+- A vertical cliff drops suddenly: `7 -> 0` (**The Inflection Point**).
+- Zone 2 rises steadily again: `0 -> 1 -> 2`.
 
-### Step 2: Brute Force Approach
-Linear scan tracking the smallest value:
+Notice the relationship with the last element (`nums[high] = 2`):
+- All numbers in Zone 1 (`4, 5, 6, 7`) are strictly **greater** than `2`.
+- All numbers in Zone 2 (`0, 1, 2`) are **less than or equal to** `2`.
+- If `nums[mid] > nums[high]`, `mid` is stranded up on the high cliff (Zone 1). The minimum must lie strictly to the **right** (`low = mid + 1`).
+- If `nums[mid] <= nums[high]`, `mid` is in Zone 2. The minimum could be `mid` itself or to its **left** (`high = mid`).
+
+```text
+Graph Visualization:
+7         *
+6       *
+5     *
+4   *
+3
+2               *
+1             *
+0           * ◄── Inflection point (minimum)!
+```
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+A brute-force scan tracks the minimum value across all indices:
 
 ```javascript
 function findMinBrute(nums) {
@@ -353,37 +372,50 @@ function findMinBrute(nums) {
   return min;
 }
 ```
-- **Time Complexity**: $O(n)$ — Inspects all elements.
-- **Space Complexity**: $O(1)$.
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-Comparing elements linearly does not exploit the property that `nums[mid]` compared to `nums[high]` determines which side of the inflection cliff we are on.
+The bottleneck is $O(n)$ scanning time. It inspects all $n$ items, failing to exploit the cliff property that allows eliminating half the elements on each step.
 
-### Step 4: The Pattern Discovery
+#### 3.2.4 The Pattern Insight
 Compare `nums[mid]` against `nums[high]`:
-- If `nums[mid] > nums[high]`, the inflection point is strictly to the right $\to$ `low = mid + 1`.
-- If `nums[mid] <= nums[high]`, the inflection point is at `mid` or to the left $\to$ `high = mid`.
-- When `low === high`, the window has converged to the single minimum element!
+- If `nums[mid] > nums[high]`: `mid` belongs to the left elevated segment. The inflection point is strictly to the right $\to$ `low = mid + 1`.
+- If `nums[mid] <= nums[high]`: `mid` belongs to the right descending segment. `mid` itself could be the minimum $\to$ `high = mid`.
+- When `low === high`, the window has converged on the exact minimum element.
 
-### Step 5: The Optimal Solution
+#### 3.2.5 Pseudocode
+```text
+function findMin(nums):
+  low = 0
+  high = length(nums) - 1
+
+  while low < high:
+    mid = low + floor((high - low) / 2)
+
+    if nums[mid] > nums[high]:
+      low = mid + 1
+    else:
+      high = mid
+
+  return nums[low]
+```
+
+#### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: O(log n) Minimum Finding via Right Boundary Comparison
+// ✅ CORRECT: Binary search comparing against upper bound
 function findMin(nums) {
   let low = 0;
   let high = nums.length - 1;
 
-  // Invariant: The minimum element always resides in nums[low ... high]
+  // Invariant: The minimum element is guaranteed to lie within nums[low ... high]
   while (low < high) {
     const mid = low + Math.floor((high - low) / 2);
 
     if (nums[mid] > nums[high]) {
-      // mid is in the upper rotated segment; minimum MUST be strictly right of mid
+      // mid is in the upper rotated segment; minimum MUST be to the right of mid
       low = mid + 1;
     } else {
       // mid is in the lower segment; mid itself could be the minimum
-      high = mid; // Note: NOT mid - 1, because mid could be the answer!
+      high = mid; // Note: NOT mid - 1, because mid could be the answer
     }
   }
 
@@ -391,88 +423,121 @@ function findMin(nums) {
   return nums[low];
 }
 
-// ❌ ANTI-PATTERN: Using high = mid - 1 skips the minimum element when mid is the minimum
+// Example runs
+console.log(findMin([3, 4, 5, 1, 2]));       // 1
+console.log(findMin([4, 5, 6, 7, 0, 1, 2])); // 0
+console.log(findMin([11, 13, 15, 17]));      // 11
+console.log(findMin([2, 1]));                // 1
+```
+
+#### 3.2.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Using high = mid - 1 skips the minimum element when mid is the answer
 function buggyFindMin(nums) {
   let low = 0, high = nums.length - 1;
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
     if (nums[mid] > nums[high]) low = mid + 1;
-    else high = mid - 1; // BUG! If mid was the minimum (e.g. 1 in [3, 1, 2]), it is skipped!
+    else high = mid - 1; // BUG! If mid was the minimum, it gets discarded!
   }
   return nums[low];
 }
 
-// Example test runs
-console.log(findMin([3, 4, 5, 1, 2]));          // 1
-console.log(findMin([4, 5, 6, 7, 0, 1, 2]));    // 0
-console.log(findMin([11, 13, 15, 17]));         // 11 (Not rotated; returns first)
-console.log(findMin([2, 1]));                   // 1
-console.log(buggyFindMin([3, 1, 2]));           // 3 (BUG: skipped 1 because high = mid - 1!)
+console.log(buggyFindMin([3, 1, 2])); // 3 (Skipped 1 because high was set to mid - 1!)
 ```
 
-- **Time Complexity**: $O(\log n)$ — Logarithmic binary search.
-- **Space Complexity**: $O(1)$ — Zero memory allocation.
+#### 3.2.8 Complexity Derivation
+- **Time Complexity**: $O(\log n)$. Each step halves the remaining distance between `low` and `high`.
+- **Auxiliary Space Complexity**: $O(1)$. Uses only integer pointers.
 
 ---
 
-## 6. Under the Hood: V8 & Node.js
+### 3.3 Find First and Last Position of Element in Sorted Array
 
-### 32-Bit Signed Integer Overflow & Float Midpoints
-In C++ or Java, `(low + high) / 2` overflows to a negative integer when `low + high > 2^{31} - 1`.
-In JavaScript:
-1. All standard numbers are 64-bit IEEE-754 floats. `(low + high) / 2` does not overflow 32-bit limits, but produces **fractional decimals** (e.g., `(0 + 1) / 2 = 0.5`).
-2. Array lookup `nums[0.5]` returns `undefined`, breaking binary search silently!
-3. Developers sometimes use bitwise shift: `(low + high) >> 1`.
-   - **Danger**: In JavaScript, bitwise operators (`>>`, `|`, `&`) coerce floats into **32-bit signed integers**. If array length exceeds $2^{30}$, `(low + high)` overflows to negative, crashing the loop!
-4. **Universal Standard**: Always use:
-   `const mid = low + Math.floor((high - low) / 2);`
+#### 3.3.1 Problem Statement
+Given an array of integers `nums` sorted in non-decreasing order, find the starting and ending position of a given `target` value.
 
-### Branch Predictor in Binary Search
-Modern CPUs feature sophisticated **Branch Predictors** that guess whether an `if` condition will be true or false.
-- In linear scans, branch predictors achieve ~95% accuracy because elements sequentially fail or pass.
-- In binary search, the target comparison `nums[mid] < target` is effectively random (50% probability each way).
-- This triggers frequent CPU pipeline stalls called **Branch Mispredictions**.
-- Despite pipeline stalls, the reduction from $O(n)$ ($10^6$ operations) to $O(\log n)$ ($20$ operations) makes binary search thousands of times faster.
+If `target` is not found in the array, return `[-1, -1]`.
 
----
-
-## 7. Hands-On Exercise
-
-### The Scenario
-You are developing an indexing service for a high-volume database in Node.js.
-You are given an array of integers `nums` sorted in non-decreasing order.
-You must implement `searchRange(nums, target)` to find the **starting and ending position** of a given `target` value in $O(\log n)$ runtime. If `target` is not found, return `[-1, -1]`.
+You must write an algorithm with **$O(\log n)$ runtime complexity**.
 
 ```text
-Input: nums = [5, 7, 7, 8, 8, 10], target = 8
-Output: [3, 4]
-
-Input: nums = [5, 7, 7, 8, 8, 10], target = 6
-Output: [-1, -1]
+Input: nums = [5, 7, 7, 8, 8, 10], target = 8  ──> Output: [3, 4]
+Input: nums = [5, 7, 7, 8, 8, 10], target = 6  ──> Output: [-1, -1]
+Input: nums = [], target = 0                  ──> Output: [-1, -1]
 ```
 
-### The Buggy Code
+#### 3.3.2 How to Think About It
+Imagine a shelf of books where multiple copies of the exact same title sit next to each other: `[5, 7, 7, 8, 8, 10]`. You want to find where the copies of Book `8` start and where they end.
+
+Do not stop when you find any copy of Book 8.
+- To find the **first copy (left bound)**: When you find Book 8 at index 3, mark `bound = 3`, then search the shelf strictly to the left (`high = mid - 1`) to see if an earlier copy exists.
+- To find the **last copy (right bound)**: When you find Book 8, mark `bound = mid`, then search strictly to the right (`low = mid + 1`) to see if another copy sits further along the shelf.
+
+```text
+Finding First Occurrence of 8 in [5, 7, 7, 8, 8, 10]:
+mid = 2 (7) < 8 -> low = mid + 1 = 3
+mid = 4 (8) == 8 -> Record bound = 4, high = mid - 1 = 3
+mid = 3 (8) == 8 -> Record bound = 3, high = mid - 1 = 2
+low > high -> First occurrence is 3!
+```
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+Finding the first index with `nums.indexOf(target)` and expanding linearly to find the end:
+
 ```javascript
-function searchRangeBuggy(nums, target) {
-  // Bug: Linear scan inside helper violates O(log n) requirement on [8, 8, 8, 8, 8]!
-  const idx = nums.indexOf(target);
-  if (idx === -1) return [-1, -1];
-  let end = idx;
+function searchRangeBrute(nums, target) {
+  const start = nums.indexOf(target);
+  if (start === -1) return [-1, -1];
+  let end = start;
   while (end < nums.length && nums[end] === target) end++;
-  return [idx, end - 1];
+  return [start, end - 1];
 }
 ```
 
-### Acceptance Criteria
-1. Must execute in strict **$O(\log n)$ time**.
-2. Must use two binary searches: one for the first occurrence, one for the last occurrence.
-3. Correctly returns `[-1, -1]` if target is absent.
-4. Verified with direct test execution.
+The bottleneck is linear expansion. In worst-case inputs where the entire array contains identical target values (`[8, 8, 8, ..., 8]`), the `while` loop scans all $n$ items, degrading runtime to $O(n)$.
 
-### Verified Solution
+#### 3.3.4 The Pattern Insight
+Execute two independent binary searches:
+1. `findBound(isFirst = true)`: When `nums[mid] === target`, save `bound = mid` and move `high = mid - 1`.
+2. `findBound(isFirst = false)`: When `nums[mid] === target`, save `bound = mid` and move `low = mid + 1`.
+
+Both searches operate in $O(\log n)$ time, ensuring the entire procedure completes in $2 \times O(\log n) = O(\log n)$ time.
+
+#### 3.3.5 Pseudocode
+```text
+function searchRange(nums, target):
+  function findBound(isFirst):
+    low = 0, high = length(nums) - 1, bound = -1
+
+    while low <= high:
+      mid = low + floor((high - low) / 2)
+
+      if nums[mid] == target:
+        bound = mid
+        if isFirst:
+          high = mid - 1
+        else:
+          low = mid + 1
+      else if nums[mid] < target:
+        low = mid + 1
+      else:
+        high = mid - 1
+
+    return bound
+
+  first = findBound(true)
+  if first == -1: return [-1, -1]
+  last = findBound(false)
+
+  return [first, last]
+```
+
+#### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Dual Binary Search for Left and Right Bounds
+// ✅ CORRECT: Two-pass binary search for lower and upper boundaries
 function searchRange(nums, target) {
   function findBound(isFirst) {
     let low = 0;
@@ -485,9 +550,9 @@ function searchRange(nums, target) {
       if (nums[mid] === target) {
         bound = mid;
         if (isFirst) {
-          high = mid - 1; // Squeeze left to find earlier occurrence
+          high = mid - 1; // Squeeze left to find earlier occurrences
         } else {
-          low = mid + 1;  // Squeeze right to find later occurrence
+          low = mid + 1;  // Squeeze right to find later occurrences
         }
       } else if (nums[mid] < target) {
         low = mid + 1;
@@ -500,13 +565,15 @@ function searchRange(nums, target) {
   }
 
   const first = findBound(true);
-  if (first === -1) return [-1, -1];
+  if (first === -1) {
+    return [-1, -1];
+  }
   const last = findBound(false);
 
   return [first, last];
 }
 
-// Example test runs
+// Example runs
 console.log(searchRange([5, 7, 7, 8, 8, 10], 8)); // [ 3, 4 ]
 console.log(searchRange([5, 7, 7, 8, 8, 10], 6)); // [ -1, -1 ]
 console.log(searchRange([], 0));                  // [ -1, -1 ]
@@ -514,146 +581,102 @@ console.log(searchRange([8, 8, 8, 8, 8], 8));      // [ 0, 4 ]
 console.log(searchRange([1], 1));                  // [ 0, 0 ]
 ```
 
----
+#### 3.3.7 Common Anti-Pattern
 
-## 8. Tricky Points and Edge Cases
-
-### 1. `low <= high` vs `low < high`
-- Use `while (low <= high)` when searching for an **exact target** value where the loop returns inside the body (`if (nums[mid] === target) return mid`).
-- Use `while (low < high)` when searching for a **boundary or inflection point** where the window shrinks to a single element (`high = mid` and `low = mid + 1`). When the loop terminates, `low === high`.
-
-### 2. Rotated Array with Duplicates (LeetCode 81)
-If elements can be duplicates (e.g., `[1, 0, 1, 1, 1]` or `[1, 1, 1, 0, 1]`):
-- `nums[low] === nums[mid] === nums[high]`.
-- We cannot determine which half is sorted!
-- **Mitigation**: You must increment `low++` and decrement `high--`, degrading the worst-case runtime to $O(n)$.
-
-### 3. Edge Cases Checklist
-- Array with 1 element (`[1]`).
-- Array with 2 elements (`[2, 1]`).
-- Array that is **not rotated** (`[1, 2, 3, 4, 5]`).
-- Target is at index 0.
-- Target is at index `n - 1`.
-
----
-
-## 9. Comprehensive Summary
-
-- **Lower Bound**: The first index where `arr[i] >= target`; **Upper Bound**: The first index where `arr[i] > target`.
-- **Rotated Array Invariant**: Any rotated sorted array cut at midpoint is guaranteed to have at least one sorted half (`nums[low] <= nums[mid]`).
-- **Search in Rotated Array**: Identify the sorted half; test if target fits in that sorted window; discard the opposite half.
-- **Find Minimum**: Compare `nums[mid]` against `nums[high]`. If `nums[mid] > nums[high]`, minimum is to the right (`low = mid + 1`); otherwise `high = mid`.
-- **V8 Engineering**: Avoid bitwise `>> 1` on large arrays to prevent 32-bit signed overflow; always use `low + Math.floor((high - low) / 2)`.
-
----
-
-## 10. Cheat Sheet
-
-### Binary Search Decision Matrix
-
-| Problem Type | While Condition | Mid Assignment (Left) | Mid Assignment (Right) | Return Value |
-| :--- | :---: | :---: | :---: | :---: |
-| **Exact Match** | `low <= high` | `low = mid + 1` | `high = mid - 1` | `mid` or `-1` |
-| **Lower Bound** | `low <= high` | `low = mid + 1` | `high = mid - 1` | `ans` |
-| **Find Minimum (Rotated)**| `low < high` | `low = mid + 1` | `high = mid` | `nums[low]` |
-| **Find Peak Element** | `low < high` | `low = mid + 1` | `high = mid` | `low` |
-
-### Common Pitfalls List
-- **Fractional Index Bug**: Omitting `Math.floor()`, producing `nums[2.5] === undefined`.
-- **Skipping Minimum**: Using `high = mid - 1` instead of `high = mid` in `findMin`.
-- **Missing In-Range Check**: Forgetting `nums[low] <= target && target < nums[mid]` before discarding halves.
-- **32-Bit Overflow**: Using `(low + high) >> 1` on arrays with length $> 2^{30}$.
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Technical Pitch
-> *"Binary Search on rotated arrays and boundary ranges adapts classical logarithmic search to non-monotonic or duplicated datasets. In a rotated sorted array, the key invariant is that any midpoint splits the collection into at least one guaranteed sorted half. By checking if the target lies within the boundaries of that sorted half, we safely discard the other half, preserving O(log n) runtime. For boundary lookups like lower bound or search range, we don't terminate upon finding a match; instead, we record the candidate and squeeze the search window to find the earliest or latest occurrence."*
-
-### 1. In `findMin(nums)` on a rotated sorted array, why do we compare `nums[mid]` against `nums[high]` instead of `nums[low]`?
-**Answer:**
-Comparing against `nums[low]` is ambiguous:
-Consider two arrays where `nums[low] < nums[mid]`:
-1. `[4, 5, 6, 7, 0, 1, 2]`: `low = 0` (4), `mid = 3` (7). `nums[low] < nums[mid]`. Minimum is to the **right** (at 0).
-2. `[1, 2, 3, 4, 5]`: `low = 0` (1), `mid = 2` (3). `nums[low] < nums[mid]`. Minimum is to the **left** (at 1)!
-Comparing against `nums[low]` cannot differentiate between an unrotated array and a rotated array.
-Comparing against `nums[high]` is 100% deterministic:
-- If `nums[mid] > nums[high]`, `mid` is strictly above the pivot cliff, and the minimum must lie to the right (`low = mid + 1`).
-- If `nums[mid] <= nums[high]`, `mid` is at or below the cliff, and the minimum is at `mid` or to the left (`high = mid`).
-
-### 2. What will the following code output in Node.js, and why?
 ```javascript
-const arr = [1, 2, 3, 4];
-const low = 0, high = 1;
-const mid = (low + high) / 2;
-console.log(arr[mid]);
-```
-**Answer:**
-It outputs `undefined`.
-In JavaScript, all numbers are 64-bit floating-point numbers. `(0 + 1) / 2` evaluates to `0.5`.
-Array indexing coerces non-integers to string property names (`arr["0.5"]`), which does not exist on the array, returning `undefined`.
-You must always use `Math.floor()` to truncate fractions to valid integer indices.
-
-### 3. Spot and fix the bug in this lower bound search:
-```javascript
-function findFirstOccurrence(nums, target) {
+// ❌ ANTI-PATTERN: Returning immediately on first match
+function buggySearchRange(nums, target) {
   let low = 0, high = nums.length - 1;
   while (low <= high) {
-    let mid = Math.floor((low + high) / 2);
-    if (nums[mid] === target) return mid;
+    const mid = Math.floor((low + high) / 2);
+    // BUG: Returning mid on match misses first/last boundary when duplicates exist
+    if (nums[mid] === target) return [mid, mid];
     if (nums[mid] < target) low = mid + 1;
     else high = mid - 1;
   }
-  return -1;
+  return [-1, -1];
 }
-```
-**Answer:**
-The bug is `if (nums[mid] === target) return mid;`.
-If the array contains duplicate targets (e.g., `nums = [2, 2, 2, 2]`, `target = 2`), this returns index `1` (the midpoint of the first iteration), rather than the **first occurrence** at index `0`.
-**Fix**: When `nums[mid] === target`, record `ans = mid` and continue searching left with `high = mid - 1`.
 
-### 4. Why does allowing duplicate elements in a rotated sorted array degrade binary search from $O(\log n)$ to $O(n)$ worst-case?
-**Answer:**
-Consider `nums = [1, 0, 1, 1, 1]` and `nums = [1, 1, 1, 0, 1]`, both rotated versions of `[0, 1, 1, 1, 1]`.
-In both cases:
-`nums[low] === 1`, `nums[mid] === 1`, `nums[high] === 1`.
-Because `nums[low] === nums[mid] === nums[high]`, it is mathematically impossible to determine whether the inflection point (and target 0) lies in the left half or the right half without inspecting elements linearly.
-The algorithm is forced to decrement `high--` and increment `low++`, turning the search into an $O(n)$ linear scan in the worst case.
+console.log(buggySearchRange([5, 7, 7, 8, 8, 10], 8)); // [4, 4] instead of [3, 4]!
+```
+
+#### 3.3.8 Complexity Derivation
+- **Time Complexity**: $O(\log n)$. Two binary search passes run in $O(\log n) + O(\log n) = O(\log n)$ time.
+- **Auxiliary Space Complexity**: $O(1)$. Uses scalar integer pointers.
 
 ---
 
-## 12. Practice Problems
+## 4. Tricky Edge Cases
 
-### 1. Search in Rotated Sorted Array - Medium
-Search for target in a rotated sorted array of unique integers in $O(\log n)$ time.
-- **Sample Input 1:** `nums = [4, 5, 6, 7, 0, 1, 2]`, `target = 0`
-- **Expected Output 1:** `4`
-- **Sample Input 2:** `nums = [4, 5, 6, 7, 0, 1, 2]`, `target = 3`
-- **Expected Output 2:** `-1`
+- **Duplicate Elements in Rotated Arrays (LC 81)**: If duplicate elements exist (`[1, 0, 1, 1, 1]` or `[1, 1, 1, 0, 1]`), `nums[low] === nums[mid] === nums[high]`. It is impossible to determine which half is sorted. You must increment `low++` and decrement `high--`, which degrades worst-case runtime to $O(n)$.
+- **Strict Inequality in Bounds Comparison**: In `searchInRotatedArray`, use `nums[low] <= target && target < nums[mid]` (strict `<` at `mid`, non-strict `<=` at `low`) because the case `nums[mid] === target` was already handled.
+- **`low <= high` vs `low < high`**: Use `while (low <= high)` when searching for an exact target with returns inside the loop. Use `while (low < high)` when searching for an inflection or minimum point where the window contracts to a single answer (`high = mid` and `low = mid + 1`).
+- **Unrotated Arrays**: When the array was rotated $0$ times (e.g. `[11, 13, 15, 17]`), `nums[mid] < nums[high]` holds true on every step, contracting `high = mid` until returning index 0 (`11`).
+- **Single-Element and Two-Element Arrays**: Test boundaries where $n = 1$ (`[1]`) or $n = 2$ (`[2, 1]`) to ensure pointer calculations do not produce negative or out-of-bounds indices.
 
-### 2. Find Minimum in Rotated Sorted Array - Medium
-Find minimum element in rotated sorted array of unique integers in $O(\log n)$ time.
-- **Sample Input 1:** `nums = [3, 4, 5, 1, 2]`
-- **Expected Output 1:** `1`
-- **Sample Input 2:** `nums = [4, 5, 6, 7, 0, 1, 2]`
-- **Expected Output 2:** `0`
+---
 
-### 3. Find First and Last Position of Element in Sorted Array - Medium
-Find starting and ending position of target value in sorted array with duplicates.
-- **Sample Input 1:** `nums = [5, 7, 7, 8, 8, 10]`, `target = 8`
-- **Expected Output 1:** `[3, 4]`
-- **Sample Input 2:** `nums = [5, 7, 7, 8, 8, 10]`, `target = 6`
-- **Expected Output 2:** `[-1, -1]`
+## 5. Summary Cheat Sheet
 
-### 4. Peak Index in a Mountain Array - Medium
-Find the peak index where `arr[0] < arr[1] < ... < arr[i] > arr[i+1] > ... > arr[n-1]`.
-- **Sample Input 1:** `arr = [0, 1, 0]`
-- **Expected Output 1:** `1`
-- **Sample Input 2:** `arr = [0, 2, 1, 0]`
-- **Expected Output 2:** `1`
-- **Sample Input 3:** `arr = [0, 10, 5, 2]`
-- **Expected Output 3:** `1`
+- **Rotated Array Invariant**: Any rotated sorted array cut at midpoint is guaranteed to have at least one sorted half (`nums[low] <= nums[mid]`).
+- **Sorted Half Discarding**: Test if the target falls within the sorted half's range. If so, search that half; otherwise, discard it.
+- **Find Minimum Cliff**: Compare `nums[mid]` against `nums[high]`. If `nums[mid] > nums[high]`, minimum lies right (`low = mid + 1`); otherwise `high = mid`.
+- **Lower Bound / Upper Bound**: Never terminate immediately on target match when finding ranges. Save candidate index and squeeze search space left or right.
+- **Safe JavaScript Midpoint**: Always use `low + Math.floor((high - low) / 2)` to prevent float decimals and 32-bit signed integer overflow.
+
+---
+
+## 6. Practice Problems
+
+### 6.1 Find Peak Element
+A peak element is an element that is strictly greater than its neighbors. Given a 0-indexed integer array `nums`, find a peak element, and return its index. If the array contains multiple peaks, return the index to any of the peaks.
+
+You must write an algorithm that runs in $O(\log n)$ time.
+
+```text
+Sample Input 1: nums = [1, 2, 3, 1]
+Expected Output 1: 2 (value 3 is a peak)
+
+Sample Input 2: nums = [1, 2, 1, 3, 5, 6, 4]
+Expected Output 2: 5 (value 6 is a peak)
+```
+
+- *Hint 1*: Compare `nums[mid]` with its right neighbor `nums[mid + 1]`.
+- *Hint 2*: If `nums[mid] < nums[mid + 1]`, you are climbing an upward slope; a peak is guaranteed to exist to the right (`low = mid + 1`).
+- *Hint 3*: Otherwise, you are on a downward slope; a peak exists at `mid` or to the left (`high = mid`).
+
+### 6.2 Search in Rotated Sorted Array II
+Given the array `nums` after rotation that may contain **duplicate** values, and an integer `target`, return `true` if `target` is in `nums`, or `false` if it is not in `nums`.
+
+```text
+Sample Input 1: nums = [2, 5, 6, 0, 0, 1, 2], target = 0
+Expected Output 1: true
+
+Sample Input 2: nums = [2, 5, 6, 0, 0, 1, 2], target = 3
+Expected Output 2: false
+```
+
+- *Hint 1*: When `nums[low] === nums[mid] && nums[mid] === nums[high]`, you cannot tell which side is sorted.
+- *Hint 2*: In that specific duplicate condition, simply shrink both boundaries: `low++` and `high--`.
+- *Hint 3*: For all other conditions, apply the standard rotated sorted array logic from Day 16.
+
+### 6.3 Peak Index in a Mountain Array
+An array `arr` is a mountain if `arr[0] < arr[1] < ... < arr[i - 1] < arr[i] > arr[i + 1] > ... > arr[arr.length - 1]`. Return the index of the mountain peak in $O(\log n)$ time.
+
+```text
+Sample Input 1: arr = [0, 1, 0]
+Expected Output 1: 1
+
+Sample Input 2: arr = [0, 2, 1, 0]
+Expected Output 2: 1
+
+Sample Input 3: arr = [0, 10, 5, 2]
+Expected Output 3: 1
+```
+
+- *Hint 1*: The mountain peak is the unique point where values transition from strictly increasing to strictly decreasing.
+- *Hint 2*: Use `while (low < high)`.
+- *Hint 3*: Compare `arr[mid]` and `arr[mid + 1]`. Update `low = mid + 1` if slope is increasing; update `high = mid` if slope is decreasing.
 
 ---
 

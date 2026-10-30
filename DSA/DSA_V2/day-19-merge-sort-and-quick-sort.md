@@ -6,136 +6,95 @@
 
 </nav>
 
-## Prerequisites
+## 1. Merge Sort & Quick Sort
 
-- [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Asymptotic complexity ($O(n \log n)$ vs $O(n^2)$).
-- [Day 03: Arrays & Strings](day-03-arrays-and-strings.md) — Array indexing, two-pointer scanning, in-place swaps.
-- [Day 18: Recursion & Call Stack](day-18-recursion-fundamentals-and-call-stack.md) — Call frames, base cases, and divide-and-conquer recursion trees.
+Elementary sorting algorithms like Bubble Sort, Selection Sort, and Insertion Sort compare elements one step at a time, resulting in $O(n^2)$ time complexity. When sorting 100,000 items, an $O(n^2)$ algorithm performs roughly $10,000,000,000$ operations—freezing the single-threaded Node.js event loop for seconds.
 
----
+Merge Sort and Quick Sort overcome this barrier using the Divide and Conquer strategy. Instead of sorting the entire list at once, they divide the collection into smaller subproblems, solve each subproblem recursively, and combine the results in $O(n \log n)$ total operations. For 100,000 items, $n \log_2 n \approx 1,700,000$ operations, which is thousands of times faster than quadratic sorting.
 
-## 1. What is Merge Sort & Quick Sort?
+Imagine sorting an unsorted stack of 100 student exam papers. With Merge Sort, you split the stack into two piles of 50 and hand each pile to a teaching assistant. The assistants repeatedly split their stacks in half until every pile contains exactly one paper. A single paper is already sorted. The assistants then zip sorted stacks together by comparing top papers and stacking the smaller one first. This approach is predictable, balanced, and preserves the original order of identical grades (stable), but it requires extra desk space for the temporary piles.
 
-Elementary sorting algorithms like Bubble Sort, Selection Sort, and Insertion Sort compare elements one step at a time, taking $O(n^2)$ time. When sorting 100,000 items, an $O(n^2)$ algorithm performs roughly $10,000,000,000$ operations—freezing the single-threaded Node.js event loop for seconds.
-
-**Merge Sort** and **Quick Sort** solve this through the **Divide and Conquer** paradigm: break a large, intractable list into small sub-lists, solve each sub-list independently, and recombine them in $O(n \log n)$ total time. For 100,000 items, $n \log_2 n \approx 1,700,000$ operations—over 5,000 times faster.
-
-> **Divide and Conquer** — An algorithmic design paradigm that recursively breaks a problem into two or more independent subproblems until they become trivial to solve, then combines their solutions.
-
-> **Stable Sort** — A sorting algorithm that guarantees items with equal keys maintain their original relative input order.
-
-### Physical Analogy: Sorting Exam Papers
-
-Imagine a professor holding an unsorted stack of 100 student exam papers:
-
-```text
-=============================================================================
-                       TWO PHILOSOPHIES OF SORTING
-=============================================================================
-
-1. MERGE SORT (Orderly Delegation):
-   - You split the 100 papers equally into two piles of 50.
-   - Hand pile A to Teaching Assistant Alice and pile B to Teaching Assistant Bob.
-   - Alice and Bob recursively split their piles until every stack is 1 paper.
-   - 1 paper is inherently sorted!
-   - Now, Alice and Bob zip their sorted stacks together: compare top papers,
-     take the smaller one, and stack them neatly.
-   - GUARANTEE: Predictable, perfectly balanced, retains original order (stable).
-   - COST: Requires extra desk space for the temporary merging piles.
-
-2. QUICK SORT (Benchmark Partitioning):
-   - You pick one paper at random (say, score 75) as the "Pivot".
-   - You quickly walk through your stack:
-     * Scores < 75 go into the left bin.
-     * Scores > 75 go into the right bin.
-     * Score 75 sits right in its final permanent seat!
-   - Repeat the process for the left and right bins in-place.
-   - GUARANTEE: Lightning-fast in practice, zero extra desk space needed.
-   - RISK: If you pick a terrible pivot (e.g. minimum or maximum every time),
-     one bin gets 0 papers and the other gets 99, degrading to slow O(n^2).
-=============================================================================
-```
-
-```mermaid
-graph TD
-    A["Raw Array: [38, 27, 43, 3, 9, 82, 10]"] --> B["Split Left: [38, 27, 43, 3]"]
-    A --> C["Split Right: [9, 82, 10]"]
-    B --> D["Sort Left Half: [3, 27, 38, 43]"]
-    C --> E["Sort Right Half: [9, 10, 82]"]
-    D --> F["Zip Merge: Two Pointers [3, 9, 10, 27, 38, 43, 82]"]
-    E --> F
-```
-
----
-
-## 2. How Merge Sort and Quick Sort Work Step-by-Step
-
-### 2.1 Merge Sort: Split $\to$ Recurse $\to$ Two-Pointer Merge
-
-Merge Sort executes two distinct phases:
-
-1. **Top-Down Split:** Find midpoint `mid = Math.floor((left + right) / 2)`. Recurse left from `left` to `mid`, recurse right from `mid + 1` to `right`. Base case triggers when `left >= right` (array slice of length 1 is already sorted).
-2. **Bottom-Up Merge:** Merge two sorted sub-arrays `[left...mid]` and `[mid+1...right]`. Use two pointers `p1` and `p2` at the start of each half. Compare `arr[p1]` and `arr[p2]`. Write the smaller value into a scratch buffer, then advance that pointer. Once one half exhausts, copy the remaining values from the other half. Copy scratch values back to original array.
-
-```text
-Merging Two Sorted Halves:
-Left Half:   [ 3, 27, 38 ]       Right Half:  [ 9, 10, 82 ]
-              ^                                ^
-              p1                               p2
-
-Step 1: 3 <= 9  --> Output [ 3 ], advance p1.
-Step 2: 27 > 9  --> Output [ 3, 9 ], advance p2.
-Step 3: 27 > 10 --> Output [ 3, 9, 10 ], advance p2.
-Step 4: 27 <= 82-> Output [ 3, 9, 10, 27 ], advance p1.
-Step 5: 38 <= 82-> Output [ 3, 9, 10, 27, 38 ], advance p1.
-Step 6: Left exhausted. Flush rest of Right: Output [ 3, 9, 10, 27, 38, 82 ].
-```
-
-### 2.2 Quick Sort: Lomuto vs. Hoare Partitioning
-
-Quick Sort avoids scratch arrays by doing all reordering in-place inside the original memory buffer:
-
-> **Lomuto Partition Scheme** — Chooses the last element as the pivot. Uses an index `i` to keep track of elements smaller than the pivot, scanning linearly with `j`. Easier to implement and reason about.
-
-> **Hoare Partition Scheme** — Two pointers start at opposing ends (`left` and `right`) and walk inward toward each other until they find out-of-place pairs, swapping them. Does roughly $3\times$ fewer swaps than Lomuto on average.
-
-```text
-Lomuto Partition Walkthrough on [ 2, 8, 7, 1, 3, 5, 6, 4 ] with Pivot = 4:
-i = -1 (tracks boundary of elements <= pivot)
-
-j = 0: arr[0] = 2 <= 4 -> i = 0, swap(arr[0], arr[0]) -> [ 2, 8, 7, 1, 3, 5, 6, 4 ]
-j = 1: arr[1] = 8 > 4  -> do nothing
-j = 2: arr[2] = 7 > 4  -> do nothing
-j = 3: arr[3] = 1 <= 4 -> i = 1, swap(arr[1], arr[3]) -> [ 2, 1, 7, 8, 3, 5, 6, 4 ]
-j = 4: arr[4] = 3 <= 4 -> i = 2, swap(arr[2], arr[4]) -> [ 2, 1, 3, 8, 7, 5, 6, 4 ]
-j = 5: arr[5] = 5 > 4  -> do nothing
-j = 6: arr[6] = 6 > 4  -> do nothing
-
-Final Swap: swap pivot arr[high] with arr[i + 1]:
-swap arr[3] (8) with arr[7] (4) -> [ 2, 1, 3, 4, 7, 5, 6, 8 ]
-                                             ^
-                                       Pivot 4 is now in its FINAL sorted position!
-All elements to left of index 3 are <= 4. All elements to right are > 4.
-```
-
-```text
-Hoare Partition Walkthrough on [ 5, 3, 8, 4, 2, 7, 1, 6 ] with Pivot = 4:
-Two pointers: i moves from left to right; j moves from right to left.
-
-1. i starts at index -1, moves right until arr[i] >= 4 (stops at index 0, val 5).
-2. j starts at index 8, moves left until arr[j] <= 4 (stops at index 6, val 1).
-3. i < j: swap(arr[0], arr[6]) -> [ 1, 3, 8, 4, 2, 7, 5, 6 ]
-4. Advance i to find next >= 4 (stops at index 2, val 8).
-5. Advance j to find next <= 4 (stops at index 4, val 2).
-6. i < j: swap(arr[2], arr[4]) -> [ 1, 3, 2, 4, 8, 7, 5, 6 ]
-7. Advance i: stops at index 3 (val 4).
-8. Advance j: stops at index 3 (val 4).
-9. Pointers cross (i >= j): return j = 3.
-Array partitioned into [ 1, 3, 2, 4 ] and [ 8, 7, 5, 6 ].
-```
+With Quick Sort, you pick one benchmark paper (the pivot), such as a score of 75. You scan through the stack and place every paper below 75 into a left pile and every paper above 75 into a right pile. The benchmark paper 75 is now in its exact final resting spot. You then repeat the process on the left and right piles. Quick Sort works directly in place without extra desk space, but picking a poor pivot can lead to unbalanced piles.
 
 ```javascript
-// Hoare Partition Implementation in JavaScript
+// Basic demonstration of the divide-and-conquer zip merge mechanic
+function mergeTwoSortedArrays(left, right) {
+  const result = [];
+  let i = 0;
+  let j = 0;
+
+  while (i < left.length && j < right.length) {
+    if (left[i] <= right[j]) {
+      result.push(left[i++]);
+    } else {
+      result.push(right[j++]);
+    }
+  }
+
+  while (i < left.length) result.push(left[i++]);
+  while (j < right.length) result.push(right[j++]);
+
+  return result;
+}
+
+const listA = [2, 5, 8];
+const listB = [1, 3, 7, 9];
+console.log("Merged:", mergeTwoSortedArrays(listA, listB));
+// Output: [ 1, 2, 3, 5, 7, 8, 9 ]
+```
+
+### 1.1 Merge Sort Mechanics
+
+Merge Sort splits the input array at its exact midpoint $\lfloor \frac{\text{start} + \text{end}}{2} \rfloor$, recurses on both halves until single-element arrays remain, and then merges the sorted halves.
+
+```text
+Splitting [ 38, 27, 43, 3, 9, 82, 10 ] into halves:
+Level 0:                 [ 38, 27, 43, 3, 9, 82, 10 ]
+                         /                          \
+Level 1:        [ 38, 27, 43, 3 ]              [ 9, 82, 10 ]
+                /              \                /          \
+Level 2:   [ 38, 27 ]       [ 43, 3 ]        [ 9, 82 ]    [ 10 ]
+           /      \         /      \         /      \       |
+Level 3: [38]    [27]     [43]     [3]     [9]     [82]   [10] (Base cases: size 1)
+
+Merging sorted halves back up:
+Level 2:   [ 27, 38 ]       [ 3, 43 ]        [ 9, 82 ]    [ 10 ]
+Level 1:        [ 3, 27, 38, 43 ]              [ 9, 10, 82 ]
+Level 0:                 [ 3, 9, 10, 27, 38, 43, 82 ]
+```
+
+Because division always halves the array size, the recursion tree height is strictly $\lceil \log_2 n \rceil$. Merging all elements across each horizontal level takes $O(n)$ work, guaranteeing an overall runtime of $O(n \log n)$ in the best, average, and worst cases.
+
+> [!NOTE]
+> Why does Merge Sort require auxiliary memory? Because as sorted sub-arrays are zippered together, values must be staged in a temporary buffer to prevent overwriting unexamined elements in the original array.
+
+### 1.2 Quick Sort Partitioning Schemes
+
+Quick Sort does not divide arrays at the center. Instead, it selects a pivot element and partitions the array such that all items smaller than the pivot sit to its left and all items greater sit to its right. The two most common partitioning schemes are Lomuto and Hoare.
+
+```text
+Lomuto Partition on [ 2, 8, 7, 1, 3, 5, 6, 4 ] with Pivot = 4:
+i tracks boundary of elements <= pivot. j scans from left to right.
+
+Initial:   [ 2,  8,  7,  1,  3,  5,  6,  4 ]   (i = -1)
+j = 0: 2 <= 4 -> i = 0, swap(arr[0], arr[0]) -> [ 2, 8, 7, 1, 3, 5, 6, 4 ]
+j = 1: 8 > 4  -> do nothing
+j = 2: 7 > 4  -> do nothing
+j = 3: 1 <= 4 -> i = 1, swap(arr[1], arr[3]) -> [ 2, 1, 7, 8, 3, 5, 6, 4 ]
+j = 4: 3 <= 4 -> i = 2, swap(arr[2], arr[4]) -> [ 2, 1, 3, 8, 7, 5, 6, 4 ]
+j = 5: 5 > 4  -> do nothing
+j = 6: 6 > 4  -> do nothing
+
+Final Step: swap pivot arr[high] with arr[i + 1]:
+swap arr[3] (8) with arr[7] (4) -> [ 2, 1, 3, 4, 7, 5, 6, 8 ]
+                                             ^
+                                       Pivot 4 is finalized!
+```
+
+Hoare partitioning starts two pointers at opposing ends and moves them inward until out-of-place pairs are identified and swapped. Hoare partitioning performs roughly three times fewer swaps than Lomuto on average.
+
+```javascript
+// Hoare partition implementation
 function hoarePartition(arr, low, high) {
   const pivot = arr[Math.floor(low + (high - low) / 2)];
   let i = low - 1;
@@ -152,102 +111,157 @@ function hoarePartition(arr, low, high) {
     arr[j] = temp;
   }
 }
+
+const sample = [5, 3, 8, 4, 2, 7, 1, 6];
+const splitIndex = hoarePartition(sample, 0, sample.length - 1);
+console.log("Partition boundary index:", splitIndex);
+console.log("Partitioned state:", sample);
 ```
 
+### 1.3 Operations Reference Table
+
+| Algorithm | Best Time | Average Time | Worst Time | Space Complexity | Stability | In-Place |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Merge Sort** | $O(n \log n)$ | $O(n \log n)$ | $O(n \log n)$ | $O(n)$ auxiliary | Stable | ❌ No |
+| **Quick Sort (Lomuto)** | $O(n \log n)$ | $O(n \log n)$ | $O(n^2)$ | $O(\log n)$ stack | Unstable | ✅ Yes |
+| **Quick Sort (Hoare)** | $O(n \log n)$ | $O(n \log n)$ | $O(n^2)$ | $O(\log n)$ stack | Unstable | ✅ Yes |
+| **Quickselect** | $O(n)$ | $O(n)$ | $O(n^2)$ | $O(1)$ iterative | Unstable | ✅ Yes |
+| **Native Array.sort()** | $O(n)$ (Timsort) | $O(n \log n)$ | $O(n \log n)$ | $O(n)$ auxiliary | Stable | ✅ Yes (in JS) |
+
 ---
 
-## 3. Pattern Recognition of Divide and Conquer Sorting
+## 2. Divide and Conquer Sorting Patterns
 
-### How to Spot These Patterns in Interviews
+### 2.1 Pattern Family
 
-| Constraint / Keyword Signal | Underlying Problem Need | Optimal Algorithmic Pattern |
+Divide and conquer sorting problems fall into three main operational families:
+
+- **Balanced Halving with External Combination (Merge Sort):** Subproblems are split blindly down the middle. Work occurs entirely during the merge phase when combining sorted subsets.
+- **Partitioning with Subproblem Pruning (Quickselect):** Subproblems are split around a pivot. When searching for a single ranked value ($K$-th element), the algorithm discards the non-qualifying partition and recurses on only one branch.
+- **Three-Way Dutch Flag Partitioning:** Used when inputs contain large numbers of duplicate keys. Partitions the input into three segments: values less than pivot, values equal to pivot, and values greater than pivot.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Keyword Signal | Underlying Computational Need | Recommended Approach |
 | :--- | :--- | :--- |
-| Array size $N \le 10^5$, must sort | Stable sorting or guaranteed $O(n \log n)$ worst-case | **Merge Sort** (Guaranteed time) |
-| Order stability required (e.g. sort by age, preserving original name order) | Equal elements must never swap positions | **Merge Sort** (Stable) |
-| In-place sorting required, $O(1)$ auxiliary memory | Fast average runtime without memory allocation | **Quick Sort** (In-place) |
-| "Find the $K$-th largest or smallest element in unsorted array" | Avoid full $O(n \log n)$ sort when only 1 rank is needed | **Quickselect** ($O(n)$ average) |
-| Count inversions (pairs where $i < j$ and $arr[i] > arr[j]$) | Tracking relative shifts during zip-merge | **Merge Sort Inversion Counter** |
+| Stable ordering required across multiple fields | Must preserve relative positions of equal keys | Merge Sort ($O(n \log n)$ stable) |
+| In-place sorting with $O(1)$ auxiliary RAM | Cannot allocate extra arrays due to memory limits | Quick Sort ($O(n \log n)$ in-place) |
+| Find the $K$-th largest or smallest element | Finding single order statistic without sorting everything | Quickselect ($O(n)$ average) |
+| Count pairs where $i < j$ and $nums[i] > nums[j]$ | Inversion count during sorting passes | Merge Sort with inversion tracking |
+| Array containing few unique keys (e.g., 0, 1, 2) | Fast segregation without recursion stack | Dutch National Flag (3-way partition) |
+
+### 2.3 When to Use vs When NOT to Use
+
+- **Use Merge Sort when:**
+  - Stable sorting is mandatory (e.g., sorting objects by price while keeping existing alphabetical secondary ordering).
+  - Worst-case predictable performance is required (e.g., real-time systems where $O(n^2)$ spikes are unacceptable).
+  - Sorting linked lists, where pointer re-linking takes $O(1)$ auxiliary space without memory buffer copies.
+- **When NOT to use Merge Sort:**
+  - Memory is constrained and allocating an auxiliary array of size $n$ risks memory limits.
+- **Use Quick Sort / Quickselect when:**
+  - You need fast, cache-friendly in-place sorting with minimal auxiliary memory.
+  - You need to locate a specific rank element ($K$-th largest) in $O(n)$ average time.
+- **When NOT to use Quick Sort:**
+  - Order stability is required.
+  - Worst-case time must never degrade to $O(n^2)$ under adversarial inputs.
+
+### 2.4 The 10^7 Operations Rule
+
+Node.js executes approximately $10^7$ to $10^8$ operations per second on a single thread. When $n = 100,000$, an $O(n^2)$ algorithm performs $10^{10}$ comparisons, locking the thread for tens of seconds. Both Merge Sort and Quick Sort perform $n \log_2 n \approx 1.7 \times 10^6$ operations, completing in under 20 milliseconds.
 
 ---
 
-## 4. Problem 1: Sort an Array (Production-Grade In-Place Buffer Merge Sort)
+## 3. Problem Walkthroughs
 
-### Problem Description
-Given an array of integers `nums`, sort the array in ascending order in $O(n \log n)$ time without relying on native `Array.prototype.sort()`.
+### 3.1 Sort an Array
 
-### Step 1: Physical Simulation
-Suppose we have `[ 5, 2, 3, 1 ]`:
-- Split into `[ 5, 2 ]` and `[ 3, 1 ]`.
-- Split `[ 5, 2 ]` into `[ 5 ]` and `[ 2 ]`. Both single-element piles.
-- Merge `[ 5 ]` and `[ 2 ]` $\to$ compare $5$ and $2$. $2$ is smaller. Scratch becomes `[ 2, 5 ]`.
-- Split `[ 3, 1 ]` into `[ 3 ]` and `[ 1 ]`.
-- Merge `[ 3 ]` and `[ 1 ]` $\to$ compare $3$ and $1$. $1$ is smaller. Scratch becomes `[ 1, 3 ]`.
-- Merge `[ 2, 5 ]` and `[ 1, 3 ]`:
-  * Pointers at 2 and 1: 1 is smaller $\to$ output `[ 1 ]`.
-  * Pointers at 2 and 3: 2 is smaller $\to$ output `[ 1, 2 ]`.
-  * Pointers at 5 and 3: 3 is smaller $\to$ output `[ 1, 2, 3 ]`.
-  * Pointers at 5 and end: 5 remaining $\to$ output `[ 1, 2, 3, 5 ]`. Sorted!
+#### 3.1.1 Problem Statement
+Given an array of integers `nums`, sort the array in ascending order without using built-in sorting methods like `Array.prototype.sort()`.
 
-### Step 2: Brute Force Approach
-The naive intuition is to scan the array repeatedly, finding the minimum remaining element and placing it into a new array (Selection Sort), or using naive recursive `array.slice()`:
+- **Input:** `nums = [5, 2, 3, 1]`
+- **Output:** `[1, 2, 3, 5]`
+- **Constraints:** $1 \le nums.length \le 50,000$, $-50,000 \le nums[i] \le 50,000$.
+
+#### 3.1.2 How to Think About It
+Imagine a deck of numbered cards spread out face down. You divide the deck in half, and in half again, until you have piles of one card each. You then pick up pairs of piles. With one card in your left hand and one in your right hand, you place the smaller card down first, followed by the larger card. When combining larger piles, you keep eyes on the top cards of each pile, repeatedly moving the smaller card to the output pile.
+
+#### 3.1.3 Brute Force Approach & Bottleneck
+The naive approach uses recursive slicing: calling `arr.slice(0, mid)` and `arr.slice(mid)` on every recursion step.
 
 ```javascript
-// Naive recursive merge sort with array.slice() allocations
+// Naive implementation allocating slices on every frame
 function naiveMergeSort(arr) {
   if (arr.length <= 1) return arr;
   const mid = Math.floor(arr.length / 2);
-  // Allocates brand new arrays on every single recursive frame!
   const left = naiveMergeSort(arr.slice(0, mid));
   const right = naiveMergeSort(arr.slice(mid));
-  
-  const merged = [];
+
+  const result = [];
   let i = 0, j = 0;
   while (i < left.length && j < right.length) {
-    if (left[i] <= right[j]) merged.push(left[i++]);
-    else merged.push(right[j++]);
+    if (left[i] <= right[j]) result.push(left[i++]);
+    else result.push(right[j++]);
   }
-  while (i < left.length) merged.push(left[i++]);
-  while (j < right.length) merged.push(right[j++]);
-  return merged;
+  while (i < left.length) result.push(left[i++]);
+  while (j < right.length) result.push(right[j++]);
+  return result;
 }
 ```
 
-### Step 3: Bottleneck
-- While the time complexity is mathematically $O(n \log n)$, `arr.slice()` allocates thousands of intermediate JS array objects on the V8 heap.
-- For an array of $100,000$ numbers, tree depth $\log_2(100,000) \approx 17$. The memory allocated across all sub-arrays exceeds $17 \times 100,000 \times 8 \text{ bytes} \approx 13.6 \text{ MB}$ of short-lived transient heap objects. This triggers aggressive V8 Minor Garbage Collection (Scavenger) pauses, degrading throughput by $300\%$.
+The bottleneck is memory churn. For an array of 50,000 numbers, `arr.slice()` creates tens of thousands of intermediate short-lived arrays on the V8 heap. This triggers continuous garbage collection cycles, degrading execution speed significantly.
 
-### Step 4: The Pattern Discovery
-Instead of allocating fresh slices at every recursion level, allocate **exactly one auxiliary buffer** of size $n$ upfront before recursing. Pass boundary indices `left`, `mid`, and `right`. Read from the main array into the auxiliary buffer, then write the sorted merged values directly back into the original array indices. Total memory allocation is bounded to a single $O(n)$ buffer.
+#### 3.1.4 The Pattern Insight
+Instead of allocating fresh slices at every level, allocate a single auxiliary buffer of size $n$ once before starting the recursion. Pass index boundaries (`start`, `mid`, `end`). Read from the main array into the auxiliary buffer for comparison, and write sorted values directly back into the original array indices.
 
+#### 3.1.5 Pseudocode
 ```text
-Original Array:  [ 5, 2, 3, 1 ]
-Single Temp:     [ 0, 0, 0, 0 ]  (Allocated ONCE at the start)
-Recursive calls pass pointers: (left = 0, right = 3, mid = 1)
-Zero garbage collection overhead!
+function sortArray(nums):
+    allocate temp buffer of size nums.length
+
+    function merge(start, mid, end):
+        copy nums[start...end] into temp[start...end]
+        i = start, j = mid + 1, curr = start
+        while i <= mid and j <= end:
+            if temp[i] <= temp[j]:
+                nums[curr++] = temp[i++]
+            else:
+                nums[curr++] = temp[j++]
+        while i <= mid:
+            nums[curr++] = temp[i++]
+
+    function divide(start, end):
+        if start >= end: return
+        mid = start + floor((end - start) / 2)
+        divide(start, mid)
+        divide(mid + 1, end)
+        if nums[mid] <= nums[mid + 1]: return  // already sorted
+        merge(start, mid, end)
+
+    divide(0, nums.length - 1)
+    return nums
 ```
 
-### Step 5: The Optimal Solution
+#### 3.1.6 Optimal Solution
 
 ```javascript
 // ✅ CORRECT: Optimal In-Place Index-Based Merge Sort
 function sortArray(nums) {
   if (!nums || nums.length <= 1) return nums;
 
-  // Single scratch buffer allocated once upfront to protect V8 heap
+  // Single auxiliary buffer allocated once
   const temp = new Array(nums.length);
 
   function merge(start, mid, end) {
-    // Copy target segment to auxiliary buffer
     for (let k = start; k <= end; k++) {
       temp[k] = nums[k];
     }
 
-    let i = start;     // Pointer for left sub-array
-    let j = mid + 1;   // Pointer for right sub-array
-    let curr = start;  // Write pointer in nums
+    let i = start;
+    let j = mid + 1;
+    let curr = start;
 
     while (i <= mid && j <= end) {
-      // '<=' ensures stability: duplicates preserve original order
+      // '<=' maintains stable ordering
       if (temp[i] <= temp[j]) {
         nums[curr++] = temp[i++];
       } else {
@@ -255,21 +269,20 @@ function sortArray(nums) {
       }
     }
 
-    // Copy remaining items from left half if any
     while (i <= mid) {
       nums[curr++] = temp[i++];
     }
-    // Note: If right half has items left, they are already in their correct places!
+    // Items remaining in right partition are already in place
   }
 
   function divideAndConquer(start, end) {
-    if (start >= end) return; // Base case: 1 element
+    if (start >= end) return;
 
     const mid = Math.floor(start + (end - start) / 2);
     divideAndConquer(start, mid);
     divideAndConquer(mid + 1, end);
 
-    // Minor optimization: If already sorted across boundary, skip merge
+    // Skip merge if sub-arrays are already sorted across boundary
     if (nums[mid] <= nums[mid + 1]) return;
 
     merge(start, mid, end);
@@ -279,78 +292,209 @@ function sortArray(nums) {
   return nums;
 }
 
-// ❌ ANTI-PATTERN: Forgetting stability in merge condition
-// if (temp[i] < temp[j]) instead of '<=' reverses relative order of equal items!
-
-// Direct test run
-const testInput = [5, 2, 3, 1, 8, 4, 2];
-console.log("Input:", testInput);
-console.log("Sorted:", sortArray(testInput));
+const inputNums = [5, 2, 3, 1, 8, 4, 2];
+console.log("Input:", inputNums);
+console.log("Sorted:", sortArray(inputNums));
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(n \log n)$ in all cases (best, average, worst). The array is divided exactly $\log_2 n$ times, and each level performs $O(n)$ work across all merges.
-- **Space Complexity:** $O(n)$ auxiliary space for the `temp` buffer, plus $O(\log n)$ call stack frames.
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Using '<' instead of '<=' breaks stability
+function badMerge(start, mid, end) {
+  // ...
+  while (i <= mid && j <= end) {
+    if (temp[i] < temp[j]) { // BUG: Strict '<' pulls from right when values match
+      nums[curr++] = temp[i++];
+    } else {
+      nums[curr++] = temp[j++];
+    }
+  }
+}
+```
+
+Using `<` causes equal values from the right partition to precede equal values from the left partition, reversing their original relative position and destroying stability.
+
+#### 3.1.8 Complexity Derivation
+- **Time Complexity:** $O(n \log n)$ across best, average, and worst cases. The array is divided $\log_2 n$ times, and each level merges $n$ elements in total.
+- **Auxiliary Space Complexity:** $O(n)$ for the single `temp` buffer, plus $O(\log n)$ recursive call stack depth.
 
 ---
 
-## 5. Problem 2: Kth Largest Element in an Array (Quickselect)
+### 3.2 In-Place QuickSort
 
-### Problem Description
-Given an unsorted integer array `nums` and an integer `k`, return the $k$-th largest element in the array.
-Note: It is the $k$-th largest element in sorted order, not the $k$-th distinct element. You must aim for average $O(n)$ runtime.
+#### 3.2.1 Problem Statement
+Implement an in-place QuickSort algorithm to sort an integer array in ascending order without allocating auxiliary array buffers.
 
-### Step 1: Physical Simulation
-Suppose `nums = [ 3, 2, 1, 5, 6, 4 ]` and `k = 2` (find 2nd largest):
-- The 2nd largest element in a 6-element list is at sorted index `targetIndex = nums.length - k = 6 - 2 = 4`.
-- Pick a pivot (say, `4`).
-- Partition the array around `4`:
-  * All elements $< 4$ go left: `[ 3, 2, 1 ]`
-  * Pivot `4` sits at index `3`.
-  * All elements $> 4$ go right: `[ 5, 6 ]`
-- Inspect pivot index: `3`.
-- Our desired `targetIndex` is `4`.
-- Because `3 < 4`, the target **cannot** exist in the left partition `[ 3, 2, 1 ]`!
-- We completely discard the left half and recurse ONLY on the right half `[ 5, 6 ]`. We cut the search space in half at every step!
+- **Input:** `nums = [9, -3, 5, 2, 6, 8, -6, 1, 3]`
+- **Output:** `[-6, -3, 1, 2, 3, 5, 6, 8, 9]`
+- **Constraints:** Array contains arbitrary duplicate and negative values.
 
-```text
-Step 1: [ 3, 2, 1, 5, 6, 4 ] --> Pivot 4 placed at index 3. Target is index 4.
-        Discard left half [ 3, 2, 1 ]!
-Step 2: Recurse only on right half [ 5, 6 ].
-        Pivot 6 placed at index 5. Target is index 4.
-        Target is left of index 5!
-Step 3: Element at index 4 is 5. Done! Result = 5.
+#### 3.2.2 How to Think About It
+Imagine a shelf of books. You select one book as a separator (the pivot). You inspect books from left to right. Any book smaller than the separator is swapped into the left side of the shelf. Once all books are inspected, you move the separator into the boundary between smaller and larger books. You then repeat the same procedure independently on the books to the left of the separator and the books to the right.
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+Naive QuickSort creates new arrays for smaller and larger values:
+
+```javascript
+function naiveQuickSort(arr) {
+  if (arr.length <= 1) return arr;
+  const pivot = arr[arr.length - 1];
+  const left = [];
+  const right = [];
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (arr[i] <= pivot) left.push(arr[i]);
+    else right.push(arr[i]);
+  }
+  return [...naiveQuickSort(left), pivot, ...naiveQuickSort(right)];
+}
 ```
 
-### Step 2: Brute Force Approach
-Sort the entire array in descending order using Merge Sort or native `.sort()`, then index into `nums[k - 1]`:
+This allocates $O(n)$ arrays across every call frame and spreads arrays using `...`, resulting in high memory churn and losing the key advantage of QuickSort: in-place sorting.
+
+#### 3.2.4 The Pattern Insight
+Use two pointers to swap elements directly inside the original array. Choose a randomized pivot to avoid $O(n^2)$ worst-case performance on already-sorted data. Swap the chosen pivot to the end, partition elements using index pointers, and swap the pivot into its final position.
+
+#### 3.2.5 Pseudocode
+```text
+function quickSort(arr, low, high):
+    if low >= high: return
+    pivotIdx = partition(arr, low, high)
+    quickSort(arr, low, pivotIdx - 1)
+    quickSort(arr, pivotIdx + 1, high)
+
+function partition(arr, low, high):
+    randomIdx = random integer between low and high
+    swap(arr[randomIdx], arr[high])
+    pivot = arr[high]
+    i = low
+    for j from low to high - 1:
+        if arr[j] <= pivot:
+            swap(arr[i], arr[j])
+            i++
+    swap(arr[i], arr[high])
+    return i
+```
+
+#### 3.2.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: In-Place QuickSort with Randomized Pivot Selection
+function safeQuickSort(arr, low = 0, high = arr.length - 1) {
+  if (low >= high) return arr;
+
+  function swap(i, j) {
+    const temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+  }
+
+  function partition(l, r) {
+    // Pick random pivot index to eliminate O(n^2) vulnerability on sorted arrays
+    const randIdx = Math.floor(Math.random() * (r - l + 1)) + l;
+    swap(randIdx, r);
+
+    const pivotVal = arr[r];
+    let i = l;
+
+    for (let j = l; j < r; j++) {
+      if (arr[j] <= pivotVal) {
+        swap(i, j);
+        i++;
+      }
+    }
+
+    swap(i, r);
+    return i;
+  }
+
+  const pivotIdx = partition(low, high);
+
+  // Recurse strictly on boundaries excluding pivotIdx
+  safeQuickSort(arr, low, pivotIdx - 1);
+  safeQuickSort(arr, pivotIdx + 1, high);
+
+  return arr;
+}
+
+const numbers = [9, -3, 5, 2, 6, 8, -6, 1, 3];
+console.log("Original:", numbers);
+console.log("Sorted:", safeQuickSort(numbers));
+```
+
+#### 3.2.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Including pivotIdx in recursive calls
+safeQuickSort(arr, low, pivotIdx);
+safeQuickSort(arr, pivotIdx + 1, high);
+```
+
+Because `pivotIdx` is already in its final sorted position, including it in `safeQuickSort(arr, low, pivotIdx)` causes an infinite recursion loop when `pivotIdx === high`, triggering `RangeError: Maximum call stack size exceeded`.
+
+#### 3.2.8 Complexity Derivation
+- **Time Complexity:**
+  - **Average Case:** $O(n \log n)$ when random pivots divide the array into balanced subproblems.
+  - **Worst Case:** $O(n^2)$ if the pivot consistently ends up being the minimum or maximum element. Randomized pivot selection makes this practically impossible.
+- **Auxiliary Space Complexity:** $O(\log n)$ average call stack memory for recursion frames. $O(1)$ auxiliary heap memory.
+
+---
+
+### 3.3 Kth Largest Element in an Array
+
+#### 3.3.1 Problem Statement
+Given an unsorted integer array `nums` and an integer `k`, return the $k$-th largest element in the array. Note: It is the $k$-th largest element in sorted order, not the $k$-th distinct element.
+
+- **Input:** `nums = [3, 2, 1, 5, 6, 4]`, `k = 2`
+- **Output:** `5`
+- **Constraints:** $1 \le k \le nums.length \le 10^5$, $-10^4 \le nums[i] \le 10^4$.
+
+#### 3.3.2 How to Think About It
+In an array of length 6, the 2nd largest element sits at index `6 - 2 = 4` in ascending sorted order. If you place a benchmark pivot into its correct resting position (say, index 3), you can check: Is our target index 4? Because $3 < 4$, the target index must reside strictly to the right of index 3. You can discard the entire left half of the array without inspecting or sorting it.
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+The naive approach sorts the entire array in descending order and accesses `nums[k - 1]`:
 
 ```javascript
 function findKthLargestNaive(nums, k) {
-  nums.sort((a, b) => b - a); // O(n log n) full sort
+  nums.sort((a, b) => b - a);
   return nums[k - 1];
 }
 ```
 
-### Step 3: Bottleneck
-Sorting the entire array does $O(n \log n)$ work. But we do not care about the order of elements from rank 1 to $k-1$ or elements below $k$! We only need the element sitting precisely at rank $k$. Sorting everything does wasted ordering work.
+Sorting the whole array takes $O(n \log n)$ time. It performs unnecessary work ordering elements from rank 1 to $k-1$ and elements below rank $k$, when only the element at rank $k$ is needed.
 
-### Step 4: The Pattern Discovery
-**Quickselect** (invented by Tony Hoare) uses the Quick Sort partitioning logic. When a pivot is placed at index `pivotIndex`:
-- If `pivotIndex === targetIndex`: We found the exact element! Return it immediately.
-- If `pivotIndex < targetIndex`: The answer lies strictly to the right. Discard the left.
-- If `pivotIndex > targetIndex`: The answer lies strictly to the left. Discard the right.
+#### 3.3.4 The Pattern Insight
+Quickselect adapts QuickSort partitioning. When a partition places a pivot at index `pivotIdx`:
+- If `pivotIdx === targetIndex`: Return `nums[pivotIdx]`.
+- If `pivotIdx < targetIndex`: Search exclusively in the right partition.
+- If `pivotIdx > targetIndex`: Search exclusively in the left partition.
 
-Unlike Quick Sort which recurses on **both** sides ($T(n) = 2T(n/2) + O(n) = O(n \log n)$), Quickselect recurses on **only one** side:
-$$T(n) = T(n/2) + O(n) = n + \frac{n}{2} + \frac{n}{4} + \dots = O(2n) = O(n)$$
-Average time drops from $O(n \log n)$ down to linear $O(n)$!
+Quickselect recurses on only one branch, leading to a geometric series:
+$$T(n) = n + \frac{n}{2} + \frac{n}{4} + \dots = O(2n) = O(n)$$
 
-### Step 5: The Optimal Solution
+#### 3.3.5 Pseudocode
+```text
+function findKthLargest(nums, k):
+    targetIdx = nums.length - k
+    left = 0, right = nums.length - 1
+
+    while left <= right:
+        pivotIdx = partition(nums, left, right)
+        if pivotIdx == targetIdx:
+            return nums[pivotIdx]
+        else if pivotIdx < targetIdx:
+            left = pivotIdx + 1
+        else:
+            right = pivotIdx - 1
+```
+
+#### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal Quickselect with Random Pivot Selection
+// ✅ CORRECT: Optimal Iterative Quickselect with Random Pivot
 function findKthLargest(nums, k) {
-  const targetIndex = nums.length - k; // Index in ascending order
+  const targetIndex = nums.length - k;
 
   function swap(i, j) {
     const temp = nums[i];
@@ -358,14 +502,12 @@ function findKthLargest(nums, k) {
     nums[j] = temp;
   }
 
-  // Lomuto partition scheme with random pivot to prevent O(n^2) worst case
   function partition(left, right) {
-    // Pick random pivot index between left and right to defeat sorted inputs
     const randomPivotIdx = Math.floor(Math.random() * (right - left + 1)) + left;
-    swap(randomPivotIdx, right); // Move pivot to end
+    swap(randomPivotIdx, right);
 
     const pivotVal = nums[right];
-    let i = left; // Boundary for items <= pivot
+    let i = left;
 
     for (let j = left; j < right; j++) {
       if (nums[j] <= pivotVal) {
@@ -374,7 +516,6 @@ function findKthLargest(nums, k) {
       }
     }
 
-    // Place pivot into final position
     swap(i, right);
     return i;
   }
@@ -388,270 +529,89 @@ function findKthLargest(nums, k) {
     if (pivotIdx === targetIndex) {
       return nums[pivotIdx];
     } else if (pivotIdx < targetIndex) {
-      left = pivotIdx + 1; // Narrow search to right half
+      left = pivotIdx + 1;
     } else {
-      right = pivotIdx - 1; // Narrow search to left half
+      right = pivotIdx - 1;
     }
   }
 
   return -1;
 }
 
-// ❌ ANTI-PATTERN: Always picking arr[right] without randomization
-// If input is already sorted, partition splits into (n - 1) and 0 elements!
-// Quickselect degrades from O(n) to worst-case O(n^2).
-
-// Direct test run
-const scores = [3, 2, 1, 5, 6, 4];
-console.log("2nd Largest in [3, 2, 1, 5, 6, 4]:", findKthLargest(scores, 2)); // Expected: 5
-console.log("4th Largest in [3, 2, 3, 1, 2, 4, 5, 5, 6]:", findKthLargest([3, 2, 3, 1, 2, 4, 5, 5, 6], 4)); // Expected: 4
+const scoreList = [3, 2, 1, 5, 6, 4];
+console.log("2nd Largest in [3,2,1,5,6,4]:", findKthLargest(scoreList, 2));
+// Output: 5
+console.log("4th Largest in [3,2,3,1,2,4,5,5,6]:", findKthLargest([3, 2, 3, 1, 2, 4, 5, 5, 6], 4));
+// Output: 4
 ```
 
-#### Complexity Analysis
+#### 3.3.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Fixed pivot on sorted input
+function partitionDeterministic(left, right) {
+  const pivotVal = nums[right]; // Vulnerable to pre-sorted arrays
+  // ...
+}
+```
+
+Without pivot randomization, an input that is already sorted causes the partition to split into sizes $n-1$ and $0$, degrading Quickselect runtime from $O(n)$ to $O(n^2)$.
+
+#### 3.3.8 Complexity Derivation
 - **Time Complexity:**
-  * **Average Case:** $O(n)$ because each step partitions roughly half the remaining elements ($n + n/2 + n/4 + \dots = 2n$).
-  * **Worst Case:** $O(n^2)$ if the pivot chosen is consistently the maximum or minimum element. Random pivot selection makes this probability practically zero ($1/n!$).
-- **Space Complexity:** $O(1)$ auxiliary space because we use an iterative loop (`while (left <= right)`) instead of tail recursion, avoiding call stack frame growth.
+  - **Average Case:** $O(n)$ as partition sizes halve on each iteration: $n + \frac{n}{2} + \frac{n}{4} + \dots \le 2n$.
+  - **Worst Case:** $O(n^2)$ if poor pivots are repeatedly chosen. Randomization makes this probability negligible.
+- **Auxiliary Space Complexity:** $O(1)$ auxiliary space because the search uses an iterative loop (`while (left <= right)`) rather than recursion.
 
 ---
 
-## 6. Under the Hood: V8 & Node.js
+## 4. Tricky Edge Cases
 
-Understanding how sorting algorithms execute inside the V8 JavaScript engine is essential for backend engineering:
-
-```text
-=============================================================================
-                      V8 ENGINE SORTING INTERNALS
-=============================================================================
-
-1. THE EVOLUTION OF Array.prototype.sort():
-   - In Node.js versions prior to v12 (V8 < 7.0), Array.prototype.sort was
-     implemented in JavaScript using Quick Sort (with Insertion Sort for
-     arrays with length <= 10).
-   - Problem: Quick Sort is UNSTABLE. If sorting users by score, two users with
-     identical scores had their relative arrival order scrambled.
-   - Since V8 v7.0+, Node.js uses TIMSORT (written in Torque/C++), a hybrid of
-     Merge Sort and Insertion Sort adapted from Python. Timsort is strictly
-     STABLE and guarantees O(n log n) worst-case time.
-
-2. V8 MEMORY LAYOUT & SMI PACKING:
-   - An array containing contiguous integers (e.g. [1, 2, 3]) is represented as
-     PACKED_SMI_ELEMENTS (Small Integers, 31-bit signed integers stored unboxed).
-   - If a custom sorting function writes undefined or changes types, V8 drops
-     the array to HOLEY_ELEMENTS or PACKED_ELEMENTS, increasing pointer indirection
-     and destroying CPU L1 cache line prefetching.
-
-3. RECURSION CALL STACK LIMIT IN NODE.JS:
-   - Node.js caps the V8 call stack at roughly 10,000 frames (RangeError: Maximum call
-     stack size exceeded).
-   - An unbalanced Quick Sort on a sorted array of 50,000 items without tail-call
-     optimization will crash the process immediately with a call stack overflow.
-   - Merge Sort recursion depth is strictly bounded to ceil(log2(n)). For 10^7 items,
-     depth is only 24 frames—far below the V8 limit.
-=============================================================================
-```
-
-```mermaid
-graph TD
-    A["Raw Array in Node.js"] --> B{"Array Size & Uniformity"}
-    B -->|Small or Partially Sorted| C["Timsort Runs (Insertion Sort)"]
-    B -->|Large Array| D["Timsort Merge Runs (Merge Sort)"]
-    C --> E["Preserves Stability & Cache Locality"]
-    D --> E
-    E --> F["Zero V8 Deoptimizations"]
-```
+- **Identical Elements Everywhere:** When an array consists entirely of duplicate numbers (e.g., `[3, 3, 3, 3]`), two-way partitioning can place all items into one side unless comparison operators (`<=` vs `<`) and pointer advancement are strictly managed.
+- **Presorted and Reverse-Sorted Arrays:** Fixed pivot selection (`arr[0]` or `arr[high]`) turns Quick Sort into an $O(n^2)$ algorithm. Always randomize pivot selection or use median-of-three.
+- **Stability Breakdown on Objects:** In Merge Sort, using strict `<` in `temp[i] < temp[j]` causes equal values from the right half to jump ahead of equal values from the left half, reversing their original order. Always use `<=`.
+- **Call Stack Limits in Node.js:** The V8 call stack limit is approximately 10,000 frames. An unbalanced QuickSort on a sorted array of 20,000 items crashes with `RangeError: Maximum call stack size exceeded`. Merge Sort never exceeds $\lceil \log_2 n \rceil$ depth (at most 24 frames for $10^7$ items).
 
 ---
 
-## 7. Hands-On Exercise
+## 5. Summary Cheat Sheet
 
-### The Broken Quick Sort Partition Bug
-A candidate wrote the following Quick Sort implementation for a Node.js microservice. However, when run on arrays containing duplicate numbers (e.g., `[3, 3, 3, 3]`), it triggers an infinite recursive loop and crashes the server with `RangeError: Maximum call stack size exceeded`.
-
-### The Buggy Code
-```javascript
-function buggyQuickSort(arr, low = 0, high = arr.length - 1) {
-  if (low < high) {
-    const pivot = arr[high];
-    let i = low - 1;
-
-    for (let j = low; j < high; j++) {
-      // BUG: Using '<' instead of '<=' causes improper partitioning
-      // when multiple elements match the pivot value exactly!
-      if (arr[j] < pivot) {
-        i++;
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-    [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
-    const pivotIndex = i + 1;
-
-    // Further bug: If pivotIndex does not advance, infinite recursion occurs
-    buggyQuickSort(arr, low, pivotIndex);
-    buggyQuickSort(arr, pivotIndex + 1, high);
-  }
-  return arr;
-}
-```
-
-### The Fix and Direct Verification
-To fix the implementation:
-1. Ensure the recursive bounds exclude the pivot that is already in place: recurse on `(low, pivotIndex - 1)` and `(pivotIndex + 1, high)`.
-2. Properly partition identical elements using standard Lomuto or Hoare bounds.
-
-```javascript
-// ✅ REPAIRED: Production-Safe Quick Sort with Bounds Isolation
-function safeQuickSort(arr, low = 0, high = arr.length - 1) {
-  if (low >= high) return arr;
-
-  // Lomuto partition with pivot placed in final position
-  function partition(l, r) {
-    const pivot = arr[r];
-    let i = l;
-
-    for (let j = l; j < r; j++) {
-      if (arr[j] <= pivot) {
-        const temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-        i++;
-      }
-    }
-
-    const temp = arr[i];
-    arr[i] = arr[r];
-    arr[r] = temp;
-    return i;
-  }
-
-  const pivotIdx = partition(low, high);
-
-  // CRITICAL: Exclude pivotIdx because arr[pivotIdx] is ALREADY at its final resting place!
-  safeQuickSort(arr, low, pivotIdx - 1);
-  safeQuickSort(arr, pivotIdx + 1, high);
-
-  return arr;
-}
-
-// Direct test verification
-const duplicateTest = [3, 3, 3, 3, 1, 2, 3];
-console.log("Repaired Quick Sort with Duplicates:", safeQuickSort(duplicateTest));
-const randomTest = [9, -3, 5, 2, 6, 8, -6, 1, 3];
-console.log("Repaired Quick Sort with Negatives:", safeQuickSort(randomTest));
-```
+- **Merge Sort** divides first (at the midpoint) and does all sorting work during the combine phase. It guarantees $O(n \log n)$ time and stability at the cost of $O(n)$ auxiliary memory.
+- **Quick Sort** does all sorting work upfront during partitioning and combines trivially. It runs in-place with $O(\log n)$ average call stack memory.
+- **Quickselect** prunes one partition branch at each step to find the $K$-th order statistic in $O(n)$ average time and $O(1)$ space.
+- **Timsort** is the engine algorithm behind Node.js's native `Array.prototype.sort()`. It combines Merge Sort and Insertion Sort to provide stable, $O(n \log n)$ worst-case sorting.
+- **Pivot Randomization** prevents $O(n^2)$ degeneration on already-sorted or reverse-sorted data.
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 6. Practice Problems
 
-### 1. The Stability Trap in Merge Sort
-When merging two sorted arrays in Merge Sort, comparing elements with `left[i] < right[j]` instead of `left[i] <= right[j]` destroys stability. If both halves contain identical keys (e.g., `{ id: 10, value: 'A' }` and `{ id: 10, value: 'B' }`), the strict `<` branches to `right[j]`, placing `B` before `A` and reversing their original relative position. Always use `<=` to preserve stability.
+### 6.1 Sort Colors
 
-### 2. Worst-Case Quick Sort Quadratic Collapse
-If the pivot is naively selected as the first or last element, already-sorted or reverse-sorted arrays produce zero reduction:
-```text
-Unsorted array [ 1, 2, 3, 4, 5 ]:
-Pivot = 5 -> Left: [ 1, 2, 3, 4 ], Right: []
-Pivot = 4 -> Left: [ 1, 2, 3 ],    Right: []
-Recurrence: T(n) = T(n - 1) + O(n) = O(n^2)!
-```
-Always use **Randomized Pivot Selection** or **Median-of-Three** (comparing `arr[low]`, `arr[mid]`, and `arr[high]`) to guarantee $O(n \log n)$ performance in real-world systems.
+- **Input:** `nums = [2, 0, 2, 1, 1, 0]`
+- **Output:** `[0, 0, 1, 1, 2, 2]`
+- **Constraint:** Sort the array in-place in a single pass ($O(n)$ time and $O(1)$ space) without calling built-in sort methods.
+- **Hint 1:** This is the Dutch National Flag problem. Use three pointers: `low`, `mid`, and `high`.
+- **Hint 2:** `mid` scans the array. If `nums[mid] === 0`, swap with `low` and advance both. If `nums[mid] === 2`, swap with `high` and decrement `high` without advancing `mid`.
+- **Hint 3:** If `nums[mid] === 1`, simply advance `mid`.
 
-### 3. Space Complexity Misconceptions
-Candidates often claim Quick Sort has $O(1)$ space complexity. While Quick Sort sorts in-place without allocating auxiliary arrays, its **recursion call stack** occupies memory. In the best/average case, the call stack reaches $O(\log n)$ depth; in the worst case, it expands to $O(n)$ depth.
+### 6.2 Top K Frequent Elements
 
-### 4. Handling 3-Way Partitioning (Dutch National Flag)
-When sorting arrays with high frequencies of duplicate elements (e.g. `[ 2, 0, 2, 1, 1, 0 ]`), 2-way partitioning still divides the array into subproblems that re-examine identical values. **3-Way Quick Sort** partitions the array into three sections: `< pivot`, `== pivot`, and `> pivot`. All elements equal to the pivot are finalized in a single pass, dropping runtime from $O(n \log n)$ to $O(n)$ on duplicate-heavy data.
+- **Input:** `nums = [1, 1, 1, 2, 2, 3]`, `k = 2`
+- **Output:** `[1, 2]`
+- **Constraint:** Better than $O(n \log n)$ time complexity.
+- **Hint 1:** Count frequencies into a `Map`.
+- **Hint 2:** Convert unique keys into an array and use Quickselect based on frequency values instead of sorting all elements.
+- **Hint 3:** The top $k$ frequent elements will sit in the right partition after Quickselect finds the $(N - k)$-th index.
 
----
+### 6.3 Merge Intervals
 
-## 9. Comprehensive Summary
-
-```text
-=============================================================================
-                    MERGE SORT vs. QUICK SORT SUMMARY
-=============================================================================
-
-DIMENSION           MERGE SORT                      QUICK SORT
------------------------------------------------------------------------------
-Paradigm            Divide & Conquer (Split & Merge)Divide & Conquer (Partition)
-Best Time           O(n log n)                      O(n log n)
-Average Time        O(n log n)                      O(n log n)
-Worst Time          O(n log n) (Guaranteed)         O(n^2) (Poor pivot choice)
-Auxiliary Space     O(n) auxiliary buffer           O(1) auxiliary (O(log n) stack)
-Stability           STABLE (preserves order)        UNSTABLE (in-place swaps)
-Memory Access       High auxiliary allocations      Cache-friendly sequential scans
-Best Used For       Linked lists, external sorting, In-memory sorting, Kth rank
-                    guaranteed SLA constraints      selection (Quickselect)
-=============================================================================
-```
-
-- **Merge Sort** divides first (blindly halving at the midpoint) and does all sorting work during the combine phase (merging two sorted halves with two pointers).
-- **Quick Sort** does all sorting work upfront during the divide phase (partitioning around a chosen pivot) and requires zero combine work.
-- **Quickselect** adapts Quick Sort to find the $K$-th order statistic in $O(n)$ average time by pruning recursion to only one half of the partition.
-
----
-
-## 10. Cheat Sheet
-
-### Decision Matrix: Which Algorithm to Choose?
-
-| Scenario / Interview Goal | Preferred Algorithm | Rationale |
-| :--- | :--- | :--- |
-| Guaranteed worst-case $O(n \log n)$ required | **Merge Sort** | Immune to adversarial inputs; never degrades to $O(n^2)$. |
-| Stable sort required (objects with composite keys) | **Merge Sort** | `<=` comparison preserves original order of identical values. |
-| Strict memory constraints ($O(1)$ auxiliary memory) | **Quick Sort** | Partitions directly inside the existing array buffer. |
-| Find $K$-th largest or smallest element | **Quickselect** | $O(n)$ average time; avoids wasteful $O(n \log n)$ full sort. |
-| Sorting singly linked lists | **Merge Sort** | $O(1)$ extra space for linked lists (re-linking pointers without copies). |
-
-### Common Pitfalls Checklist
-- [ ] **Allocating slices recursively:** Avoid `arr.slice()` in Merge Sort; pass indices and use a single pre-allocated scratch buffer.
-- [ ] **Unrandomized pivot:** Never pick `arr[0]` or `arr[high]` blindly in Quick Sort/Quickselect without random swapping.
-- [ ] **Infinite loop on duplicates:** Ensure the pivot is excluded from both recursive branches (`pivotIndex - 1` and `pivotIndex + 1`).
-- [ ] **Loss of stability:** Ensure the merge condition uses `<=` rather than `<`.
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Senior Pitch
-> *"When choosing between Merge Sort and Quick Sort for backend engineering, the primary trade-off is predictability and stability versus cache locality and memory footprint. Merge Sort provides a strict $O(n \log n)$ worst-case guarantee and preserves relative order (stability), but demands $O(n)$ auxiliary memory for merge buffers. Quick Sort operates in-place with $O(1)$ auxiliary space and delivers exceptional L1/L2 cache locality, but carries a theoretical $O(n^2)$ worst-case risk that must be mitigated via randomized or median-of-three pivot selection. For order statistics like the $K$-th largest item, we leverage Quickselect to prune one partition branch, achieving linear $O(n)$ average time."*
-
-### Deep Interview Questions
-
-#### Q1: Why does Quick Sort run faster than Merge Sort in practice despite both having $O(n \log n)$ average time?
-**Answer:** Quick Sort exhibits superior **spatial locality of reference**. The inner loop of Quick Sort performs sequential linear scans over contiguous memory blocks, keeping data pinned inside CPU L1 and L2 caches. Furthermore, Quick Sort sorts in-place with minimal pointer manipulation. Merge Sort, by contrast, must copy elements out of the main array into an auxiliary buffer and copy them back, doubling memory bus bandwidth consumption and triggering potential V8 memory allocations.
-
-#### Q2: Why is Merge Sort preferred for Linked Lists, while Quick Sort is preferred for Arrays?
-**Answer:** In a linked list, inserting or merging nodes only requires re-pointing `.next` pointers—it takes $O(1)$ auxiliary space without needing temporary array buffers. Furthermore, linked lists do not support random access ($O(1)$ indexing), making Quick Sort's partition step inefficient ($O(n)$ pointer walks to find indices). For arrays, contiguous RAM grants instant $O(1)$ indexing and CPU cache prefetching, which favors Quick Sort's partition mechanics.
-
-#### Q3: How does V8 handle sorting under the hood in modern Node.js?
-**Answer:** Since V8 v7.0 (Node.js 12+), `Array.prototype.sort()` uses **Timsort**, an algorithm originally designed by Tim Peters for Python. Timsort is an adaptive, stable hybrid sort that identifies already-sorted segments ("runs") in the data. For small runs ($\le 32$ items), it applies Insertion Sort (which has very low overhead and optimal cache performance). For larger datasets, it merges these runs using a balanced Merge Sort strategy with a temporary buffer. This guarantees $O(n \log n)$ worst-case time, $O(n)$ best-case time on already-sorted arrays, and strict stability.
-
-#### Q4: How would you protect a Node.js backend from a "Quick Sort Denial-of-Service" attack?
-**Answer:** If a public API endpoint accepts an array from an untrusted client and sorts it using a naive Quick Sort that always picks the first element as the pivot, an attacker can intentionally transmit an already-sorted array. This forces $O(n^2)$ worst-case comparisons, consuming $100\%$ CPU and blocking the single-threaded Node.js event loop for all users. We protect the system by:
-1. Using Node.js's native `Array.prototype.sort()` (Timsort), which detects presorted runs in $O(n)$ time.
-2. If writing a custom partitioner, enforcing **randomized pivot selection** or **median-of-three**, preventing deterministic worst-case exploitation.
-
----
-
-## 12. Practice Problems
-
-### Problem 1: Sort Colors (Dutch National Flag)
-- **Input:** `nums = [ 2, 0, 2, 1, 1, 0 ]`
-- **Output:** `[ 0, 0, 1, 1, 2, 2 ]`
-- **Challenge:** Sort the array in-place in a single pass ($O(n)$ time and $O(1)$ space) using 3-way partitioning without calling any library sort.
-
-### Problem 2: Count of Smaller Numbers After Self
-- **Input:** `nums = [ 5, 2, 6, 1 ]`
-- **Output:** `[ 2, 1, 1, 0 ]`
-- **Explanation:** To the right of 5 there are 2 smaller elements (2 and 1). To the right of 2 there is 1 smaller element (1). To the right of 6 there is 1 smaller element (1). To the right of 1 there is 0 smaller elements.
-- **Challenge:** Solve in $O(n \log n)$ time by embedding count tracking inside Merge Sort's zip phase.
-
-### Problem 3: Top K Frequent Elements
-- **Input:** `nums = [ 1, 1, 1, 2, 2, 3 ]`, `k = 2`
-- **Output:** `[ 1, 2 ]`
-- **Challenge:** Build a frequency map and use Quickselect on the frequency pairs to solve in $O(n)$ average time instead of $O(n \log n)$ full sorting.
+- **Input:** `intervals = [[1, 3], [2, 6], [8, 10], [15, 18]]`
+- **Output:** `[[1, 6], [8, 10], [15, 18]]`
+- **Constraint:** $1 \le intervals.length \le 10^4$.
+- **Hint 1:** Sort intervals by start time using an $O(n \log n)$ sort.
+- **Hint 2:** Iterate through the sorted intervals. If the current interval's start is $\le$ the previous interval's end, merge them by taking the maximum end time.
+- **Hint 3:** Otherwise, push the current interval to your result array.
 
 ---
 

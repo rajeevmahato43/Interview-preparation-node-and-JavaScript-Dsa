@@ -6,147 +6,249 @@
 
 </nav>
 
-## Prerequisites
+## 1. Subsets, Permutations & Combinations Core Concepts
 
-- [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Asymptotic analysis of $O(2^n)$ and $O(n!)$.
-- [Day 20: Recursion Trees & Backtracking](day-20-recursion-trees-and-backtracking-core.md) — The Choose, Explore, Unchoose (`path.pop()`) lifecycle.
+Almost every combinatorial search question maps directly onto one of three core mathematical structures: Subsets, Combinations, or Permutations. Recognizing how they differ structurally dictates your recursion loop boundaries and visited-state tracking.
 
----
+- **Subset (Power Set):** Any selection of elements from a set, of any length from $0$ to $n$. Order does not matter (`[1, 2]` is the same subset as `[2, 1]`). Total count: $2^n$.
+- **Combination ($n$ choose $k$):** A selection of exactly $k$ items from a collection of $n$ items where order does not matter. Total count: $\binom{n}{k} = \frac{n!}{k!(n - k)!}$.
+- **Permutation:** An arrangement of all $n$ items in a specific sequential order. Order does matter (`[1, 2, 3]` is distinct from `[3, 2, 1]`). Total count: $n!$.
 
-## 1. What are Subsets, Permutations & Combinations?
-
-Almost every combinatorial search question asked in mid-to-senior technical interviews maps directly onto one of three core mathematical structures: **Subsets**, **Combinations**, or **Permutations**. Understanding how they differ conceptually and structurally dictates your loop boundaries and visited states.
-
-> **Subset (Power Set)** — Any selection of elements from a set, of any length from $0$ to $n$. Order does NOT matter (`[1, 2]` is the same as `[2, 1]`). Total count: $2^n$.
-
-> **Combination ($n$ choose $k$)** — A selection of exactly $k$ items from a collection of $n$ items where order does NOT matter. Total count: $\binom{n}{k} = \frac{n!}{k!(n - k)!}$.
-
-> **Permutation** — An arrangement of all $n$ items in a specific sequential order. Order DOES matter (`[1, 2, 3]` is distinct from `[3, 2, 1]`). Total count: $n!$.
-
-### Physical Analogies: Pizza, Committee, and Olympic Podium
-
-```text
-=============================================================================
-                    THE THREE COMBINATORIAL ARCHETYPES
-=============================================================================
-
-1. SUBSETS (Pizza Toppings):
-   - You have 3 toppings available: [ Olives, Mushrooms, Peppers ].
-   - For every topping, you have a binary choice: Put it on the pizza, or don't.
-   - Outcome: 2^3 = 8 pizzas (from Plain Cheese [] to The Works [O, M, P]).
-   - Length varies from 0 to n. Order does not matter.
-
-2. COMBINATIONS (Hiring an Interview Committee):
-   - You have 5 senior engineers and must choose exactly 3 for an interview panel.
-   - Panel {Alice, Bob, Charlie} is identical to {Charlie, Alice, Bob}.
-   - Outcome: 5! / (3! * 2!) = 10 unique committees.
-   - Fixed length k. Order does not matter.
-
-3. PERMUTATIONS (Olympic 100m Medal Podium):
-   - 3 runners finish the race: [ Alice, Bob, Charlie ].
-   - Alice winning Gold and Bob winning Silver is completely different from
-     Bob winning Gold and Alice winning Silver!
-   - Outcome: 3! = 6 distinct podium arrangements.
-   - Always length n. Every element must be used. Order MATTERS.
-=============================================================================
-```
-
-```mermaid
-graph TD
-    Root["Input: [1, 2, 3]"]
-    Root --> Subsets["Subsets (Power Set): 2^N = 8<br>[], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]"]
-    Root --> Combinations["Combinations (Choose 2): 3<br>[1, 2], [1, 3], [2, 3]"]
-    Root --> Permutations["Permutations (Order Matters): N! = 6<br>[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1]"]
-```
-
----
-
-## 2. How the 3 Archetypes Work Step-by-Step
-
-Understanding the structural differences between these three patterns reveals the exact algorithmic mechanics of their recursion loops:
-
-```text
-=============================================================================
-                    STRUCTURAL MECHANICS COMPARISON
-=============================================================================
-
-ARCHETYPE       LOOP START          STATE TRACKING          SNAPSHOT TRIGGER
------------------------------------------------------------------------------
-Subsets         i = startIndex      Index increments (i+1)  EVERY state visited
-Combinations    i = startIndex      Index increments (i+1)  When path.length === k
-Permutations    i = 0 (Every time!) used[i] boolean array   When path.length === n
-=============================================================================
-```
-
-### 2.1 The Decision Tree for Subsets vs Permutations
-
-```text
-SUBSETS of [1, 2]:
-                         []
-                    /          \
-                [1]              [2]
-               /
-            [1, 2]
-Every node is a valid subset: [], [1], [1, 2], [2].
-Notice: We only move FORWARD (start index advances). We never look back at 1 from 2!
-
-PERMUTATIONS of [1, 2]:
-                         []
-                    /          \
-                 [1]            [2]
-                  |              |
-                [1, 2]         [2, 1]
-Only LEAF nodes are valid permutations: [1, 2], [2, 1].
-Notice: At the root, we can choose 1 OR 2.
-From [2], we look back and choose 1 (because 1 was not yet used).
-```
-
----
-
-## 3. Pattern Recognition of Combinatorial Generation
-
-### How to Spot These Patterns in Interviews
-
-| Problem Statement Signal | Constraint Scale | Mathematical Complexity | Required Strategy |
-| :--- | :--- | :--- | :--- |
-| "Return all subsets / power set" | $N \le 15$ to $20$ | $O(N \cdot 2^N)$ | **Backtracking with `startIndex`** or **Bitmask** |
-| "Subsets may contain duplicates, output must be unique" | $N \le 15$ | $O(N \cdot 2^N)$ | **Sort + Skip duplicates (`i > startIndex`)** |
-| "Choose $K$ elements from $N$" | $K \le N \le 20$ | $O(K \cdot \binom{N}{K})$ | **Backtracking with early cutoff** ($n - i < k - \text{len}$) |
-| "Return all possible arrangements / orders" | $N \le 10$ to $12$ | $O(N \cdot N!)$ | **Backtracking with `used` array** |
-| "Array contains duplicates; return unique permutations" | $N \le 10$ | $O(N \cdot N!)$ | **Sort + Sibling skip (`!used[i - 1]`)** |
-
----
-
-## 4. Problem 1: Subsets II (Handling Duplicates)
-
-### Problem Description
-Given an integer array `nums` that may contain duplicate elements, return all possible **unique subsets** (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.
-
-### Step 1: Physical Simulation
-Suppose `nums = [ 1, 2, 2 ]`:
-- If we naively generated subsets:
-  * From the first `2`: `[1, 2]`, `[2]`
-  * From the second `2`: `[1, 2]`, `[2]` (Identical duplicates!)
-- Sort `nums` first: `[ 1, 2, 2 ]`.
-- Start with `[]` $\to$ add to result.
-- Level 1:
-  * Choose index 0 (`1`): `path = [1]` $\to$ add.
-    - Level 2:
-      * Choose index 1 (`2`): `path = [1, 2]` $\to$ add.
-        - Level 3:
-          * Choose index 2 (`2`): `path = [1, 2, 2]` $\to$ add.
-      * Look at index 2 (`2`): It matches index 1 (`2`), and it is at the **same level**! **Skip it!**
-  * Choose index 1 (`2`): `path = [2]` $\to$ add.
-    - Level 2:
-      * Choose index 2 (`2`): `path = [2, 2]` $\to$ add.
-  * Look at index 2 (`2`): Matches index 1, same level $\to$ **Skip it!**
-- Final Unique Subsets: `[], [1], [1, 2], [1, 2, 2], [2], [2, 2]`. Total: 6 (instead of 8).
-
-### Step 2: Brute Force Approach
-Generate all $2^n$ subsets without deduplication, sort each subset, stringify it, and insert it into a JavaScript `Set`:
+Consider these physical analogies:
+1. **Subsets (Pizza Toppings):** You have 3 toppings: Olives, Mushrooms, Peppers. For each topping, you have a binary choice: put it on the pizza, or do not. You can make $2^3 = 8$ distinct pizzas, ranging from plain cheese `[]` to the works `[O, M, P]`. Length varies from $0$ to $n$, and topping order does not matter.
+2. **Combinations (Hiring a Committee):** You have 5 engineers and must choose exactly 3 for an interview panel. A committee of {Alice, Bob, Charlie} is identical to {Charlie, Alice, Bob}. The length is fixed at $k = 3$, and order does not matter.
+3. **Permutations (Olympic Podium):** Three runners finish a race: Alice, Bob, Charlie. Alice winning Gold and Bob winning Silver is completely different from Bob winning Gold and Alice winning Silver. Every element is used, length is fixed at $n$, and ordering matters.
 
 ```javascript
-// Naive approach: String serialization with Set deduplication
+// Baseline demonstration of Subsets using startIndex
+function generatePowerSet(nums) {
+  const result = [];
+  const currentPath = [];
+
+  function backtrack(startIndex) {
+    // Every node in the decision tree represents a valid subset
+    result.push([...currentPath]);
+
+    for (let i = startIndex; i < nums.length; i++) {
+      currentPath.push(nums[i]);      // CHOOSE
+      backtrack(i + 1);               // EXPLORE (move forward)
+      currentPath.pop();              // UNCHOOSE
+    }
+  }
+
+  backtrack(0);
+  return result;
+}
+
+console.log("Subsets of [1, 2]:", generatePowerSet([1, 2]));
+// Output: [ [], [ 1 ], [ 1, 2 ], [ 2 ] ]
+```
+
+### 1.1 Structural Mechanics Comparison
+
+Understanding the structural differences reveals the loop mechanics for each archetype:
+
+```text
+=============================================================================
+               STRUCTURAL MECHANICS COMPARISON
+=============================================================================
+DIMENSION           SUBSETS                 COMBINATIONS            PERMUTATIONS
+-----------------------------------------------------------------------------
+Formula             2^n                     n! / (k!(n-k)!)         n!
+Order matters?      No                      No                      Yes! ([1,2] != [2,1])
+Target length       0 to n (all nodes)      Fixed k                 Fixed n (leaves only)
+Loop start          for (i = start; ...)    for (i = start; ...)    for (i = 0; ...)
+Used tracking       startIndex increments   startIndex increments   used[i] boolean array
+Duplicate pruning   i > start && n[i]==n[i-1]i > start && n[i]==n[i-1]n[i]==n[i-1] && !used[i-1]
+=============================================================================
+```
+
+- **Subsets collect every node in the recursion tree**, because every prefix represents a valid subset.
+- **Combinations and Permutations collect only leaf nodes** that satisfy the target length requirement.
+
+> [!NOTE]
+> Why does Subsets save `[...currentPath]` unconditionally at the top of the function, while Permutations checks `currentPath.length === nums.length`? Because an empty set or a 1-element prefix is a valid subset, but not a complete permutation.
+
+### 1.2 The Duplicate Handling Invariants
+
+When inputs contain duplicate values (e.g., `[1, 2, 2]`), sorting the array upfront is mandatory so duplicates are placed adjacent to each other.
+
+- For **Subsets and Combinations**, loop starting at `startIndex`:
+  ```javascript
+  if (i > startIndex && nums[i] === nums[i - 1]) continue;
+  ```
+  `i > startIndex` ensures we permit identical elements vertically down the same branch (`[2, 2]`), but skip identical choices horizontally across sibling branches.
+- For **Permutations**, loop starting at index `0`:
+  ```javascript
+  if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) continue;
+  ```
+  `!used[i - 1]` ensures identical numbers are chosen strictly in left-to-right order. If `used[i - 1]` is false, it means the earlier duplicate was already explored and popped; picking `nums[i]` now would duplicate that branch.
+
+### 1.3 Operations Reference Table
+
+| Archetype | State Buffer | Result Condition | Loop Initialization | Duplicate Pruning Condition |
+| :--- | :--- | :--- | :--- | :--- |
+| **Subsets I** | Array `path` | Every node: `push([...path])` | `let i = startIndex` | None (distinct input) |
+| **Subsets II** | Array `path` | Every node: `push([...path])` | `let i = startIndex` | `i > startIndex && nums[i] === nums[i - 1]` |
+| **Combinations** | Array `path` | `path.length === k` | `let i = startIndex` | `i > startIndex && nums[i] === nums[i - 1]` |
+| **Permutations I** | Array `path` | `path.length === nums.length` | `let i = 0` with `used[i]` | None (distinct input) |
+| **Permutations II**| Array `path` | `path.length === nums.length` | `let i = 0` with `used[i]` | `nums[i] === nums[i - 1] && !used[i - 1]` |
+
+---
+
+## 2. Combinatorial Patterns
+
+### 2.1 Pattern Family
+
+Combinatorial problems partition into three structural families:
+
+- **Monotonic Forward Stepping (Subsets & Combinations):** We enforce an ascending index order `i + 1`. Because elements cannot be chosen behind our current index, order permutations are naturally impossible.
+- **Full Positional Assignment with Visited Array (Permutations):** Every call frame loops from `0` to $N - 1$. An external boolean array `used[i]` tracks which elements are already assigned in the current permutation.
+- **Bitmask Generation (Non-recursive Power Set):** For inputs where $N \le 30$, each integer from $0$ to $2^N - 1$ represents a unique binary mask indicating element inclusion.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Keyword Signal | Underlying Mathematical Need | Recommended Approach |
+| :--- | :--- | :--- |
+| "Return all possible subsets (power set)" | Collect all prefix states | Subsets backtracking (`startIndex`) |
+| "Contains duplicates, return unique subsets" | Sibling horizontal deduplication | Sort + `i > startIndex && nums[i] === nums[i - 1]` |
+| "Return all possible permutations" | Order matters, use each item once | Permutations backtracking (`used` array) |
+| "Permutations of array with duplicate numbers" | Order matters with identical values | Sort + `used` array + `!used[i - 1]` |
+| "Combinations of $k$ numbers chosen from $1 \dots n$" | Fixed length subset generation | Combinations with loop bound pruning |
+
+### 2.3 When to Use vs When NOT to Use
+
+- **Use Combinatorial Backtracking when:**
+  - You must generate every valid subset, combination, or permutation.
+  - The input size is small ($N \le 20$ for subsets, $N \le 11$ for permutations).
+  - You need output in sorted or lexicographical order.
+- **When NOT to use Combinatorial Backtracking:**
+  - The question only asks for the **number of combinations** ($\binom{n}{k}$) or **number of permutations** ($n!$). Compute with math or dynamic programming in $O(n)$ or $O(n \cdot k)$ time.
+  - Input size $N > 25$. $2^{25} \approx 3.3 \times 10^7$ arrays will exhaust memory or exceed execution time budgets.
+
+### 2.4 The 10^7 Operations Rule
+
+Combinatorial algorithms hit exponential growth rapidly:
+- $N = 10 \implies 2^{10} = 1,024$ subsets, $10! \approx 3.6 \times 10^6$ permutations (under 50ms in Node.js).
+- $N = 12 \implies 12! = 479,001,600$ permutations (over 5 seconds, will block the event loop).
+- $N = 20 \implies 2^{20} \approx 1,048,576$ subsets (around 50ms).
+
+For permutations, ensure $N \le 10$. For subsets, ensure $N \le 20$.
+
+---
+
+## 3. Problem Walkthroughs
+
+### 3.1 Subsets
+
+#### 3.1.1 Problem Statement
+Given an integer array `nums` of unique elements, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.
+
+- **Input:** `nums = [1, 2, 3]`
+- **Output:** `[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]`
+- **Constraints:** $1 \le nums.length \le 10$, all elements are distinct.
+
+#### 3.1.2 How to Think About It
+Imagine a row of 3 light switches labeled 1, 2, and 3. You start with all switches OFF: `[]`. You can flip switch 1 ON: `[1]`. From there, you can also flip switch 2 ON: `[1, 2]`. Then switch 3 ON: `[1, 2, 3]`. You flip switch 3 back OFF, then flip switch 2 back OFF, and explore turning switch 3 ON instead: `[1, 3]`. Every unique combination of switch settings represents a valid subset.
+
+#### 3.1.3 Brute Force Approach & Bottleneck
+The naive approach generates subsets by string concatenation or copying arrays without index discipline:
+
+```javascript
+function naiveSubsets(nums) {
+  let subsets = [[]];
+  for (const num of nums) {
+    const nextSubsets = [];
+    for (const sub of subsets) {
+      nextSubsets.push([...sub, num]);
+    }
+    subsets = subsets.concat(nextSubsets);
+  }
+  return subsets;
+}
+```
+
+While iterative addition is valid for distinct numbers, it creates duplicate subsets if duplicates exist, and allocates intermediate arrays continuously.
+
+#### 3.1.4 The Pattern Insight
+Use a single array buffer `currentPath`. In a recursive helper, unconditionally save a copy `result.push([...currentPath])`. Loop through indices from `startIndex` to `nums.length - 1`, push `nums[i]`, recurse with `i + 1`, and pop `nums[i]`. This traverses the decision tree cleanly in $O(n \cdot 2^n)$ time.
+
+#### 3.1.5 Pseudocode
+```text
+function subsets(nums):
+    result = []
+    currentPath = []
+
+    function backtrack(startIndex):
+        result.push(copy of currentPath)
+
+        for i from startIndex to nums.length - 1:
+            currentPath.push(nums[i])
+            backtrack(i + 1)
+            currentPath.pop()
+
+    backtrack(0)
+    return result
+```
+
+#### 3.1.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal Subsets Backtracking
+function subsets(nums) {
+  const result = [];
+  const currentPath = [];
+
+  function backtrack(startIndex) {
+    // Unconditionally capture current prefix snapshot
+    result.push([...currentPath]);
+
+    for (let i = startIndex; i < nums.length; i++) {
+      currentPath.push(nums[i]); // CHOOSE
+      backtrack(i + 1);          // EXPLORE (move forward)
+      currentPath.pop();         // UNCHOOSE (backtrack)
+    }
+  }
+
+  backtrack(0);
+  return result;
+}
+
+console.log("Subsets of [1, 2, 3]:", subsets([1, 2, 3]));
+// Output length: 8 subsets
+```
+
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Saving mutable reference
+result.push(currentPath); // Fails! Every entry in result will end up empty []
+```
+
+Because `currentPath` is modified in-place and emptied by subsequent `pop()` operations, saving the array reference directly results in an output containing only empty arrays. Always spread: `[...currentPath]`.
+
+#### 3.1.8 Complexity Derivation
+- **Time Complexity:** $O(n \cdot 2^n)$. There are $2^n$ subsets in total. Copying each subset of average length $n/2$ into the result array takes $O(n)$ time.
+- **Auxiliary Space Complexity:** $O(n)$ for the recursion call stack and `currentPath` buffer.
+
+---
+
+### 3.2 Subsets II
+
+#### 3.2.1 Problem Statement
+Given an integer array `nums` that may contain duplicates, return all possible unique subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.
+
+- **Input:** `nums = [1, 2, 2]`
+- **Output:** `[[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]`
+- **Constraints:** $1 \le nums.length \le 10$, $-10 \le nums[i] \le 10$.
+
+#### 3.2.2 How to Think About It
+Suppose you have three coins: one dime and two identical pennies. If you choose the dime and the first penny, you hold {dime, penny}. If your friend instead chooses the dime and the second penny, they also hold {dime, penny}. These are identical subsets. To avoid duplicates, you decide: if you have two identical pennies sitting on the table, you may only pick the second penny if you have already picked the first penny.
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+Generate all $2^n$ subsets naively, sort each subset, convert each subset to a string (`"1,2"`), and insert into a `Set`:
+
+```javascript
 function subsetsWithDupNaive(nums) {
   const result = [];
   const seen = new Set();
@@ -158,81 +260,71 @@ function subsetsWithDupNaive(nums) {
       seen.add(key);
       result.push([...path]);
     }
-
     for (let i = start; i < nums.length; i++) {
       path.push(nums[i]);
       backtrack(i + 1, path);
       path.pop();
     }
   }
-
   backtrack(0, []);
   return result;
 }
 ```
 
-### Step 3: Bottleneck
-The naive approach still traverses all $2^n$ recursive branches, computing string hashes and inserting into a `Set` for each branch. For $N = 20$, $2^{20} = 1,048,576$ strings are allocated and hashed on the V8 heap. If half are duplicates, over 500,000 subtrees were explored fruitlessly, creating severe garbage collection pressure.
+The bottleneck is memory churn and wasted traversal. The algorithm still explores all $2^n$ recursive branches, generating strings and computing hash collisions for redundant paths.
 
-### Step 4: The Pattern Discovery
-Sort `nums` upfront. In our recursive loop:
-```javascript
-for (let i = startIndex; i < nums.length; i++) {
-  // If this element equals the previous one, and we are NOT at the start of this level:
-  if (i > startIndex && nums[i] === nums[i - 1]) {
-    continue; // Sibling branch duplicate! Prune!
-  }
-}
-```
-**Why `i > startIndex` and not `i > 0`?**
-- When `i === startIndex`, we are going **deeper** (parent-child relationship). Picking the second `2` after picking the first `2` forms `[2, 2]`, which is completely valid!
-- When `i > startIndex`, we are at the **same horizontal decision level** (sibling branches). Picking the second `2` after already having tested an identical branch starting with the first `2` creates redundant subsets.
+#### 3.2.4 The Pattern Insight
+1. Sort `nums` ascending upfront so duplicate numbers are adjacent.
+2. In the loop, skip identical items at the same horizontal tree level:
+   ```javascript
+   if (i > startIndex && nums[i] === nums[i - 1]) continue;
+   ```
+   When `i === startIndex`, we are going deeper into child branches (e.g. picking the second 2 to form `[2, 2]`). When `i > startIndex`, we are iterating over sibling alternatives at the same depth; picking the second 2 here would duplicate the branch started by the first 2.
 
+#### 3.2.5 Pseudocode
 ```text
-Decision Level Pruning:
-                       startIndex = 0
-                       nums = [1, 2, 2]
-                             []
-                 /            |            \
-             i=0 (1)       i=1 (2)       i=2 (2)
-             [1]           [2]           SKIP! (i > start && nums[2] == nums[1])
-           /     \            |
-       i=1 (2)  i=2 (2)    i=2 (2)
-       [1, 2]    SKIP!     [2, 2]
-         |
-       i=2 (2)
-      [1, 2, 2]
+function subsetsWithDup(nums):
+    sort nums ascending
+    result = []
+    currentPath = []
+
+    function backtrack(startIndex):
+        result.push(copy of currentPath)
+
+        for i from startIndex to nums.length - 1:
+            if i > startIndex and nums[i] == nums[i - 1]:
+                continue // prune sibling duplicate
+            currentPath.push(nums[i])
+            backtrack(i + 1)
+            currentPath.pop()
+
+    backtrack(0)
+    return result
 ```
 
-### Step 5: The Optimal Solution
+#### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal Subsets II with In-Place Sibling Pruning
+// ✅ CORRECT: Optimal Subsets II with Sibling Pruning
 function subsetsWithDup(nums) {
   const result = [];
   const currentPath = [];
 
-  // Sort ascending: Groups duplicate values contiguously
+  // 1. Sort to group duplicates
   nums.sort((a, b) => a - b);
 
   function backtrack(startIndex) {
-    // Every node in the state-space tree represents a valid subset
     result.push([...currentPath]);
 
     for (let i = startIndex; i < nums.length; i++) {
-      // PRUNING: Skip duplicate elements at the SAME tree level
+      // Prune duplicate sibling branches
       if (i > startIndex && nums[i] === nums[i - 1]) {
         continue;
       }
 
-      // 1. CHOOSE
-      currentPath.push(nums[i]);
-
-      // 2. EXPLORE: Recurse with i + 1 (each element used at most once)
-      backtrack(i + 1);
-
-      // 3. UNCHOOSE: Rollback state for sibling branches
-      currentPath.pop();
+      currentPath.push(nums[i]); // CHOOSE
+      backtrack(i + 1);          // EXPLORE
+      currentPath.pop();         // UNCHOOSE
     }
   }
 
@@ -240,46 +332,44 @@ function subsetsWithDup(nums) {
   return result;
 }
 
-// ❌ ANTI-PATTERN: Checking (i > 0 && nums[i] === nums[i - 1])
-// If you write (i > 0), you accidentally prune the child [2, 2]!
-// You must write (i > startIndex) to prune only across sibling branches.
-
-// Direct test run
 console.log("Subsets with duplicates [1, 2, 2]:");
 console.log(subsetsWithDup([1, 2, 2]));
-// Expected: [ [], [1], [1, 2], [1, 2, 2], [2], [2, 2] ]
+// Output: [ [], [ 1 ], [ 1, 2 ], [ 1, 2, 2 ], [ 2 ], [ 2, 2 ] ]
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(n \cdot 2^n)$ in the worst case (when all elements are distinct). Each of the $2^n$ subsets takes $O(n)$ time to copy into `result`. When duplicates exist, runtime is strictly proportional to the number of unique subsets generated.
-- **Space Complexity:** $O(n)$ auxiliary space for the recursion call stack and `currentPath` buffer.
+#### 3.2.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Checking (i > 0 && nums[i] === nums[i - 1])
+if (i > 0 && nums[i] === nums[i - 1]) {
+  continue; // BUG: Prunes valid child [2, 2]!
+}
+```
+
+Using `i > 0` instead of `i > startIndex` prevents taking duplicate elements vertically down the same branch, mistakenly discarding valid subsets like `[2, 2]`.
+
+#### 3.2.8 Complexity Derivation
+- **Time Complexity:** $O(n \cdot 2^n)$ in the worst case (distinct inputs). With duplicates, it takes $O(n \cdot K)$, where $K$ is the number of unique subsets generated.
+- **Auxiliary Space Complexity:** $O(n)$ for the recursion stack and `currentPath` buffer.
 
 ---
 
-## 5. Problem 2: Permutations II (Unique Permutations with Duplicates)
+### 3.3 Permutations II
 
-### Problem Description
-Given a collection of numbers `nums` that might contain duplicates, return all possible **unique permutations** in any order.
+#### 3.3.1 Problem Statement
+Given a collection of numbers `nums` that might contain duplicates, return all possible unique permutations in any order.
 
-### Step 1: Physical Simulation
-Suppose `nums = [ 1, 1, 2 ]`:
-- Total permutations of 3 distinct items is $3! = 6$.
-- But here, two items are identical (`1` and `1`).
-- The 6 raw permutations are:
-  1. `[1_a, 1_b, 2]`
-  2. `[1_a, 2, 1_b]`
-  3. `[1_b, 1_a, 2]` $\to$ Identical to 1!
-  4. `[1_b, 2, 1_a]` $\to$ Identical to 2!
-  5. `[2, 1_a, 1_b]`
-  6. `[2, 1_b, 1_a]` $\to$ Identical to 5!
-- Only 3 unique permutations exist: `[ [1, 1, 2], [1, 2, 1], [2, 1, 1] ]`.
-- To avoid generating duplicates, we must establish an ironclad ordering rule: **"Only pick identical element $k$ if identical element $k - 1$ has ALREADY been picked in the current branch!"**
+- **Input:** `nums = [1, 1, 2]`
+- **Output:** `[[1, 1, 2], [1, 2, 1], [2, 1, 1]]`
+- **Constraints:** $1 \le nums.length \le 8$, $-10 \le nums[i] \le 10$.
 
-### Step 2: Brute Force Approach
-Generate all $n!$ permutations using a boolean `used` array, serialize them to strings, and deduplicate with a `Set`:
+#### 3.3.2 How to Think About It
+Suppose you are placing three scrabble tiles on a board: two identical letter `A` tiles and one letter `B` tile. If you place the first `A` at spot 1, the second `A` at spot 2, and `B` at spot 3, you form `AAB`. If you swap the two identical `A` tiles, you still form `AAB`. To avoid generating duplicate arrangements, enforce an order rule: you may only place the second `A` tile on the board if the first `A` tile is already placed in the current word.
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+Generate all $n!$ permutations using a standard visited tracker, serialize them to strings, and filter duplicates with a Set:
 
 ```javascript
-// Naive brute force: N! generations + string set deduplication
 function permuteUniqueNaive(nums) {
   const result = [];
   const seen = new Set();
@@ -303,78 +393,79 @@ function permuteUniqueNaive(nums) {
       used[i] = false;
     }
   }
-
   backtrack([]);
   return result;
 }
 ```
 
-### Step 3: Bottleneck
-For an array like `[1, 1, 1, 1, 1, 1, 1, 1]`, there is only **1 unique permutation**. Yet the naive approach generates all $8! = 40,320$ identical permutations, creating 40,320 strings and objects before discarding 40,319 of them.
+For an array of 8 identical numbers `[1, 1, 1, 1, 1, 1, 1, 1]`, there is only 1 unique permutation. The naive approach generates all $8! = 40,320$ identical permutations and hashes 40,320 strings, wasting CPU and memory.
 
-### Step 4: The Pattern Discovery
-1. Sort `nums` ascending: `nums.sort((a, b) => a - b)`.
-2. Use a boolean array `used = new Array(n).fill(false)`.
-3. In the permutation loop (which starts at index `0` every time):
-   - If `used[i]` is true, skip (an element cannot be reused at another position in the same permutation).
-   - **The Golden Deduplication Rule:**
-     ```javascript
-     if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) {
-       continue;
-     }
-     ```
-**Why `!used[i - 1]`?**
-If `nums[i] === nums[i - 1]`, but `used[i - 1]` is **false**, it means the previous identical element was already explored as a choice at this level and has already been **backtracked (unmarked)**! Starting a new branch with `nums[i]` would duplicate the branch just finished. Enforcing `used[i - 1]` ensures identical numbers are only chosen in strict left-to-right order.
+#### 3.3.4 The Pattern Insight
+1. Sort `nums` ascending upfront.
+2. Maintain a boolean array `used = new Array(nums.length).fill(false)`.
+3. Loop from `i = 0` to `nums.length - 1`:
+   - If `used[i]` is true, skip (element already picked in the current word).
+   - If `nums[i] === nums[i - 1]` and `!used[i - 1]`, skip!
+   If `used[i - 1]` is false, it means the earlier duplicate was already explored as a choice at this position and has already been backtracked. Starting a new choice with `nums[i]` would reproduce an identical permutation tree.
 
+#### 3.3.5 Pseudocode
 ```text
-Visualizing Permutations II Pruning on [ 1_a, 1_b, 2 ]:
-                         []
-            /            |           \
-        Choose 1_a    Choose 1_b     Choose 2
-       (used[0]=T)    (!used[0] ->   (used[2]=T)
-                      DUPLICATE!
-                      PRUNE!)
+function permuteUnique(nums):
+    sort nums ascending
+    result = []
+    path = []
+    used = boolean array of size nums.length filled with false
+
+    function backtrack():
+        if path.length == nums.length:
+            result.push(copy of path)
+            return
+
+        for i from 0 to nums.length - 1:
+            if used[i]: continue
+            if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
+                continue // prune duplicate sibling
+
+            used[i] = true
+            path.push(nums[i])
+            backtrack()
+            path.pop()
+            used[i] = false
+
+    backtrack()
+    return result
 ```
 
-### Step 5: The Optimal Solution
+#### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal Permutations II with State Pruning
+// ✅ CORRECT: Optimal Permutations II with Visited Array Pruning
 function permuteUnique(nums) {
   const result = [];
   const currentPath = [];
   const used = new Array(nums.length).fill(false);
 
-  // 1. Sort to cluster duplicates
+  // 1. Sort to group duplicates
   nums.sort((a, b) => a - b);
 
   function backtrack() {
-    // Goal state: complete permutation built
     if (currentPath.length === nums.length) {
       result.push([...currentPath]);
       return;
     }
 
     for (let i = 0; i < nums.length; i++) {
-      // Condition 1: Element already used in current branch
       if (used[i]) continue;
 
-      // Condition 2: Duplicate pruning
-      // If previous duplicate has NOT been used in this branch,
-      // it means it was already used and backtracked in an earlier sibling branch!
+      // Duplicate pruning: only pick nums[i] if identical predecessor is currently in use
       if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) {
         continue;
       }
 
-      // 1. CHOOSE
       used[i] = true;
-      currentPath.push(nums[i]);
-
-      // 2. EXPLORE
-      backtrack();
-
-      // 3. UNCHOOSE
-      currentPath.pop();
+      currentPath.push(nums[i]); // CHOOSE
+      backtrack();               // EXPLORE
+      currentPath.pop();         // UNCHOOSE
       used[i] = false;
     }
   }
@@ -383,315 +474,76 @@ function permuteUnique(nums) {
   return result;
 }
 
-// ❌ ANTI-PATTERN: Using 'used[i - 1]' instead of '!used[i - 1]'
-// While 'used[i - 1]' technically produces unique results, it explores
-// reverse order and performs substantially more redundant branch evaluations.
-
-// Direct test run
 console.log("Unique Permutations of [1, 1, 2]:");
 console.log(permuteUnique([1, 1, 2]));
-// Expected: [ [1, 1, 2], [1, 2, 1], [2, 1, 1] ]
-
-console.log("Unique Permutations of [1, 2, 3]:");
-console.log(permuteUnique([1, 2, 3]).length); // Expected: 6
+// Output: [ [ 1, 1, 2 ], [ 1, 2, 1 ], [ 2, 1, 1 ] ]
 ```
 
-#### Complexity Analysis
+#### 3.3.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Using 'used[i - 1]' instead of '!used[i - 1]'
+if (i > 0 && nums[i] === nums[i - 1] && used[i - 1]) {
+  continue;
+}
+```
+
+Checking `used[i - 1]` without negation reverses the order logic and explores significantly more redundant branches before pruning, degrading performance.
+
+#### 3.3.8 Complexity Derivation
 - **Time Complexity:** $O(n \cdot n!)$ worst case (all elements distinct). With duplicates, it generates exactly $\frac{n!}{p_1! \cdot p_2! \dots}$ permutations, each copied in $O(n)$ time.
-- **Space Complexity:** $O(n)$ auxiliary space for the `used` array and the recursion stack.
+- **Auxiliary Space Complexity:** $O(n)$ for the `used` array and the recursion call stack.
 
 ---
 
-## 6. Under the Hood: V8 & Node.js
+## 4. Tricky Edge Cases
 
-Understanding engine-level optimizations for combinatorial problems gives senior backend engineers a massive performance advantage:
-
-```text
-=============================================================================
-               COMBINATORICS & V8 BITWISE ACCELERATION
-=============================================================================
-
-1. BITWISE POWER SET GENERATION (Zero Recursion):
-   - For an array of size N (where N <= 30), the total number of subsets is 2^N.
-   - Any integer from 0 to (2^N - 1) has a unique binary representation of length N!
-   - Example: For [ 'A', 'B', 'C' ] (N = 3):
-     Integer 0: 000 (binary) -> []
-     Integer 1: 001 (binary) -> ['A']
-     Integer 3: 011 (binary) -> ['A', 'B']
-     Integer 7: 111 (binary) -> ['A', 'B', 'C']
-
-2. V8 31-BIT SMI (SMALL INTEGER) SPEED:
-   - In V8, integers fitting within 31 bits are stored as SMIs (direct unboxed values).
-   - A bitwise loop running from 0 to (1 << N) executes entirely in CPU registers:
-       for (let mask = 0; mask < (1 << n); mask++) { ... }
-   - Zero call frames are created on the V8 stack!
-   - CPU branch predictors easily vectorize bitwise operations ((mask >> i) & 1).
-
-3. THE 32-BIT OVERFLOW HAZARD:
-   - JavaScript bitwise operators (<<, >>, &, |) operate strictly on 32-bit signed ints.
-   - (1 << 31) evaluates to -2147483648 (negative number)!
-   - (1 << 32) evaluates to 1!
-   - Rule: For N > 30, never use standard bitwise operators in JS. Use recursive
-     backtracking or BigInt (1n << BigInt(n)).
-=============================================================================
-```
-
-```javascript
-// Bitwise Subsets Implementation (Non-recursive, pure V8 register execution)
-function subsetsBitwise(nums) {
-  const n = nums.length;
-  const totalSubsets = 1 << n; // 2^n (Valid for n <= 30)
-  const result = new Array(totalSubsets);
-
-  for (let mask = 0; mask < totalSubsets; mask++) {
-    const subset = [];
-    for (let i = 0; i < n; i++) {
-      // Check if the i-th bit is set
-      if ((mask & (1 << i)) !== 0) {
-        subset.push(nums[i]);
-      }
-    }
-    result[mask] = subset;
-  }
-
-  return result;
-}
-
-console.log("Bitwise Subsets of [10, 20]:", subsetsBitwise([10, 20]));
-// Output: [ [], [10], [20], [10, 20] ]
-```
+- **Empty Input:** Ensure empty inputs return an appropriate baseline (e.g. `subsets([])` returns `[[]]`).
+- **All Identical Elements:** An input like `[1, 1, 1, 1]` must generate exactly 1 unique permutation and 5 unique subsets (`[]`, `[1]`, `[1, 1]`, `[1, 1, 1]`, `[1, 1, 1, 1]`).
+- **Subsets vs Permutations Duplicate Condition:** For subsets, compare `i > startIndex`. For permutations, check `!used[i - 1]`. Mixing these two conditions causes incorrect results.
+- **Memory Pressure on Large $N$:** Generating all permutations of $N = 11$ produces nearly 40 million arrays, which can exceed V8 memory limits. Stream results with generators if processing large combinatorial spaces.
 
 ---
 
-## 7. Hands-On Exercise
+## 5. Summary Cheat Sheet
 
-### The Flawed Permutations Pruning Bug
-A backend engineer is implementing an inventory SKU bundler in Node.js. Given duplicate item SKUs, it must generate all unique bundles. However, the engineer's deduplication check is broken: it omits the `!used[i - 1]` condition, returning empty permutations or failing with incorrect counts.
-
-### The Buggy Code
-```javascript
-function buggyPermuteUnique(nums) {
-  const result = [];
-  const path = [];
-  const used = new Array(nums.length).fill(false);
-  nums.sort((a, b) => a - b);
-
-  function backtrack() {
-    if (path.length === nums.length) {
-      result.push([...path]);
-      return;
-    }
-
-    for (let i = 0; i < nums.length; i++) {
-      if (used[i]) continue;
-
-      // BUG: Checks nums[i] === nums[i - 1] without checking !used[i - 1]!
-      // This kills ALL valid permutations containing duplicate values!
-      if (i > 0 && nums[i] === nums[i - 1]) {
-        continue;
-      }
-
-      used[i] = true;
-      path.push(nums[i]);
-      backtrack();
-      path.pop();
-      used[i] = false;
-    }
-  }
-
-  backtrack();
-  return result;
-}
-```
-
-### The Fix and Direct Verification
-1. Add the condition `!used[i - 1]` to ensure that duplicate elements can be chosen as children, but skipped as redundant sibling choices.
-
-```javascript
-// ✅ REPAIRED: Production SKU Bundler
-function safePermuteUnique(nums) {
-  const result = [];
-  const path = [];
-  const used = new Array(nums.length).fill(false);
-
-  nums.sort((a, b) => a - b);
-
-  function backtrack() {
-    if (path.length === nums.length) {
-      result.push([...path]);
-      return;
-    }
-
-    for (let i = 0; i < nums.length; i++) {
-      if (used[i]) continue;
-
-      // FIX: Only prune if the identical predecessor was backtracked
-      if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) {
-        continue;
-      }
-
-      used[i] = true;
-      path.push(nums[i]);
-      backtrack();
-      path.pop();
-      used[i] = false;
-    }
-  }
-
-  backtrack();
-  return result;
-}
-
-// Direct test verification
-const duplicateSKUs = [1, 1, 2];
-console.log("Repaired Unique Permutations of [1, 1, 2]:", safePermuteUnique(duplicateSKUs));
-// Expected length: 3 unique permutations ([1,1,2], [1,2,1], [2,1,1])
-```
+- **Subsets** collect every node in the recursion tree; length ranges from $0$ to $n$.
+- **Combinations** collect leaf nodes of fixed length $k$; loop advances with `i + 1`.
+- **Permutations** collect leaf nodes of fixed length $n$; loop starts at `0` on every frame using a boolean `used` array.
+- **Sorting** is the prerequisite for duplicate handling in all combinatorial patterns.
+- **Deduplication Formula for Subsets:** `i > startIndex && nums[i] === nums[i - 1]`.
+- **Deduplication Formula for Permutations:** `i > 0 && nums[i] === nums[i - 1] && !used[i - 1]`.
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 6. Practice Problems
 
-### 1. `i > startIndex` (Subsets) vs `!used[i - 1]` (Permutations)
-This is the single most common source of interview confusion:
-- In **Subsets / Combinations**, the loop index starts at `startIndex`. We compare `i > startIndex`. We do **not** need a `used` array because we only ever move forward.
-- In **Permutations**, every recursion frame starts iterating from `i = 0`. Because `i` resets to 0, we cannot rely on `i > startIndex`. We must use a `used` boolean array and check `!used[i - 1]`.
+### 6.1 Combinations of Size K
 
-### 2. Lexicographical Generation Order
-When generating permutations or subsets, sorting the input array guarantees that the resulting outputs are emitted in exact **lexicographical (dictionary) order**. If an interview question demands "lexicographically sorted combinations", sort the input array first.
-
-### 3. Space Allocation for Power Set
-Remember that generating the power set of an array of length $N$ requires allocating $2^N$ arrays. For $N = 25$, $2^{25} \approx 33,554,432$ arrays. Attempting to store all of these in memory will exceed the standard 1.4 GB V8 old-space heap limit and crash Node.js with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory`. In production, stream or process subsets lazily via generators (`function*`) instead of collecting them in an array.
-
----
-
-## 9. Comprehensive Summary
-
-```text
-=============================================================================
-               SUBSETS vs COMBINATIONS vs PERMUTATIONS
-=============================================================================
-
-DIMENSION           SUBSETS                 COMBINATIONS            PERMUTATIONS
------------------------------------------------------------------------------
-Formula             2^n                     n! / (k!(n-k)!)         n!
-Order matters?      No                      No                      Yes! ([1,2] != [2,1])
-Target length       0 to n (all nodes)      Fixed k                 Fixed n (leaves only)
-Loop initialization for (i = start; ...)    for (i = start; ...)    for (i = 0; ...)
-Used tracking       startIndex increments   startIndex increments   used[i] boolean array
-Duplicate pruning   i > start && n[i]==n[i-1]i > start && n[i]==n[i-1]n[i]==n[i-1] && !used[i-1]
-Alternative         Bitmask (0 to 2^n - 1)  Gosper's Hack           Heap's Algorithm
-=============================================================================
-```
-
-- **Subsets collect every node in the recursion tree**, because every prefix represents a valid subset.
-- **Combinations and Permutations collect only leaf nodes** that satisfy the target length requirement.
-- **Sorting is the universal foundation for duplicate handling**, converting duplicate items into adjacent neighbors that can be checked with $O(1)$ lookback comparisons.
-
----
-
-## 10. Cheat Sheet
-
-### Decision Matrix: Code Templates
-
-#### Subsets Template
-```javascript
-function subsets(nums) {
-  const res = [], path = [];
-  function dfs(start) {
-    res.push([...path]);
-    for (let i = start; i < nums.length; i++) {
-      path.push(nums[i]);
-      dfs(i + 1);
-      path.pop();
-    }
-  }
-  dfs(0);
-  return res;
-}
-```
-
-#### Permutations Template
-```javascript
-function permute(nums) {
-  const res = [], path = [], used = new Array(nums.length).fill(false);
-  function dfs() {
-    if (path.length === nums.length) return res.push([...path]);
-    for (let i = 0; i < nums.length; i++) {
-      if (used[i]) continue;
-      used[i] = true;
-      path.push(nums[i]);
-      dfs();
-      path.pop();
-      used[i] = false;
-    }
-  }
-  dfs();
-  return res;
-}
-```
-
-### Common Traps Checklist
-- [ ] For permutations with duplicates, did you write `!used[i - 1]`?
-- [ ] For subsets with duplicates, did you write `i > startIndex`?
-- [ ] Did you sort `nums` before applying duplicate pruning?
-- [ ] Are you taking shallow copies (`[...path]`) before saving to result?
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Senior Pitch
-> *"When tackling combinatorial problems—subsets, combinations, and permutations—the key senior distinction is recognizing how loop bounds and state trackers dictate the search space. Subsets and combinations advance a starting index forward, naturally eliminating order permutations in $O(2^n)$ or $O(\binom{n}{k})$ time. Permutations reset the loop to zero at every frame, utilizing a visited array to enforce unique element usage in $O(n!)$ time. When duplicates are present, sorting the input upfront enables horizontal sibling pruning: for combinations, we prune when `i > startIndex && nums[i] === nums[i - 1]`; for permutations, we prune when `nums[i] === nums[i - 1] && !used[i - 1]`."*
-
-### Deep Interview Questions
-
-#### Q1: Why does `!used[i - 1]` successfully prune duplicate permutations, whereas `used[i - 1]` is inferior?
-**Answer:** Both conditions enforce that identical elements are processed in a fixed relative order. However, checking `!used[i - 1]` enforces that identical elements can only be selected in **left-to-right order** (element 0 must be chosen before element 1). If `used[i - 1]` is false, it indicates that element $i - 1$ was already evaluated at the current level and popped during backtracking. Exploring element $i$ would spawn an identical subtree. Checking `used[i - 1]` (without the negation) forces right-to-left exploration, which explores significantly more dead-end subtrees before pruning.
-
-#### Q2: How can we optimize Combinations ($N$ choose $K$) to avoid exploring subtrees that cannot reach length $K$?
-**Answer:** We apply **loop bound pruning**. If the number of remaining elements in `nums` plus the elements already in `path` is less than $k$, we can never form a valid combination.
-Specifically: `remainingNeeded = k - path.length`.
-We only need to iterate while: `i <= nums.length - remainingNeeded`.
-Instead of looping to `nums.length`, the loop condition becomes:
-```javascript
-for (let i = startIndex; i <= nums.length - (k - path.length); i++)
-```
-This prunes large swathes of fruitless recursion branches early.
-
-#### Q3: When should a senior engineer choose bit manipulation over recursive backtracking for generating subsets?
-**Answer:** Bit manipulation is preferred when:
-1. $N \le 30$, allowing mask integers to fit cleanly into V8's 31-bit Small Integer (SMI) optimization.
-2. The problem requires checking if subsets satisfy an independent property where generating the whole subset in memory isn't strictly necessary.
-3. Zero call-stack overhead and maximum CPU cache efficiency are required.
-Conversely, recursive backtracking is preferred when:
-1. $N > 30$ (avoiding JS 32-bit signed integer bitwise overflow).
-2. Early pruning is possible (e.g. subset sum exceeds target). Bitmasking must evaluate all $2^N$ possibilities, while backtracking can prune entire branches early.
-
-#### Q4: How would you prevent a 100% CPU lockup in Node.js when generating permutations of an array with length $N = 12$?
-**Answer:** $12! = 479,001,600$ permutations. Generating nearly half a billion arrays synchronously will lock the Node.js event loop for minutes, breaching health-check timeouts. To resolve this:
-1. **Generator / Stream Architecture:** Use a JavaScript generator (`function*`) to yield permutations on demand (pull-based) rather than materializing all 479 million in memory at once.
-2. **Worker Thread Delegation:** Move execution out of the main event loop into a dedicated `Worker` thread.
-3. **Partitioning:** Divide the top-level loop ($i = 0 \dots 11$) across a cluster of worker threads to leverage multi-core CPU parallelism.
-
----
-
-## 12. Practice Problems
-
-### Problem 1: Combinations of Size K (LeetCode 77)
 - **Input:** `n = 4, k = 2`
-- **Output:** `[ [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4] ]`
-- **Challenge:** Implement loop pruning (`i <= n - (k - path.length) + 1`) to achieve optimal runtime.
+- **Output:** `[[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]]`
+- **Constraint:** $1 \le k \le n \le 20$.
+- **Hint 1:** Loop from `startIndex` to `n`.
+- **Hint 2:** Prune the loop when there are not enough remaining elements to reach length $k$: `i <= n - (k - path.length) + 1`.
+- **Hint 3:** Base case: `if (path.length === k)`.
 
-### Problem 2: Non-decreasing Subsequences (LeetCode 491)
-- **Input:** `nums = [ 4, 6, 7, 7 ]`
-- **Output:** `[ [4, 6], [4, 6, 7], [4, 6, 7, 7], [4, 7], [4, 7, 7], [6, 7], [6, 7, 7], [7, 7] ]`
-- **Constraint:** You **cannot** sort the input array! Use an in-frame hash set to deduplicate choices at each recursion level.
+### 6.2 Non-decreasing Subsequences
 
-### Problem 3: Permutation Sequence (LeetCode 60)
+- **Input:** `nums = [4, 6, 7, 7]`
+- **Output:** `[[4, 6], [4, 6, 7], [4, 6, 7, 7], [4, 7], [4, 7, 7], [6, 7], [6, 7, 7], [7, 7]]`
+- **Constraint:** You cannot sort the input array because relative sequence order must be preserved.
+- **Hint 1:** Since you cannot sort, track duplicates at each recursion level using a `Set` local to the current frame (`const usedInFrame = new Set()`).
+- **Hint 2:** Only pick `nums[i]` if `path.length === 0` or `nums[i] >= path[path.length - 1]`.
+- **Hint 3:** Save combinations where `path.length >= 2`.
+
+### 6.3 Permutation Sequence
+
 - **Input:** `n = 3, k = 3`
 - **Output:** `"213"`
-- **Challenge:** Find the $k$-th permutation directly in $O(n^2)$ time using the factorial number system (Factoradic) without generating the preceding $k - 1$ permutations.
+- **Constraint:** $1 \le n \le 9$, $1 \le k \le n!$.
+- **Hint 1:** Avoid generating the first $k - 1$ permutations recursively.
+- **Hint 2:** The first digit splits the $n!$ permutations into $n$ groups of $(n - 1)!$ permutations each.
+- **Hint 3:** Determine digits one by one using integer division `Math.floor((k - 1) / factorial)` and array deletion.
 
 ---
 

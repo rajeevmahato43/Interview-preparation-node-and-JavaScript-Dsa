@@ -2,124 +2,90 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Binary Search Trees](day-25-binary-search-trees-crud-and-validation.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Directed Graphs & Topological Sort](day-27-cycle-detection-and-topological-sort.md)
+[Previous: Binary Search Trees](day-25-binary-search-trees-crud-and-validation.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Cycle Detection & Topological Sort](day-27-cycle-detection-and-topological-sort.md)
 
 </nav>
 
-## Prerequisites
+## 1. Graph Fundamentals
 
-- [Day 15: Queues & Circular Buffers](day-15-queues-circular-buffers-and-design.md) — FIFO queue mechanics.
-- [Day 22: Grid Backtracking & Mazes](day-22-grid-backtracking-and-n-queens.md) — 2D matrix navigation and visited markers.
-- [Day 24: Binary Trees: BFS, Views & LCA](day-24-binary-trees-bfs-views-and-lca.md) — Level-order traversal patterns.
-
----
-
-## 1. What is a Graph?
-
-A **Graph** is a non-linear data structure consisting of a finite set of **Vertices** (nodes) and a collection of **Edges** (links) connecting pairs of vertices. Trees are actually a specialized subset of graphs: a tree is simply a connected, undirected graph with $N$ vertices, $N - 1$ edges, and **zero cycles**.
+A Graph is a non-linear data structure consisting of a finite set of Vertices (nodes) and a collection of Edges (links) connecting pairs of vertices. Trees are actually a specialized subset of graphs: a tree is simply a connected, undirected graph with $V$ vertices, $V - 1$ edges, and zero cycles.
 
 In general graphs, however, connections are arbitrary:
 - Graphs may contain **cycles** (paths starting and ending at the same node).
-- Graphs may be **directed** (one-way streets, like Twitter followers or dependency DAGs) or **undirected** (two-way relationships, like LinkedIn connections or Bluetooth pairing).
-- Graphs may be **disconnected** into multiple independent "islands" of components.
+- Graphs may be **directed** (one-way links, such as web hyperlinks or task dependencies) or **undirected** (two-way relationships, such as mutual friendships).
+- Graphs may be **disconnected** into multiple independent clusters (connected components).
 
-> **Graph ($G = (V, E)$)** — A mathematical structure where $V$ is the set of vertices (entities) and $E$ is the set of edges (relationships).
-
-> **Adjacency List** — A collection of unordered lists used to represent a graph, where each vertex associates with an array of its immediate neighbors.
-
-> **Connected Component** — A maximal subgraph in which any two vertices are connected to each other by paths, and which is connected to no additional vertices in the supergraph.
-
-### Physical Analogy: Airline Flight Networks
-
-```text
-=============================================================================
-                    AIRLINE HUBS & FLIGHT CONNECTIONS
-=============================================================================
-
-          [ Seattle ] ────────────── [ Chicago ] ──────── [ New York ]
-               │                          │                      │
-               │                          │                      │
-          [ San Fran ] ───────────── [ Denver ] ────────── [ Miami ]
-               │
-          [ Los Angeles ]
-
-1. SHORTEST PATH IN STOPS (BFS):
-   - You want to travel from Seattle to Miami with the minimum number of layovers.
-   - BFS explores all direct flights (1 hop: Chicago, San Fran).
-   - Then all 2-hop flights (Denver, New York, Los Angeles).
-   - Then 3-hop flights (Miami!).
-   - BFS guarantees the very first time you hit Miami, you took the SHORTEST route!
-
-2. CONNECTED COMPONENTS (DFS):
-   - Imagine a separate private airline operating solely in Hawaii ([Honolulu] - [Maui]).
-   - A single BFS/DFS from Seattle will NEVER reach Honolulu!
-   - To find all airlines in the world, you must run an outer loop over ALL airports.
-=============================================================================
-```
-
-```mermaid
-graph TD
-    V0["(0)"] --- V1["(1)"]
-    V0 --- V2["(2)"]
-    V1 --- V3["(3)"]
-    V1 --- V4["(4)"]
-    V2 --- V3["(3)"]
-    V3 --- V4["(4)"]
-```
-
-### Representation in JavaScript: Adjacency List vs Adjacency Matrix
+Imagine an airline flight network. Cities are vertices, and direct non-stop flights between them are edges. If you want to fly from Seattle to Miami with the minimum number of layovers, you use Breadth-First Search (BFS). BFS explores all 1-hop direct flights, then all 2-hop flights, then 3-hop flights, guaranteeing that the first time you arrive in Miami, you took the shortest route in terms of flights. Now imagine a separate local carrier operating solely between islands in Hawaii. A flight search starting in Seattle will never reach Hawaii. To discover all airlines in the world, you must run an outer loop across all airports to visit every disconnected flight cluster (Connected Components).
 
 ```javascript
-// 1. Adjacency List (Production Standard): O(V + E) Space
-const adjList = {
-  0: [1, 2],
-  1: [0, 3, 4],
-  2: [0, 3],
-  3: [1, 2, 4],
-  4: [1, 3]
-};
+// Graph representation using an Adjacency List
+class Graph {
+  constructor() {
+    this.adjacencyList = new Map();
+  }
 
-// 2. Adjacency Matrix: O(V^2) Space (Sparse graphs waste 95% RAM)
-const adjMatrix = [
-  [0, 1, 1, 0, 0],
-  [1, 0, 0, 1, 1],
-  [1, 0, 0, 1, 0],
-  [0, 1, 1, 0, 1],
-  [0, 1, 0, 1, 0]
-];
+  addVertex(vertex) {
+    if (!this.adjacencyList.has(vertex)) {
+      this.adjacencyList.set(vertex, []);
+    }
+  }
+
+  addEdge(v1, v2, directed = false) {
+    this.addVertex(v1);
+    this.addVertex(v2);
+    this.adjacencyList.get(v1).push(v2);
+    if (!directed) {
+      this.adjacencyList.get(v2).push(v1);
+    }
+  }
+}
+
+// Basic Breadth-First Search traversal
+function bfsGraph(graph, startVertex) {
+  const visited = new Set([startVertex]);
+  const queue = [startVertex];
+  const order = [];
+  let head = 0;
+
+  while (head < queue.length) {
+    const vertex = queue[head++];
+    order.push(vertex);
+
+    for (const neighbor of graph.adjacencyList.get(vertex) || []) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor); // Mark visited at enqueue time!
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  return order;
+}
+
+const flightNetwork = new Graph();
+flightNetwork.addEdge("Seattle", "Chicago");
+flightNetwork.addEdge("Seattle", "San Francisco");
+flightNetwork.addEdge("Chicago", "New York");
+flightNetwork.addEdge("San Francisco", "Denver");
+
+console.log("BFS Route Order:", bfsGraph(flightNetwork, "Seattle"));
+// Output: [ 'Seattle', 'Chicago', 'San Francisco', 'New York', 'Denver' ]
 ```
 
----
+### 1.1 Adjacency List vs Adjacency Matrix
 
-## 2. How Graph BFS & DFS Work Step-by-Step
+Real-world graphs are overwhelmingly sparse (each node connects to only a tiny fraction of total nodes):
 
-### 2.1 The Two Fundamental Traversal Engines
+- **Adjacency Matrix ($V \times V$ 2D Array):** Fast $O(1)$ edge lookup `matrix[u][v]`, but consumes $O(V^2)$ memory. In a network of $1,000,000$ users where each has 100 friends, an adjacency matrix allocates $10^{12}$ cells ($\approx 1$ TB of RAM), wasting over 99.99% of memory.
+- **Adjacency List (Map or Array of Arrays):** Consumes $O(V + E)$ memory, storing only actual edges. Finding neighbors takes $O(\text{degree}(u))$ time, which is optimal for traversal.
 
-```text
-=============================================================================
-                        GRAPH BFS vs. GRAPH DFS
-=============================================================================
+### 1.2 The Enqueue-Time Visited Invariant
 
-DIMENSION           BREADTH-FIRST SEARCH (BFS)      DEPTH-FIRST SEARCH (DFS)
------------------------------------------------------------------------------
-Core Data Structure FIFO Queue                      Call Stack / Explicit Stack
-Search Strategy     Expands outward in concentric   Dives deep along one branch
-                    rings (layer by layer)          until hitting dead-end
-Cycle Prevention    Track visited nodes in Set      Track visited nodes in Set
-Guaranteed Feature  SHORTEST PATH in unweighted     Exhaustive path discovery,
-                    graphs                          Connected components, Cycles
-Space Complexity    O(V) (Peak width in queue)      O(V) (Longest path on stack)
-Time Complexity     O(V + E)                        O(V + E)
-=============================================================================
-```
+Because graphs contain cycles ($A \to B \to C \to A$), traversing without tracking visited nodes creates infinite loops.
 
-### 2.2 The Visited State Invariant
-
-Because graphs contain cycles ($A \to B \to C \to A$), traversing without tracking visited nodes will enter an **infinite ping-pong loop**, crashing Node.js with a stack overflow or running out of memory.
-
-**The Golden BFS Rule (Enqueue-Time Marking):**
-Always mark a node as `visited` the **instant it is placed into the queue**, NOT when it is dequeued!
-If you wait until dequeueing to mark a node as visited, multiple adjacent neighbors can enqueue that same node thousands of times before it is processed, causing the queue to swell exponentially ($O(2^V)$ memory explosion).
+> [!NOTE]
+> Why MUST we mark a node as `visited` at ENQUEUE time rather than DEQUEUE time?
+> Because if you wait until a node is dequeued to mark it visited, multiple neighbors can discover and enqueue that exact same node dozens of times while it sits in the queue. In dense graphs, this causes exponential queue swelling and out-of-memory crashes.
 
 ```text
 Enqueue-Time vs Dequeue-Time Marking:
@@ -131,117 +97,132 @@ Enqueue-Time vs Dequeue-Time Marking:
 
 WRONG (Dequeue-Time):
 1. Dequeue A. Enqueue B and C.
-2. Dequeue B. Look at neighbor D -> D not visited! Enqueue D.
-3. Dequeue C. Look at neighbor D -> D not visited! Enqueue D AGAIN! (Duplicate!)
-In a dense graph, duplicate enqueues compound exponentially.
+2. Dequeue B. Looks at D -> D not visited! Enqueues D.
+3. Dequeue C. Looks at D -> D not visited! Enqueues D AGAIN! (Duplicate!)
 
 CORRECT (Enqueue-Time):
 1. Queue = [ A ], Visited = { A }
-2. Pop A. Add B and C to Queue. IMMEDIATELY add B and C to Visited!
-3. Pop B. Look at D -> D not in Visited. Enqueue D and IMMEDIATELY add D to Visited!
-4. Pop C. Look at D -> D ALREADY in Visited! Skip! (Zero duplicates!).
+2. Pop A. Add B and C to Queue and IMMEDIATELY add to Visited!
+3. Pop B. Looks at D -> Enqueue D and IMMEDIATELY mark D in Visited!
+4. Pop C. Looks at D -> D is ALREADY in Visited! Skip! (Zero duplicates)
 ```
+
+### 1.3 Operations Reference Table
+
+| Graph Operation | Representation | Time Complexity | Space Complexity |
+| :--- | :--- | :--- | :--- |
+| **Add Vertex** | Adjacency List (`Map`) | $O(1)$ | $O(1)$ |
+| **Add Edge** | Adjacency List (`Map`) | $O(1)$ | $O(1)$ |
+| **BFS Traversal** | Queue + `Set` | $O(V + E)$ | $O(V)$ |
+| **DFS Traversal** | Call stack + `Set` | $O(V + E)$ | $O(V)$ |
+| **Shortest Path (Unweighted)** | BFS with distance tracker | $O(V + E)$ | $O(V)$ |
+| **Connected Components** | Outer loop + DFS flood fill | $O(V + E)$ | $O(V)$ |
 
 ---
 
-## 3. Pattern Recognition of Graph Traversal
+## 2. Graph Traversal Patterns
 
-### How to Spot These Patterns in Interviews
+### 2.1 Pattern Family
 
-| Constraint / Keyword Signal | Underlying Problem Need | Optimal Algorithmic Pattern |
+Graph problems group into three foundational archetypes:
+
+- **Wavefront Shortest Path (BFS):** Explores outwards in concentric circles. The first time the destination node is encountered, the path length is mathematically guaranteed to be the shortest in unweighted graphs.
+- **Exhaustive Component Flood Fill (DFS):** Traverses an entire connected cluster before returning. Ideal for counting disconnected islands, regions, and territories.
+- **Node Clone & Topology Mapping:** Duplicates a cyclic graph structure by maintaining an object map `Map<OldNode, NewNode>` to wire up cyclic edges correctly without infinite recursion.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Keyword Signal | Underlying Graph Need | Recommended Approach |
 | :--- | :--- | :--- |
-| "Find shortest path / minimum layovers / fewest edits" | Shortest unweighted distance from Source to Target | **Queue-Based BFS** |
-| "Find number of islands / count connected networks" | Exhaust all nodes reachable in each disconnected cluster | **DFS / BFS Component Flood Fill** |
-| "Clone / deep copy a graph with cycles" | Map original nodes to cloned instances | **DFS / BFS with Hash Map** |
-| "Can all people be divided into two opposing teams?" | 2-Coloring check (no edge between same color) | **Bipartite BFS / DFS Graph Coloring** |
-| Vertices $V \le 10^5$, Edges $E \le 2 \times 10^5$ | Linear graph traversal SLA | **$O(V + E)$ Adjacency List BFS/DFS** |
+| "Find shortest path / minimum moves / fewest steps" | Unweighted shortest path | Queue-based BFS with distance tracking |
+| "Count number of islands / connected groups" | Find all maximal connected components | DFS or BFS Component Flood Fill |
+| "Deep copy / clone a graph containing cycles" | Preserve structural pointers with cycles | BFS/DFS with `Map<Original, Clone>` |
+| "Shortest path in grid moving 8 directions" | Matrix shortest path | 8-directional BFS with enqueue-time mark |
+| "Check if all nodes can be colored with 2 colors" | Bipartite verification | BFS/DFS 2-Coloring check |
+
+### 2.3 When to Use vs When NOT to Use
+
+- **Use BFS when:**
+  - You need the shortest path or minimum number of transitions in an unweighted graph.
+  - You need to search outward from multiple sources simultaneously (Multi-Source BFS).
+- **Use DFS when:**
+  - You need to count or label connected components.
+  - You need in-place matrix flood filling with low code complexity.
+  - You need to detect cycles in directed graphs (via 3-color state tracking).
+- **When NOT to use BFS:**
+  - Finding shortest paths in **weighted** graphs (where edges have non-uniform costs). Use Dijkstra's Algorithm ($O((V + E) \log V)$) or Bellman-Ford instead.
+
+### 2.4 The 10^7 Operations Rule
+
+Graph algorithms traverse vertices and edges in $O(V + E)$ time:
+- In sparse graphs where $V = 100,000$ and $E = 200,000$, $V + E = 300,000$ operations execute in roughly 15 milliseconds.
+- However, if `visited` marking is deferred to dequeue time or `Array.prototype.shift()` is used on a dense graph, total operations explode to $O(V \cdot E) \approx 2 \times 10^{10}$, freezing the Node.js event loop for seconds.
 
 ---
 
-## 4. Problem 1: Number of Islands (LeetCode 200)
+## 3. Problem Walkthroughs
 
-### Problem Description
-Given an $m \times n$ 2D binary grid `grid` which represents a map of `'1'`s (land) and `'0'`s (water), return the **number of islands**.
-An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically. You may assume all four edges of the grid are all surrounded by water.
+### 3.1 Number of Islands
 
-### Step 1: Physical Simulation
-Suppose we have the grid:
-```text
-[
-  ["1", "1", "0", "0", "0"],
-  ["1", "1", "0", "0", "0"],
-  ["0", "0", "1", "0", "0"],
-  ["0", "0", "0", "1", "1"]
-]
-```
-- We scan the grid starting at `(0, 0)`.
-- At `(0, 0)`: We see `'1'`. This is a **new island**!
-  * Increment `islandCount = 1`.
-  * Now, explore and sink this entire landmass so we never recount it!
-  * Mark `(0, 0)` as `'0'`. Sink neighbors: `(0, 1)`, `(1, 0)`, `(1, 1)`.
-  * The entire top-left cluster is now sunk to `'0'`.
-- Continue scanning: `(0, 2)` is `'0'`, `(0, 3)` is `'0'`, etc.
-- At `(2, 2)`: We find `'1'`. This is a **new island**!
-  * Increment `islandCount = 2`.
-  * Sink `(2, 2)` to `'0'`.
-- Continue scanning until `(3, 3)`: We find `'1'`. **New island**!
-  * Increment `islandCount = 3`.
-  * Sink `(3, 3)` and `(3, 4)` to `'0'`.
-- Total islands found: **3**.
+#### 3.1.1 Problem Statement
+Given an $m \times n$ 2D binary grid `grid` which represents a map of `'1'`s (land) and `'0'`s (water), return the number of islands. An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically (4 directions).
 
-### Step 2: Brute Force Approach
-Create a separate $M \times N$ `visited` matrix. For every cell, traverse its neighbors using recursion without marking cells in-place, leading to redundant scans and high memory allocations:
+- **Input:**
+  ```text
+  grid = [
+    ["1","1","0","0","0"],
+    ["1","1","0","0","0"],
+    ["0","0","1","0","0"],
+    ["0","0","0","1","1"]
+  ]
+  ```
+- **Output:** `3`
+- **Constraints:** $1 \le m, n \le 300$, `grid[i][j]` is `'0'` or `'1'`.
+
+#### 3.1.2 How to Think About It
+Imagine looking down at an archipelago of islands. You scan top to bottom, left to right. When you spot land (`'1'`), you increment your island counter. Then, you immediately sink that entire connected landmass into the ocean by changing all adjacent `'1'`s to `'0'`. You continue scanning. Any new `'1'` you encounter must belong to a completely separate island.
+
+#### 3.1.3 Brute Force Approach & Bottleneck
+Allocating a separate $M \times N$ boolean `visited` matrix and checking `!visited[r][c]`:
 
 ```javascript
-// Naive approach with separate visited 2D array
 function numIslandsNaive(grid) {
-  const rows = grid.length;
-  const cols = grid[0].length;
-  const visited = Array.from({ length: rows }, () => new Array(cols).fill(false));
-  let count = 0;
-
-  function dfs(r, c) {
-    if (r < 0 || r >= rows || c < 0 || c >= cols) return;
-    if (grid[r][c] === '0' || visited[r][c]) return;
-
-    visited[r][c] = true;
-    dfs(r + 1, c);
-    dfs(r - 1, c);
-    dfs(r, c + 1);
-    dfs(r, c - 1);
-  }
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] === '1' && !visited[r][c]) {
-        count++;
-        dfs(r, c);
-      }
-    }
-  }
-  return count;
+  const visited = Array.from({ length: grid.length }, () => new Array(grid[0].length).fill(false));
+  // Double indexing: checks both grid[r][c] === '1' and !visited[r][c]
+  // Consumes O(M * N) auxiliary heap space
 }
 ```
 
-### Step 3: Bottleneck
-1. **Auxiliary Memory Waste:** Allocating a separate $M \times N$ `visited` array consumes $O(M \cdot N)$ additional heap space and causes pointer-chasing through two layers of JavaScript arrays.
-2. **Double Scanning:** Checking both `grid[r][c] === '1'` and `visited[r][c]` doubles condition checks.
+The bottleneck is auxiliary memory allocation. Creating a 2D array on the V8 heap creates hundreds of array objects, increasing garbage collection overhead.
 
-### Step 4: The Pattern Discovery
-**In-Place Matrix Sinking:**
-Whenever we find a `'1'`, immediately overwrite it with `'0'` (or `'2'` if the original grid must remain non-destructive). By changing the cell directly to `'0'`, future scans naturally ignore it without needing any auxiliary `visited` table. Memory overhead drops to the call stack depth alone.
+#### 3.1.4 The Pattern Insight
+Mutate the grid in-place: whenever a `'1'` is encountered, run a DFS helper that sets `grid[r][c] = '0'` and recursively sinks all 4 adjacent neighbors. Once sunk, future scans naturally skip those cells. Auxiliary heap memory is strictly $O(1)$.
 
-```mermaid
-graph TD
-    Found1["Found '1' at (r, c)"] --> Inc["Increment islandCount"]
-    Inc --> Sink["dfs(r, c): Set grid[r][c] = '0'"]
-    Sink --> N1["Sink Up: (r - 1, c)"]
-    Sink --> N2["Sink Down: (r + 1, c)"]
-    Sink --> N3["Sink Left: (r, c - 1)"]
-    Sink --> N4["Sink Right: (r, c + 1)"]
+#### 3.1.5 Pseudocode
+```text
+function numIslands(grid):
+    if grid is empty: return 0
+    count = 0
+
+    function sink(r, c):
+        if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] == '0':
+            return
+        grid[r][c] = '0' // sink land
+        sink(r + 1, c)
+        sink(r - 1, c)
+        sink(r, c + 1)
+        sink(r, c - 1)
+
+    for r from 0 to rows - 1:
+        for c from 0 to cols - 1:
+            if grid[r][c] == '1':
+                count++
+                sink(r, c)
+
+    return count
 ```
 
-### Step 5: The Optimal Solution
+#### 3.1.6 Optimal Solution
 
 ```javascript
 // ✅ CORRECT: Optimal In-Place Component Flood Fill DFS
@@ -250,435 +231,353 @@ function numIslands(grid) {
 
   const rows = grid.length;
   const cols = grid[0].length;
-  let islandCount = 0;
+  let count = 0;
 
-  // DFS helper that sinks all connected land cells
-  function sinkIsland(r, c) {
+  function sink(r, c) {
     // Boundary check and water check
     if (r < 0 || r >= rows || c < 0 || c >= cols || grid[r][c] === '0') {
       return;
     }
 
-    // Mutate cell in-place to water ('0') so it is never re-visited
+    // In-place sinking: mutate land '1' to water '0'
     grid[r][c] = '0';
 
-    // Flood fill all 4 adjacent neighbors
-    sinkIsland(r + 1, c); // Down
-    sinkIsland(r - 1, c); // Up
-    sinkIsland(r, c + 1); // Right
-    sinkIsland(r, c - 1); // Left
+    // Sink all 4 orthogonal neighbors
+    sink(r + 1, c); // Down
+    sink(r - 1, c); // Up
+    sink(r, c + 1); // Right
+    sink(r, c - 1); // Left
   }
 
-  // Scan every cell in the 2D grid
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] === '1') {
-        islandCount++;
-        sinkIsland(r, c); // Sinks the entire connected component
+        count++;
+        sink(r, c); // Sinks entire connected component
       }
     }
   }
 
-  return islandCount;
+  return count;
 }
 
-// ❌ ANTI-PATTERN: Forgetting boundary checks before array index
-// if (grid[r][c] === '1') before checking r >= 0 triggers:
-// TypeError: Cannot read property 'c' of undefined!
-
-// Direct test run
-const sampleMap = [
-  ["1", "1", "0", "0", "0"],
-  ["1", "1", "0", "0", "0"],
-  ["0", "0", "1", "0", "0"],
-  ["0", "0", "0", "1", "1"]
+const mapData = [
+  ["1","1","0","0","0"],
+  ["1","1","0","0","0"],
+  ["0","0","1","0","0"],
+  ["0","0","0","1","1"]
 ];
 
-console.log("Total Islands (Expected 3):", numIslands(sampleMap));
+console.log("Number of Islands:", numIslands(mapData));
+// Output: 3
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(M \cdot N)$ where $M$ is the number of rows and $N$ is the number of columns. Every cell in the matrix is visited at most twice (once by the outer loop, and once during flood fill sinking).
-- **Space Complexity:** $O(M \cdot N)$ in the worst case (grid completely filled with land) for the recursion call stack frames. Auxiliary heap space is $O(1)$.
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Allowing diagonal moves in Number of Islands
+sink(r + 1, c + 1); // Connecting diagonals violates the 4-direction constraint!
+```
+
+Number of Islands strictly specifies horizontal and vertical connections. Including diagonal steps merges distinct islands together.
+
+#### 3.1.8 Complexity Derivation
+- **Time Complexity:** $O(M \cdot N)$. Every cell is inspected at most twice: once by the outer scanning loops and once by the DFS sinking process.
+- **Auxiliary Space Complexity:** $O(M \cdot N)$ worst case for the recursion call stack if the entire grid is land. Auxiliary heap space is $O(1)$.
 
 ---
 
-## 5. Problem 2: Shortest Path in Binary Matrix (LeetCode 1091)
+### 3.2 Shortest Path in Binary Matrix
 
-### Problem Description
-Given an $n \times n$ binary matrix `grid`, return the length of the **shortest clear path** in the matrix. If there is no clear path, return `-1`.
-A **clear path** in a binary matrix is a path from the top-left cell `(0, 0)` to the bottom-right cell `(n - 1, n - 1)` such that:
-- All visited cells of the path are `0`.
-- All adjacent cells of the path are **8-directionally connected** (horizontally, vertically, or diagonally).
-- The length of a clear path is the **number of visited cells** of this path.
+#### 3.2.1 Problem Statement
+Given an $n \times n$ binary matrix `grid`, return the length of the shortest clear path in the matrix. If there is no clear path, return `-1`. A clear path connects the top-left cell `(0, 0)` to the bottom-right cell `(n - 1, n - 1)` such that:
+- All visited cells are `0`.
+- All adjacent cells are 8-directionally connected (horizontal, vertical, diagonal).
+- The length is the number of visited cells along the path.
 
-### Step 1: Physical Simulation
-Suppose $N = 3$:
+- **Input:** `grid = [[0, 0, 0], [1, 1, 0], [1, 1, 0]]`
+- **Output:** `4` (Path: `(0,0) -> (0,1) -> (1,2) -> (2,2)`)
+- **Constraints:** $n == grid.length == grid[i].length$, $1 \le n \le 100$, `grid[i][j]` is `0` or `1`.
+
+#### 3.2.2 How to Think About It
+Imagine water dropped on cell `(0, 0)`. The water expands outward into all open neighboring cells (`0`) in all 8 directions at speed 1 step per second. The first moment water reaches the bottom-right corner `(n - 1, n - 1)`, the elapsed time is guaranteed to be the shortest path.
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+Using DFS to explore all paths:
+DFS wanders deep down winding paths that hit dead ends or take inefficient detours. Finding the minimum length via DFS requires evaluating every possible path ($O(8^{N^2})$), which will freeze or stack-overflow on any matrix larger than $5 \times 5$.
+
+#### 3.2.4 The Pattern Insight
+Use Queue-based Breadth-First Search (BFS):
+1. Verify `grid[0][0] === 0` and `grid[n-1][n-1] === 0`.
+2. Push `[0, 0, 1]` to the queue and immediately mark `grid[0][0] = 1` (enqueue-time visited marking).
+3. Dequeue using an advancing `head` pointer.
+4. For each cell, check all 8 directional neighbors:
+   - If neighbor is in bounds and equals `0`:
+     - If neighbor is `(n - 1, n - 1)`, return `dist + 1`.
+     - Otherwise, set `grid[nr][nc] = 1` and push `[nr, nc, dist + 1]`.
+
+#### 3.2.5 Pseudocode
 ```text
-[
-  [0, 0, 0],
-  [1, 1, 0],
-  [1, 1, 0]
-]
-```
-- Start at `(0, 0)` (val = 0). Initial path length = 1.
-- Move diagonally to `(1, 1)`? No, `grid[1][1] === 1` (blocked).
-- Move right to `(0, 1)`? Yes (`0`). Path length = 2.
-- From `(0, 1)`, move right to `(0, 2)`? Yes (`0`). Path length = 3.
-- From `(0, 2)`, move down to `(1, 2)`? Yes (`0`). Path length = 4.
-- From `(1, 2)`, move down to `(2, 2)`? Yes (`0`, target reached!). Path length = 5.
-- Alternatively: `(0, 0) -> (0, 1) -> (1, 2) -> (2, 2)` (Length = 4!).
-- BFS guarantees finding the minimum step length of 4!
+function shortestPathBinaryMatrix(grid):
+    n = grid.length
+    if grid[0][0] != 0 or grid[n-1][n-1] != 0: return -1
+    if n == 1: return 1
 
-### Step 2: Brute Force Approach
-Using DFS to find all possible paths from `(0, 0)` to `(n - 1, n - 1)` and taking the minimum path length:
+    queue = [[0, 0, 1]]
+    grid[0][0] = 1 // enqueue-time mark
+    head = 0
 
-```javascript
-// Naive DFS approach: Explores all exponential paths
-function shortestPathDFSNaive(grid) {
-  // DFS explores every possible branch to leaf level: O(8^(N^2)) worst case!
-  // Will time out or stack overflow on grids larger than 6x6.
-}
+    while head < queue.length:
+        [r, c, dist] = queue[head++]
+        for [dr, dc] in all 8 directions:
+            nr = r + dr, nc = c + dc
+            if inBounds(nr, nc) and grid[nr][nc] == 0:
+                if nr == n - 1 and nc == n - 1:
+                    return dist + 1
+                grid[nr][nc] = 1 // enqueue mark
+                queue.push([nr, nc, dist + 1])
+
+    return -1
 ```
 
-### Step 3: Bottleneck
-DFS wanders deep down sub-optimal meandering paths. In an unweighted graph, DFS cannot guarantee that the first path reaching the destination is the shortest. Finding the shortest path via DFS requires an exhaustive traversal of all exponential paths ($O(8^{N^2})$).
-
-### Step 4: The Pattern Discovery
-**Breadth-First Search (BFS):**
-BFS expands uniformly outward in all 8 directions simultaneously like a wave of water. The very first time the BFS wavefront touches the bottom-right coordinate `(n - 1, n - 1)`, the distance traveled is **mathematically guaranteed to be the shortest possible path**.
-
-```text
-The 8 Direction Vectors:
-[-1, -1], [-1, 0], [-1, 1]
-[ 0, -1],          [ 0, 1]
-[ 1, -1], [ 1, 0], [ 1, 1]
-```
-
-### Step 5: The Optimal Solution
+#### 3.2.6 Optimal Solution
 
 ```javascript
 // ✅ CORRECT: Optimal 8-Directional Shortest Path BFS
 function shortestPathBinaryMatrix(grid) {
   const n = grid.length;
 
-  // Edge Case: Start or End cell is blocked
+  // Immediate boundary rejection
   if (grid[0][0] !== 0 || grid[n - 1][n - 1] !== 0) {
     return -1;
   }
-
-  // Base case: 1x1 matrix with 0
   if (n === 1) return 1;
 
-  // 8-directional offset vectors (Orthogonal + Diagonal)
+  // 8 orthogonal and diagonal direction vectors
   const DIRECTIONS = [
     [-1, -1], [-1,  0], [-1,  1],
     [ 0, -1],           [ 0,  1],
     [ 1, -1], [ 1,  0], [ 1,  1]
   ];
 
-  // High-performance pointer queue storing [row, col, distance]
-  const queue = [[0, 0, 1]];
+  const queue = [[0, 0, 1]]; // [row, col, distance]
   let head = 0;
 
-  // CRITICAL: Mark (0, 0) as visited at ENQUEUE TIME by setting grid value to 1
+  // Enqueue-time visited marking
   grid[0][0] = 1;
 
   while (head < queue.length) {
     const [r, c, dist] = queue[head++];
 
-    // Explore all 8 adjacent neighbors
     for (const [dr, dc] of DIRECTIONS) {
       const nr = r + dr;
       const nc = c + dc;
 
-      // Check boundary and cell availability (0 is open)
       if (nr >= 0 && nr < n && nc >= 0 && nc < n && grid[nr][nc] === 0) {
-        // Target reached: Because this is BFS, this is guaranteed shortest!
         if (nr === n - 1 && nc === n - 1) {
-          return dist + 1;
+          return dist + 1; // Shortest path reached
         }
 
-        // ENQUEUE TIME MARKING: Mutate cell to 1 immediately to block duplicates
-        grid[nr][nc] = 1;
+        grid[nr][nc] = 1; // Mark visited immediately at enqueue time!
         queue.push([nr, nc, dist + 1]);
-      }
-    }
-  }
-
-  return -1; // Destination unreachable
-}
-
-// ❌ ANTI-PATTERN: Marking grid[r][c] = 1 AFTER dequeueing
-// Delaying visited marking allows multiple neighbors to enqueue the same open cell,
-// blowing up queue size and causing exponential slowdown!
-
-// Direct test run
-const testGrid = [
-  [0, 0, 0],
-  [1, 1, 0],
-  [1, 1, 0]
-];
-console.log("Shortest Path (Expected 4):", shortestPathBinaryMatrix(testGrid));
-```
-
-#### Complexity Analysis
-- **Time Complexity:** $O(N^2)$ strictly. In an $N \times N$ matrix, there are $N^2$ vertices and at most $8 N^2$ edges. Each cell is enqueued and dequeued at most once.
-- **Space Complexity:** $O(N^2)$ worst case for the BFS queue. Auxiliary heap space is $O(1)$ beyond the queue because visited state is stored in-place.
-
----
-
-## 6. Under the Hood: V8 & Node.js
-
-Executing graph algorithms in Node.js backends requires understanding V8 memory representation and garbage collector behavior with cyclic structures:
-
-```text
-=============================================================================
-                  GRAPHS & V8 ENGINE MEMORY ARCHITECTURE
-=============================================================================
-
-1. THE "CIRCULAR REFERENCE MEMORY LEAK" MYTH:
-   - Myth: "If Node A points to Node B, and Node B points to Node A, JavaScript
-     will leak memory because the reference count never drops to zero."
-   - Reality: V8 DOES NOT use reference counting.
-   - V8 uses MARK-AND-SWEEP Garbage Collection starting from ROOT references
-     (global variables, active execution call frames).
-   - If an entire cyclical graph of 100,000 interconnected nodes becomes unreachable
-     from any active root, V8's Mark phase will ignore the entire graph. The entire
-     cyclic cluster is swept away in the next Major GC cycle with ZERO memory leak!
-
-2. ADJACENCY LIST PERFORMANCE: Map vs Plain Object:
-   - For string-based vertices (e.g. user IDs "usr_102"):
-     * Using const graph = {} forces V8 to treat IDs as object keys.
-     * When vertex count exceeds 1,000, V8 downgrades the object to DICTIONARY_ELEMENTS
-       (hash table with string hashing overhead).
-     * Senior Pattern: Use new Map() for dynamic vertex additions. Map maintains
-       deterministic lookup performance and avoids prototype collision bugs.
-
-3. QUEUE SWELLING IN DENSE GRAPHS:
-   - In a dense graph where each node connects to 100 neighbors, BFS queue length
-     can peak at thousands of items.
-   - Always avoid Array.prototype.shift()! Use advancing pointer index queues
-     (queue[head++]) or custom circular buffers to guarantee O(1) dequeue speed.
-=============================================================================
-```
-
-```mermaid
-graph TD
-    Root["V8 Root (Call Frame / Window)"] -.->|No Active Pointer| GraphA["Cyclic Node A"]
-    GraphA <--> GraphB["Cyclic Node B"]
-    GraphB <--> GraphC["Cyclic Node C"]
-    GraphA --> GC["Mark & Sweep GC: Whole Cluster Collected!"]
-```
-
----
-
-## 7. Hands-On Exercise
-
-### The Dequeue-Time Visited Bug
-A candidate was asked to build a social network degree-of-separation finder in Node.js. When tested on a densely connected network of 2,000 users, the server froze for 8 seconds and crashed with an out-of-memory error. The candidate marked users as visited *after* dequeuing them instead of *before* enqueuing them.
-
-### The Buggy Code
-```javascript
-function buggyDegreesOfSeparation(adjList, startUser, targetUser) {
-  const queue = [[startUser, 0]];
-  const visited = new Set();
-  let head = 0;
-
-  while (head < queue.length) {
-    const [user, distance] = queue[head++];
-
-    if (user === targetUser) return distance;
-
-    // BUG: Marking visited AFTER dequeueing!
-    // In a dense graph, user A and user B both have neighbor C.
-    // Both user A and user B see C as unvisited and push C to the queue!
-    // C is pushed hundreds of times, swelling the queue to millions of items!
-    visited.add(user);
-
-    for (const neighbor of adjList[user] || []) {
-      if (!visited.has(neighbor)) {
-        queue.push([neighbor, distance + 1]);
       }
     }
   }
 
   return -1;
 }
+
+const matrix = [
+  [0, 0, 0],
+  [1, 1, 0],
+  [1, 1, 0]
+];
+
+console.log("Shortest Clear Path:", shortestPathBinaryMatrix(matrix));
+// Output: 4
 ```
 
-### The Fix and Direct Verification
-Move `visited.add()` to **enqueue time**: add `startUser` to `visited` before starting, and add `neighbor` to `visited` the exact moment it is pushed to `queue`.
+#### 3.2.7 Common Anti-Pattern
 
 ```javascript
-// ✅ REPAIRED: Production-Safe Degree of Separation Finder
-function safeDegreesOfSeparation(adjList, startUser, targetUser) {
-  if (startUser === targetUser) return 0;
-
-  const queue = [[startUser, 0]];
-  const visited = new Set([startUser]); // FIX: Mark root at enqueue time!
-  let head = 0;
-
-  while (head < queue.length) {
-    const [user, distance] = queue[head++];
-
-    for (const neighbor of adjList[user] || []) {
-      if (neighbor === targetUser) {
-        return distance + 1; // Immediate target return
-      }
-
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor); // FIX: Mark visited IMMEDIATELY at enqueue time!
-        queue.push([neighbor, distance + 1]);
-      }
-    }
-  }
-
-  return -1; // Unreachable
-}
-
-// Direct test verification on dense interconnected network
-const denseNetwork = {
-  "Alice": ["Bob", "Charlie", "Dave"],
-  "Bob": ["Alice", "Charlie", "Dave", "Eve"],
-  "Charlie": ["Alice", "Bob", "Dave", "Eve"],
-  "Dave": ["Alice", "Bob", "Charlie", "Frank"],
-  "Eve": ["Bob", "Charlie", "Frank"],
-  "Frank": ["Dave", "Eve"]
-};
-
-console.log("Separation from Alice to Frank:", safeDegreesOfSeparation(denseNetwork, "Alice", "Frank")); // Expected: 2 (Alice -> Dave -> Frank)
+// ❌ ANTI-PATTERN: Delaying visited marking to dequeue time
+const [r, c, dist] = queue[head++];
+grid[r][c] = 1; // Too late! Neighbors have already pushed duplicates.
 ```
+
+Delaying visited marking allows multiple adjacent cells to enqueue the same open coordinate, causing the queue to swell exponentially and slowing down execution.
+
+#### 3.2.8 Complexity Derivation
+- **Time Complexity:** $O(N^2)$ strictly. There are $N^2$ cells, each having at most 8 edges. Each cell is enqueued at most once.
+- **Auxiliary Space Complexity:** $O(N^2)$ worst case for the queue buffer. Auxiliary heap space is $O(1)$ beyond the queue.
 
 ---
 
-## 8. Tricky Points and Edge Cases
+### 3.3 Clone Graph
 
-### 1. Disconnected Graph Traversal
-Never assume a graph is a single connected component. If an interview asks to traverse all nodes or count components, you must iterate over every vertex in the graph with an outer loop:
-```javascript
-for (const vertex of Object.keys(graph)) {
-  if (!visited.has(vertex)) {
-    componentCount++;
-    bfs(vertex);
-  }
-}
-```
+#### 3.3.1 Problem Statement
+Given a reference of a node in a connected undirected graph, return a deep copy (clone) of the graph. Each node in the graph contains a value (`val`) and a list of its neighbors (`neighbors`).
 
-### 2. 4-Direction vs. 8-Direction Movements
-Read problem statements carefully:
-- **Number of Islands (LeetCode 200)** allows only **4-directional moves** (Up, Down, Left, Right). Diagonals do NOT connect land!
-- **Shortest Path in Binary Matrix (LeetCode 1091)** allows **8-directional moves** (includes diagonals).
-Using 8 directions in Number of Islands erroneously merges separate islands together!
+- **Input:** `adjList = [[2,4],[1,3],[2,4],[1,3]]`
+- **Output:** Cloned graph with identical topology.
+- **Constraints:** Number of nodes is in range $[0, 100]$, $1 \le Node.val \le 100$, values are unique, no self-loops or repeated edges.
 
-### 3. Immediate Edge Case Rejections
-In grid shortest path problems, always verify the start cell `(0, 0)` and end cell `(n - 1, n - 1)` before running BFS. If either is blocked (e.g. `grid[0][0] === 1`), return `-1` immediately.
+#### 3.3.2 How to Think About It
+Imagine photocopying a web of interconnected index cards where strings connect cards to one another in loops. If you just copy card 1 and follow its strings, you create card 2. Card 2 has a string pointing back to card 1! If you blindly create a new card 1, you enter an infinite duplication loop. You need a registry: whenever you copy a card, you write it in a logbook (`Map<OriginalCard, ClonedCard>`). When connecting strings, you look up whether the target card was already cloned.
 
----
+#### 3.3.3 Brute Force Approach & Bottleneck
+Recursively copying neighbors without maintaining an original-to-clone hash map:
+Because graphs contain cycles, recursing without recording previously cloned instances causes infinite recursion and crashes with `RangeError: Maximum call stack size exceeded`.
 
-## 9. Comprehensive Summary
+#### 3.3.4 The Pattern Insight
+Use a `Map` where the key is the original `Node` instance and the value is the newly created cloned `Node` instance.
+1. When visiting `node`:
+   - If `node` is already in `clonesMap`, return `clonesMap.get(node)`.
+2. Otherwise, create `const clone = new Node(node.val)`.
+3. Store in map: `clonesMap.set(node, clone)`.
+4. Iterate through `node.neighbors`: recursively call clone on each neighbor and push the result into `clone.neighbors`.
 
+#### 3.3.5 Pseudocode
 ```text
-=============================================================================
-                    GRAPH TRAVERSAL MASTER SUMMARY
-=============================================================================
+function cloneGraph(node):
+    if node is null: return null
+    clones = Map()
 
-ALGORITHM           CORE MECHANISM                  TYPICAL INTERVIEW USE
------------------------------------------------------------------------------
-BFS (Queue)         Layer-by-layer wavefront        Shortest path in unweighted graphs
-DFS (Recursion)     Deep recursive dive             Connected components, cycle checks
-Enqueue-Time Mark   visited.add() on queue.push()   Prevents exponential duplicate explosion
-In-Place Sinking    grid[r][c] = '0' / visited char Eliminates O(M*N) visited matrix memory
-Adjacency List      Map or Array of Arrays          Optimal O(V + E) memory & scan speed
-Mark-and-Sweep GC   Roots-based reclamation         Cyclic graph structures do not leak in V8
-=============================================================================
+    function dfs(curr):
+        if clones.has(curr):
+            return clones.get(curr)
+
+        clone = Node(curr.val)
+        clones.set(curr, clone)
+
+        for neighbor in curr.neighbors:
+            clone.neighbors.push(dfs(neighbor))
+
+        return clone
+
+    return dfs(node)
 ```
 
-- **BFS is the absolute gold standard for unweighted shortest path:** Its layer-by-layer wavefront ensures the first time a target is visited, it is via the minimum number of edges.
-- **DFS is the natural choice for exhaustive component discovery:** Sinking connected components via in-place mutation minimizes memory allocations.
-- **Marking visited at enqueue time is non-negotiable:** Dequeue-time marking leads to catastrophic duplicate enqueuing on dense graphs.
+#### 3.3.6 Optimal Solution
 
----
-
-## 10. Cheat Sheet
-
-### Decision Matrix: BFS vs. DFS for Graphs
-
-| Problem Goal | Preferred Algorithm | Core Rationale |
-| :--- | :--- | :--- |
-| Shortest path (unweighted) | **BFS** | Stops at first target hit; guarantees minimum edges. |
-| Count connected components / islands | **DFS** | In-place flood fill is concise and space-efficient. |
-| Detect cycle in undirected graph | **DFS / BFS** | Check if visited neighbor is not parent. |
-| Clone a graph with cycles | **DFS / BFS** | Map old nodes to new nodes via `Map<Node, Node>`. |
-| Shortest transformation sequence (Word Ladder)| **Bidirectional BFS** | Expands from both start and target to meet in middle. |
-
-### Graph Traversal Safety Checklist
-- [ ] Did you mark visited **at enqueue time**?
-- [ ] For disconnected graphs, is there an outer loop over all vertices?
-- [ ] Did you verify start and end cells aren't blocked upfront?
-- [ ] Did you avoid `Array.prototype.shift()` in high-scale BFS?
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Senior Pitch
-> *"Graph algorithms expand linear and tree concepts into arbitrary networks with cycles and disconnected components. For unweighted shortest paths, Breadth-First Search is optimal because its concentric layer-by-layer expansion guarantees that the first arrival at the target is the shortest path. For connected component counting and flood fills, we leverage Depth-First Search with in-place grid sinking to eliminate auxiliary memory allocations. In production Node.js systems, high-density graphs risk exponential queue swelling unless visited markers are enforced at enqueue time, and queue dequeues are decoupled from $O(N)$ array shifting."*
-
-### Deep Interview Questions
-
-#### Q1: Why does marking a node as visited at dequeue-time cause an exponential memory explosion in BFS?
-**Answer:** In a dense graph, multiple vertices share the same common neighbors. If node $X$ is added to the queue but not marked as visited until it is dequeued, every other active neighbor of $X$ will inspect $X$, find it unvisited, and push another duplicate reference to $X$ into the queue. In dense networks, the same node can be pushed thousands of times. Memory usage explodes from $O(V)$ to $O(V \cdot E)$, degrading performance from milliseconds to seconds and risking out-of-memory process crashes.
-
-#### Q2: How do you detect cycles in an undirected graph using DFS?
-**Answer:** In an undirected graph, an edge connects two nodes bidirectionally ($u \leftrightarrow v$). When recursing from $u$ to $v$, $v$ will see $u$ as a neighbor. To prevent false-positive cycle reports, we pass the `parent` node into our DFS helper:
 ```javascript
-function hasCycle(node, parent, visited) {
-  visited.add(node);
-  for (const neighbor of adjList[node]) {
-    if (!visited.has(neighbor)) {
-      if (hasCycle(neighbor, node, visited)) return true;
-    } else if (neighbor !== parent) {
-      return true; // Visited an already-seen node that is NOT our parent -> Cycle!
-    }
+// Definition for a Node
+class GraphNode {
+  constructor(val = 0, neighbors = []) {
+    this.val = val;
+    this.neighbors = neighbors;
   }
-  return false;
 }
+
+// ✅ CORRECT: Optimal Graph Cloning with Map Registry
+function cloneGraph(node) {
+  if (!node) return null;
+
+  // Map to store reference pairs: OriginalNode -> ClonedNode
+  const clones = new Map();
+
+  function dfs(curr) {
+    // If node was already cloned, return existing cloned reference
+    if (clones.has(curr)) {
+      return clones.get(curr);
+    }
+
+    // 1. Create shallow clone of current node
+    const clone = new GraphNode(curr.val);
+    clones.set(curr, clone);
+
+    // 2. Recursively clone and wire up all neighbors
+    for (const neighbor of curr.neighbors) {
+      clone.neighbors.push(dfs(neighbor));
+    }
+
+    return clone;
+  }
+
+  return dfs(node);
+}
+
+// Test construction: 1 <-> 2
+const node1 = new GraphNode(1);
+const node2 = new GraphNode(2);
+node1.neighbors.push(node2);
+node2.neighbors.push(node1);
+
+const cloned = cloneGraph(node1);
+console.log("Cloned Root Val:", cloned.val);
+console.log("Cloned Neighbor Val:", cloned.neighbors[0].val);
+console.log("Preserved Cyclic Link:", cloned.neighbors[0].neighbors[0] === cloned); // Output: true
+console.log("Distinct Memory Instance:", cloned !== node1);                          // Output: true
 ```
 
-#### Q3: Why is Adjacency List preferred over Adjacency Matrix in almost all backend systems?
-**Answer:** Real-world networks (social graphs, flight routes, API dependencies) are highly **sparse**. If a social network has 1,000,000 users where each user has 200 friends:
-- **Adjacency Matrix:** Requires a $1,000,000 \times 1,000,000$ matrix ($10^{12}$ entries $\approx 1$ Terabyte of RAM), and finding a user's friends requires scanning all 1,000,000 entries ($O(V)$ time).
-- **Adjacency List:** Requires storing only $1,000,000$ vertex keys and $200,000,000$ edge entries ($O(V + E)$ space $\approx$ few megabytes of RAM), and finding friends takes $O(\text{degree}) = O(200)$ time.
+#### 3.3.7 Common Anti-Pattern
 
-#### Q4: How does Bidirectional BFS optimize Word Ladder or pathfinding problems?
-**Answer:** Standard BFS starting from a single node with branching factor $b$ to reach depth $d$ visits $O(b^d)$ nodes. **Bidirectional BFS** initiates two simultaneous searches: one forward from the source and one backward from the target. The search terminates when the two wavefronts collide. Each search only needs to reach depth $d / 2$:
-$$O(b^{d/2} + b^{d/2}) \ll O(b^d)$$
-For $b = 10$ and $d = 6$, standard BFS visits $10^6 = 1,000,000$ nodes, while Bidirectional BFS visits $2 \times 10^3 = 2,000$ nodes—a $500\times$ performance improvement.
+```javascript
+// ❌ ANTI-PATTERN: Using a Set to track visited instead of Map
+// A Set tracks if a node was visited, but cannot retrieve
+// the corresponding cloned node pointer to link neighbors!
+```
+
+A `Set` only records visitation status; a `Map` is strictly necessary to link existing cloned object references to neighbor arrays.
+
+#### 3.3.8 Complexity Derivation
+- **Time Complexity:** $O(V + E)$ strictly. Every vertex is visited once and every edge is traversed once.
+- **Auxiliary Space Complexity:** $O(V)$ for the `clones` hash map and the DFS call stack.
 
 ---
 
-## 12. Practice Problems
+## 4. Tricky Edge Cases
 
-### Problem 1: Clone Graph (LeetCode 133)
-- **Input:** A reference to a node in a connected undirected graph.
-- **Output:** A deep copy of the graph.
-- **Challenge:** Use a hash map `Map<OriginalNode, ClonedNode>` with DFS or BFS to duplicate nodes and wire up cyclic edges correctly without infinite recursion.
+- **Disconnected Components:** If a graph contains unreachable components, a single BFS/DFS from a single source will not visit all nodes. Use an outer loop over all vertices.
+- **Blocked Starting/Ending Points:** In grid shortest path searches, verify that `(0, 0)` and `(n - 1, n - 1)` are not blocked before starting BFS.
+- **Cycles in Undirected Graphs:** An edge between $u$ and $v$ connects both ways. When checking for cycles, always exclude the immediate `parent` node so two-way edges are not mistaken for cycles.
+- **Dense Graph Queue Swelling:** Always mark nodes as visited at enqueue time to prevent identical nodes from being pushed multiple times.
 
-### Problem 2: Word Ladder (LeetCode 127)
+---
+
+## 5. Summary Cheat Sheet
+
+- **BFS** explores in concentric wavefronts. It is the definitive algorithm for unweighted shortest path.
+- **DFS** dives deep along one path. It is ideal for component counting and matrix flood fills.
+- **Enqueue-Time Marking:** Add to `visited` at the moment of `queue.push()` to prevent $O(2^V)$ duplicate queue swelling.
+- **In-Place Sinking:** Mutating grid cells (`'1' -> '0'`) saves $O(M \cdot N)$ auxiliary memory.
+- **Adjacency Lists:** Store sparse graphs in $O(V + E)$ memory, outperforming $O(V^2)$ adjacency matrices.
+
+---
+
+## 6. Practice Problems
+
+### 6.1 Max Area of Island
+
+- **Input:** 2D binary grid of `'0'`s and `'1'`s.
+- **Output:** Maximum area (count of connected `'1'`s) of an island.
+- **Constraint:** $1 \le m, n \le 50$.
+- **Hint 1:** Use DFS component flood fill.
+- **Hint 2:** The recursive helper sinks the cell and returns $1 + \sum(\text{neighbors})$.
+- **Hint 3:** Track the maximum area across all island roots in the outer loops.
+
+### 6.2 Word Ladder
+
 - **Input:** `beginWord = "hit"`, `endWord = "cog"`, `wordList = ["hot","dot","dog","lot","log","cog"]`
-- **Output:** `5` (`"hit" -> "hot" -> "dot" -> "dog" -> "cog"`)
-- **Challenge:** Model word transformations as graph edges where words differing by 1 letter are adjacent. Solve via BFS in $O(M^2 \times N)$ time.
+- **Output:** `5` (shortest transformation sequence length)
+- **Constraint:** Each transformation changes exactly 1 character.
+- **Hint 1:** Model this as an unweighted shortest path graph problem.
+- **Hint 2:** Use BFS starting from `beginWord`.
+- **Hint 3:** Generate all 1-character variations (`hot`, `lot`) and verify existence against a `Set` of words.
 
-### Problem 3: Is Graph Bipartite? (LeetCode 785)
+### 6.3 Is Graph Bipartite?
+
 - **Input:** Adjacency list `graph`.
-- **Output:** `true` if graph can be partitioned into two independent sets such that every edge connects a node in set A to set B.
-- **Challenge:** Color nodes using two colors (`1` and `-1`) via BFS/DFS, verifying no two adjacent nodes share the same color.
+- **Output:** `true` if vertices can be split into two sets such that no two adjacent vertices share the same set.
+- **Constraint:** Graph may be disconnected.
+- **Hint 1:** Maintain an array `colors` initialized to `0` (unvisited).
+- **Hint 2:** Color nodes with `1` and `-1` using BFS/DFS.
+- **Hint 3:** If a neighbor has the same color as the current node, the graph is not bipartite.
 
 ---
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Binary Search Trees](day-25-binary-search-trees-crud-and-validation.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Directed Graphs & Topological Sort](day-27-cycle-detection-and-topological-sort.md)
+[Previous: Binary Search Trees](day-25-binary-search-trees-crud-and-validation.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Cycle Detection & Topological Sort](day-27-cycle-detection-and-topological-sort.md)
 
 </nav>

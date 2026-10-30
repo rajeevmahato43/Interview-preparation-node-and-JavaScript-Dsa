@@ -27,4 +27,7 @@ Cover the Node.js architecture (V8 + libuv), the 6 phases of the event loop (tim
 3. **Event Loop State Diagrams:** Use clean ASCII diagrams showing phase transitions and queue drainage.
 4. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` (e.g., non-blocking stream pipeline) alongside `❌ ANTI-PATTERN / COMMON BUG` (e.g., loading 500MB into memory with `fs.readFileSync`) with inline explanations.
 5. **Production Systems Reality:** Detail how latency spikes happen when the main thread is blocked, and how Kubernetes health checks fail when synchronous code starves the event loop.
-6. **13-Section Blueprint:** Follow the exact 13-section lecture blueprint from Top Navigation to Bottom Navigation. Target ~650–850 lines per lecture.
+6. **No Artificial Line Count Limits:** Never constrain lectures to arbitrary line counts. Lectures can be as long and comprehensive as necessary to deliver exhaustive, world-class depth, line-by-line runtime derivations, and complete clarity without superficial summaries or forced truncation.
+7. **Topic-Appropriate Architecture:** Structure each lecture according to its core discipline (event loop mechanics, stream pipelines, system clustering) rather than a rigid, robotic template.
+8. **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is the Event Loop`, `### 1.1 Poll Phase`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings.
+9. **No Preachy Meta-Interview Talk:** Deliver the computational, libuv, and backend architecture insights directly without preachy meta-interview commentary.

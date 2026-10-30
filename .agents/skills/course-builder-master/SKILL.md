@@ -19,7 +19,8 @@ Your core rule is:
 We strictly reject:
 - Rote memorization of code templates.
 - "Magic trick" algorithms presented without derivation.
-- Superficial outlines that skip the engineering friction of naive approaches.
+- Rigid, repetitive templates that feel robotic or machine-generated.
+- Artificial meta-labels in headings (e.g. `### Definition`, `### Basic Example`).
 
 ---
 
@@ -41,39 +42,37 @@ Every course curriculum and day lecture produced must guarantee that the candida
 - Ensure every numbered day represents a complete master study unit with balanced multi-topic coverage.
 - Create an accompanying visual roadmap (`roadmap.md`) showing the dependency graph and prerequisite hierarchy.
 
-### 2. Lecture Length & Density Calibration
-- **Target ~650–850 lines per day unit:** Avoid superficial summaries (<300 lines) and avoid overwhelming walls of text (>1,000 lines).
-- Chunk explanations around concrete code blocks, ASCII visual diagrams, and compact comparison tables.
+### 2. Lecture Depth & Topic-Appropriate Architecture
+- **No Artificial Line Count Limits:** Never constrain lectures to arbitrary line counts. Lectures can be as long and comprehensive as necessary to deliver exhaustive, world-class depth, line-by-line mathematical derivations, and complete clarity without superficial summaries or forced truncation.
+- **Topic-Appropriate Architecture:** Not every lecture follows a rigid, one-size-fits-all template. Foundational theory lectures (such as Big O & Complexity Analysis, JavaScript Execution Model, or System Architecture) must focus 100% on their core subject matter—teaching line-by-line calculation, memory behavior, runtime internals, and analysis problems—without forcing artificial pattern overviews or unrelated algorithmic walkthroughs onto topics where they do not belong.
+- **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings.
+- **No Preachy Meta-Interview Talk:** Avoid writing meta-interview filler like "In technical interviews, you must...", "Interviewers will test you on...", or "A common interview trick is...". Deliver the engineering, computational, and systems insights directly.
+- **Strict Scope Discipline:** Keep each lecture strictly focused on its assigned day scope to prevent premature concept bleed (e.g., recursion call stack memory belongs to Day 18; dynamic array resizing in V8 belongs to Day 2).
 
-### 3. Universal 5-Step Logic Discovery Engine
+### 3. Data Structures First, Patterns Second
+- Always teach foundational data structures (e.g. `Map` and `Set`, `Array` and `String`) before introducing the algorithmic patterns that utilize them (e.g. `Frequency Counter`, `Two Pointers`).
+
+### 4. Clean Numbering Hierarchy
+- Use clean decimal numbering across sections, sub-topics, problem sub-steps, and challenges (`1.1`, `1.2`, `3.1.1` – `3.1.8`, `6.1` – `6.3`).
+
+### 5. Essential Methods Reference Tables
+- Every data structure section must conclude with a comprehensive reference table detailing key methods, runtime complexity ($O(1)$ vs $O(n)$), mutability, and quick code examples.
+
+### 6. Interactive Self-Check Notes
+- Place strategic 1-sentence questions formatted as `> [!NOTE]` callouts under key concepts and problems to test active recall.
+
+### 7. The 8-Part Logic-Building Problem Blueprint
 Whenever introducing a coding problem in the curriculum, strictly apply:
-1. **Step 1: Physical Simulation:** Small numbers or physical items (cards, blocks, books). Zero code. Zero data structures.
-2. **Step 2: Brute Force Approach:** Naive code, why it works, time/space complexity calculation.
-3. **Step 3: Bottleneck:** Pinpoint the exact wasted work (repeated linear scans, duplicate calculations).
-4. **Step 4: The Pattern Discovery:** Present the algorithmic pattern as the natural mathematical cure.
-5. **Step 5: The Optimal Solution:** Clean Node.js code with ✅ correct and ❌ bug, loop invariant comment, complexity derivations, and direct `console.log` example runs.
+1. `X.Y.1 Problem Statement` (Clean description, constraints, sample inputs/outputs).
+2. `X.Y.2 How to Think About It` (Physical human eye & hand simulation, zero code).
+3. `X.Y.3 Brute Force Approach & Bottleneck` (Naive code + why it fails in time/memory).
+4. `X.Y.4 The Pattern Insight` (First-principles reasoning: why the optimal pattern makes logical sense).
+5. `X.Y.5 Pseudocode` (Language-agnostic logic before code).
+6. `X.Y.6 Optimal Solution` (Production-grade Node.js code with comments).
+7. `X.Y.7 Common Anti-Pattern` (The common trap, off-by-one bug, or memory-heavy alternative).
+8. `X.Y.8 Complexity Derivation` (Time and space bounds).
 
-### 4. Standardized 13-Section Blueprint
-Every generated lecture file must strictly follow this exact 13-section structure:
-1. Title & Top Navigation (`# Day XX: <Topic Title>` and `<nav>`)
-2. `## Prerequisites`
-3. `## 1. What is <Topic>?` (Simple definition, physical analogy, diagram)
-4. `## 2. How <Topic> Works Step-by-Step` (State changes, memory flow)
-5. `## 3. Pattern Recognition of <Topic>` (Keywords, 10^7 rule, triggers)
-6. `## 4. Problem 1: <Name>` (5-Step Logic Discovery Engine)
-7. `## 5. Problem 2: <Name>` (5-Step Logic Discovery Engine)
-8. `## 6. Under the Hood: V8 & Node.js`
-9. `## 7. Hands-On Exercise` (Scaffolded bug fix with direct test verification)
-10. `## 8. Tricky Points and Edge Cases`
-11. `## 9. Comprehensive Summary`
-12. `## 10. Cheat Sheet` (Decision matrix & pitfalls list)
-13. `## 11. Interview Q&A` (45-second pitch + 4 deep questions)
-Ending with:
-- `## 12. Practice Problems` (Sample inputs & expected outputs without code)
-- Bottom Navigation (`<nav>`)
-
-### 5. Language & Code Quality Standards
-- **Basic English, Simple Words:** Use plain, direct English. Avoid heavy words, academic vocabulary, or confusing jargon.
-- **In-Place Term Callouts:** Define every specialized term right where it appears (`> **Term**: 1-line definition`).
-- **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG`.
+### 8. Language & Code Quality Standards
+- **Basic English Only:** Use plain, direct English. Avoid heavy words, academic vocabulary, or confusing jargon.
+- **Dual-Case Implementations:** Always show `✅ CORRECT` alongside `❌ ANTI-PATTERN / COMMON BUG`.
 - **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.

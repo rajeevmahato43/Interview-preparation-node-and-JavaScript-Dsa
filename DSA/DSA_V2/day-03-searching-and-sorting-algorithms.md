@@ -6,147 +6,34 @@
 
 </nav>
 
-## Prerequisites
-
-- [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Asymptotic complexity ($O(1), O(\log n), O(n), O(n \log n), O(n^2)$) and the $10^7$ operations rule.
-- [Day 02: Arrays, Strings & Primitive Memory](day-02-arrays-strings-and-primitive-memory.md) — Contiguous memory, zero-based array indexing, and in-place element swapping.
-
 ---
 
-## 1. What is Searching and Sorting?
+## 1. Searching Algorithms
 
-**Searching** is the process of locating a target element's position (index) within a collection, or confirming that the element does not exist. **Sorting** is the process of arranging elements into a defined sequential order (ascending or descending) based on a comparison rule.
+**Searching** is the process of locating a target value's index within a collection or confirming that the value does not exist.
 
-> **Loop Invariant**: A formal condition or property that is guaranteed to be true before a loop begins, remains true after each iteration, and explains why the algorithm is correct when the loop finishes.
+Searching efficiency depends entirely on whether the collection is ordered. On unsorted data, the computer has no clues about where an element lives and must inspect every slot one by one. On sorted data, the computer can eliminate huge blocks of elements in a single step.
 
-> **In-Place Algorithm**: An algorithm that transforms input without allocating auxiliary memory proportional to the input size ($O(1)$ auxiliary space).
-
-> **Sort Stability**: A guarantee that items with identical comparison keys retain their original relative order after sorting.
-
-> **Adaptive Algorithm**: An algorithm whose running time automatically improves (e.g., drops to $O(n)$) when the input is already partially or completely sorted.
-
-### Everyday Physical Analogies
-
-#### Searching: The Messy Desk vs The Dictionary
-- **Linear Search**: Looking for a misplaced tax receipt in an unsorted pile of papers on your desk. You pick up the top paper, inspect it, set it aside, and repeat until found or the pile is empty. Work is proportional to pile size ($O(n)$).
-- **Binary Search**: Looking up a word in a printed 1,000-page dictionary. You flip directly to page 500 (middle). If your word comes after letter "M", you instantly discard the first 500 pages in one motion and repeat on the remaining half ($O(\log n)$).
-
-#### Elementary Sorting Analogies
-- **Bubble Sort**: Carbonated bubbles in a soda glass. The largest bubbles rise to the surface first; similarly, the largest numbers bubble up to the array's end with each pass.
-- **Selection Sort**: Arranging students by height. You scan the entire group to find the shortest student and swap them with the first position, then scan the rest for the next shortest.
-- **Insertion Sort**: Arranging playing cards in your hand. You pick up a new card and slide it backward past larger cards until it reaches its correct spot.
-
-```text
-SEARCHING PARADIGMS:
-- Linear Search: [ 14, 42, 7, 88, 31 ] -> Scans index 0, 1, 2... O(n) steps
-- Binary Search: [ 2, 5, 8, 12, 16, 23, 38 ] -> Mid: 12 -> 23 -> Found in 2 steps! O(log n)
-```
-
----
-
-## 2. How Searching and Sorting Work Step-by-Step
-
-### 1. Linear Search ($O(n)$)
-
-#### How It Works Step-by-Step
-Linear Search is the most direct search strategy: it checks elements one-by-one from the very beginning (`index 0`) to the end (`index n - 1`). It makes no assumptions about data ordering and requires zero preparation.
-
-Imagine searching for `target = 7` in `arr = [14, 42, 7, 88, 31]`:
-```text
-Array: [ 14, 42, 7, 88, 31 ], Target = 7
-
-Step 1 (i = 0): Look at arr[0] (14). 14 === 7? No.  -> Advance pointer.
-Step 2 (i = 1): Look at arr[1] (42). 42 === 7? No.  -> Advance pointer.
-Step 3 (i = 2): Look at arr[2] (7).   7 === 7? Yes! -> Target found! Return index 2.
-```
-- **Best Case ($O(1)$)**: The target is at index 0 (1 comparison).
-- **Worst Case ($O(n)$)**: The target is at the final index or not in the array at all (must inspect all $n$ items).
-- **Memory Flow**: Zero extra heap memory ($O(1)$) because only a single integer loop counter is maintained.
+To picture this physically, imagine looking for an entry across two different physical mediums:
+* **The Messy Desk (Linear Search - $O(n)$):** You are looking for a specific receipt in an unsorted pile on your desk. You pick up the top paper, inspect it, set it aside, and repeat until found or the pile is exhausted. If there are 1,000 papers, you may need 1,000 inspections.
+* **The Printed Dictionary (Binary Search - $O(\log n)$):** You are looking up the word "Network" in a 1,000-page printed dictionary. You do not begin on page 1 reading word by word. You flip directly to page 500 (the middle). "Network" comes after "Middle", so you instantly toss away the entire first 500 pages in one motion. You repeat on the remaining 500 pages, cutting the search space in half with every flip. You find your word in at most 10 checks ($\log_2 1000 \approx 10$).
 
 ```javascript
-// ✅ CORRECT: Sequential scan with early exit on match
+// Linear Search: Unsorted input, O(n) scan
 function linearSearch(arr, target) {
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i] === target) return i; // Found target early
+    if (arr[i] === target) return i; // Target found
   }
-  return -1; // Target not present
+  return -1; // Target does not exist
 }
 
-// ❌ ANTI-PATTERN: Returning -1 prematurely inside the loop
-function buggyLinearSearch(arr, target) {
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] === target) return i;
-    return -1; // BUG! Exits on index 0 regardless of subsequent items!
-  }
-  return -1;
-}
-
-// Example test runs
-console.log(linearSearch([14, 42, 7, 88, 31], 7));  // 2
-console.log(linearSearch([14, 42, 7, 88, 31], 99)); // -1
-```
-
----
-
-### 2. Binary Search ($O(\log n)$)
-
-#### How It Works Step-by-Step
-Binary Search works exclusively on **sorted collections**. Instead of inspecting items one-by-one, it repeatedly inspects the midpoint element:
-1. Set boundary pointers: `low = 0` and `high = arr.length - 1`.
-2. Compute the midpoint: `mid = low + Math.floor((high - low) / 2)`.
-3. If `arr[mid] === target`, return `mid`.
-4. If `arr[mid] < target`, the target cannot possibly live in the left half (because all left items are smaller than `arr[mid]`). Discard the left half by setting `low = mid + 1`.
-5. If `arr[mid] > target`, discard the right half by setting `high = mid - 1`.
-6. Repeat until `low > high` (empty search space $\to$ return `-1`).
-
-Every single step eliminates half of the remaining items ($n \to n/2 \to n/4 \to \dots \to 1$). Even with 1,000,000 items, Binary Search finds the answer in at most 20 steps!
-
-#### Step-by-Step Memory Pointer Trace
-Search for `target = 23` in `arr = [2, 5, 8, 12, 16, 23, 38]`:
-```text
-Pass 1:
-  Indices:    [ 0 ]  [ 1 ]  [ 2 ]  [ 3 ]  [ 4 ]  [ 5 ]  [ 6 ]
-  Values:     [  2,    5,     8,    12,    16,    23,    38 ]
-              ^low                  ^mid                ^high
-  low = 0, high = 6 -> mid = 0 + Math.floor((6 - 0) / 2) = 3 (value 12)
-  Compare: 23 > 12 -> Target must be to the right!
-  Action: Discard left half. Move low = mid + 1 = 4.
-
-Pass 2:
-  Indices:                         [ 4 ]  [ 5 ]  [ 6 ]
-  Values:     [ --,   --,    --,    --,    16,    23,    38 ]
-                                    ^low   ^mid         ^high
-  low = 4, high = 6 -> mid = 4 + Math.floor((6 - 4) / 2) = 5 (value 23)
-  Compare: 23 === 23 -> MATCH FOUND! Return index 5 in only 2 comparisons!
-```
-
-```javascript
-// ✅ CORRECT: Standard Binary Search with safe integer midpoint
+// Binary Search: Sorted input, O(log n) halving
 function binarySearch(arr, target) {
   let low = 0;
   let high = arr.length - 1;
 
-  // Invariant: If target exists, it MUST reside in arr[low ... high]
   while (low <= high) {
-    const mid = low + Math.floor((high - low) / 2); // Avoids 32-bit overflow & float bugs
-
-    if (arr[mid] === target) {
-      return mid;
-    } else if (arr[mid] < target) {
-      low = mid + 1; // Discard left half
-    } else {
-      high = mid - 1; // Discard right half
-    }
-  }
-
-  return -1; // Not found
-}
-
-// ❌ ANTI-PATTERN: Floating-point midpoint in JavaScript
-function buggyMidpoint(arr, target) {
-  let low = 0, high = arr.length - 1;
-  while (low <= high) {
-    const mid = (low + high) / 2; // BUG! 0 + 1 / 2 = 0.5. arr[0.5] is undefined!
+    const mid = low + Math.floor((high - low) / 2);
     if (arr[mid] === target) return mid;
     if (arr[mid] < target) low = mid + 1;
     else high = mid - 1;
@@ -154,38 +41,89 @@ function buggyMidpoint(arr, target) {
   return -1;
 }
 
-// Example test runs
-console.log(binarySearch([2, 5, 8, 12, 16, 23, 38], 23)); // 5
-console.log(binarySearch([2, 5, 8, 12, 16, 23, 38], 10)); // -1
+console.log(linearSearch([14, 42, 7, 88, 31], 7));     // 2
+console.log(binarySearch([2, 5, 8, 12, 16, 23, 38], 16)); // 4
 ```
+
+### 1.1 Linear Search
+
+Linear Search is the baseline algorithm. It starts at `index 0` and advances sequentially to `index n - 1`. It makes zero assumptions about the data and requires no preprocessing.
+
+```text
+Array: [ 14, 42, 7, 88, 31 ], Target = 7
+
+Step 1 (i = 0): Look at arr[0] (14). 14 === 7? No.  -> Advance pointer.
+Step 2 (i = 1): Look at arr[1] (42). 42 === 7? No.  -> Advance pointer.
+Step 3 (i = 2): Look at arr[2] (7).   7 === 7? Yes! -> Return index 2.
+```
+
+* **Best Case ($\Omega(1)$):** The target sits at index 0 (1 comparison).
+* **Worst Case ($O(n)$):** The target is at the final index or absent entirely (requires checking all $n$ items).
+* **Auxiliary Space ($O(1)$):** Only maintains a single primitive integer index counter in stack memory.
+
+### 1.2 Binary Search
+
+Binary Search works exclusively on **sorted collections**. Instead of inspecting items sequentially, it repeatedly checks the midpoint element:
+
+```text
+Sorted Array: [ 2, 5, 8, 12, 16, 23, 38 ], Target = 23
+low = 0, high = 6
+
+Pass 1: mid = 0 + Math.floor((6 - 0) / 2) = 3 -> arr[3] is 12.
+        12 < 23 -> Target must be in the right half!
+        Set low = mid + 1 = 4. Search space is now indices [4..6].
+
+Pass 2: mid = 4 + Math.floor((6 - 4) / 2) = 5 -> arr[5] is 23.
+        arr[5] === 23 -> Target found at index 5 in 2 steps!
+```
+
+* **Safe Midpoint Formula:** Never write `Math.floor((low + high) / 2)` in languages with fixed integer sizes, as large indices will cause integer overflow. Writing `low + Math.floor((high - low) / 2)` is mathematically identical and guarantees overflow safety.
+* **Convergence Condition:** The loop condition `while (low <= high)` guarantees that single-element search spaces (`low === high`) are checked before terminating.
+
+> [!NOTE]
+> **Self-Check:** What happens if you search for a target smaller than `arr[0]` in Binary Search?  
+> *Answer:* `high` decrements on every iteration until `high` becomes `-1`, causing `low <= high` (`0 <= -1`) to evaluate to `false` and cleanly returning `-1`.
+
+### 1.3 Search Space Invariants
+
+A **loop invariant** is a condition that remains true across every iteration of a loop. In Binary Search, the fundamental invariant is:
+$$\text{If target exists in array, it is guaranteed to lie within the inclusive interval } [low, high].$$
+Whenever `arr[mid] < target`, all elements in $[low, mid]$ are mathematically smaller than `target`. Discarding that entire prefix by setting `low = mid + 1` preserves the invariant without losing possible answers.
+
+### 1.4 Searching Methods Table
+
+| Method | Best Time | Average Time | Worst Time | Auxiliary Space | Input Prerequisite | Quick Example |
+| :--- | :---: | :---: | :---: | :---: | :--- | :--- |
+| **Linear Search** | $O(1)$ | $O(n)$ | $O(n)$ | $O(1)$ | None (unsorted arrays) | `[4, 2, 8].indexOf(2)` $\to$ `1` |
+| **Binary Search** | $O(1)$ | $O(\log n)$ | $O(\log n)$ | $O(1)$ | **Strictly Sorted** | `[2, 4, 8]` $\to$ checks middle `4` |
+| **Hash Lookup** | $O(1)$ | $O(1)$ | $O(n)$ | $O(n)$ | Pre-indexed in `Map`/`Set` | `map.get("key")` $\to$ instant |
 
 ---
 
-### 3. Elementary $O(n^2)$ Sorting Algorithms
+## 2. Elementary Sorting Algorithms
 
-#### 1. Bubble Sort (Adjacent Comparisons & Bubbling)
-**How It Works Step-by-Step:**
-Bubble Sort repeatedly walks through the array, comparing adjacent pairs `(arr[j], arr[j + 1])`. If the left item is larger than the right item, they swap. After the first full pass, the single largest unsorted element has "bubbled up" to its final position at the far right.
+**Sorting** is the process of arranging elements into a defined sequential order (ascending or descending) based on a comparison rule.
 
-**Step-by-Step Trace:**
-Sort `arr = [5, 1, 4, 2]`:
-```text
-Pass 1 (Find largest, bubble to end):
-  [5, 1, 4, 2] -> 5 > 1? Swap! -> [1, 5, 4, 2]
-  [1, 5, 4, 2] -> 5 > 4? Swap! -> [1, 4, 5, 2]
-  [1, 4, 5, 2] -> 5 > 2? Swap! -> [1, 4, 2, 5]  <- 5 is permanently placed!
+Elementary sorting algorithms run in $O(n^2)$ time in the worst case, but they teach essential low-level mechanics: in-place memory mutation, loop invariants, sort stability, and adaptive execution.
 
-Pass 2 (Find second largest):
-  [1, 4, 2, 5] -> 1 > 4? No.   -> [1, 4, 2, 5]
-  [1, 4, 2, 5] -> 4 > 2? Swap! -> [1, 2, 4, 5]  <- 4 is permanently placed!
-
-Pass 3 (Verify remaining):
-  [1, 2, 4, 5] -> 1 > 2? No.   -> Zero swaps occurred! Early break -> Sorted!
-```
-- **Early-Exit Optimization**: By adding a `swapped` boolean flag, Bubble Sort detects if an array is already sorted and exits after a single pass ($O(n)$ best case).
+To picture the three elementary sorts physically:
+* **Bubble Sort:** Carbonated bubbles rising in a soda glass. The largest bubbles are the most buoyant and float to the surface first; similarly, the largest numbers bubble up to the end of the array on each pass.
+* **Selection Sort:** Arranging students in a line by height. You scan the entire group to find the shortest student and swap them with position 0. Then you scan the rest to find the second shortest student and swap them with position 1.
+* **Insertion Sort:** Organizing playing cards in your hand. You hold sorted cards in your left hand. You pick up a new card from the table and slide it backward past larger cards until it reaches its correct spot.
 
 ```javascript
-// ✅ CORRECT: Bubble Sort with early-exit flag
+// Demonstrating in-place swapping
+const nums = [5, 1, 4, 2];
+[nums[0], nums[1]] = [nums[1], nums[0]]; // ES6 destructuring swap
+console.log(nums); // [1, 5, 4, 2]
+```
+
+### 2.1 Bubble Sort
+
+Bubble Sort compares adjacent elements `(j, j + 1)` and swaps them if they are out of order. After pass 1, the largest element is guaranteed to sit at the final index. Adding a `swapped` boolean flag enables **adaptive $O(n)$ runtime** if the array is already sorted:
+
+```javascript
+// ✅ CORRECT: Bubble Sort with adaptive early exit
 function bubbleSort(arr) {
   const n = arr.length;
   for (let i = 0; i < n - 1; i++) {
@@ -196,62 +134,32 @@ function bubbleSort(arr) {
         swapped = true;
       }
     }
-    if (!swapped) break; // Array is sorted early; O(n) best case!
+    // If no swaps occurred, array is already fully sorted!
+    if (!swapped) break;
   }
   return arr;
 }
 
-// ❌ ANTI-PATTERN: Missing early exit flag forces full O(n^2) work on sorted inputs
-function slowBubbleSort(arr) {
-  const n = arr.length;
-  for (let i = 0; i < n - 1; i++) {
-    for (let j = 0; j < n - 1 - i; j++) {
-      if (arr[j] > arr[j + 1]) {
-        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-      }
-    }
-    // Always runs all n*(n-1)/2 comparisons even if input was already [1, 2, 3, 4]
-  }
-  return arr;
-}
-
-// Example test run
-console.log(bubbleSort([5, 1, 4, 2])); // [ 1, 2, 4, 5 ]
+console.log(bubbleSort([5, 1, 4, 2, 8])); // [1, 2, 4, 5, 8]
+console.log(bubbleSort([1, 2, 3, 4, 5])); // [1, 2, 3, 4, 5] (Runs in O(n) time!)
 ```
 
----
+### 2.2 Selection Sort
 
-#### 2. Selection Sort (Minimum Element Selection)
-**How It Works Step-by-Step:**
-Selection Sort divides the array into two logical sections: a sorted prefix on the left and an unsorted suffix on the right:
-1. Find the smallest element in the entire unsorted suffix.
-2. Swap it with the first element of the unsorted suffix.
-3. Advance the sorted prefix boundary by one slot.
-4. Repeat until the entire array is sorted.
+Selection Sort divides the array into a sorted prefix on the left and an unsorted suffix on the right. In each pass, it finds the index of the minimum element in the unsorted suffix and performs a single swap:
 
-**Step-by-Step Trace:**
-Sort `arr = [29, 10, 14, 37, 13]`:
 ```text
-Pass 1 (Target slot index 0):
-  Find minimum in [29, 10, 14, 37, 13] -> Minimum is 10 at index 1.
-  Swap arr[0] and arr[1]: [ 10 | 29, 14, 37, 13 ]
-
-Pass 2 (Target slot index 1):
-  Find minimum in [29, 14, 37, 13] -> Minimum is 13 at index 4.
-  Swap arr[1] and arr[4]: [ 10, 13 | 14, 37, 29 ]
-
-Pass 3 (Target slot index 2):
-  Find minimum in [14, 37, 29] -> Minimum is 14 at index 2 (itself).
-  No swap needed:         [ 10, 13, 14 | 37, 29 ]
-
-Pass 4 (Target slot index 3):
-  Find minimum in [37, 29] -> Minimum is 29 at index 4.
-  Swap arr[3] and arr[4]: [ 10, 13, 14, 29 | 37 ] -> Sorted!
+Sort [ 29, 10, 14, 37, 13 ]:
+Pass 1: Min is 10 at index 1 -> Swap with index 0: [ 10 | 29, 14, 37, 13 ]
+Pass 2: Min is 13 at index 4 -> Swap with index 1: [ 10, 13 | 14, 37, 29 ]
+Pass 3: Min is 14 at index 2 -> Swap with index 2: [ 10, 13, 14 | 37, 29 ]
+Pass 4: Min is 29 at index 4 -> Swap with index 3: [ 10, 13, 14, 29 | 37 ] -> Sorted!
 ```
-- **Why use Selection Sort?** It minimizes write operations. While Bubble Sort may perform $O(n^2)$ swaps, Selection Sort makes at most $n - 1$ swaps ($O(n)$ writes). This makes it valuable when writing to physical flash memory or EEPROM is expensive.
+
+Selection Sort is valuable because it makes at most **$n - 1$ total swaps** ($O(n)$ memory writes), making it optimal for physical flash memory or EEPROMs where writes degrade hardware lifespan.
 
 ```javascript
-// ✅ CORRECT: Selection Sort (Minimizes memory writes to at most n - 1 swaps)
+// ✅ CORRECT: Selection Sort (Minimizes memory writes)
 function selectionSort(arr) {
   const n = arr.length;
   for (let i = 0; i < n - 1; i++) {
@@ -266,97 +174,44 @@ function selectionSort(arr) {
   return arr;
 }
 
-// ❌ ANTI-PATTERN: Swapping on every smaller element turns Selection into an inefficient Bubble Sort
-function buggySelectionSort(arr) {
-  const n = arr.length;
-  for (let i = 0; i < n - 1; i++) {
-    for (let j = i + 1; j < n; j++) {
-      if (arr[j] < arr[i]) {
-        // BUG: Swapping on EVERY smaller item does O(n^2) writes instead of O(n) writes!
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-  }
-  return arr;
-}
-
-// Example test run
-console.log(selectionSort([29, 10, 14, 37, 13])); // [ 10, 13, 14, 29, 37 ]
+console.log(selectionSort([29, 10, 14, 37, 13])); // [10, 13, 14, 29, 37]
 ```
 
----
+### 2.3 Insertion Sort
 
-#### 3. Insertion Sort (Adaptive Sliding)
-**How It Works Step-by-Step:**
-Insertion Sort works exactly like organizing playing cards in your hand:
-1. Start with the first card (`index 0`), which is already sorted by definition.
-2. Pick up the next unsorted card (`key = arr[i]`).
-3. Compare the `key` backward against cards in the sorted hand (`arr[j]`).
-4. Shift every card that is larger than `key` one slot to the right.
-5. Drop `key` into the empty slot created.
-
-**Step-by-Step Trace:**
-Sort `arr = [12, 11, 13, 5, 6]`:
-```text
-Initial hand: [ 12 ] | [ 11, 13, 5, 6 ]
-
-Step 1 (key = 11):
-  Compare 11 with 12: 12 > 11 -> Shift 12 right -> [ __, 12, 13, 5, 6 ]
-  Insert 11 at index 0:                            [ 11, 12 ] | [ 13, 5, 6 ]
-
-Step 2 (key = 13):
-  Compare 13 with 12: 12 <= 13 -> Stop immediately! 0 shifts.
-  Hand remains:                                    [ 11, 12, 13 ] | [ 5, 6 ]
-
-Step 3 (key = 5):
-  13 > 5 -> shift 13 right -> [ 11, 12, __, 13, 6 ]
-  12 > 5 -> shift 12 right -> [ 11, __, 12, 13, 6 ]
-  11 > 5 -> shift 11 right -> [ __, 11, 12, 13, 6 ]
-  Insert 5 at index 0:                             [ 5, 11, 12, 13 ] | [ 6 ]
-
-Step 4 (key = 6):
-  13 > 6 -> shift 13; 12 > 6 -> shift 12; 11 > 6 -> shift 11; 5 <= 6 -> stop!
-  Insert 6 at index 1:                             [ 5, 6, 11, 12, 13 ]
-```
-- **Adaptive Advantage**: If an array is already sorted `[1, 2, 3, 4, 5]`, the `while` loop condition `arr[j] > key` fails immediately on every step. Zero elements shift, achieving true **$O(n)$ linear runtime**!
-- This is why the V8 engine's built-in `TimSort` uses Insertion Sort as its base sorting engine for small arrays ($n \le 32$) and nearly-sorted chunks.
+Insertion Sort picks up element `key = arr[i]` and shifts larger sorted elements rightward to open a slot for `key`. If an array is already sorted, the inner shift loop never executes, achieving **true $O(n)$ linear speed**:
 
 ```javascript
-// ✅ CORRECT: Insertion Sort (Adaptive O(n) for nearly-sorted data)
+// ✅ CORRECT: Insertion Sort (Adaptive sliding)
 function insertionSort(arr) {
   for (let i = 1; i < arr.length; i++) {
     const key = arr[i];
     let j = i - 1;
-    // Shift elements of arr[0..i-1] that are greater than key rightward
+    // Shift elements greater than key rightward
     while (j >= 0 && arr[j] > key) {
-      arr[j + 1] = arr[j]; // Shift right
+      arr[j + 1] = arr[j];
       j--;
     }
-    arr[j + 1] = key; // Place key into vacated position
+    arr[j + 1] = key; // Place key into opening
   }
   return arr;
 }
 
-// ❌ ANTI-PATTERN: Using array.splice() turns in-place shifts into O(n^2) array buffer copies
-function slowInsertionSort(arr) {
-  for (let i = 1; i < arr.length; i++) {
-    const key = arr[i];
-    let j = i - 1;
-    while (j >= 0 && arr[j] > key) j--;
-    // arr.splice removes and re-inserts, causing full array memory re-copying under the hood!
-    arr.splice(i, 1);
-    arr.splice(j + 1, 0, key);
-  }
-  return arr;
-}
-
-// Example test run
-console.log(insertionSort([12, 11, 13, 5, 6])); // [ 5, 6, 11, 12, 13 ]
+console.log(insertionSort([12, 11, 13, 5, 6])); // [5, 6, 11, 12, 13]
 ```
 
-### Comparison of Elementary Sorts
+> [!NOTE]
+> **Self-Check:** Why does V8's internal sorting engine (TimSort) use Insertion Sort for small arrays ($n \le 32$)?  
+> *Answer:* Insertion Sort has virtually zero function call overhead, excellent CPU cache locality, and runs in $O(n)$ time on nearly-sorted data chunks.
 
-| Algorithm | Best Time | Average Time | Worst Time | Space | Stable? | Adaptive? | Maximum Swaps |
+### 2.4 Stability and Adaptability
+
+* **Sort Stability:** A sort is **stable** if elements with equal comparison keys preserve their original relative order. For example, sorting users by `age` where two users share `age: 25` will preserve whoever appeared first. Bubble Sort and Insertion Sort are stable; Selection Sort is unstable.
+* **Sort Adaptability:** A sort is **adaptive** if its running time automatically improves (e.g. from $O(n^2)$ down to $O(n)$) when input is partially or fully sorted. Bubble Sort (with flag) and Insertion Sort are adaptive.
+
+### 2.5 Sorting Comparison Table
+
+| Algorithm | Best Time | Average Time | Worst Time | Auxiliary Space | Stable? | Adaptive? | Maximum Swaps |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Bubble Sort** | **$O(n)$** | $O(n^2)$ | $O(n^2)$ | $O(1)$ | ✅ Yes | ✅ Yes | $O(n^2)$ |
 | **Selection Sort**| $O(n^2)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | ❌ No | ❌ No | **$O(n)$** |
@@ -364,118 +219,229 @@ console.log(insertionSort([12, 11, 13, 5, 6])); // [ 5, 6, 11, 12, 13 ]
 
 ---
 
-## 3. Pattern Recognition of Searching & Sorting
-
-### Problem Triggers and Diagnostic Keywords
-
-| Problem Trigger | Underlying Requirement | Recommended Strategy |
-| :--- | :--- | :--- |
-| **"Array is sorted"** | Faster search than $O(n)$ is expected. | Binary Search ($O(\log n)$). |
-| **"Partition into 2 or 3 groups"** | In-place grouping by values without full sort. | Two Pointers or Dutch National Flag ($O(n)$). |
-| **"Meeting overlaps / scheduling"** | Detecting collisions between time intervals. | Sort by `start_time` ascending ($O(n \log n)$). |
-| **"Nearly-sorted streaming data"** | Low item inversion count. | Insertion Sort ($O(n)$). |
-| **"Find pair summing to target"** | Sorted array input. | Opposing Two Pointers inward ($O(n)$). |
-
-### The $10^7$ Rule for Sorting
-- **$n \le 10^3$**: Elementary $O(n^2)$ sorts take $\approx 10^6$ operations and pass comfortably.
-- **$n \ge 10^5$**: An $O(n^2)$ sort requires $10^{10}$ operations and **will freeze Node.js**. You must use $O(n \log n)$ TimSort or $O(n)$ linear partitioning.
+## 3. Problem Walkthroughs
 
 ---
 
-## 4. Problem 1: Sort Colors (Dutch National Flag)
+### 3.1 Search Insert Position
 
-### Problem Statement
-Given an array `nums` with $n$ objects colored red (`0`), white (`1`), or blue (`2`), sort them **in-place** so that objects of the same color are adjacent, in order `0`, `1`, `2`.
-You must solve this in a single pass using $O(1)$ extra space without using library sort.
+#### 3.1.1 Problem Statement
+Given a sorted array of distinct integers `nums` and a target value `target`, return the index if the target is found. If not, return the index where it would be if it were inserted in order. You must write an algorithm with $O(\log n)$ runtime complexity.
 
-```text
-Input: nums = [2, 0, 2, 1, 1, 0]
-Output: [0, 0, 1, 1, 2, 2]
-```
+* **Sample Input 1:** `nums = [1, 3, 5, 6]`, `target = 5` $\to$ **Expected Output:** `2`
+* **Sample Input 2:** `nums = [1, 3, 5, 6]`, `target = 2` $\to$ **Expected Output:** `1`
+* **Sample Input 3:** `nums = [1, 3, 5, 6]`, `target = 7` $\to$ **Expected Output:** `4`
+* **Constraints:** $1 \le nums.length \le 10^5$, $-10^4 \le nums[i], target \le 10^4$, all integers in `nums` are distinct and sorted in ascending order.
 
-### Step 1: Physical Simulation
-Imagine poker chips of three colors in a messy row on a table: Red (`0`), White (`1`), Blue (`2`).
-You want three zones: Red on the left, White in the center, Blue on the right.
-- Put your left index finger at the start (`low = 0`, boundary for 0s).
-- Put your right index finger at the end (`high = n - 1`, boundary for 2s).
-- Use a middle pointer (`mid = 0`) to examine each chip one-by-one.
+#### 3.1.2 How to Think About It
+Imagine a row of numbered numbered lockers sorted in ascending order: `[1, 3, 5, 6]`. You want to insert a package labeled `2`.
 
-Let's simulate this step-by-step on `[ 2, 0, 1 ]`:
-- **Start:** `low = 0`, `mid = 0`, `high = 2`.
-- **Step 1:** The chip under `mid` is `2` (Blue).
-  Swap it with the chip under `high` (index 2): the row becomes `[ 1, 0, 2 ]`.
-  Move `high` leftward to index 1. Do NOT move `mid` yet, because the chip just received from `high` has not been checked!
-- **Step 2:** The chip under `mid` is `1` (White).
-  It belongs in the middle white zone! Advance `mid` to index 1.
-- **Step 3:** The chip under `mid` is `0` (Red).
-  Swap it with `low` (index 0): the row becomes `[ 0, 1, 2 ]`.
-  Advance both `low` to index 1 and `mid` to index 2.
-- **Stop:** `mid` (2) has crossed `high` (1). All chips are sorted: `[ 0, 1, 2 ]`!
+Place your left finger at the first locker (`low = 0`) and right finger at the last locker (`high = 3`).
+Look at the middle locker (index 1, label 3). `2` is smaller than `3`. Since the lockers are sorted, `2` cannot possibly belong anywhere to the right of locker 1. Move your right finger leftward past locker 1 (`high = 0`).
+Now middle locker is index 0 (label 1). `2` is larger than `1`. Move your left finger rightward past locker 0 (`low = 1`).
+Your fingers have crossed (`low > high`). Notice where your left finger (`low`) stopped: right at locker index `1`! That is the exact insertion slot.
 
-### Step 2: Brute Force Approach
-Count the frequencies of 0s, 1s, and 2s in pass 1, then overwrite the array in pass 2:
+#### 3.1.3 Brute Force Approach & Bottleneck
+The naive approach uses a linear scan from left to right:
 
 ```javascript
-// Two-Pass Count Sort
-function sortColorsCount(nums) {
-  let c0 = 0, c1 = 0, c2 = 0;
-  for (const x of nums) {
-    if (x === 0) c0++;
-    else if (x === 1) c1++;
-    else c2++;
+function searchInsertLinear(nums, target) {
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] >= target) return i;
   }
-  let idx = 0;
-  while (c0--) nums[idx++] = 0;
-  while (c1--) nums[idx++] = 1;
-  while (c2--) nums[idx++] = 2;
+  return nums.length;
+}
+```
+
+* **The Bottleneck:** Inspects elements one by one ($O(n)$ time). For $10^5$ items, this takes $10^5$ comparisons and completely ignores the fact that the array is already sorted.
+
+#### 3.1.4 The Pattern Insight
+Because `nums` is sorted, we can use **Binary Search**. At each step, comparing `nums[mid]` against `target` cuts the search space in half ($O(\log n)$). When the target is not present, `low` consistently converges to the exact index where the target belongs.
+
+#### 3.1.5 Pseudocode
+
+```text
+FUNCTION SearchInsert(nums, target):
+  low = 0
+  high = length(nums) - 1
+
+  WHILE low <= high:
+    mid = low + FLOOR((high - low) / 2)
+
+    IF nums[mid] == target:
+      RETURN mid
+    ELSE IF nums[mid] < target:
+      low = mid + 1
+    ELSE:
+      high = mid - 1
+
+  RETURN low
+```
+
+#### 3.1.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal O(log n) time, O(1) space Binary Search
+function searchInsert(nums, target) {
+  if (!Array.isArray(nums) || nums.length === 0) return 0;
+
+  let low = 0;
+  let high = nums.length - 1;
+
+  while (low <= high) {
+    // Overflow-safe midpoint calculation
+    const mid = low + Math.floor((high - low) / 2);
+
+    if (nums[mid] === target) {
+      return mid; // Exact match found
+    } else if (nums[mid] < target) {
+      low = mid + 1; // Target is in right half
+    } else {
+      high = mid - 1; // Target is in left half
+    }
+  }
+
+  // When loop terminates, low points to the exact insert position
+  return low;
+}
+
+// ❌ ANTI-PATTERN: Infinite loop bug due to mid rounding and incorrect pointer advance
+function buggyBinarySearch(nums, target) {
+  let low = 0;
+  let high = nums.length - 1;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (nums[mid] === target) return mid;
+    if (nums[mid] < target) low = mid; // BUG: Fails to advance past mid, causing infinite loop!
+    else high = mid - 1;
+  }
+  return low;
+}
+
+// Runnable test cases
+console.log(searchInsert([1, 3, 5, 6], 5)); // 2
+console.log(searchInsert([1, 3, 5, 6], 2)); // 1
+console.log(searchInsert([1, 3, 5, 6], 7)); // 4
+console.log(searchInsert([1, 3, 5, 6], 0)); // 0
+```
+
+#### 3.1.7 Common Anti-Pattern
+Writing `low = mid` instead of `low = mid + 1` causes an infinite loop when `low` and `high` are adjacent (e.g. `low = 0, high = 1`). `Math.floor((0 + 1) / 2)` computes `mid = 0`, resetting `low = 0` infinitely. Always advance past `mid` using `mid + 1` or `mid - 1`.
+
+#### 3.1.8 Complexity Derivation
+* **Time Complexity:** $O(\log n)$ — In each step, the search interval size is divided by 2 ($\frac{n}{2}, \frac{n}{4}, \dots, 1$). Halving $n$ requires at most $\lfloor \log_2 n \rfloor + 1$ iterations. For $n = 100,000$, this finishes in at most 17 operations.
+* **Auxiliary Space Complexity:** $O(1)$ — Only maintains integer pointers (`low`, `high`, `mid`) in stack memory.
+
+> [!NOTE]
+> **Self-Check:** Why does `low` always point to the correct insertion index when the target is absent?  
+> *Answer:* At loop exit, `high < low`. All elements before `low` are strictly smaller than `target`, and all elements after `high` are strictly greater, making `low` the correct insertion boundary.
+
+---
+
+### 3.2 Sort Colors
+
+#### 3.2.1 Problem Statement
+Given an array `nums` with $n$ objects colored red (`0`), white (`1`), or blue (`2`), sort them **in-place** so that objects of the same color are adjacent, in the order `0`, `1`, and `2`. You must solve this without using the library's sort function, in a single pass using $O(1)$ extra space.
+
+* **Sample Input 1:** `nums = [2, 0, 2, 1, 1, 0]` $\to$ **Expected Output:** `[0, 0, 1, 1, 2, 2]`
+* **Sample Input 2:** `nums = [2, 0, 1]` $\to$ **Expected Output:** `[0, 1, 2]`
+* **Constraints:** $n == nums.length$, $1 \le n \le 10^5$, `nums[i]` is either `0`, `1`, or `2`.
+
+#### 3.2.2 How to Think About It
+Imagine sorting colored poker chips on a table: Red (`0`), White (`1`), and Blue (`2`).
+You want three clean zones: Red on the left, White in the center, and Blue on the right.
+
+Place your left thumb at the start (`low = 0`, boundary for 0s).
+Place your right thumb at the end (`high = n - 1`, boundary for 2s).
+Use an index finger (`mid = 0`) to examine each chip one by one:
+* If chip is `0`: Swap it into your left thumb's spot (`low`) and advance both thumbs.
+* If chip is `1`: It belongs right in the middle! Just advance your examining finger (`mid++`).
+* If chip is `2`: Swap it into your right thumb's spot (`high`) and move your right thumb backward (`high--`). Keep your examining finger (`mid`) right where it is, because you need to inspect the new chip that just arrived from the right!
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+The naive approach uses a two-pass counting sort:
+
+```javascript
+function sortColorsCount(nums) {
+  let count0 = 0, count1 = 0, count2 = 0;
+  for (const num of nums) {
+    if (num === 0) count0++;
+    else if (num === 1) count1++;
+    else count2++;
+  }
+  let i = 0;
+  while (count0--) nums[i++] = 0;
+  while (count1--) nums[i++] = 1;
+  while (count2--) nums[i++] = 2;
   return nums;
 }
 ```
-- **Time Complexity**: $O(n)$ — Two passes across the array.
-- **Space Complexity**: $O(1)$ — Only three counter variables.
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-While Count Sort is $O(n)$, it requires **two full passes** and overwrites values. If the array elements were composite objects (e.g., `{ color: 0, payload: "UserSession" }`), overwriting requires copying full references twice. We want a true single-pass in-place partition.
+* **The Bottleneck:** While $O(n)$, Count Sort requires **two full passes** over memory and overwrites values. If array elements were objects (e.g. `{ color: 0, id: "session_4" }`), overwriting requires duplicate property writes. We want a true single-pass in-place partition.
 
-### Step 4: The Pattern Discovery
-Edsger Dijkstra's 3-way partitioning maintains three pointers defining four memory partitions:
+#### 3.2.4 The Pattern Insight
+Edsger Dijkstra's **Dutch National Flag algorithm** partitions the array into four regions using 3 pointers:
+* `[0 .. low - 1]`: Confirmed 0s (Red)
+* `[low .. mid - 1]`: Confirmed 1s (White)
+* `[mid .. high]`: Unexamined elements (Unknown)
+* `[high + 1 .. n - 1]`: Confirmed 2s (Blue)
+
+When `mid > high`, the unexamined partition is empty and the entire array is sorted in a single pass.
+
+#### 3.2.5 Pseudocode
+
 ```text
-[ 0 ... low - 1 ]   --> Red partition (0s)
-[ low ... mid - 1 ] --> White partition (1s)
-[ mid ... high ]    --> Uninspected elements (Unknown)
-[ high + 1 ... n-1] --> Blue partition (2s)
-```
-When `mid > high`, the unknown partition is empty and the entire array is sorted!
+FUNCTION SortColors(nums):
+  low = 0
+  mid = 0
+  high = length(nums) - 1
 
-### Step 5: The Optimal Solution
+  WHILE mid <= high:
+    IF nums[mid] == 0:
+      SWAP(nums[low], nums[mid])
+      low = low + 1
+      mid = mid + 1
+    ELSE IF nums[mid] == 1:
+      mid = mid + 1
+    ELSE:
+      SWAP(nums[mid], nums[high])
+      high = high - 1
+
+  RETURN nums
+```
+
+#### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Dijkstra's Dutch National Flag 3-Way Partitioning
+// ✅ CORRECT: Optimal O(n) single-pass Dijkstra 3-Way Partitioning
 function sortColors(nums) {
+  if (!Array.isArray(nums) || nums.length < 2) return nums;
+
   let low = 0;
   let mid = 0;
   let high = nums.length - 1;
 
-  // Invariant: nums[0..low-1] === 0, nums[low..mid-1] === 1, nums[high+1..n-1] === 2
   while (mid <= high) {
     if (nums[mid] === 0) {
+      // Swap 0 to the low boundary
       [nums[low], nums[mid]] = [nums[mid], nums[low]];
       low++;
       mid++;
     } else if (nums[mid] === 1) {
-      mid++; // White element in place
+      // 1 belongs in the middle
+      mid++;
     } else {
+      // Swap 2 to the high boundary
       [nums[mid], nums[high]] = [nums[high], nums[mid]];
       high--;
-      // ⚠️ Invariant check: Do NOT advance mid! We must inspect the newly swapped element.
+      // ⚠️ DO NOT advance mid! The newly swapped element at mid must still be inspected.
     }
   }
 
   return nums;
 }
 
-// ❌ ANTI-PATTERN: Advancing mid when swapping with high (skips inspecting swapped item)
+// ❌ ANTI-PATTERN / COMMON BUG: Advancing mid when swapping with high
 function buggySortColors(nums) {
   let low = 0, mid = 0, high = nums.length - 1;
   while (mid <= high) {
@@ -487,349 +453,185 @@ function buggySortColors(nums) {
     } else {
       [nums[mid], nums[high]] = [nums[high], nums[mid]];
       high--;
-      mid++; // BUG! If nums[high] held a 0, it is skipped without reaching low!
+      mid++; // BUG: Advances mid without checking what arrived from high!
     }
   }
   return nums;
 }
 
-// Example test runs
-console.log(sortColors([2, 0, 2, 1, 1, 0])); // [ 0, 0, 1, 1, 2, 2 ]
-console.log(sortColors([2, 0, 1]));          // [ 0, 1, 2 ]
-console.log(buggySortColors([2, 0, 2, 1, 1, 0])); // [ 0, 1, 2, 1, 2, 2 ] (skipped inspecting swapped high element)
+// Runnable test cases
+console.log(sortColors([2, 0, 2, 1, 1, 0])); // [0, 0, 1, 1, 2, 2]
+console.log(sortColors([2, 0, 1]));          // [0, 1, 2]
+console.log(sortColors([0]));                // [0]
+console.log(buggySortColors([2, 0, 2, 1, 1, 0])); // [0, 0, 1, 2, 1, 2] (Corrupted order!)
 ```
 
-- **Time Complexity**: $O(n)$ — Every step either increments `mid` or decrements `high`. Single pass.
-- **Space Complexity**: $O(1)$ — Direct in-place swaps.
+#### 3.2.7 Common Anti-Pattern
+Advancing `mid++` when swapping with `high` is the classic candidate trap. When `nums[mid] === 2`, swapping with `nums[high]` places an uninspected element into `mid`. If that arriving element happens to be `0`, advancing `mid++` skips it forever, leaving a `0` misplaced in the middle zone.
+
+#### 3.2.8 Complexity Derivation
+* **Time Complexity:** $O(n)$ — On every iteration of the `while` loop, either `mid` increments or `high` decrements. The two pointers start $n$ distance apart and cross in at most $n$ operations.
+* **Auxiliary Space Complexity:** $O(1)$ — Mutates the array entirely in-place with zero extra heap allocations.
+
+> [!NOTE]
+> **Self-Check:** Why don't we need to re-inspect `nums[mid]` after swapping with `nums[low]`?  
+> *Answer:* Elements swapped from `low` into `mid` are guaranteed to be `1`s that were already inspected earlier by `mid` as it traversed past `low`.
 
 ---
 
-## 5. Problem 2: Meeting Rooms (Interval Overlap Detection)
+### 3.3 Majority Element
 
-### Problem Statement
-Given an array of meeting intervals `intervals[i] = [start, end]`, determine if a person could attend all meetings without overlap.
-Note: If a meeting ends at time $t$ and another begins at time $t$, they do **not** conflict.
+#### 3.3.1 Problem Statement
+Given an array `nums` of size $n$, return the **majority element**. The majority element is the element that appears **more than $\lfloor n / 2 \rfloor$ times**. You may assume that the majority element always exists in the array.
+
+* **Sample Input 1:** `nums = [3, 2, 3]` $\to$ **Expected Output:** `3`
+* **Sample Input 2:** `nums = [2, 2, 1, 1, 1, 2, 2]` $\to$ **Expected Output:** `2`
+* **Constraints:** $n == nums.length$, $1 \le n \le 5 \times 10^4$, $-10^9 \le nums[i] \le 10^9$.
+
+#### 3.3.2 How to Think About It
+Imagine a crowded parliament room where members of different political parties are voting. One party is the absolute majority, holding more than 50% of all seats.
+
+Whenever two members from different political parties disagree, they both agree to step outside the room and cancel each other out. Because the majority party holds more than half of all seats, even if every other political party in the room gangs up and cancels votes with them, the majority party will still have representatives standing at the end!
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+The naive approach counts the frequency of every element using nested loops or a Hash Map:
+
+```javascript
+function majorityElementHashMap(nums) {
+  const counts = new Map();
+  const threshold = Math.floor(nums.length / 2);
+  for (const num of nums) {
+    const nextCount = (counts.get(num) || 0) + 1;
+    if (nextCount > threshold) return num;
+    counts.set(num, nextCount);
+  }
+  return -1;
+}
+```
+
+* **The Bottleneck:** While $O(n)$ time, allocating a `Map` consumes $O(n)$ heap memory. For $10^6$ elements, this allocates thousands of map nodes. In interviews, you are expected to solve this in **$O(1)$ auxiliary space**.
+
+#### 3.3.4 The Pattern Insight
+The **Boyer-Moore Voting Algorithm** tracks a `candidate` and a `count`:
+1. If `count === 0`, we pick the current number as the new `candidate`.
+2. If the current number matches `candidate`, increment `count++`.
+3. If the current number differs from `candidate`, decrement `count--` (mutual cancellation).
+
+Because the majority element appears more than $n / 2$ times, its occurrences strictly outnumber all other elements combined. Mutual cancellation cannot extinguish the majority element.
+
+#### 3.3.5 Pseudocode
 
 ```text
-Input: intervals = [[0, 30], [5, 10], [15, 20]]
-Output: false (Meeting [0, 30] conflicts with [5, 10])
+FUNCTION MajorityElement(nums):
+  candidate = nums[0]
+  count = 0
 
-Input: intervals = [[7, 10], [2, 4]]
-Output: true (Interval [2, 4] finishes before [7, 10] begins)
+  FOR EACH num IN nums:
+    IF count == 0:
+      candidate = num
+    
+    IF num == candidate:
+      count = count + 1
+    ELSE:
+      count = count - 1
+
+  RETURN candidate
 ```
 
-### Step 1: Physical Simulation
-Imagine 3 paper appointment slips scattered on your desk:
-Slip A: `[0, 30]`, Slip B: `[5, 10]`, Slip C: `[15, 20]`.
-
-How does a human solve this naturally?
-1. Pick up the slips and arrange them chronologically by start time:
-   `[0, 30]` then `[5, 10]` then `[15, 20]`.
-2. Look at Meeting 1 `[0, 30]`. It finishes at time `30`.
-3. Look at Meeting 2 `[5, 10]`. It starts at time `5`.
-4. Ask yourself: "Does Meeting 2 start before Meeting 1 has finished?"
-   `5 < 30` -> YES! They overlap. It is impossible to attend both meetings. We can stop immediately and return `false` without even checking Meeting 3!
-
-Now test non-overlapping slips: `[7, 10]` and `[2, 4]`:
-1. Order them by start time: `[2, 4]` first, then `[7, 10]`.
-2. Meeting 1 ends at `4`. Meeting 2 starts at `7`. Since `7 >= 4`, there is no conflict! Return `true`.
-
-### Step 2: Brute Force Approach
-Compare every meeting pair $(i, j)$ using nested loops:
+#### 3.3.6 Optimal Solution
 
 ```javascript
-// Pairwise Brute Force O(n^2)
-function canAttendMeetingsBrute(intervals) {
-  for (let i = 0; i < intervals.length; i++) {
-    for (let j = i + 1; j < intervals.length; j++) {
-      // Two intervals overlap if max(start1, start2) < min(end1, end2)
-      if (Math.max(intervals[i][0], intervals[j][0]) < Math.min(intervals[i][1], intervals[j][1])) {
-        return false;
-      }
+// ✅ CORRECT: Optimal O(n) time, O(1) space Boyer-Moore Voting Algorithm
+function majorityElement(nums) {
+  let candidate = null;
+  let count = 0;
+
+  for (let i = 0; i < nums.length; i++) {
+    const num = nums[i];
+
+    // When count drops to 0, pick current element as new candidate
+    if (count === 0) {
+      candidate = num;
     }
-  }
-  return true;
-}
-```
-- **Time Complexity**: $O(n^2)$ — Checks all $\frac{n(n-1)}{2}$ pairs.
-- **Space Complexity**: $O(1)$.
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-Comparing every meeting against every other meeting is redundant. A meeting from 2:00 PM to 3:00 PM cannot possibly conflict with a meeting from 7:00 PM to 8:00 PM. By sorting meetings chronologically by start time, we only need to compare **adjacent neighbors** ($i$ and $i - 1$).
-
-### Step 4: The Pattern Discovery
-Sorting transforms an unstructured all-pairs problem ($O(n^2)$) into an adjacent-element verification problem ($O(n \log n) + O(n) = O(n \log n)$).
-
-### Step 5: The Optimal Solution
-
-```javascript
-// ✅ CORRECT: Sort shallow copy by start time and check adjacent neighbors
-function canAttendMeetings(intervals) {
-  if (intervals.length <= 1) return true;
-
-  // Clone to avoid mutating caller's memory, sort with numeric comparator
-  const sorted = intervals.slice().sort((a, b) => a[0] - b[0]);
-
-  // Invariant: No two meetings in sorted[0 ... i - 1] overlap
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1];
-    const curr = sorted[i];
-
-    // If current meeting starts strictly before previous ends -> Overlap!
-    if (curr[0] < prev[1]) {
-      return false;
-    }
+    // Increment if matching, decrement if conflicting
+    count += (num === candidate) ? 1 : -1;
   }
 
-  return true;
+  return candidate;
 }
 
-// ❌ ANTI-PATTERN: Default sort coerces arrays to strings!
-function buggyCanAttend(intervals) {
-  // intervals.sort() converts [7, 10] to "7,10" and [2, 4] to "2,4", ordering "2,4" first by string,
-  // but [10, 15] and [2, 4] becomes "10,15" before "2,4"!
-  return intervals.sort(); 
+// ❌ ANTI-PATTERN: Sorting array takes O(n log n) and mutates input
+function slowMajorityElement(nums) {
+  // Sorts array to inspect nums[Math.floor(n/2)], burning O(n log n) time!
+  nums.sort((a, b) => a - b);
+  return nums[Math.floor(nums.length / 2)];
 }
 
-// Example test runs
-console.log(canAttendMeetings([[0, 30], [5, 10], [15, 20]])); // false
-console.log(canAttendMeetings([[7, 10], [2, 4]])); // true
-console.log(canAttendMeetings([[1, 5], [5, 10]])); // true (boundary match allowed)
-console.log(canAttendMeetings([])); // true
+// Runnable test cases
+console.log(majorityElement([3, 2, 3]));             // 3
+console.log(majorityElement([2, 2, 1, 1, 1, 2, 2])); // 2
+console.log(majorityElement([10]));                  // 10
 ```
 
-- **Time Complexity**: $O(n \log n)$ — Dominated by sorting $n$ intervals. Linear $O(n)$ check follows.
-- **Space Complexity**: $O(n)$ — Auxiliary array for the sorted clone (preserves caller data).
+#### 3.3.7 Common Anti-Pattern
+Sorting the array with `nums.sort((a, b) => a - b)` and returning `nums[Math.floor(n / 2)]` is a popular shortcut. However, it mutates the caller's input array and runs in $O(n \log n)$ time, which is an order of magnitude slower than Boyer-Moore's $O(n)$ single-pass linear time.
+
+#### 3.3.8 Complexity Derivation
+* **Time Complexity:** $O(n)$ — Single linear pass over `nums`. Exactly $n$ iterations performing constant-time arithmetic ($O(1)$).
+* **Auxiliary Space Complexity:** $O(1)$ — Only maintains two primitive scalar variables (`candidate` and `count`) in stack memory.
+
+> [!NOTE]
+> **Self-Check:** What would Boyer-Moore return if no element appeared more than $n / 2$ times?  
+> *Answer:* It would still return a candidate, but that candidate might not be a majority. If the existence of a majority element is not guaranteed, you must make a second $O(n)$ verification pass to confirm its frequency exceeds $n / 2$.
 
 ---
 
-## 6. Under the Hood: V8 & Node.js
+## 4. Tricky Edge Cases
 
-### Why JavaScript's Default `sort()` Converts to Strings
-In JavaScript, `[10, 5, 100].sort()` outputs `[10, 100, 5]`!
-The ECMAScript specification dictates that unless a comparator function is provided, all items must be coerced to strings and sorted by UTF-16 code units. Because `"100"` begins with `'1'` (code unit 49) while `"5"` begins with `'5'` (code unit 53), `"100"` precedes `"5"`.
-- Always pass a numeric comparator: `(a, b) => a - b`.
-
-### V8 Engine TimSort Architecture
-Since Node.js 12 (V8 v7.0), `Array.prototype.sort()` uses **TimSort**:
-1. Scans array for natural ascending/descending sequences called **runs**.
-2. If a run is shorter than 32 elements, it extends the run using **Insertion Sort** (minimal overhead on small arrays).
-3. Merges runs using a balanced **Merge Sort** stack.
-- **Guaranteed Worst-Case Time**: $O(n \log n)$.
-- **Best-Case Time**: $O(n)$ on sorted or reverse-sorted data.
-- **Stability Guarantee**: Guaranteed stable by ECMAScript specification since 2019.
-
-### Synchronous Sorting in Node.js Event Loop
-Node.js runs JavaScript on a single thread. Executing an in-memory sort on 100,000 objects with an unoptimized $O(n^2)$ algorithm consumes billions of CPU cycles, freezing the main thread for seconds.
-- Incoming HTTP requests queue up in kernel socket buffers.
-- Libuv cannot process I/O events.
-- Kubernetes liveness probes (`/healthz`) fail, causing container restarts.
-
-### Backend Strategy: In-Memory Node.js vs Database `ORDER BY`
-
-| Decision Metric | Node.js In-Memory `arr.sort()` | PostgreSQL `ORDER BY` |
-| :--- | :--- | :--- |
-| **Dataset Size** | Small arrays ($< 2,000$ items) already cached | Large datasets ($> 5,000$ rows) |
-| **Index Acceleration** | None; full $O(n \log n)$ CPU sorting | **B-Tree Index**: $O(\log n)$ pre-sorted disk read |
-| **Network Overhead** | Must pull entire table into Node.js heap | Transmits only requested page (`LIMIT 20 OFFSET 0`) |
-| **Thread Safety** | Blocks main thread during CPU sort | Zero Node.js CPU impact; offloaded to DB daemon |
+* **The JavaScript Default `sort()` Lexicographical Trap:** In JavaScript, `[10, 2, 5].sort()` returns `[10, 2, 5]` because the default comparator converts elements to strings and compares UTF-16 code units (`"10"` comes before `"2"`). Always supply an explicit numeric comparator: `arr.sort((a, b) => a - b)`.
+* **Binary Search Midpoint Calculation Overflow:** In typed arrays or other languages, calculating midpoint via `(low + high) / 2` overflows positive integer bounds when $low + high > 2^{31} - 1$. Always use `low + Math.floor((high - low) / 2)`.
+* **Binary Search Loop Condition (`low <= high` vs `low < high`):** Using `low < high` terminates before inspecting a 1-element remaining interval when `low === high`. Use `low <= high` when searching for exact values.
+* **Empty and Single-Element Arrays (`[]`, `[42]`):** Guard against empty arrays upfront. A 1-element array should return index `0` immediately without entering sorting or partitioning loops.
+* **All Identical Elements (`[2, 2, 2, 2]`):** In Dutch National Flag partitioning, all items are identical. The algorithm must advance pointers smoothly without entering infinite self-swapping loops.
+* **In-Place Mutation vs Non-Mutating Methods (`sort()` vs `toSorted()`):** `Array.prototype.sort()` mutates the original array in-place. If preserving the original array order is required by the caller, use ES2023 `toSorted()` or copy first with `[...arr].sort()`.
 
 ---
 
-## 7. Hands-On Exercise
+## 5. Summary Cheat Sheet
 
-### The Scenario
-You are developing an automated deployment health check for a microservice fleet. You have $n$ software builds labeled sequentially from $1$ to $n$.
-At some point, a broken commit was introduced. Because each build inherits all previous commits, **all builds after a bad build are also bad**.
-You are provided an API function `isBadVersion(version)` returning `true` or `false`.
-You must implement `findFirstBadVersion(n, isBadVersion)` to find the earliest broken build using the minimum number of API queries.
-
-### The Buggy Code
-```javascript
-// Node.js code
-function findFirstBadVersionBuggy(n, isBadVersion) {
-  // Bug 1: Linear scan O(n) makes up to 1,000,000 slow network API calls!
-  // Bug 2: Off-by-one: Builds are 1-indexed (1 to n), but loop checks index 0!
-  for (let i = 0; i < n; i++) {
-    if (isBadVersion(i)) return i;
-  }
-  return -1;
-}
-```
-
-### Acceptance Criteria
-1. Must execute in **$O(\log n)$ time** using Binary Search.
-2. Search space must strictly encompass version `1` through version `n`.
-3. Handles edge cases: version 1 is bad, or only the final version $n$ is bad.
-4. Total extra memory allocated must be **$O(1)$**.
-5. Verified with test execution.
-
-### Verified Solution
-
-```javascript
-function findFirstBadVersion(n, isBadVersion) {
-  let low = 1;
-  let high = n;
-  let firstBad = -1;
-
-  while (low <= high) {
-    const mid = low + Math.floor((high - low) / 2);
-
-    if (isBadVersion(mid)) {
-      firstBad = mid; // Candidate found, search left for earlier bad build
-      high = mid - 1;
-    } else {
-      low = mid + 1;  // Build is good, first bad must be to the right
-    }
-  }
-
-  return firstBad;
-}
-
-// Example Test Runs
-console.log(findFirstBadVersion(5, (v) => v >= 4));    // 4 (earliest bad build)
-console.log(findFirstBadVersion(10, (v) => v >= 1));   // 1 (first build is bad)
-console.log(findFirstBadVersion(100, (v) => v >= 50)); // 50
-```
+* **Search Boundary:** Unsorted arrays require $O(n)$ Linear Search; sorted arrays enable $O(\log n)$ Binary Search.
+* **Binary Search Midpoint Rule:** Always compute `mid` with `low + Math.floor((high - low) / 2)` to eliminate integer overflow risks.
+* **Bubble Sort Mechanics:** Adjacent pairwise swaps. Adding a `swapped` boolean flag provides adaptive $O(n)$ speed for sorted data.
+* **Selection Sort Advantage:** Minimizes writes to at most $n - 1$ total swaps ($O(n)$ writes), ideal for flash memory systems.
+* **Insertion Sort Advantage:** Adaptive sliding; best-case $O(n)$ for nearly-sorted data; serves as the internal engine for V8 TimSort chunks ($n \le 32$).
+* **Dutch National Flag Invariant:** Uses 3 pointers (`low`, `mid`, `high`) to partition 3 values in a single $O(n)$ pass without extra memory.
+* **Boyer-Moore Voting:** Mutually cancels conflicting elements; the majority candidate ($> 50\%$) is mathematically guaranteed to survive.
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 6. Practice Problems
 
-### 1. Safe Midpoint Integer Arithmetic
-Writing `(low + high) / 2` in JavaScript produces floating-point fractions (`0.5`), breaking array index lookups.
-Using bitwise shift `(low + high) >> 1` coerces values to 32-bit signed integers, which overflows to negative if sum exceeds $2^{31} - 1$.
-- Memorize the universal safe formula: `low + Math.floor((high - low) / 2)`.
+### 6.1 First Bad Version (Easy/Warm-Up)
+* **Problem:** You have $n$ product versions `[1, 2, ..., n]`. Since each version is developed based on the previous version, all versions after a bad version are also bad. Given an API `isBadVersion(version)`, find the first bad version using the minimum number of API calls.
+* **Sample Input:** `n = 5`, first bad version is `4` $\to$ **Expected Output:** `4`
+* **Socratic Guidance:**
+  * *Hint 1:* The version status is monotonically sorted: `[false, false, false, true, true]`.
+  * *Hint 2:* How can you use Binary Search to locate the exact boundary where `isBadVersion` flips from `false` to `true` in $O(\log n)$ time?
 
-### 2. Sorting Non-Primitives: `undefined`, `null`, `NaN`
-- `undefined` items are always moved to the very end of the array, and the comparator callback is **never called** on them.
-- `null` coerces to `0` during subtraction (`null - 5 === -5`).
-- `NaN` breaks mathematical transitivity (`NaN - 5` is `NaN`), causing non-deterministic sorting order and data corruption.
+### 6.2 Find Minimum in Rotated Sorted Array (Medium)
+* **Problem:** An array of length $n$ sorted in ascending order was rotated between 1 and $n$ times. Given the rotated array `nums` of unique elements, return the minimum element in $O(\log n)$ time.
+* **Sample Input:** `nums = [3, 4, 5, 1, 2]` $\to$ **Expected Output:** `1`
+* **Socratic Guidance:**
+  * *Hint 1:* Compare `nums[mid]` with `nums[high]`.
+  * *Hint 2:* If `nums[mid] > nums[high]`, the inflection point (minimum) must lie strictly in the right half (`low = mid + 1`). Otherwise, it lies in the left half including `mid` (`high = mid`).
 
-### 3. In-Place Mutation: `.sort()` vs `.toSorted()`
-`arr.sort()` mutates the source array. If the array is shared across concurrent async operations, sorting causes data race side effects. Use ES2023 `arr.toSorted()` or `[...arr].sort()` to preserve original arrays safely.
-
----
-
-## 9. Comprehensive Summary
-
-- **Binary Search** requires a sorted monotonic array. It probes the midpoint and discards half the search space in each step, achieving $O(\log n)$ time and $O(1)$ space.
-- **Bubble Sort** bubbles largest items rightward via adjacent swaps; early-exit flag gives $O(n)$ best-case time.
-- **Selection Sort** finds minimum elements in unsorted suffixes; performs at most $n - 1$ swaps ($O(n)$ writes), but is unstable and always takes $O(n^2)$ comparisons.
-- **Insertion Sort** slides items into a sorted prefix; adaptive $O(n)$ best case makes it ideal for small arrays ($n < 32$) and nearly-sorted data.
-- **Dutch National Flag**: 3-pointer partition (`low`, `mid`, `high`) sorts 3 distinct values in a single $O(n)$ pass and $O(1)$ space.
-- **Meeting Rooms**: Sorting intervals by `start_time` reduces overlap detection from an $O(n^2)$ pairwise scan to an $O(n \log n)$ adjacent-neighbor scan.
-- **V8 TimSort**: Stable hybrid sort combining Insertion Sort and Merge Sort. Always supply `(a, b) => a - b` to avoid default UTF-16 string coercion.
-
----
-
-## 10. Cheat Sheet
-
-### Algorithm Decision Matrix
-
-| Problem Requirement | Recommended Algorithm | Time Complexity | Space Complexity |
-| :--- | :--- | :---: | :---: |
-| **Search in sorted array** | Binary Search | **$O(\log n)$** | $O(1)$ |
-| **Search in unsorted array** | Linear Search | $O(n)$ | $O(1)$ |
-| **Partition 3 values (0, 1, 2)** | Dutch National Flag | **$O(n)$** | $O(1)$ |
-| **Detect interval conflicts** | Sort by start time, scan adjacent | **$O(n \log n)$** | $O(n)$ or $O(1)$ |
-| **General array sorting in Node.js**| `arr.toSorted((a, b) => a - b)` | **$O(n \log n)$** | $O(n)$ |
-| **Small arrays ($n < 32$)** | Insertion Sort | $O(n)$ best / $O(n^2)$ | $O(1)$ |
-
-### Common Pitfalls List
-- **String Coercion Trap**: Calling `arr.sort()` without comparator orders `100` before `5`.
-- **In-Place Mutation**: `arr.sort()` modifies input arrays; use `arr.toSorted()` or clone first.
-- **Binary Search Boundary**: Using `low < high` instead of `low <= high` misses the final 1-element search window.
-- **Float Midpoint Bug**: Omitting `Math.floor()` creates fractional array indices (`arr[2.5]`).
-- **Dutch National Flag Premature Increment**: Incrementing `mid` when swapping with `high` skips inspecting swapped elements.
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Technical Pitch
-> *"Searching and sorting form the foundation of algorithmic optimization. While linear search checks unsorted elements in $O(n)$ time, binary search cuts sorted search spaces in half to locate elements in $O(\log n)$ time. In Node.js, the built-in sort uses TimSort—a hybrid of insertion sort and merge sort guaranteeing $O(n \log n)$ stable performance. However, because arr.sort() defaults to lexicographical string conversion and mutates memory in-place, production code must pass explicit numeric comparators and use arr.toSorted(). For specialized tasks like 3-way partitioning or calendar scheduling, we replace generic sorts with single-pass Dutch National Flag or adjacent interval scans."*
-
-### 1. Why does Binary Search strictly require sorted order, and what loop invariant proves it terminates correctly?
-**Answer:**
-Binary search works by comparing the target with the midpoint value `arr[mid]`. To safely discard half of the array, the elements must be **monotonic** (non-decreasing). If `target > arr[mid]`, the algorithm assumes all elements in `arr[low ... mid]` are $\le arr[mid] < target$, proving the target cannot reside in the left partition. If the array is unsorted, this assumption breaks down and the target could be discarded incorrectly.
-
-The loop invariant is: *"If the target exists in the array, it must lie within the closed index window `[low ... high]`."*
-- **Initialization**: `low = 0` and `high = n - 1` bounds the entire array.
-- **Maintenance**: At each step, if `arr[mid] < target`, all elements from `low` to `mid` are smaller than target, so setting `low = mid + 1` preserves the invariant. If `arr[mid] > target`, setting `high = mid - 1` preserves the invariant.
-- **Termination**: If `low > high`, the search window is empty, proving the target is absent.
-
-### 2. What will the following code output in Node.js, and why?
-```javascript
-// Node.js code
-const arr = [10, 5, 40, 25];
-arr.sort((a, b) => a > b);
-console.log(arr);
-```
-**Answer:**
-The code produces erratic or incorrect results (often remaining unchanged as `[10, 5, 40, 25]`).
-The comparator contract requires returning a **negative number, zero, or a positive number**.
-In this code, `a > b` returns a **Boolean** (`true` or `false`). When coerced to numbers:
-- `true` becomes `1`.
-- `false` becomes `0`.
-
-Notice that this function **never returns a negative number** (`-1`). When `a < b`, it returns `0`, signaling to the sorting engine that `a` and `b` are equal. Because the comparator contract is violated, TimSort cannot determine when an element should precede another. The correct comparator is `(a, b) => a - b`.
-
-### 3. Spot and fix the bugs in this binary search implementation:
-```javascript
-function findIndex(arr, target) {
-  let low = 0;
-  let high = arr.length;
-  while (low < high) {
-    let mid = Math.floor((low + high) / 2);
-    if (arr[mid] === target) return mid;
-    if (arr[mid] < target) low = mid;
-    else high = mid;
-  }
-  return -1;
-}
-```
-**Answer:**
-There are four bugs causing infinite loops and out-of-bounds errors:
-1. `high` is initialized to `arr.length` instead of `arr.length - 1`.
-2. When `arr[mid] < target`, it sets `low = mid` instead of `low = mid + 1`. When `low` and `high` are adjacent, `mid` equals `low`, creating an **infinite loop**.
-3. When `arr[mid] > target`, it sets `high = mid` instead of `high = mid - 1`.
-4. `low < high` terminates prematurely when the window narrows to a single element (`low === high`), failing to check that element.
-The correct loop is `while (low <= high)`, with `low = mid + 1` and `high = mid - 1`.
-
-### 4. In a high-traffic Node.js API, should you sort a 200,000-row user dataset using `arr.sort()` in Express or using `ORDER BY` in PostgreSQL?
-**Answer:**
-You should almost always perform this sort in PostgreSQL using `ORDER BY`:
-1. **Event Loop Starvation**: Node.js is single-threaded. Sorting 200,000 objects in memory blocks the event loop for hundreds of milliseconds, stalling concurrent HTTP requests and failing health checks.
-2. **B-Tree Indexing**: PostgreSQL reads pre-sorted index nodes in $O(\log n + k)$ time without performing an active sorting calculation.
-3. **Memory & Bandwidth**: Sorting in Node.js requires transferring all 200,000 rows across the network into heap memory. In PostgreSQL, `ORDER BY` paired with `LIMIT 50 OFFSET 0` transfers only the 50 requested rows.
-4. **When In-Memory is Acceptable**: Only sort in Node.js if the dataset is already small ($< 1,000$ items) and cached locally in RAM.
-
----
-
-## 12. Practice Problems
-
-### 1. Binary Search - Easy
-Given an array of integers `nums` sorted in ascending order and an integer `target`, return its index if found, or `-1` if absent.
-- **Sample Input 1:** `nums = [-1, 0, 3, 5, 9, 12]`, `target = 9`
-- **Expected Output 1:** `4`
-- **Sample Input 2:** `nums = [-1, 0, 3, 5, 9, 12]`, `target = 2`
-- **Expected Output 2:** `-1`
-
-### 2. Sort Colors - Medium
-Given an array `nums` with $n$ objects colored `0` (red), `1` (white), or `2` (blue), sort them in-place in a single pass with $O(1)$ extra space without using library sort.
-- **Sample Input 1:** `nums = [2, 0, 2, 1, 1, 0]`
-- **Expected Output 1:** `[0, 0, 1, 1, 2, 2]`
-- **Sample Input 2:** `nums = [2, 0, 1]`
-- **Expected Output 2:** `[0, 1, 2]`
-
-### 3. Meeting Rooms - Easy
-Given an array of meeting intervals `intervals[i] = [start, end]`, determine if a person could attend all meetings.
-- **Sample Input 1:** `intervals = [[0, 30], [5, 10], [15, 20]]`
-- **Expected Output 1:** `false`
-- **Sample Input 2:** `intervals = [[7, 10], [2, 4]]`
-- **Expected Output 2:** `true`
+### 6.3 Meeting Rooms / Interval Overlap (Medium/Hard)
+* **Problem:** Given an array of meeting time intervals where `intervals[i] = [start, end]`, determine if a person could attend all meetings without overlap.
+* **Sample Input:** `intervals = [[0, 30], [5, 10], [15, 20]]` $\to$ **Expected Output:** `false` (Interval `[0, 30]` overlaps with `[5, 10]`)
+* **Socratic Guidance:**
+  * *Hint 1:* Without sorting, checking every meeting against every other meeting takes $O(n^2)$ time.
+  * *Hint 2:* If you sort meetings by their `start` time in $O(n \log n)$, what simple single-pass condition ($O(n)$) checks if adjacent meetings collide?
 
 ---
 

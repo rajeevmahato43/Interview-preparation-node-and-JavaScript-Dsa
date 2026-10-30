@@ -6,111 +6,120 @@
 
 </nav>
 
-## Prerequisites
+## 1. Systems Data Structures Fundamentals
 
-- [Day 04: Objects, Maps, Sets & Hash Tables](day-04-objects-maps-sets-and-hash-tables.md) — $O(1)$ average hash lookups.
-- [Day 11: Singly & Doubly Linked Lists](day-11-singly-and-doubly-linked-lists.md) — Doubly linked list node insertion and deletion in $O(1)$.
-- [Day 19: Merge Sort & Quick Sort](day-19-merge-sort-and-quick-sort.md) — Sorting intervals by start coordinate.
+In production backend engineering, high-throughput systems require composing multiple foundational data structures together to meet strict performance SLAs. These composite structures form the backbone of modern web frameworks, operating systems, and caching tiers:
 
----
+- **LRU Cache (Least Recently Used):** A fixed-capacity key-value cache that evicts the least recently accessed item in strict $O(1)$ time whenever capacity is exceeded.
+- **Trie (Prefix Tree):** A specialized tree where nodes represent characters, allowing prefix lookups, autocomplete, and routing in $O(L)$ time, strictly independent of total dataset size.
+- **Interval Sweep-Line:** Managing 1D continuous coordinate ranges `[start, end]`, resolved by sorting start boundaries to detect overlaps in calendar booking and CPU schedulers.
 
-## 1. What is Systems DSA & The Capstone Patterns?
+Imagine an office desk that can only hold 3 open books at once (Capacity = 3). When you read a book, you place it right in front of you (Most Recently Used). When you need a 4th book, your desk is full. You do not throw away a random book; you take the book that has been sitting untouched at the far corner of your desk the longest (Least Recently Used) and return it to the shelf. Both retrieving a book and promoting it to the front must run in $O(1)$ time.
 
-Over the preceding 29 days, we built algorithmic intuition from first principles—traversing arrays, linked lists, stacks, queues, trees, graphs, heaps, and dynamic programming tables. 
+Now imagine a telephone switchboard. When someone dials `+1` (USA) $\to$ `415` (San Francisco) $\to$ `555` $\to$ `0199`, the switchboard does not scan a flat database of 8 billion phone numbers. It walks down a prefix tree: `Root -> '1' -> '4' -> '1' -> '5'`. Each digit narrows the path instantly in $O(1)$ time per character.
 
-In mid-to-senior technical interviews, however, top-tier engineering teams test your ability to **compose multiple data structures together** to architect high-throughput, low-latency system components. These are **Systems Data Structures**:
-1. **LRU Cache (Least Recently Used Cache):** The gold standard for in-memory caching in databases, web servers, and operating system page tables.
-2. **Trie (Prefix Tree):** The core engine behind search autocomplete, IP network routing, dictionary spell-checkers, and HTTP router path matching (like Express and Fastify).
-3. **Interval Merge & Sweep-Line:** The backbone of calendar booking engines, resource reservations, and cloud container CPU scheduler windows.
+```javascript
+// Baseline demonstration of LRU Cache using Map + Doubly Linked List
+class DListNode {
+  constructor(key = 0, val = 0) {
+    this.key = key;
+    this.val = val;
+    this.prev = null;
+    this.next = null;
+  }
+}
 
-> **LRU Cache** — A fixed-capacity key-value cache that evicts the least recently accessed item in strict $O(1)$ time whenever capacity is exceeded.
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.map = new Map();
+    this.head = new DListNode();
+    this.tail = new DListNode();
+    this.head.next = this.tail;
+    this.tail.prev = this.head;
+  }
 
-> **Trie (Prefix Tree)** — A specialized tree where edges or nodes represent characters, allowing prefix lookups and word searches in $O(L)$ time, strictly independent of the total number of words in the corpus.
+  get(key) {
+    if (!this.map.has(key)) return -1;
+    const node = this.map.get(key);
+    this._moveToHead(node);
+    return node.val;
+  }
 
-> **Interval Scheduling** — Managing 1D continuous coordinate ranges `[start, end]`, resolved by sorting by boundary endpoints to discover overlaps.
+  put(key, value) {
+    if (this.map.has(key)) {
+      const node = this.map.get(key);
+      node.val = value;
+      this._moveToHead(node);
+    } else {
+      const newNode = new DListNode(key, value);
+      this.map.set(key, newNode);
+      this._addNode(newNode);
+      if (this.map.size > this.capacity) {
+        const lru = this._popTail();
+        this.map.delete(lru.key);
+      }
+    }
+  }
 
-### Physical Analogy: The Desk Workspace and the Router
+  _addNode(node) {
+    node.prev = this.head;
+    node.next = this.head.next;
+    this.head.next.prev = node;
+    this.head.next = node;
+  }
+
+  _removeNode(node) {
+    const prev = node.prev;
+    const next = node.next;
+    prev.next = next;
+    next.prev = prev;
+  }
+
+  _moveToHead(node) {
+    this._removeNode(node);
+    this._addNode(node);
+  }
+
+  _popTail() {
+    const lru = this.tail.prev;
+    this._removeNode(lru);
+    return lru;
+  }
+}
+
+const cache = new LRUCache(2);
+cache.put(1, 1);
+cache.put(2, 2);
+console.log("get(1):", cache.get(1)); // Output: 1 (promotes 1, 2 is now LRU)
+cache.put(3, 3);                      // Evicts 2
+console.log("get(2):", cache.get(2)); // Output: -1
+```
+
+### 1.1 Doubly Linked List with Sentinel Dummy Nodes
+
+Writing a doubly linked list without sentinel dummy nodes requires null-checking `head` and `tail` on every insertion and deletion. Using `dummyHead` and `dummyTail` guarantees that the target node always has valid non-null `prev` and `next` pointers:
 
 ```text
-=============================================================================
-                  THE PHYSICAL METAPHORS OF SYSTEMS DSA
-=============================================================================
-
-1. THE DESK WORKSPACE (LRU Cache):
-   - Your office desk can only hold 3 open books at a time (Capacity = 3).
-   - When you read a book, you place it right in front of you (Most Recently Used).
-   - If you need a 4th book:
-     * Your desk is full!
-     * You don't throw away a random book.
-     * You take the book that has been sitting untouched at the far corner of
-       your desk the longest (Least Recently Used) and put it back on the shelf!
-   - Both finding a book and moving it to the front must take O(1) time.
-
-2. THE TELEPHONE SWITCHBOARD (Trie / Prefix Tree):
-   - You manage phone routing for a global enterprise.
-   - When someone dials +1 (USA) -> 415 (San Francisco) -> 555 -> 0199:
-   - The switchboard doesn't scan a flat list of 8 billion phone numbers!
-   - It steps down a tree: Root -> '1' -> '4' -> '1' -> '5'...
-   - Each digit narrows the path instantly in O(1) time per character.
-=============================================================================
+Sentinel Architecture:
+[ dummyHead ] <===> [ Node A ] <===> [ Node B ] <===> [ dummyTail ]
+      ^                                                     ^
+Most Recently Used                                   Least Recently Used
+(Inserted here)                                      (Evicted from here)
 ```
 
-```mermaid
-graph LR
-    Map["Hash Map (Key -> Node)"] -->|O(1) Direct Lookup| DLL["Doubly Linked List"]
-    DLL --> Head["Dummy Head (Most Recent)"]
-    Head <--> N1["Node A"]
-    N1 <--> N2["Node B"]
-    N2 <--> Tail["Dummy Tail (Least Recent / Eviction Target)"]
-```
+> [!NOTE]
+> Why MUST the node in an LRU cache store both `key` and `value`?
+> Because when evicting `dummyTail.prev`, we must delete that item from `this.map`. If the linked list node only stored `value`, we would have no way to look up its corresponding key in the Map in $O(1)$ time.
 
----
-
-## 2. How LRU Cache and Trie Work Step-by-Step
-
-### 2.1 The Architectural Anatomy of an LRU Cache
-
-To achieve true **$O(1)$ time for BOTH `get(key)` and `put(key, val)`**, a single data structure is insufficient:
-- An **Array** has $O(1)$ index access, but evicting or moving an element to the front requires $O(N)$ element shifting.
-- A **Hash Map** gives $O(1)$ lookups, but has zero awareness of chronological usage order.
-- A **Singly Linked List** can remove and insert at the head in $O(1)$, but removing an arbitrary node requires an $O(N)$ search to find the predecessor!
-
-**The Master Solution: Hash Map + Doubly Linked List:**
-1. A **Doubly Linked List** maintains chronological order. Each node stores `{ key, val, prev, next }`.
-   - Node right after `dummyHead` is the **Most Recently Used (MRU)**.
-   - Node right before `dummyTail` is the **Least Recently Used (LRU)**.
-2. A **Hash Map** stores `key -> NodeReference`.
-   - Finding any node takes $O(1)$ via the Map.
-   - Once we have the node reference, removing it from its current position and moving it to the head takes **$O(1)$ pointer rewiring**:
-     `node.prev.next = node.next; node.next.prev = node.prev;`
-
-```text
-=============================================================================
-                    LRU CACHE POINTER REWIRING (O(1))
-=============================================================================
-
-1. REMOVE NODE FROM CURRENT SEAT:
-   [ prev ] <=====> [ curr ] <=====> [ next ]
-   prev.next = next;
-   next.prev = prev;
-
-2. INSERT NODE AT HEAD (MRU):
-   [ dummyHead ] <=====> [ oldFirst ]
-   dummyHead.next = curr;
-   curr.prev = dummyHead;
-   curr.next = oldFirst;
-   oldFirst.prev = curr;
-=============================================================================
-```
-
-### 2.2 The Trie (Prefix Tree) Node Architecture
+### 1.2 The Trie (Prefix Tree) Node Architecture
 
 In a Trie, every node contains:
-1. `children`: A Map or fixed array of size 26 pointing to child Trie nodes.
+1. `children`: A Map (or fixed array of size 26) pointing to child Trie nodes.
 2. `isEndOfWord`: A boolean flag indicating whether a complete word terminates at this node.
 
 ```text
-Inserting "app" and "apple":
+Trie for "app" and "apple":
                  (Root: "")
                      | 'a'
                     (a)
@@ -122,89 +131,117 @@ Inserting "app" and "apple":
                     (l)
                      | 'e'
                    [ e ]  <-- isEndOfWord = true ("apple")
-- Search "app": Follows path -> hits node with isEndOfWord = true -> true!
-- StartsWith "ap": Follows path -> path exists -> true!
-- Search "appl": Follows path -> hits 'l' where isEndOfWord = false -> false!
 ```
 
+### 1.3 Operations Reference Table
+
+| Data Structure / Pattern | Core Components | Lookup Complexity | Insertion Complexity | Eviction Complexity |
+| :--- | :--- | :--- | :--- | :--- |
+| **LRU Cache** | Map + Doubly Linked List | $O(1)$ | $O(1)$ | $O(1)$ |
+| **Trie (Prefix Tree)** | Tree of Character Maps | $O(L)$ (word length) | $O(L)$ | $O(L)$ |
+| **Interval Sweep** | Array + Sort by Start | $O(N \log N)$ sort | $O(N)$ scan | N/A |
+| **LFU Cache** | Two Maps + DLL Buckets | $O(1)$ | $O(1)$ | $O(1)$ |
+
 ---
 
-## 3. Pattern Recognition of Systems DSA
+## 2. Systems Data Structure Patterns
 
-### How to Spot These Patterns in Interviews
+### 2.1 Pattern Family
 
-| Constraint / Keyword Signal | System Invariant | Optimal Algorithmic Pattern |
+Systems data structures solve high-throughput infrastructure challenges:
+
+- **Key-Value Cache with Eviction Policies:** Combining hash tables for constant-time lookups with ordered lists (DLL) for chronological tracking (LRU) or frequency buckets (LFU).
+- **Prefix Path Indexing (Trie):** Indexing strings character-by-character for fast search, routing, and dictionary validation.
+- **Interval Collision Resolution:** Ordering 1D continuous ranges by start coordinates to identify and merge overlapping time spans.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Keyword Signal | Underlying Systems Need | Recommended Approach |
 | :--- | :--- | :--- |
-| "Design a data structure with $O(1)$ get and put and capacity limit" | Evict least recently accessed item | **Hash Map + Doubly Linked List (LRU)** |
-| "Implement autocomplete / typeahead / prefix matching" | Character-by-character shared prefix walk | **Trie (Prefix Tree)** |
-| "Merge overlapping intervals / Meeting Rooms" | 1D range collisions | **Sort by start coordinate + Sweep-Line** |
-| "Design in-memory key-value store with expiration" | Priority of timestamps | **Hash Map + Min-Heap / TTL Linked List** |
-| "Design LFU (Least Frequently Used) Cache" | Evict item with minimum access count | **Hash Map + Frequency Buckets of Doubly Linked Lists** |
+| "Design cache with $O(1)$ get, put, and capacity eviction" | Track access recency with constant time updates | Map + Doubly Linked List (LRU) |
+| "Autocomplete / prefix lookup / word search" | Character-by-character shared prefix walk | Trie (Prefix Tree) |
+| "Merge overlapping intervals / meeting conflicts" | 1D range collisions | Sort by start coordinate + linear scan |
+| "HTTP router URL path matching" | Compressed prefix string matching | Radix Tree (Compressed Trie) |
+| "Evict item with lowest access frequency" | Count frequency with LRU tie-breaking | LFU Cache (Two Maps + DLL Buckets) |
+
+### 2.3 When to Use vs When NOT to Use
+
+- **Use an LRU Cache when:**
+  - You need an in-memory cache bounded by memory capacity to protect the V8 heap from out-of-memory crashes.
+  - Recency of access is the best predictor of future queries.
+- **Use a Trie when:**
+  - You have a large dictionary of strings and must execute prefix queries (`startsWith`) frequently.
+  - Shared prefixes allow compressing memory across millions of words.
+- **When NOT to use a Trie:**
+  - You only need exact string equality matches. A standard JavaScript `Set` or `Map` is faster and uses less memory.
+
+### 2.4 The 10^7 Operations Rule
+
+In an LRU cache, both `get()` and `put()` run in strict $O(1)$ time. An LRU cache can easily process 10,000,000 queries in under a second in Node.js. If an LRU cache were naively built using array scans ($O(N)$ search), processing 10,000,000 queries on a cache of size 1,000 would take $10^{10}$ operations, locking the Node.js event loop for tens of seconds.
 
 ---
 
-## 4. Problem 1: LRU Cache (LeetCode 146)
+## 3. Problem Walkthroughs
 
-### Problem Description
-Design a data structure that follows the constraints of a **Least Recently Used (LRU) cache**.
+### 3.1 LRU Cache
+
+#### 3.1.1 Problem Statement
+Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
 Implement the `LRUCache` class:
 - `LRUCache(int capacity)`: Initialize the LRU cache with positive size `capacity`.
-- `int get(int key)`: Return the value of the `key` if the key exists, otherwise return `-1`. Accessing the key marks it as **most recently used**.
-- `void put(int key, int value)`: Update the value of the `key` if the `key` exists. Otherwise, add the `key-value` pair to the cache. If the number of keys exceeds the `capacity` from this operation, **evict the least recently used key**.
-The functions `get` and `put` must each run in **$O(1)$ average time complexity**.
+- `int get(int key)`: Return the value of `key` if it exists, otherwise return `-1`. Accessing the key marks it as most recently used.
+- `void put(int key, int value)`: Update the value if `key` exists. Otherwise, add the key-value pair. If keys exceed `capacity`, evict the least recently used key.
+Both `get` and `put` must run in $O(1)$ average time complexity.
 
-### Step 1: Physical Simulation
-Suppose `capacity = 2`:
-- `put(1, 1)`: Cache = `[ (1, 1) ]`. Map = `{ 1 }`.
-- `put(2, 2)`: Cache = `[ (2, 2), (1, 1) ]` (2 is at head, 1 is at tail).
-- `get(1)`: Returns 1. **Accessing 1 promotes it to the head!**
-  * Cache becomes: `[ (1, 1), (2, 2) ]`.
-- `put(3, 3)`: Capacity 2 exceeded!
-  * Evict tail node: `(2, 2)` is evicted! Map deletes key 2.
-  * Insert 3 at head: `[ (3, 3), (1, 1) ]`.
-- `get(2)`: Returns `-1` (already evicted!).
-- `put(4, 4)`: Capacity exceeded! Evict tail node `(1, 1)`.
-  * Insert 4 at head: `[ (4, 4), (3, 3) ]`.
-- `get(1)`: Returns `-1`.
-- `get(3)`: Returns 3.
-- `get(4)`: Returns 4.
+- **Input:**
+  `["LRUCache", "put", "put", "get", "put", "get", "put", "get", "get", "get"]`
+  `[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]`
+- **Output:** `[null, null, null, 1, null, -1, null, -1, 3, 4]`
+- **Constraints:** $1 \le capacity \le 3,000$, $0 \le key \le 10^4$, $0 \le value \le 10^5$, at most $2 \times 10^5$ calls to `get` and `put`.
 
-### Step 2: Brute Force Approach
-Maintain a plain JavaScript object or array of items with timestamps. On every `get()` or `put()`, update the timestamp. On capacity overflow, linearly scan the entire array to find the minimum timestamp ($O(N)$ eviction):
+#### 3.1.2 How to Think About It
+Imagine a shelf that can hold only 2 books. Book 1 and Book 2 are placed on the shelf. You read Book 1. Because you just read Book 1, it is fresh in your mind, making Book 2 the oldest untouched book. When Book 3 arrives, the shelf is full. You discard Book 2 and place Book 3 on the shelf.
 
-```javascript
-// Naive O(N) Array-Scanning LRU
-class NaiveLRU {
-  constructor(capacity) {
-    this.capacity = capacity;
-    this.items = []; // [{ key, val, time }]
-  }
-  get(key) {
-    const item = this.items.find(i => i.key === key); // O(N) scan
-    if (!item) return -1;
-    item.time = Date.now();
-    return item.val;
-  }
-  put(key, val) {
-    // If full, scan all N items to find smallest time: O(N)
-  }
-}
+#### 3.1.3 Brute Force Approach & Bottleneck
+Store items in an array with timestamps. On every `get()` or `put()`, search the array for the key in $O(N)$ time. When capacity is exceeded, scan all $N$ items to find the smallest timestamp.
+In a high-throughput backend handling 50,000 requests per second, an $O(N)$ scan per cache operation saturates the CPU.
+
+#### 3.1.4 The Pattern Insight
+Combine a **Hash Map** with a **Doubly Linked List**:
+- Hash Map provides $O(1)$ key-to-node lookup.
+- Doubly Linked List provides $O(1)$ node detachment (`removeNode`) and $O(1)$ insertion at the head (`addNode`).
+- Sentinel nodes `dummyHead` and `dummyTail` eliminate null-pointer edge cases.
+- Eviction targets `dummyTail.prev` in $O(1)$ time.
+
+#### 3.1.5 Pseudocode
+```text
+class LRUCache:
+    capacity, map, head, tail
+
+    function get(key):
+        if key not in map: return -1
+        node = map.get(key)
+        moveToHead(node)
+        return node.val
+
+    function put(key, value):
+        if key in map:
+            node = map.get(key)
+            node.val = value
+            moveToHead(node)
+        else:
+            node = new Node(key, value)
+            map.set(key, node)
+            addNode(node)
+            if map.size > capacity:
+                lru = popTail()
+                map.delete(lru.key)
 ```
 
-### Step 3: Bottleneck
-In high-throughput microservices handling 50,000 requests per second, an $O(N)$ scan per cache operation saturates the CPU, turning in-memory caching into an operational bottleneck.
-
-### Step 4: The Pattern Discovery
-We combine **two sentinel nodes (`dummyHead` and `dummyTail`)** in a Doubly Linked List with a JavaScript `Map`:
-- Sentinel nodes completely eliminate edge-case `null` checks when inserting at the head or removing from the tail.
-- `moveToHead(node)`: Unlink node in $O(1)$, link after `dummyHead` in $O(1)$.
-- `evictTail()`: Target `dummyTail.prev`. Unlink from list, delete from Map.
-Every operation executes in strict **$O(1)$ time**.
-
-### Step 5: The Optimal Solution
+#### 3.1.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(1) Hash Map + Doubly Linked List LRU Cache
+// ✅ CORRECT: Optimal O(1) LRU Cache with Sentinel Nodes
 class DListNode {
   constructor(key = 0, val = 0) {
     this.key = key;
@@ -219,7 +256,7 @@ class LRUCache {
     this.capacity = capacity;
     this.map = new Map(); // key -> DListNode
 
-    // Sentinel dummy nodes to eliminate boundary null checks
+    // Sentinel dummy nodes
     this.head = new DListNode();
     this.tail = new DListNode();
     this.head.next = this.tail;
@@ -232,33 +269,27 @@ class LRUCache {
     }
 
     const node = this.map.get(key);
-    // Mark as Most Recently Used
     this._moveToHead(node);
     return node.val;
   }
 
   put(key, value) {
     if (this.map.has(key)) {
-      // Key exists: update value and promote to head
       const node = this.map.get(key);
       node.val = value;
       this._moveToHead(node);
     } else {
-      // Key does not exist: create new node
       const newNode = new DListNode(key, value);
       this.map.set(key, newNode);
       this._addNode(newNode);
 
-      // Check if capacity breached
       if (this.map.size > this.capacity) {
-        // Evict Least Recently Used (node right before dummy tail)
-        const lruNode = this._popTail();
-        this.map.delete(lruNode.key);
+        const lru = this._popTail();
+        this.map.delete(lru.key);
       }
     }
   }
 
-  // Helper 1: Add node right after head (MRU position)
   _addNode(node) {
     node.prev = this.head;
     node.next = this.head.next;
@@ -266,7 +297,6 @@ class LRUCache {
     this.head.next = node;
   }
 
-  // Helper 2: Unlink arbitrary node from list
   _removeNode(node) {
     const prev = node.prev;
     const next = node.next;
@@ -274,13 +304,11 @@ class LRUCache {
     next.prev = prev;
   }
 
-  // Helper 3: Promote existing node to MRU
   _moveToHead(node) {
     this._removeNode(node);
     this._addNode(node);
   }
 
-  // Helper 4: Remove and return LRU node
   _popTail() {
     const lru = this.tail.prev;
     this._removeNode(lru);
@@ -288,92 +316,91 @@ class LRUCache {
   }
 }
 
-// ❌ ANTI-PATTERN: Forgetting to store 'key' inside DListNode
-// When evicting lruNode from the tail, you must delete it from this.map!
-// If DListNode does not store its own key, you cannot delete it from the Map in O(1)!
-
-// Direct test run
-const lru = new LRUCache(2);
-lru.put(1, 1);
-lru.put(2, 2);
-console.log("get(1):", lru.get(1)); // Expected: 1 (promotes 1, 2 is now LRU)
-lru.put(3, 3);                      // Evicts 2!
-console.log("get(2) after eviction:", lru.get(2)); // Expected: -1
-lru.put(4, 4);                      // Evicts 1!
-console.log("get(1) after eviction:", lru.get(1)); // Expected: -1
-console.log("get(3):", lru.get(3)); // Expected: 3
-console.log("get(4):", lru.get(4)); // Expected: 4
+const lruTest = new LRUCache(2);
+lruTest.put(1, 1);
+lruTest.put(2, 2);
+console.log("get(1):", lruTest.get(1)); // Output: 1
+lruTest.put(3, 3);                      // Evicts 2
+console.log("get(2):", lruTest.get(2)); // Output: -1
+lruTest.put(4, 4);                      // Evicts 1
+console.log("get(1):", lruTest.get(1)); // Output: -1
+console.log("get(3):", lruTest.get(3)); // Output: 3
+console.log("get(4):", lruTest.get(4)); // Output: 4
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(1)$ strictly for both `get()` and `put()`. Map lookups and doubly linked list pointer rewires take constant time.
-- **Space Complexity:** $O(\text{capacity})$ auxiliary space for the Map entries and linked list nodes.
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Forgetting to delete key from Map upon eviction
+const lru = this._popTail();
+// Missing: this.map.delete(lru.key);
+// Map retains zombie reference, causing map.size to exceed capacity!
+```
+
+Failing to delete `lru.key` from `this.map` leaks memory and leaves stale keys that falsely report hits.
+
+#### 3.1.8 Complexity Derivation
+- **Time Complexity:** $O(1)$ strictly for both `get` and `put`. Hash map operations and doubly linked list pointer adjustments run in constant time.
+- **Auxiliary Space Complexity:** $O(\text{capacity})$ for the hash map entries and linked list nodes.
 
 ---
 
-## 5. Problem 2: Implement Trie (Prefix Tree - LeetCode 208)
+### 3.2 Implement Trie (Prefix Tree)
 
-### Problem Description
-A **trie** (pronounced as "try") or **prefix tree** is a tree data structure used to efficiently store and retrieve keys in a dataset of strings. There are various applications of this data structure, such as autocomplete and spellchecker.
-Implement the `Trie` class:
+#### 3.2.1 Problem Statement
+A trie (prefix tree) is a tree data structure used to store and retrieve keys in a dataset of strings. Implement the `Trie` class:
 - `Trie()`: Initializes the trie object.
-- `void insert(String word)`: Inserts the string `word` into the trie.
-- `boolean search(String word)`: Returns `true` if the string `word` is in the trie (i.e., was inserted before), and `false` otherwise.
-- `boolean startsWith(String prefix)`: Returns `true` if there is a previously inserted string `word` that has the prefix `prefix`, and `false` otherwise.
+- `void insert(String word)`: Inserts `word` into the trie.
+- `boolean search(String word)`: Returns `true` if `word` exists in the trie.
+- `boolean startsWith(String prefix)`: Returns `true` if there is a previously inserted string that has prefix `prefix`.
 
-### Step 1: Physical Simulation
-- `insert("apple")`:
-  * Start at `root`.
-  * Add `'a'`, `'p'`, `'p'`, `'l'`, `'e'`.
-  * Set `isEndOfWord = true` at node `'e'`.
-- `search("apple")`: Walk path `a -> p -> p -> l -> e`. Reached `'e'` and `isEndOfWord === true` $\implies$ Return `true`.
-- `search("app")`: Walk path `a -> p -> p`. Reached `'p'`, but `isEndOfWord === false`! $\implies$ Return `false`.
-- `startsWith("app")`: Walk path `a -> p -> p`. Path exists! $\implies$ Return `true`.
-- `insert("app")`: Mark `isEndOfWord = true` at existing node `'p'`.
-- `search("app")`: Now returns `true`!
+- **Input:**
+  `["Trie", "insert", "search", "search", "startsWith", "insert", "search"]`
+  `[[], ["apple"], ["apple"], ["app"], ["app"], ["app"], ["app"]]`
+- **Output:** `[null, null, true, false, true, null, true]`
+- **Constraints:** $1 \le word.length, prefix.length \le 2,000$, words consist of lowercase English letters, at most $3 \times 10^4$ total calls.
 
-### Step 2: Brute Force Approach
-Store words in an array or Set. Searching for words takes $O(1)$ with a Set, but `startsWith(prefix)` requires linearly scanning all $N$ words and checking `word.startsWith(prefix)`:
+#### 3.2.2 How to Think About It
+Imagine a paper dictionary with thumb tabs. You open to tab 'a', then follow section 'p', then sub-entry 'p', then 'l', then 'e'. At 'apple', there is a black dot marking a valid word. If you search for 'app', you reach the letters 'a-p-p', but unless there is a dot on 'p', 'app' is just a prefix of another word, not a word itself.
 
-```javascript
-class NaiveTrie {
-  constructor() {
-    this.words = new Set();
-  }
-  insert(word) { this.words.add(word); }
-  search(word) { return this.words.has(word); }
-  startsWith(prefix) {
-    // O(N * L): Scans entire dictionary! Unusable for autocomplete!
-    for (const w of this.words) {
-      if (w.startsWith(prefix)) return true;
-    }
-    return false;
-  }
-}
+#### 3.2.3 Brute Force Approach & Bottleneck
+Storing words in an array or Set:
+A `Set` provides $O(1)$ exact search, but `startsWith(prefix)` requires linearly scanning all $N$ words and checking `w.startsWith(prefix)`, which runs in $O(N \cdot L)$ time.
+
+#### 3.2.4 The Pattern Insight
+In a Trie, shared prefixes share nodes. Searching for a prefix walks character by character. If a character branch is missing, the prefix does not exist. Runtime depends only on the length of the string $L$, completely independent of the total dictionary size $N$.
+
+#### 3.2.5 Pseudocode
+```text
+class TrieNode:
+    children = Map()
+    isEndOfWord = false
+
+class Trie:
+    root = new TrieNode()
+
+    function insert(word):
+        curr = root
+        for char in word:
+            if char not in curr.children:
+                curr.children.set(char, new TrieNode())
+            curr = curr.children.get(char)
+        curr.isEndOfWord = true
+
+    function search(word):
+        node = traverse(word)
+        return node != null and node.isEndOfWord == true
+
+    function startsWith(prefix):
+        return traverse(prefix) != null
 ```
 
-### Step 3: Bottleneck
-Scanning a dictionary of 1,000,000 words on every keystroke takes seconds, creating an unacceptable lag in user-facing search bars.
-
-### Step 4: The Pattern Discovery
-In a **Trie**, all words sharing a common prefix (e.g. `"inter"`, `"interview"`, `"intermediate"`) share the exact same nodes. Searching or testing a prefix takes time proportional **only to the length of the query string $L$**, completely independent of whether the dictionary contains 10 words or 10,000,000 words!
-
-```mermaid
-graph TD
-    Root["Root"] --> A["a"]
-    A --> P1["p"]
-    P1 --> P2["p (isEndOfWord = true)"]
-    P2 --> L["l"]
-    L --> E["e (isEndOfWord = true)"]
-```
-
-### Step 5: The Optimal Solution
+#### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal Production Trie (Prefix Tree)
+// ✅ CORRECT: Optimal Production Trie Implementation
 class TrieNode {
   constructor() {
-    // Map supports any Unicode characters (or new Array(26) for lowercase a-z)
     this.children = new Map();
     this.isEndOfWord = false;
   }
@@ -384,10 +411,8 @@ class Trie {
     this.root = new TrieNode();
   }
 
-  // Insert word into Trie in O(L) time
   insert(word) {
     let curr = this.root;
-
     for (let i = 0; i < word.length; i++) {
       const char = word[i];
       if (!curr.children.has(char)) {
@@ -395,134 +420,120 @@ class Trie {
       }
       curr = curr.children.get(char);
     }
-
-    // Mark end of complete word
     curr.isEndOfWord = true;
   }
 
-  // Search if exact word exists in O(L) time
   search(word) {
     const node = this._traverse(word);
     return node !== null && node.isEndOfWord === true;
   }
 
-  // Test if any word starts with prefix in O(L) time
   startsWith(prefix) {
     return this._traverse(prefix) !== null;
   }
 
-  // Common traversal helper
   _traverse(str) {
     let curr = this.root;
-
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
       if (!curr.children.has(char)) {
-        return null; // Character branch missing
+        return null;
       }
       curr = curr.children.get(char);
     }
-
     return curr;
   }
 }
 
-// ❌ ANTI-PATTERN: Conflating search() and startsWith()
-// search() MUST verify isEndOfWord === true!
-// If you return true without checking isEndOfWord, searching "app" when only
-// "apple" exists will return a false positive!
-
-// Direct test run
 const trie = new Trie();
 trie.insert("apple");
-console.log("search('apple'):", trie.search("apple"));   // Expected: true
-console.log("search('app'):", trie.search("app"));       // Expected: false
-console.log("startsWith('app'):", trie.startsWith("app"));// Expected: true
+console.log("search('apple'):", trie.search("apple"));     // Output: true
+console.log("search('app'):", trie.search("app"));         // Output: false
+console.log("startsWith('app'):", trie.startsWith("app")); // Output: true
 trie.insert("app");
-console.log("search('app') after insert:", trie.search("app")); // Expected: true
+console.log("search('app'):", trie.search("app"));         // Output: true
 ```
 
-#### Complexity Analysis
-- **Time Complexity:**
-  * `insert(word)`: $O(L)$ where $L$ is word length.
-  * `search(word)`: $O(L)$.
-  * `startsWith(prefix)`: $O(P)$ where $P$ is prefix length.
-  * All operations are completely independent of the total dictionary size $N$!
-- **Space Complexity:** $O(N \cdot L)$ worst case (all words have disjoint characters). Shared prefixes dramatically reduce real-world heap space.
+#### 3.2.7 Common Anti-Pattern
 
----
-
-## 6. Under the Hood: V8 & Node.js
-
-Understanding engine memory and real-world system implementations of these patterns is essential for senior backend engineers:
-
-```text
-=============================================================================
-                  SYSTEMS DSA IN NODE.JS & PRODUCTION
-=============================================================================
-
-1. THE JAVASCRIPT Map INSERTION-ORDER SUPERPOWER:
-   - In ECMAScript 2015 (ES6+), the standard specifies that Map entries iterate
-     in exact INSERTION ORDER.
-   - You can implement an LRU cache in 15 lines of JavaScript using Map alone:
-       get(key) {
-         if (!this.map.has(key)) return -1;
-         const val = this.map.get(key);
-         this.map.delete(key);
-         this.map.set(key, val); // Re-inserts at tail!
-         return val;
-       }
-   - Interviewer Note: Always ask if you can use native Map re-insertion or if
-     they want the canonical Doubly Linked List + Hash Map from scratch.
-
-2. FASTIFY & EXPRESS RADIX TREE ROUTING:
-   - How does a web framework route GET /api/v1/users/:id/profile in 2 microseconds?
-   - Older frameworks used regular expressions (RegExp). Regex evaluation is slow.
-   - Fastify and modern routers use RADIX TREES (compressed Tries):
-     * Nodes store URL segments ("/api/v1/").
-     * Parametric matching (:id) executes via deterministic Trie branch descent.
-
-3. MEMORY LEAK PITFALLS IN BACKEND CACHES:
-   - If an in-memory cache has NO eviction policy or capacity limit:
-     * High traffic will continuously append objects to a global Map.
-     * V8's Old-Space Heap fills up until hitting the default 1.4 GB limit.
-     * Process crashes with: "Allocation failed - JavaScript heap out of memory".
-   - Senior Rule: Every cache in a long-running Node.js process MUST have either
-     an LRU capacity bound or a TTL (Time-To-Live) expiration policy!
-=============================================================================
-```
-
-```mermaid
-graph LR
-    URL["Request: /api/v1/users/42"] --> Router["Radix Tree (Compressed Trie)"]
-    Router --> P1["Match: /api/v1/"]
-    P1 --> P2["Match: users/"]
-    P2 --> P3["Param: :id = 42"]
-    P3 --> Handler["Execute Controller Handler (< 2µs)"]
-```
-
----
-
-## 7. Hands-On Exercise
-
-### The Flawed Interval Merge Bug
-A backend developer built a calendar scheduling conflict detector in Node.js. When passed intervals out of order, the merge function returns overlapping intervals or fails completely. The developer forgot to sort the input intervals before merging!
-
-### The Buggy Code
 ```javascript
-function buggyMergeIntervals(intervals) {
-  if (intervals.length <= 1) return intervals;
+// ❌ ANTI-PATTERN: Forgetting to check isEndOfWord in search()
+search(word) {
+  return this._traverse(word) !== null; // BUG: Identical to startsWith!
+}
+```
 
-  // BUG: Missing sorting step!
-  // If intervals are [[2, 6], [1, 3], [8, 10]]:
-  // Comparing [2, 6] with [1, 3] without sorting fails to detect
-  // that [1, 3] actually started earlier!
+Failing to verify `isEndOfWord === true` in `search()` causes prefixes of existing words to be falsely returned as complete words.
+
+#### 3.2.8 Complexity Derivation
+- **Time Complexity:**
+  - `insert`: $O(L)$, where $L$ is word length.
+  - `search`: $O(L)$.
+  - `startsWith`: $O(P)$, where $P$ is prefix length.
+- **Auxiliary Space Complexity:** $O(N \cdot L)$ worst case for total TrieNode allocations, where $N$ is word count and $L$ is average word length. Shared prefixes reduce practical memory.
+
+---
+
+### 3.3 Merge Intervals
+
+#### 3.3.1 Problem Statement
+Given an array of `intervals` where `intervals[i] = [start_i, end_i]`, merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.
+
+- **Input:** `intervals = [[1, 3], [2, 6], [8, 10], [15, 18]]`
+- **Output:** `[[1, 6], [8, 10], [15, 18]]` (Since `[1, 3]` and `[2, 6]` overlap, they merge into `[1, 6]`)
+- **Constraints:** $1 \le intervals.length \le 10^4$, $intervals[i].length == 2$, $0 \le start_i \le end_i \le 10^4$.
+
+#### 3.3.2 How to Think About It
+Imagine booking meetings on a calendar. If Meeting A is from 1:00 to 3:00, and Meeting B is from 2:00 to 6:00, the meeting room is occupied continuously from 1:00 to 6:00. The meetings merge into a single block `[1, 6]`. The next meeting starts at 8:00, which has no conflict with 6:00, so it remains a separate booking.
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+Comparing every interval with every other interval to detect overlaps:
+Evaluating all pairs takes $O(N^2)$ time and requires managing dynamic array deletions and merges.
+
+#### 3.3.4 The Pattern Insight
+Use **Sweep-Line sorting by start coordinate**:
+1. Sort `intervals` ascending by start time: `intervals.sort((a, b) => a[0] - b[0])`.
+2. Initialize `merged = [intervals[0]]`.
+3. Iterate through intervals from index 1 to $N - 1$:
+   - Let `prev = merged[merged.length - 1]`, `curr = intervals[i]`.
+   - If `curr[0] <= prev[1]`, they overlap! Expand `prev[1] = Math.max(prev[1], curr[1])`.
+   - Otherwise, push `curr` as a new non-overlapping interval.
+
+#### 3.3.5 Pseudocode
+```text
+function merge(intervals):
+    if intervals.length <= 1: return intervals
+    sort intervals ascending by start time: intervals[0]
+
+    merged = [intervals[0]]
+    for i from 1 to intervals.length - 1:
+        prev = merged[merged.length - 1]
+        curr = intervals[i]
+        if curr[0] <= prev[1]:
+            prev[1] = max(prev[1], curr[1])
+        else:
+            merged.push(curr)
+
+    return merged
+```
+
+#### 3.3.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal O(N log N) Merge Intervals
+function merge(intervals) {
+  if (!intervals || intervals.length <= 1) return intervals;
+
+  // 1. Sort ascending by start coordinate
+  intervals.sort((a, b) => a[0] - b[0]);
+
   const merged = [intervals[0]];
 
   for (let i = 1; i < intervals.length; i++) {
     const curr = intervals[i];
     const prev = merged[merged.length - 1];
 
+    // If current interval starts before or when previous ends, they overlap
     if (curr[0] <= prev[1]) {
       prev[1] = Math.max(prev[1], curr[1]);
     } else {
@@ -532,168 +543,80 @@ function buggyMergeIntervals(intervals) {
 
   return merged;
 }
+
+const intervals = [[1, 3], [2, 6], [8, 10], [15, 18]];
+console.log("Merged Intervals:", merge(intervals));
+// Output: [ [ 1, 6 ], [ 8, 10 ], [ 15, 18 ] ]
+
+const unsorted = [[2, 6], [1, 3], [15, 18], [8, 10]];
+console.log("Unsorted input merged:", merge(unsorted));
+// Output: [ [ 1, 6 ], [ 8, 10 ], [ 15, 18 ] ]
 ```
 
-### The Fix and Direct Verification
-Sort intervals ascending by start time (`intervals.sort((a, b) => a[0] - b[0])`) before beginning the single linear sweep:
+#### 3.3.7 Common Anti-Pattern
 
 ```javascript
-// ✅ REPAIRED: Production-Safe Merge Intervals
-function safeMergeIntervals(intervals) {
-  if (!intervals || intervals.length <= 1) return intervals;
-
-  // FIX: Sort ascending by start coordinate!
-  intervals.sort((a, b) => a[0] - b[0]);
-
-  const merged = [intervals[0]];
-
-  for (let i = 1; i < intervals.length; i++) {
-    const current = intervals[i];
-    const lastMerged = merged[merged.length - 1];
-
-    // If current interval starts before or when previous ends, they collide!
-    if (current[0] <= lastMerged[1]) {
-      // Merge by expanding the end boundary
-      lastMerged[1] = Math.max(lastMerged[1], current[1]);
-    } else {
-      // No overlap: add as new independent interval
-      merged.push(current);
-    }
-  }
-
-  return merged;
+// ❌ ANTI-PATTERN: Forgetting to sort intervals upfront
+function badMerge(intervals) {
+  // If intervals are [[2, 6], [1, 3]], checking sequentially without sorting
+  // fails to merge them because [2, 6] cannot look back at [1, 3]!
 }
-
-// Direct test verification
-const unsortedIntervals = [[2, 6], [1, 3], [15, 18], [8, 10]];
-console.log("Repaired Merge Intervals:", safeMergeIntervals(unsortedIntervals));
-// Expected output: [ [1, 6], [8, 10], [15, 18] ]
 ```
 
----
+Sorting by start coordinate is the mandatory foundation of interval sweep algorithms.
 
-## 8. Tricky Points and Edge Cases
-
-### 1. Dummy Sentinels in Doubly Linked Lists
-Writing doubly linked lists without `dummyHead` and `dummyTail` requires checking `if (node === this.head)` and `if (node === this.tail)` on every single insertion, deletion, and eviction. A single missed null check will crash your interview code. Always initialize two dummy nodes connected to each other.
-
-### 2. Updating Existing Keys in `put()`
-When calling `put(key, value)` with a key that **already exists in the cache**:
-- Do **not** increment size or trigger eviction!
-- Overwrite `node.val = value`.
-- Promote the node to the head (it was accessed!).
-
-### 3. Eviction Must Clean BOTH Structures
-When evicting the least recently used element from an LRU cache:
-- You must unlink `lruNode` from the doubly linked list.
-- **AND** you must delete `lruNode.key` from the Hash Map!
-If you forget `this.map.delete(lruNode.key)`, the map will retain zombie references, leaking memory and reporting stale hits on `map.has(key)`.
+#### 3.3.8 Complexity Derivation
+- **Time Complexity:** $O(N \log N)$ dominated by sorting the intervals. The subsequent linear sweep takes $O(N)$ time.
+- **Auxiliary Space Complexity:** $O(N)$ for storing the output `merged` array (or $O(\log N)$ sorting stack space).
 
 ---
 
-## 9. Comprehensive Summary
+## 4. Tricky Edge Cases
 
-```text
-=============================================================================
-                    SYSTEMS DATA STRUCTURES SUMMARY
-=============================================================================
-
-DATA STRUCTURE      COMPONENTS                      KEY ADVANTAGE
------------------------------------------------------------------------------
-LRU Cache           Hash Map + Doubly Linked List   Strict O(1) get, put, evict
-Trie (Prefix Tree)  Tree of Character Nodes (Map)   O(L) search independent of corpus
-Radix Tree          Compressed Trie (edge strings)  URL path routing in Express/Fastify
-Interval Sweep      Sort + Linear Scan              O(N log N) collision resolution
-Two Heaps           Max-Heap + Min-Heap             O(1) continuous median query
-=============================================================================
-```
-
-- **Systems DSA is compositional:** Real-world components combine standard primitives (Maps, Linked Lists, Trees) to satisfy multi-constraint SLAs.
-- **Sentinel nodes guarantee robust pointer safety:** Head and tail sentinels eliminate boundary edge cases in pointer-heavy structures.
-- **Sorting is the universal foundation for 1D range collisions:** Always sort by start coordinates before merging intervals.
+- **Sentinel Dummy Nodes:** In doubly linked lists, forgetting dummy nodes requires multiple nested `null` checks on `this.head` and `this.tail` on every insert and delete.
+- **LRU Update on Existing Key:** In `put(key, value)`, if `key` already exists, update its value and promote it to the head. Do not increment size or trigger eviction.
+- **Complete Eviction in LRU:** When evicting an LRU item, unlink it from the doubly linked list and delete its key from `this.map`.
+- **Interval Fully Contained:** An interval like `[1, 10]` and `[2, 5]` results in `prev[1] = Math.max(10, 5) = 10`. Always use `Math.max()` rather than overwriting with `curr[1]`.
 
 ---
 
-## 10. Cheat Sheet
+## 5. Summary Cheat Sheet
 
-### The 30-Day Master Algorithmic Selection Guide
-
-```text
-=============================================================================
-                    THE 30-DAY MASTER SELECTION MATRIX
-=============================================================================
-
-PROBLEM TYPE                DATA STRUCTURE / ALGORITHM              COMPLEXITY
------------------------------------------------------------------------------
-Sorted Array Search         Binary Search Bounds (Day 16-17)        O(log N)
-Contiguous Subarray Window  Sliding Window / Two Pointers (Day 05)  O(N)
-Next Greater Element        Monotonic Stack (Day 14)                O(N)
-FIFO / Level Order          Queue with advancing pointer (Day 15,24)O(N)
-Combinatorial Generation    Backtracking + Pruning (Day 20-22)      O(2^N) / O(N!)
-Unweighted Shortest Path    Breadth-First Search (Day 26)           O(V + E)
-Dependency Scheduling / DAG Kahn's In-Degree BFS (Day 27)           O(V + E)
-Top-K Extremes / Streaming  Binary Min/Max Heap (Day 28)            O(N log K)
-Overlapping Optimization    Dynamic Programming Tabulation (Day 29) O(N) / O(N*M)
-LRU In-Memory Cache         Map + Doubly Linked List (Day 30)       O(1)
-String Prefix Matching      Trie (Prefix Tree) (Day 30)             O(L)
-=============================================================================
-```
-
-### Capstone Safety Checklist
-- [ ] LRU: Did you initialize both `dummyHead` and `dummyTail`?
-- [ ] LRU: Did you delete the key from `this.map` upon eviction?
-- [ ] Trie: Did you distinguish `search()` (`isEndOfWord`) from `startsWith()`?
-- [ ] Intervals: Did you sort intervals by start time before merging?
+- **LRU Cache:** Combines a Hash Map for $O(1)$ lookups with a Doubly Linked List for $O(1)$ recency promotion and eviction.
+- **Trie (Prefix Tree):** Character-by-character tree structure providing $O(L)$ search and prefix validation independent of dictionary size.
+- **Interval Sweeping:** Sort by start coordinate, then merge overlapping ranges in a single $O(N)$ linear pass.
+- **Sentinel Nodes:** `dummyHead` and `dummyTail` eliminate pointer edge cases in linked lists.
+- **In-Memory Cache Bounds:** Every production cache must enforce an eviction policy (like LRU) to protect the V8 heap from out-of-memory crashes.
 
 ---
 
-## 11. Interview Q&A
+## 6. Practice Problems
 
-### 45-Second Senior Pitch
-> *"Systems-level data structure problems assess the ability to compose primitive structures to achieve strict performance SLAs. The classic LRU Cache exemplifies this: combining a Hash Map for constant-time key lookups with a Doubly Linked List for constant-time chronological reordering, backed by sentinel head and tail nodes to prevent pointer edge cases. Similarly, Tries solve prefix and autocomplete bottlenecks by bounding search time strictly to word length $O(L)$, independent of corpus scale. In high-throughput Node.js microservices, bounded caches with deterministic evictions are mandatory to prevent V8 heap exhaustion and eliminate single-threaded event loop blocking."*
+### 6.1 Meeting Rooms II
 
-### Deep Interview Questions
+- **Input:** `intervals = [[0, 30], [5, 10], [15, 20]]`.
+- **Output:** `2` (Minimum conference rooms required).
+- **Constraint:** $1 \le intervals.length \le 10^4$.
+- **Hint 1:** Separate start times and end times into two arrays and sort both.
+- **Hint 2:** Use two pointers: if `start[i] < end[j]`, a new room is needed (increment room count); otherwise, a meeting finished (advance `j`).
+- **Hint 3:** Or maintain a Min-Heap of meeting end times.
 
-#### Q1: Why is a Doubly Linked List strictly required for an LRU Cache rather than a Singly Linked List?
-**Answer:** In an LRU Cache, accessing an existing key via `get(key)` requires promoting that node to the head of the list. To do this, the node must first be removed from its current position in the list. In a **singly linked list**, removing an arbitrary node requires updating `prev.next = curr.next`. Because a singly linked list has no backward pointers, finding `prev` requires an $O(N)$ linear scan from the head. A **doubly linked list** provides a direct `node.prev` reference, enabling $O(1)$ node detachment without any linear traversal.
+### 6.2 Design In-Memory File System
 
-#### Q2: How does a Radix Tree optimize a standard Trie for HTTP routers?
-**Answer:** In a standard Trie, each edge represents a single character, creating deep trees where non-branching prefixes (like `"/api/v1/checkout"`) require 17 sequential node allocations. A **Radix Tree** (or Patricia Trie) compresses consecutive nodes that have only one child into a single edge containing a string segment (`"/api/v1/checkout"`). This dramatically reduces node count, flattens tree depth, eliminates pointer chasing, and allows HTTP routers to match URLs in sub-microsecond times.
+- **Commands:** `ls(path)`, `mkdir(path)`, `addContentToFile(path, content)`, `readContentFromFile(path)`.
+- **Output:** File system results.
+- **Constraint:** Paths are slash-delimited strings (`"/a/b/c"`).
+- **Hint 1:** Implement using a Trie where each node represents a directory or file.
+- **Hint 2:** Split paths by `'/'` to step through the Trie.
+- **Hint 3:** Store directory entries in a `Map` and file content in a string property.
 
-#### Q3: How would you implement an LFU (Least Frequently Used) Cache in $O(1)$ time?
-**Answer:** LFU requires evicting the item with the lowest access frequency, breaking ties using LRU. We implement LFU using **two Hash Maps and a collection of Doubly Linked Lists**:
-1. `keyMap`: Maps `key -> Node` (stores `{ key, val, freq }`).
-2. `freqMap`: Maps `frequency -> DoublyLinkedList` (each list contains all nodes accessed that many times).
-3. `minFreq`: An integer tracking the current lowest frequency in the cache.
-When a node is accessed:
-- Unlink it from its current `freqMap.get(freq)` list.
-- Increment `node.freq++`.
-- Add to `freqMap.get(node.freq)` list.
-- If the old list becomes empty and `oldFreq === minFreq`, increment `minFreq++`.
-Eviction simply removes the tail from `freqMap.get(minFreq)`. All operations run in $O(1)$ time.
+### 6.3 LFU Cache
 
-#### Q4: What happens to a Node.js process if an in-memory cache has no eviction policy?
-**Answer:** In Node.js, JavaScript objects created in memory reside on the V8 heap. If an in-memory cache continually stores data without an eviction policy (like LRU) or TTL bounds:
-1. Heap memory continuously grows toward V8's default memory limit (typically $\approx 1.4 \text{ GB}$ on 64-bit systems).
-2. As memory limits approach, V8's Garbage Collector runs frequent, aggressive **Mark-Sweep-Compact** cycles, blocking the single thread and causing severe latency spikes.
-3. Once the heap limit is breached, the Node.js process crashes immediately with `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`, taking down the service.
-
----
-
-## 12. Practice Problems
-
-### Problem 1: Meeting Rooms II (LeetCode 253)
-- **Input:** Array of meeting time intervals: `intervals = [[0, 30], [5, 10], [15, 20]]`
-- **Output:** `2` (Minimum conference rooms required)
-- **Challenge:** Sort start and end times independently, or use a **Min-Heap of end times** to find maximum concurrent overlapping intervals in $O(N \log N)$ time.
-
-### Problem 2: Design In-Memory File System (LeetCode 588)
-- **Commands:** `ls(path)`, `mkdir(path)`, `addContentToFile(path, content)`, `readContentFromFile(path)`
-- **Challenge:** Combine a **Trie** structure where path segments (`"home"`, `"user"`, `"docs"`) are tree nodes with file payload storage.
-
-### Problem 3: LFU Cache (Least Frequently Used - LeetCode 460)
-- **Requirement:** Design and implement a data structure for a Least Frequently Used (LFU) cache.
-- **Challenge:** Achieve strict $O(1)$ average time for both `get` and `put` using two hash maps and frequency doubly-linked-list buckets.
+- **Requirement:** Design and implement a Least Frequently Used (LFU) cache with $O(1)$ `get` and `put`.
+- **Constraint:** Evict the least frequently accessed item; break ties using LRU.
+- **Hint 1:** Maintain two maps: `keyMap` (`key -> Node`) and `freqMap` (`frequency -> DoublyLinkedList`).
+- **Hint 2:** Track `minFreq` to know which frequency list to evict from in $O(1)$.
+- **Hint 3:** When a node is accessed, increment its frequency and move it to the next frequency bucket list.
 
 ---
 

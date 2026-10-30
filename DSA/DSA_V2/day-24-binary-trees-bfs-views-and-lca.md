@@ -6,269 +6,20 @@
 
 </nav>
 
-## Prerequisites
+## 1. Binary Tree BFS & Views Core Concepts
 
-- [Day 15: Queues & Circular Buffers](day-15-queues-circular-buffers-and-design.md) — First-In, First-Out (FIFO) queue mechanics and the $O(n)$ `shift()` trap.
-- [Day 23: Binary Trees: DFS & Properties](day-23-binary-trees-dfs-and-properties.md) — `TreeNode` structure and bottom-up post-order evaluation.
+While Depth-First Search (DFS) traverses deep down a single branch before backtracking, Breadth-First Search (BFS)—also known as Level-Order Traversal—explores nodes horizontally, level by level, from top to bottom and left to right.
 
----
+BFS guarantees that every node at depth $d$ is visited strictly before any node at depth $d + 1$. This property makes BFS the standard approach for finding shortest paths in unweighted trees, determining minimum tree depths, and capturing directional tree views (e.g., viewing a tree from its right or left facade).
 
-## 1. What is Breadth-First Search (BFS) & Tree Views?
+- **Level-Order BFS:** Visiting nodes layer by layer using a First-In, First-Out (FIFO) queue.
+- **Tree View:** The set of visible nodes observed when looking at a tree structure from a specific vantage point (Right View, Left View, Top View).
+- **Lowest Common Ancestor (LCA):** The deepest node in a tree that has both target nodes $p$ and $q$ as descendants (where a node can be a descendant of itself).
 
-While Depth-First Search (DFS) dives down a single branch to leaf level before backtracking, **Breadth-First Search (BFS)**—also known as **Level-Order Traversal**—visits nodes horizontally, layer by layer, from top to bottom and left to right.
-
-BFS guarantees that every node at depth $d$ is visited strictly before any node at depth $d + 1$. This structural guarantee makes BFS the premier algorithm for finding **shortest paths**, determining **minimum tree depths**, and generating **directional views** (e.g. looking at a tree from the right or left edge).
-
-> **Breadth-First Search (BFS)** — An iterative graph and tree traversal algorithm that explores all neighbor nodes at the present depth level before moving on to nodes at the next depth level, using a First-In, First-Out (FIFO) queue.
-
-> **Tree View** — The visible subset of nodes observed when looking at a tree structure from a specific angle (Right View, Left View, Top View, or Bottom View).
-
-> **Lowest Common Ancestor (LCA)** — The deepest node in a tree that has both target nodes $p$ and $q$ as descendants (where a node is allowed to be a descendant of itself).
-
-### Physical Analogy: The Floor-by-Floor Building Scan
-
-```text
-=============================================================================
-                  THE APARTMENT SCAN vs. THE RIGHT-SIDE FACADE
-=============================================================================
-
-1. LEVEL ORDER BFS (The Fire Inspector):
-   - A fire inspector enters an apartment building.
-   - They inspect Floor 0 (Penthouse / Root: [ 1 ]).
-   - Then Floor 1 ([ 2, 3 ]).
-   - Then Floor 2 ([ 4, 5, 6 ]).
-   - All rooms on a floor are verified before taking the stairs down.
-
-2. RIGHT-SIDE VIEW (The Street Observer):
-   - You stand on the sidewalk to the right of the building at dusk.
-   - You look straight at the right facade.
-   - For every floor, only the RIGHTMOST window facing the street is visible.
-     Inner rooms and leftmost rooms are blocked from view by the rightmost room!
-   - Level 0: Room 1 is visible.
-   - Level 1: Room 3 blocks Room 2.
-   - Level 2: Room 6 blocks Room 5 and Room 4.
-   - Visible facade: [ 1, 3, 6 ].
-=============================================================================
-```
-
-```mermaid
-graph TD
-    Root["Level 0: [ 1 ]"] --> N2["Level 1: 2"]
-    Root --> N3["Level 1: 3 (Rightmost)"]
-    N2 --> N4["Level 2: 4"]
-    N2 --> N5["Level 2: 5"]
-    N3 --> N6["Level 2: 6 (Rightmost)"]
-```
-
----
-
-## 2. How BFS and LCA Work Step-by-Step
-
-### 2.1 The Level-Order Snapshot Pattern
-
-The defining challenge of tree BFS is separating nodes by level. If you simply enqueue child nodes and dequeue parents in an unconstrained `while (queue.length)` loop, all levels blend together into a flat 1D stream.
-
-To preserve **level boundaries**, senior engineers use the **Snapshot Pattern**:
-At the start of each level, read and freeze `levelSize = queue.length`. Run an inner loop exactly `levelSize` times. Any child nodes enqueued during this loop belong strictly to the **next level** and will not be dequeued until the next iteration of the outer `while` loop!
-
-```text
-=============================================================================
-                     THE BFS LEVEL-SIZE SNAPSHOT TRACE
-=============================================================================
-
-Tree:       1
-          /   \
-         2     3
-        / \     \
-       4   5     6
-
-Initial:  Queue = [ 1 ]
-
---- LEVEL 0 ---
-Snapshot: levelSize = queue.length = 1
-Loop i = 0: Dequeue 1. Enqueue children (2, 3).
-Level 0 finished! Level nodes: [ 1 ].
-Queue now holds: [ 2, 3 ] (All Level 1 nodes!)
-
---- LEVEL 1 ---
-Snapshot: levelSize = queue.length = 2
-Loop i = 0: Dequeue 2. Enqueue children (4, 5).
-Loop i = 1: Dequeue 3. Enqueue children (6).
-Level 1 finished! Level nodes: [ 2, 3 ].
-Queue now holds: [ 4, 5, 6 ] (All Level 2 nodes!)
-
---- LEVEL 2 ---
-Snapshot: levelSize = queue.length = 3
-Loop i = 0: Dequeue 4. (No children).
-Loop i = 1: Dequeue 5. (No children).
-Loop i = 2: Dequeue 6. (No children).
-Level 2 finished! Level nodes: [ 4, 5, 6 ].
-Queue now empty. Traversal complete!
-=============================================================================
-```
-
-### 2.2 Lowest Common Ancestor (LCA) Bottom-Up Logic
-
-To find the Lowest Common Ancestor of nodes $p$ and $q$ in a general binary tree, we post-order traverse the tree bottom-up:
-1. If the current node is `null`, return `null`.
-2. If the current node is `p` or `q`, return `root` (found one of the targets!).
-3. Search left subtree: `left = lca(root.left, p, q)`
-4. Search right subtree: `right = lca(root.right, p, q)`
-5. **The Three Convergence Scenarios:**
-   - If both `left !== null` AND `right !== null`: One target was found in the left subtree, and the other target in the right subtree. The current node is their point of divergence $\implies$ **Current node is the LCA!**
-   - If only `left !== null`: Both targets (or target $p$ containing $q$) are in the left subtree $\implies$ Return `left`.
-   - If only `right !== null`: Both targets are in the right subtree $\implies$ Return `right`.
-   - If both are `null`: Neither target exists below this node $\implies$ Return `null`.
-
-```text
-LCA Decision Matrix at Node u:
-        u
-       / \
-    left  right
-
-Case 1: left != null && right != null  ==> Node u is the LCA!
-Case 2: left != null && right == null  ==> Target(s) in left subtree (bubble left up)
-Case 3: left == null && right != null  ==> Target(s) in right subtree (bubble right up)
-Case 4: left == null && right == null  ==> Return null
-```
-
----
-
-## 3. Pattern Recognition of BFS & Tree Views
-
-### How to Spot These Patterns in Interviews
-
-| Problem Statement Signal | Structural Requirement | Optimal Algorithmic Pattern |
-| :--- | :--- | :--- |
-| "Level by level", "Row by row" | Group nodes by their vertical depth | **BFS with `levelSize` Snapshot** |
-| "Shortest path / minimum steps to target in tree" | Unweighted shortest path | **BFS (guaranteed shortest depth first)** |
-| "Right side view / Left side view" | Extract last (or first) node per level | **BFS with boundary capture** OR **Depth DFS** |
-| "Zigzag / Spiral level order" | Alternate left-to-right and right-to-left | **BFS with level deque / parity reversal** |
-| "Find lowest common ancestor in generic tree" | Bottom-up target convergence | **Post-Order Bottom-Up DFS** |
-| "Find lowest common ancestor in BST" | Exploit value ordering ($L < Root < R$) | **$O(H)$ Iterative BST Descent** |
-
----
-
-## 4. Problem 1: Binary Tree Right Side View (LeetCode 199)
-
-### Problem Description
-Given the `root` of a binary tree, imagine yourself standing on the **right side** of it. Return the values of the nodes you can see ordered from top to bottom.
-
-### Step 1: Physical Simulation
-Suppose we have the following tree:
-```text
-        1            <-- See 1
-       / \
-      2   3          <-- See 3
-       \
-        5            <-- See 5 (Node 3 has no right child; 5 peeks through!)
-```
-- Level 0: `[ 1 ]`. Rightmost visible node: `1`.
-- Level 1: `[ 2, 3 ]`. Rightmost visible node: `3`.
-- Level 2: `[ 5 ]`. Even though node `5` is a child of the **left** subtree (node 2), because node 3 has no children at level 2, node `5` is unobstructed and visible from the right side!
-- Result: `[ 1, 3, 5 ]`.
-
-### Step 2: Brute Force Approach
-Perform a standard BFS level-order traversal, collecting every node on each level into an array. After completing the tree, map each level array to its last element:
+Imagine an apartment building. In Level-Order BFS, a building inspector inspects Floor 0 (the penthouse), then Floor 1, then Floor 2, checking every room on a floor before taking the stairs down. In Right-Side View, an observer stands on the sidewalk looking at the right facade of the building at dusk. On each floor, only the rightmost room's window is visible; inner rooms and leftmost rooms are blocked from view by the rightmost room.
 
 ```javascript
-// Naive BFS: Collects all nodes in memory, uses array.shift()
-function rightSideViewNaive(root) {
-  if (!root) return [];
-  const levels = [];
-  const queue = [root];
-
-  while (queue.length > 0) {
-    const size = queue.length;
-    const currentLevel = [];
-    for (let i = 0; i < size; i++) {
-      const node = queue.shift(); // O(N) shift operation!
-      currentLevel.push(node.val);
-      if (node.left) queue.push(node.left);
-      if (node.right) queue.push(node.right);
-    }
-    levels.push(currentLevel);
-  }
-
-  return levels.map(level => level[level.length - 1]);
-}
-```
-
-### Step 3: Bottleneck
-1. **Memory Allocation:** Collecting every node into `currentLevel` arrays wastes memory when we only ever care about 1 node per level.
-2. **The $O(n)$ `queue.shift()` Trap:** In JavaScript, `Array.prototype.shift()` shifts all remaining elements in memory down by 1 index. In a tree with $50,000$ nodes, calling `shift()` for every node turns a linear $O(N)$ algorithm into a quadratic $O(N^2)$ disaster.
-
-### Step 4: The Pattern Discovery
-We can solve this using either:
-1. **High-Performance BFS:** Maintain an array queue with a `head` pointer index to achieve true $O(1)$ dequeues. In the inner loop, when `i === levelSize - 1` (the last node in the level), push `node.val` directly to `result`.
-2. **Right-First DFS:** Traverse in `Root -> Right -> Left` order, tracking `currentDepth`. If `currentDepth === result.length`, this is the **first time** we have ever reached this depth—and because we explore the right child before the left child, this node is guaranteed to be the rightmost visible node!
-
-```text
-Right-First DFS Walk:
-Visit 1 (depth 0): result.length is 0 === depth 0 -> Add 1! result = [1]
-  Recurse Right: Visit 3 (depth 1): result.length is 1 === depth 1 -> Add 3! result = [1, 3]
-    Recurse Right: null
-    Recurse Left: null
-  Recurse Left: Visit 2 (depth 1): result.length is 2 !== depth 1 -> Skip!
-    Recurse Right: Visit 5 (depth 2): result.length is 2 === depth 2 -> Add 5! result = [1, 3, 5]
-```
-
-### Step 5: The Optimal Solution
-
-```javascript
-// ✅ CORRECT APPROACH 1: High-Performance BFS with Index Pointer Queue
-function rightSideViewBFS(root) {
-  if (!root) return [];
-
-  const result = [];
-  const queue = [root];
-  let head = 0; // O(1) queue read pointer, zero shift() re-indexing!
-
-  while (head < queue.length) {
-    const levelSize = queue.length - head;
-
-    for (let i = 0; i < levelSize; i++) {
-      const node = queue[head++];
-
-      // If this is the last element on the current level, it is visible from the right
-      if (i === levelSize - 1) {
-        result.push(node.val);
-      }
-
-      if (node.left) queue.push(node.left);
-      if (node.right) queue.push(node.right);
-    }
-  }
-
-  return result;
-}
-
-// ✅ CORRECT APPROACH 2: Right-First DFS (Optimal Memory O(H))
-function rightSideViewDFS(root) {
-  const result = [];
-
-  function dfs(node, depth) {
-    if (!node) return;
-
-    // First time visiting this depth level means this is the rightmost node
-    if (depth === result.length) {
-      result.push(node.val);
-    }
-
-    // Traverse RIGHT child first!
-    dfs(node.right, depth + 1);
-    // Then traverse LEFT child
-    dfs(node.left, depth + 1);
-  }
-
-  dfs(root, 0);
-  return result;
-}
-
-// ❌ ANTI-PATTERN: Merely walking right pointers (node = node.right)
-// Fails when right subtree terminates early, hiding deeper left-subtree nodes!
-
-// Direct test run
+// Definition of a standard Binary Tree Node
 class TreeNode {
   constructor(val = 0, left = null, right = null) {
     this.val = val;
@@ -277,129 +28,395 @@ class TreeNode {
   }
 }
 
-const testTree = new TreeNode(1,
+// Basic Level-Order Traversal using an advancing-pointer queue
+function levelOrderBasic(root) {
+  if (!root) return [];
+
+  const result = [];
+  const queue = [root];
+  let head = 0; // O(1) read pointer to avoid O(N) array.shift() re-indexing
+
+  while (head < queue.length) {
+    const levelSize = queue.length - head; // Freeze level size
+    const currentLevel = [];
+
+    for (let i = 0; i < levelSize; i++) {
+      const node = queue[head++];
+      currentLevel.push(node.val);
+
+      if (node.left) queue.push(node.left);
+      if (node.right) queue.push(node.right);
+    }
+
+    result.push(currentLevel);
+  }
+
+  return result;
+}
+
+const sampleTree = new TreeNode(3,
+  new TreeNode(9),
+  new TreeNode(20, new TreeNode(15), new TreeNode(7))
+);
+
+console.log("Level-Order:", levelOrderBasic(sampleTree));
+// Output: [ [ 3 ], [ 9, 20 ], [ 15, 7 ] ]
+```
+
+### 1.1 The Level-Order BFS Pattern and Frozen Size
+
+The defining mechanic of level-order BFS is freezing the queue length at the start of each level:
+```javascript
+const levelSize = queue.length - head;
+```
+Because child nodes are pushed to the back of the queue as parents are processed, without snapshotting `levelSize`, the loop would not know where the current depth ends and the next depth begins. Freezing `levelSize` isolates depth layers cleanly.
+
+> [!NOTE]
+> Why is `queue.shift()` considered an anti-pattern in Node.js interviews? Because `shift()` re-indexes every remaining element in the array, turning an $O(N)$ traversal into a quadratic $O(N^2)$ algorithm for large inputs. Using an advancing `head` pointer provides true $O(1)$ dequeues.
+
+### 1.2 Lowest Common Ancestor Mechanics
+
+In a general binary tree, finding the Lowest Common Ancestor (LCA) of nodes $p$ and $q$ uses a bottom-up post-order search:
+
+```text
+LCA Decision Matrix at Node u:
+        u
+       / \
+    left  right
+
+Case 1: left != null && right != null  ==> Node u is the point of divergence (LCA!)
+Case 2: left != null && right == null  ==> Targets reside in left subtree (bubble left up)
+Case 3: left == null && right != null  ==> Targets reside in right subtree (bubble right up)
+Case 4: left == null && right == null  ==> Neither target found below (return null)
+```
+
+If the current node matches $p$ or $q$, it returns itself upward. When a parent receives non-null returns from both its left and right subtrees, that parent is the LCA.
+
+### 1.3 Operations Reference Table
+
+| Algorithm / Pattern | Primary Data Structure | Traversal Direction | Time Complexity | Auxiliary Space |
+| :--- | :--- | :--- | :--- | :--- |
+| **Level-Order Traversal** | Queue with `head` pointer | Horizontal (Level-by-Level) | $O(N)$ | $O(W)$ ($W \le N/2$) |
+| **Right Side View (BFS)**| Queue with boundary check | Level-by-Level | $O(N)$ | $O(W)$ queue width |
+| **Right Side View (DFS)**| Call stack with depth track| Root $\to$ Right $\to$ Left | $O(N)$ | $O(H)$ tree height |
+| **LCA (Generic Binary Tree)**| Call stack (Post-Order) | Bottom-Up | $O(N)$ | $O(H)$ stack frames |
+| **LCA (Binary Search Tree)** | Pointer iteration | Directional comparison | $O(H)$ | $O(1)$ auxiliary |
+
+---
+
+## 2. Tree BFS and View Patterns
+
+### 2.1 Pattern Family
+
+Tree BFS and directional view problems fall into three main operational patterns:
+
+- **Level-by-Level Queue Processing:** Grouping nodes strictly by depth using frozen `levelSize` snapshots.
+- **Directional Perimeter Views:** Extracting exterior nodes of a tree (e.g. rightmost or leftmost elements) either via BFS level boundaries or depth-indexed DFS.
+- **Ancestral Divergence Tracking (LCA):** Identifying the deepest node from which two target nodes branch out.
+
+### 2.2 Pattern Recognition Table
+
+| Problem Keyword Signal | Underlying Problem Need | Recommended Approach |
+| :--- | :--- | :--- |
+| "Return values level by level" | Group nodes by their depth layer | BFS with frozen `levelSize` snapshot |
+| "Minimum depth to nearest leaf" | Shortest path from root | BFS (terminates at very first leaf) |
+| "Right side view / Left side view" | Extract boundary node on each level | BFS boundary check or Depth DFS |
+| "Zigzag / Spiral level order" | Alternate left-to-right and right-to-left | BFS with level array index placement |
+| "Lowest common ancestor in binary tree" | Deepest shared parent node | Bottom-Up Post-Order DFS |
+| "Lowest common ancestor in BST" | Exploit sorted value ordering | $O(H)$ iterative value comparison |
+
+### 2.3 When to Use vs When NOT to Use
+
+- **Use Tree BFS when:**
+  - You need to process nodes level by level or group them by depth.
+  - You need the shortest distance to a leaf node (BFS finds it first without exploring deeper paths).
+- **When NOT to use Tree BFS:**
+  - Finding maximum depth or tree diameter. DFS is more direct and uses less memory on wide trees.
+  - Memory is strictly limited on very wide trees. In a balanced tree of $10^6$ nodes, BFS holds $500,000$ nodes in memory at the leaf level, whereas DFS holds only $\approx 20$ stack frames.
+
+### 2.4 The 10^7 Operations Rule
+
+Both BFS and DFS visit each node once, taking $O(N)$ operations. For $N = 100,000$, an $O(N)$ traversal takes roughly 10 milliseconds. However, using `array.shift()` inside a BFS loop on 100,000 items takes $\sum_{i=1}^{100,000} i \approx 5 \times 10^9$ operations, freezing the Node.js event loop for several seconds. Always use pointer-based or circular queues.
+
+---
+
+## 3. Problem Walkthroughs
+
+### 3.1 Binary Tree Level Order Traversal
+
+#### 3.1.1 Problem Statement
+Given the `root` of a binary tree, return the level order traversal of its nodes' values (i.e., from left to right, level by level).
+
+- **Input:** `root = [3, 9, 20, null, null, 15, 7]`
+- **Output:** `[[3], [9, 20], [15, 7]]`
+- **Constraints:** $0 \le \text{number of nodes} \le 2,000$, $-1,000 \le Node.val \le 1,000$.
+
+#### 3.1.2 How to Think About It
+Imagine a company directory organized by management tier. You place the CEO in a waiting line. When you process the CEO, you note their name on the Tier 0 list and invite their direct reports into the line. You then process all direct reports, noting their names on the Tier 1 list and inviting their subordinates. Each tier is completed before the next tier begins.
+
+#### 3.1.3 Brute Force Approach & Bottleneck
+The naive approach uses an array as a queue and calls `queue.shift()` to dequeue each element:
+
+```javascript
+function levelOrderNaive(root) {
+  if (!root) return [];
+  const result = [];
+  const queue = [root];
+
+  while (queue.length > 0) {
+    const size = queue.length;
+    const level = [];
+    for (let i = 0; i < size; i++) {
+      const node = queue.shift(); // O(N) shift operation!
+      level.push(node.val);
+      if (node.left) queue.push(node.left);
+      if (node.right) queue.push(node.right);
+    }
+    result.push(level);
+  }
+  return result;
+}
+```
+
+The bottleneck is `queue.shift()`. Every call shifts all remaining elements in the array to the left in memory, turning an $O(N)$ algorithm into an $O(N^2)$ operation on larger inputs.
+
+#### 3.1.4 The Pattern Insight
+Maintain an integer pointer `let head = 0` to track the current queue index. Accessing `queue[head++]` runs in $O(1)$ time without shifting elements. At each level, the number of nodes belonging to that level is `queue.length - head`.
+
+#### 3.1.5 Pseudocode
+```text
+function levelOrder(root):
+    if root is null: return []
+    result = []
+    queue = [root]
+    head = 0
+
+    while head < queue.length:
+        levelSize = queue.length - head
+        currentLevel = []
+        for i from 0 to levelSize - 1:
+            node = queue[head++]
+            currentLevel.push(node.val)
+            if node.left: queue.push(node.left)
+            if node.right: queue.push(node.right)
+        result.push(currentLevel)
+
+    return result
+```
+
+#### 3.1.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal O(N) Level Order Traversal with Index Pointer Queue
+function levelOrder(root) {
+  if (!root) return [];
+
+  const result = [];
+  const queue = [root];
+  let head = 0; // O(1) dequeue pointer
+
+  while (head < queue.length) {
+    const levelSize = queue.length - head; // Snapshot current level size
+    const currentLevel = [];
+
+    for (let i = 0; i < levelSize; i++) {
+      const node = queue[head++];
+      currentLevel.push(node.val);
+
+      if (node.left) queue.push(node.left);
+      if (node.right) queue.push(node.right);
+    }
+
+    result.push(currentLevel);
+  }
+
+  return result;
+}
+
+const testTree = new TreeNode(3,
+  new TreeNode(9),
+  new TreeNode(20, new TreeNode(15), new TreeNode(7))
+);
+
+console.log("Level Order:", levelOrder(testTree));
+// Output: [ [ 3 ], [ 9, 20 ], [ 15, 7 ] ]
+```
+
+#### 3.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Using queue.length directly in loop condition
+for (let i = 0; i < queue.length; i++) {
+  // queue.length expands when children are pushed!
+  // Mixing parent and child levels corrupts level groupings.
+}
+```
+
+Because `queue.length` changes as children are enqueued, failing to snapshot `levelSize` upfront causes all nodes across all depths to merge into a single flat array.
+
+#### 3.1.8 Complexity Derivation
+- **Time Complexity:** $O(N)$. Every node is pushed and dequeued exactly once.
+- **Auxiliary Space Complexity:** $O(N)$ for the queue array and result containers. The maximum number of nodes in the queue corresponds to the maximum width of the tree, which is $\lceil N/2 \rceil$ for a balanced binary tree.
+
+---
+
+### 3.2 Binary Tree Right Side View
+
+#### 3.2.1 Problem Statement
+Given the `root` of a binary tree, imagine standing on the right side of it. Return the values of the nodes you can see ordered from top to bottom.
+
+- **Input:** `root = [1, 2, 3, null, 5, null, 4]`
+- **Output:** `[1, 3, 4]`
+- **Constraints:** $0 \le \text{number of nodes} \le 100$, $-100 \le Node.val \le 100$.
+
+#### 3.2.2 How to Think About It
+Imagine a building where you view the right side. On each floor, you only see the rightmost room with an outside window. If a floor's right wing has no rooms, a room in the left wing on that floor becomes visible because nothing blocks it from the right.
+
+#### 3.2.3 Brute Force Approach & Bottleneck
+Run a full level-order traversal, collecting every node on each level into sub-arrays, then extract the last element from each sub-array:
+
+```javascript
+function rightSideViewNaive(root) {
+  if (!root) return [];
+  const levels = levelOrder(root);
+  return levels.map(level => level[level.length - 1]);
+}
+```
+
+While correct, collecting and allocating arrays for all nodes when only one node per level is needed wastes heap memory.
+
+#### 3.2.4 The Pattern Insight
+We can solve this using two clean approaches:
+1. **BFS with Boundary Extraction:** In a level-order traversal, the node where `i === levelSize - 1` is the rightmost node of that level. Push only that value to `result`.
+2. **Right-First DFS:** Traverse in `Root -> Right -> Left` order, tracking `depth`. If `depth === result.length`, this is the first time we have reached this depth. Because we visit right children before left children, this node is guaranteed to be the rightmost visible node.
+
+#### 3.2.5 Pseudocode
+```text
+function rightSideViewDFS(root):
+    result = []
+    function dfs(node, depth):
+        if node is null: return
+        if depth == result.length:
+            result.push(node.val)
+        dfs(node.right, depth + 1) // right first
+        dfs(node.left, depth + 1)
+
+    dfs(root, 0)
+    return result
+```
+
+#### 3.2.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal Right-First DFS (O(H) Auxiliary Space)
+function rightSideView(root) {
+  const result = [];
+
+  function dfs(node, depth) {
+    if (!node) return;
+
+    // If visiting this depth for the first time, this is the rightmost node
+    if (depth === result.length) {
+      result.push(node.val);
+    }
+
+    // Traverse right child first, then left child
+    dfs(node.right, depth + 1);
+    dfs(node.left, depth + 1);
+  }
+
+  dfs(root, 0);
+  return result;
+}
+
+const tree = new TreeNode(1,
   new TreeNode(2, null, new TreeNode(5)),
   new TreeNode(3, null, new TreeNode(4))
 );
 
-console.log("Right Side View BFS:", rightSideViewBFS(testTree)); // Expected: [ 1, 3, 4 ]
-console.log("Right Side View DFS:", rightSideViewDFS(testTree)); // Expected: [ 1, 3, 4 ]
+console.log("Right Side View:", rightSideView(tree));
+// Output: [ 1, 3, 4 ]
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(N)$ strictly. Every node is visited exactly once in both BFS and DFS implementations.
-- **Space Complexity:**
-  * **BFS:** $O(W) = O(N)$ auxiliary space where $W$ is the maximum width of the tree (for a complete binary tree, the last level contains $\lceil N/2 \rceil$ nodes).
-  * **DFS:** $O(H)$ auxiliary space for call stack where $H$ is tree height ($O(\log N)$ balanced, $O(N)$ skewed). DFS is generally more memory-efficient on balanced trees.
-
----
-
-## 5. Problem 2: Lowest Common Ancestor of a Binary Tree (LeetCode 236)
-
-### Problem Description
-Given a binary tree, find the lowest common ancestor (LCA) of two given nodes `p` and `q`.
-According to the definition of LCA on Wikipedia: “The lowest common ancestor is defined between two nodes `p` and `q` as the lowest node in `T` that has both `p` and `q` as descendants (where we allow **a node to be a descendant of itself**).”
-
-### Step 1: Physical Simulation
-Suppose we have:
-```text
-              3
-            /   \
-          5       1
-         / \     / \
-        6   2   0   8
-           / \
-          7   4
-```
-- Target 1: `p = 5`, `q = 1`
-  * Node `5` is in the left subtree of `3`. Node `1` is in the right subtree of `3`.
-  * The divergence point is `3`. $\implies$ LCA is `3`.
-- Target 2: `p = 5`, `q = 4`
-  * Node `4` is a descendant inside the subtree of `5` (`5 -> 2 -> 4`).
-  * Since a node is allowed to be a descendant of itself, node `5` contains both `5` and `4`. $\implies$ LCA is `5`!
-
-### Step 2: Brute Force Approach
-Find the path from the root to node `p` (e.g. `[3, 5]`) and store it in an array. Find the path from root to node `q` (e.g. `[3, 5, 2, 4]`) and store it in an array. Iterate through both arrays simultaneously until the paths diverge. The last common element is the LCA:
+#### 3.2.7 Common Anti-Pattern
 
 ```javascript
-// Naive path-storing approach
-function lowestCommonAncestorNaive(root, p, q) {
-  function findPath(node, target, path) {
-    if (!node) return false;
-    path.push(node);
-    if (node === target) return true;
-    if (findPath(node.left, target, path) || findPath(node.right, target, path)) {
-      return true;
-    }
-    path.pop();
-    return false;
-  }
-
-  const pathP = [];
-  const pathQ = [];
-  findPath(root, p, pathP);
-  findPath(root, q, pathQ);
-
-  let lca = null;
-  let i = 0;
-  while (i < pathP.length && i < pathQ.length && pathP[i] === pathQ[i]) {
-    lca = pathP[i];
-    i++;
-  }
-  return lca;
+// ❌ ANTI-PATTERN: Merely following right pointers
+let curr = root;
+while (curr) {
+  result.push(curr.val);
+  curr = curr.right; // FAILS when left subtree is deeper than right subtree!
 }
 ```
 
-### Step 3: Bottleneck
-Storing full node path arrays consumes $O(H)$ additional heap arrays, requiring two full traversals of the tree, plus path string/array manipulations.
+If the right subtree ends at depth 1 but the left subtree extends to depth 5, merely following right pointers misses the deeper left-subtree nodes that are visible from the right side.
 
-### Step 4: The Pattern Discovery
-We can solve this in a **single post-order DFS pass** without allocating any path arrays:
-- As we descend, if the current node matches `p` or `q`, return `root`.
-- Subtrees report upward:
-  * If both `leftSubtree` and `rightSubtree` return a non-null node, this current node is the exact point of divergence where $p$ and $q$ split into different branches $\implies$ **Return `root`!**
-  * If only one side returns a non-null node, propagate that non-null node upward.
-  * If neither returns a node, return `null`.
+#### 3.2.8 Complexity Derivation
+- **Time Complexity:** $O(N)$ strictly. Every node is visited once.
+- **Auxiliary Space Complexity:** $O(H)$ for the call stack, where $H$ is the tree height ($O(\log N)$ balanced, $O(N)$ skewed).
 
+---
+
+### 3.3 Lowest Common Ancestor of a Binary Tree
+
+#### 3.3.1 Problem Statement
+Given a binary tree, find the lowest common ancestor (LCA) of two given nodes `p` and `q`. The lowest common ancestor is defined between two nodes `p` and `q` as the lowest node in $T$ that has both `p` and `q` as descendants (where a node can be a descendant of itself).
+
+- **Input:** `root = [3, 5, 1, 6, 2, 0, 8, null, null, 7, 4]`, `p = 5`, `q = 1`
+- **Output:** `3`
+- **Constraints:** Number of nodes is in range $[2, 10^5]$, all node values are unique, $p \neq q$, and both $p$ and $q$ exist in the tree.
+
+#### 3.3.2 How to Think About It
+Imagine tracing the family tree of two cousins. You trace the lineage of cousin $p$ up to the root, and the lineage of cousin $q$ up to the root. The lowest person where both family lines meet is their lowest common ancestor. If one person is the direct parent of the other, that parent is the ancestor.
+
+#### 3.3.3 Brute Force Approach & Bottleneck
+Find the path from the root to node $p$ (e.g. `[3, 5]`) and store it in an array. Find the path from the root to node $q$ (e.g. `[3, 1]`) and store it in an array. Compare both arrays element by element until they diverge. Storing paths takes two full traversals and allocates extra arrays on the heap.
+
+#### 3.3.4 The Pattern Insight
+Use a single bottom-up post-order traversal:
+1. If `root === null || root === p || root === q`, return `root`.
+2. Recurse into left and right subtrees: `left = lca(root.left, p, q)`, `right = lca(root.right, p, q)`.
+3. If both `left` and `right` are non-null, $p$ and $q$ reside in different subtrees under `root`. Thus, `root` is their Lowest Common Ancestor!
+4. If only one side is non-null, return that non-null node upward.
+
+#### 3.3.5 Pseudocode
 ```text
-Bottom-Up LCA Bubble Trace for p = 5, q = 1:
-At Node 5: Matches p! Returns Node 5.
-At Node 1: Matches q! Returns Node 1.
-At Root 3:
-  left returned Node 5 (non-null).
-  right returned Node 1 (non-null).
-  Both children returned a target! Root 3 is the LCA!
+function lowestCommonAncestor(root, p, q):
+    if root is null or root == p or root == q:
+        return root
+
+    left = lowestCommonAncestor(root.left, p, q)
+    right = lowestCommonAncestor(root.right, p, q)
+
+    if left is not null and right is not null:
+        return root
+
+    return left if left is not null else right
 ```
 
-### Step 5: The Optimal Solution
+#### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(N) Post-Order LCA in Single Pass
+// ✅ CORRECT: Optimal O(N) Post-Order LCA Traversal
 function lowestCommonAncestor(root, p, q) {
-  // Base case: Null node or we found one of the targets
+  // Base case: null or found target node
   if (!root || root === p || root === q) {
     return root;
   }
 
-  // Post-order: Search both left and right subtrees
+  // Post-order: search both subtrees
   const left = lowestCommonAncestor(root.left, p, q);
   const right = lowestCommonAncestor(root.right, p, q);
 
-  // If both left and right returned non-null, p and q are in separate subtrees.
-  // Current root is their lowest common ancestor!
+  // If both subtrees return non-null, current node is the point of divergence (LCA)
   if (left && right) {
     return root;
   }
 
-  // Otherwise, return whichever subtree found a target (or null if neither found)
+  // Otherwise, bubble whichever node was found
   return left ? left : right;
 }
 
-// ❌ ANTI-PATTERN: Comparing node values (node.val === p.val)
-// In a general binary tree, duplicate values may exist.
-// Always compare object identity references (root === p), not values!
-
-// Direct test run
 const n7 = new TreeNode(7);
 const n4 = new TreeNode(4);
 const n2 = new TreeNode(2, n7, n4);
@@ -410,258 +427,74 @@ const n8 = new TreeNode(8);
 const n1 = new TreeNode(1, n0, n8);
 const treeRoot = new TreeNode(3, n5, n1);
 
-console.log("LCA of 5 and 1 (Expected 3):", lowestCommonAncestor(treeRoot, n5, n1).val);
-console.log("LCA of 5 and 4 (Expected 5):", lowestCommonAncestor(treeRoot, n5, n4).val);
+console.log("LCA of 5 and 1:", lowestCommonAncestor(treeRoot, n5, n1).val); // Output: 3
+console.log("LCA of 5 and 4:", lowestCommonAncestor(treeRoot, n5, n4).val); // Output: 5
 ```
 
-#### Complexity Analysis
-- **Time Complexity:** $O(N)$ in the worst case, as we may need to visit every node in the binary tree.
-- **Space Complexity:** $O(H)$ auxiliary space for the recursion call stack, where $H$ is the height of the tree ($O(\log N)$ balanced, $O(N)$ skewed). Zero heap arrays are allocated.
+#### 3.3.7 Common Anti-Pattern
 
----
-
-## 6. Under the Hood: V8 & Node.js
-
-Executing BFS at high volume in Node.js exposes severe runtime characteristics:
-
-```text
-=============================================================================
-                     BFS & V8 QUEUE PERFORMANCE REALITIES
-=============================================================================
-
-1. THE Array.prototype.shift() PERFORMANCE CLIFF:
-   - JavaScript arrays are implemented as contiguous memory buffers (FixedArray).
-   - queue.shift() removes index 0 and re-indexes every subsequent element:
-     [1, 2, 3, 4] -> shift() -> copies [2, 3, 4] down by 1 memory slot.
-   - For an array of length K, shift() is O(K).
-   - In a BFS on a tree of 50,000 nodes, cumulative cost is:
-     Sum_{i=1}^{50000} i = 1,250,000,000 memory moves!
-   - Runtime explodes from 5 milliseconds to over 3 seconds!
-
-2. SENIOR MITIGATION PATTERNS:
-   a) Index Pointer Queue (queue[head++]):
-      - Keeps an advancing read pointer. O(1) amortized, zero re-indexing.
-      - Trade-off: Array grows to size N in memory before being GC'd.
-   b) Linked List Queue / Ring Buffer:
-      - Uses { val, next } nodes or fixed-size Uint32Array circular buffer.
-      - Truly O(1) enqueue, O(1) dequeue, bounded memory footprint.
-
-3. BFS QUEUE MEMORY SPIKE IN FULL TREES:
-   - For a balanced binary tree, the leaf level contains roughly N / 2 nodes.
-   - The queue holds all nodes of a level concurrently.
-   - For N = 1,000,000 nodes, queue peak memory holds 500,000 node pointers!
-   - In contrast, DFS call stack memory is bounded by tree height: log2(1,000,000) ≈ 20 frames!
-   - Architecture Takeaway: DFS is significantly more memory-efficient than BFS
-     on deep, wide trees.
-=============================================================================
-```
-
-```mermaid
-graph TD
-    A["API Request: Process 100K Node Tree"] --> B{"Choose Traversal Traversal"}
-    B -->|Naive BFS with shift| C["O(N^2) Runtime (Event Loop Blocked)"]
-    B -->|Pointer Queue or DFS| D["O(N) Linear (Processed in < 15ms)"]
-```
-
----
-
-## 7. Hands-On Exercise
-
-### The Asymmetric Zigzag Parity Bug
-A candidate was asked to implement `zigzagLevelOrder(root)` (Level 0: Left to Right; Level 1: Right to Left; Level 2: Left to Right...). The candidate wrote BFS, but modified the queue traversal direction directly inside the loop, corrupting child enqueuing.
-
-### The Buggy Code
 ```javascript
-function buggyZigzag(root) {
-  if (!root) return [];
-  const result = [];
-  const queue = [root];
-  let leftToRight = true;
-
-  while (queue.length > 0) {
-    const size = queue.length;
-    const level = [];
-
-    for (let i = 0; i < size; i++) {
-      const node = queue.shift();
-      level.push(node.val);
-
-      // BUG: Flipping child enqueuing order corrupts parent-child FIFO sequence
-      // across subsequent levels!
-      if (leftToRight) {
-        if (node.left) queue.push(node.left);
-        if (node.right) queue.push(node.right);
-      } else {
-        if (node.right) queue.push(node.right);
-        if (node.left) queue.push(node.left);
-      }
-    }
-
-    result.push(level);
-    leftToRight = !leftToRight;
-  }
-
-  return result;
+// ❌ ANTI-PATTERN: Comparing node values instead of reference identities
+if (root.val === p.val || root.val === q.val) {
+  // If tree contains duplicate values or custom objects,
+  // value comparisons return incorrect node references!
 }
 ```
 
-### The Fix and Direct Verification
-Keep child enqueuing strictly standard (`node.left` then `node.right`). Alter **only where values are inserted into the `level` result array** (using `push` for Left-to-Right and `unshift` for Right-to-Left, or reversing the level array after the loop):
+Always compare object references (`root === p`), not values, to ensure the correct instance is returned.
 
-```javascript
-// ✅ REPAIRED: Production-Safe Zigzag Level Order
-function safeZigzagLevelOrder(root) {
-  if (!root) return [];
-
-  const result = [];
-  const queue = [root];
-  let head = 0;
-  let leftToRight = true;
-
-  while (head < queue.length) {
-    const levelSize = queue.length - head;
-    // Pre-allocate fixed array for this level to avoid unshift() O(K) penalties
-    const currentLevel = new Array(levelSize);
-
-    for (let i = 0; i < levelSize; i++) {
-      const node = queue[head++];
-
-      // Place value at left or right index based on direction flag
-      const writeIndex = leftToRight ? i : (levelSize - 1 - i);
-      currentLevel[writeIndex] = node.val;
-
-      // Always enqueue children in standard Left -> Right order!
-      if (node.left) queue.push(node.left);
-      if (node.right) queue.push(node.right);
-    }
-
-    result.push(currentLevel);
-    leftToRight = !leftToRight;
-  }
-
-  return result;
-}
-
-// Direct test verification
-const zigzagTree = new TreeNode(3,
-  new TreeNode(9),
-  new TreeNode(20, new TreeNode(15), new TreeNode(7))
-);
-
-console.log("Repaired Zigzag Output:", safeZigzagLevelOrder(zigzagTree));
-// Expected: [ [3], [20, 9], [15, 7] ]
-```
+#### 3.3.8 Complexity Derivation
+- **Time Complexity:** $O(N)$ in the worst case, as every node may be visited.
+- **Auxiliary Space Complexity:** $O(H)$ for the call stack ($O(\log N)$ balanced, $O(N)$ skewed).
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 4. Tricky Edge Cases
 
-### 1. The Right Side View "Shadowing" Fallacy
-A frequent misconception is assuming that the right side view consists solely of the right child pointers:
-`curr = root; while (curr) { res.push(curr.val); curr = curr.right; }`
-This fails completely when a left subtree is deeper than a right subtree. Once the right subtree terminates, the leaves of the left subtree become visible from the right side.
-
-### 2. Node Value Matching vs Reference Equality in LCA
-Never write `if (root.val === p.val)`. In real-world enterprise databases or graph structures, multiple nodes may contain the same payload value (e.g., duplicate usernames or statuses). LCA requires determining the ancestor of **the specific object instances** `p` and `q`. Always use reference equality: `if (root === p || root === q)`.
-
-### 3. Queue Memory Exhaustion
-In ultra-wide trees (e.g. N-ary trees with 1,000 children per node), a BFS queue can hold tens of thousands of references simultaneously. If memory bounds are tight, use DFS traversal with depth tracking instead of BFS.
+- **Empty Tree:** Ensure `root === null` returns `[]` or `null` gracefully.
+- **LCA Where Node is Descendant of Itself:** When $p$ is an ancestor of $q$, the algorithm encounters $p$ first and immediately returns $p$ without searching deeper. This is mathematically correct because $p$ contains $q$ in its subtree.
+- **Left Subtree Deeper Than Right Subtree in Views:** In Right Side View, when the right subtree has fewer levels than the left, left-subtree nodes emerge into view on deeper levels.
+- **Large Balanced Trees in BFS:** Peak memory in BFS occurs at the leaf level ($\lceil N/2 \rceil$ nodes in the queue). For large datasets, Right-First DFS is significantly more memory-efficient.
 
 ---
 
-## 9. Comprehensive Summary
+## 5. Summary Cheat Sheet
 
-```text
-=============================================================================
-                    TREE BFS & LCA MASTER SUMMARY
-=============================================================================
-
-TECHNIQUE           CORE MECHANISM                  INTERVIEW APPLICATION
------------------------------------------------------------------------------
-Level-Order BFS     Queue + Frozen levelSize        Shortest path, level grouping
-Pointer Queue       queue[head++] instead of shift  O(N) runtime, avoids O(N^2) bug
-Right-Side View     BFS last element OR             Exterior facade visualization
-                    Right-First DFS (depth === len)
-LCA (General Tree)  Bottom-Up Post-Order DFS        Convergence point of p and q
-LCA (BST)           Compare root.val with p & q     O(H) iterative directional walk
-Zigzag BFS          Fixed array index assignment    Alternating level display
-=============================================================================
-```
-
-- **Freezing `levelSize` is mandatory for level-order BFS:** Processing exactly `levelSize` elements per outer iteration prevents parent and child levels from bleeding together.
-- **`queue.shift()` is an $O(N^2)$ trap:** Always use an advancing `head` pointer or linked list queue in Node.js interviews.
-- **LCA in generic trees is bottom-up post-order:** A node is the LCA if and only if both its left and right child searches return non-null, or the node itself is a target whose child contains the other target.
+- **Level-Order BFS:** Requires a FIFO queue and freezing `levelSize` at the start of each level.
+- **Pointer Queue:** Use `let head = 0` and `queue[head++]` to avoid the $O(N^2)$ `shift()` performance trap.
+- **Right Side View:** Can be solved with BFS by taking the last element at each level (`i === levelSize - 1`), or with Right-First DFS (`Root -> Right -> Left`) tracking depth.
+- **Lowest Common Ancestor:** Post-order traversal where a node returns itself when matched. A node receiving non-null from both children is the LCA.
 
 ---
 
-## 10. Cheat Sheet
+## 6. Practice Problems
 
-### Decision Matrix: BFS vs DFS for Tree Queries
+### 6.1 Binary Tree Zigzag Level Order Traversal
 
-| Problem Goal | Preferred Approach | Rationale |
-| :--- | :--- | :--- |
-| Find minimum depth / nearest leaf | **BFS** | Terminates at the very first leaf encountered without deep scans. |
-| Output nodes level-by-level | **BFS** | Natural FIFO level grouping via `levelSize`. |
-| Right / Left View with minimal memory | **DFS** | $O(H)$ stack frames vs $O(N)$ queue width. |
-| Lowest Common Ancestor (Generic) | **DFS (Post-Order)** | Bubbles target node references upward. |
-| Zigzag / Spiral Traversal | **BFS** | Reverses insertion indices per level parity. |
-
-### BFS / LCA Safety Checklist
-- [ ] Did you check `if (!root) return []` at the beginning?
-- [ ] Did you freeze `const levelSize = queue.length - head` BEFORE iterating?
-- [ ] Did you avoid `queue.shift()` inside high-volume loops?
-- [ ] For LCA, did you use reference equality (`root === p`) instead of value equality?
-
----
-
-## 11. Interview Q&A
-
-### 45-Second Senior Pitch
-> *"Level-order traversal and tree view algorithms rely on Breadth-First Search to isolate nodes by depth layer. In Node.js, standard arrays used with `.shift()` introduce an $O(N^2)$ re-indexing bottleneck. We mitigate this using an advancing head pointer or circular queue, freezing `levelSize` at each iteration to enforce clean level boundaries. For directional views, we can either extract the boundary element from our BFS queue or use a depth-indexed DFS. For Lowest Common Ancestor in generic trees, we leverage a post-order traversal to bubble target references upward, identifying the LCA in a single $O(N)$ pass where both subtrees return non-null."*
-
-### Deep Interview Questions
-
-#### Q1: Why does `Array.prototype.shift()` degrade BFS performance in Node.js, and how do you fix it?
-**Answer:** In JavaScript engines like V8, arrays are stored as contiguous memory buffers. Deleting the first element with `shift()` requires copying all remaining elements to the left by one position, an $O(K)$ operation where $K$ is array length. For $N$ total nodes, cumulative operations reach $\sum_{i=1}^N i = O(N^2)$. We fix this by maintaining an integer pointer `let head = 0` and reading `const node = queue[head++]`. This converts dequeues into $O(1)$ operations with zero memory shifting.
-
-#### Q2: How does Lowest Common Ancestor in a Binary Search Tree (BST) differ from a general Binary Tree?
-**Answer:** In a general binary tree, we must search all branches because node values have no order, requiring $O(N)$ post-order DFS. In a **Binary Search Tree (BST)**, we exploit the ordering invariant ($L < Root < R$):
-- If both `p.val` and `q.val` are smaller than `root.val`, the LCA must lie strictly in the **left subtree**.
-- If both `p.val` and `q.val` are greater than `root.val`, the LCA must lie strictly in the **right subtree**.
-- If one value is smaller and the other is larger (or one equals `root.val`), the paths diverge here $\implies$ `root` is the LCA!
-This allows us to find the LCA iteratively in $O(H)$ time and $O(1)$ auxiliary space without recursion.
-
-#### Q3: Why is Right-First DFS often preferred over BFS for Binary Tree Right Side View?
-**Answer:** Both algorithms have identical $O(N)$ time complexity. However, their memory profiles differ significantly. In a balanced binary tree of 100,000 nodes:
-- **BFS:** The queue must hold all nodes on the widest level ($N/2 = 50,000$ nodes), consuming significant heap memory.
-- **DFS:** Memory is bounded by the tree's maximum height, which is $\log_2(100,000) \approx 17$ stack frames. Right-First DFS (`Root -> Right -> Left`) with `depth === result.length` checks requires negligible memory compared to BFS.
-
-#### Q4: How would you find the LCA if the tree nodes contain parent pointers (`node.parent`)?
-**Answer:** If parent pointers exist, the problem reduces to finding the **intersection point of two singly linked lists**:
-1. Walk from node `p` up to the root, counting depth $D_p$.
-2. Walk from node `q` up to the root, counting depth $D_q$.
-3. Advance the deeper pointer upward by $|D_p - D_q|$ steps so both nodes are at the same depth.
-4. Walk both pointers upward together step-by-step; the first node where `ptrP === ptrQ` is the LCA.
-This takes $O(H)$ time and $O(1)$ auxiliary space.
-
----
-
-## 12. Practice Problems
-
-### Problem 1: Binary Tree Zigzag Level Order Traversal (LeetCode 103)
 - **Input:** `root = [3, 9, 20, null, null, 15, 7]`
-- **Output:** `[ [3], [20, 9], [15, 7] ]`
-- **Challenge:** Implement with an advancing-pointer queue and direct array indexing in $O(N)$ time.
+- **Output:** `[[3], [20, 9], [15, 7]]`
+- **Constraint:** $0 \le \text{number of nodes} \le 2,000$.
+- **Hint 1:** Use standard level-order BFS with a boolean flag `leftToRight`.
+- **Hint 2:** Enqueue children in standard left-to-right order.
+- **Hint 3:** When filling the level array, place elements at `i` if `leftToRight` is true, or at `levelSize - 1 - i` if false.
 
-### Problem 2: Populating Next Right Pointers in Each Node (LeetCode 116)
+### 6.2 Populating Next Right Pointers in Each Node
+
 - **Input:** Perfect binary tree where each node has a `next` pointer initialized to `null`.
 - **Output:** Populate each `next` pointer to point to its next right neighbor.
-- **Challenge:** Solve in $O(N)$ time and **$O(1)$ auxiliary space** by using already-established `next` pointers on level $L$ to connect children on level $L + 1$.
+- **Constraint:** Solve with $O(1)$ auxiliary space.
+- **Hint 1:** Use existing `next` pointers established on level $L$ to connect children on level $L + 1$.
+- **Hint 2:** `node.left.next = node.right`.
+- **Hint 3:** If `node.next` exists, `node.right.next = node.next.left`.
 
-### Problem 3: Lowest Common Ancestor of a Binary Search Tree (LeetCode 235)
-- **Input:** BST `root = [6, 2, 8, 0, 4, 7, 9]`, `p = 2, q = 8`
+### 6.3 Lowest Common Ancestor of a Binary Search Tree
+
+- **Input:** BST `root = [6, 2, 8, 0, 4, 7, 9]`, `p = 2`, `q = 8`
 - **Output:** Node `6`
-- **Challenge:** Implement the $O(H)$ iterative traversal with $O(1)$ extra memory.
+- **Constraint:** All node values are unique; $p \neq q$.
+- **Hint 1:** Do not use general post-order search. Exploit BST value ordering.
+- **Hint 2:** If both values are smaller than `root.val`, move to `root.left`.
+- **Hint 3:** If both values are larger than `root.val`, move to `root.right`. Otherwise, `root` is the split point (LCA).
 
 ---
 

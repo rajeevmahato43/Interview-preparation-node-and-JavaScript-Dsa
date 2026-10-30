@@ -2,211 +2,350 @@
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Searching & Elementary Sorting](day-03-searching-and-sorting-algorithms.md)
+[Previous: Big O Complexity & Algorithmic Problem Solving](day-01-big-o-complexity-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Searching & Elementary Sorting Algorithms](day-03-searching-and-sorting-algorithms.md)
 
 </nav>
 
-## Prerequisites
-
-- [Day 01: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) — Asymptotic complexity ($O(1), O(n), O(n^2)$), Big O upper bounds, and the $10^7$ operations rule.
-- Basic JavaScript syntax: variables (`let`, `const`), loops (`for`, `while`), functions, and zero-based array indexing.
-
 ---
 
-## 1. What is an Array and a String?
+## 1. Arrays and Memory Layout
 
-An **Array** is an ordered list of elements stored at sequential, numbered positions called indices. A **String** is an ordered, immutable sequence of characters used to represent text.
+An **array** is an ordered collection of values stored in contiguous (unbroken) memory locations. Every slot inside the array has a fixed numeric index starting at `0`.
 
-> **Contiguous Memory**: Memory allocated in one continuous, unbroken block of physical RAM addresses. This layout allows the computer to jump straight to any index in $O(1)$ constant time.
-
-In the V8 engine (Node.js and Chrome), arrays are optimized into different internal types depending on what values they hold:
-
-> **Packed vs Holey Arrays**: A **packed** array has items at every single index (`[1, 2, 3]`). A **holey** array has empty gaps (like `const a = []; a[100] = 5;`). Reading a missing index in a holey array forces V8 to look through the prototype chain to check if `Object.prototype` defined it, making reads up to 10x slower!
-
-> **String Immutability**: A language guarantee that once a string is allocated in memory, its individual characters can never be modified in-place. Any change creates a brand-new string.
-
-> **Zero-Based Indexing**: Numbering positions starting at $0$ rather than $1$, where the index represents the exact distance (offset) from the memory beginning.
-
-### Everyday Physical Analogies
-
-#### The Array: Numbered Hotel Lockers
-Imagine a long hallway with 100 numbered lockers bolted side-by-side into a concrete wall:
-- **Instant Access ($O(1)$)**: If someone tells you "get the bag in Locker #42", you do not count from locker 0. You walk directly to door 42 because every locker has the exact same width and sits at a predictable physical distance from the entrance.
-- **Expensive Insertion at the Front ($O(n)$)**: If a guest demands Locker #0, every single guest from locker 0 through locker 99 must pick up their luggage and slide one door to the right to clear room.
-
-#### The String: Words Carved in Stone
-Imagine words carved into a granite monument:
-- **Read-Only Inspection ($O(1)$)**: You can look at the 5th letter instantly.
-- **No In-Place Overwrites**: If you want to change `"cat"` to `"car"`, you cannot erase the `'t'`. You must take a fresh block of granite and carve the entire new word `"car"` from scratch.
-
-### Memory Representation Diagram
-
-```text
-ARRAY IN MEMORY (Contiguous Slots of Fixed Size):
-Base Address: 0x1000, Element Size: 4 bytes
-Index:            [0]        [1]        [2]        [3]
-Value:          [ 10   ]   [ 20   ]   [ 30   ]   [ 40   ]
-RAM Address:    0x1000     0x1004     0x1008     0x100C
-Formula:        Base + (Index * 4 bytes) -> Instant O(1) Memory Jump!
-
-STRING IMMUTABILITY IN HEAP:
-let str = "cat";       // Points to Heap Address 0x5000: ['c', 'a', 't']
-str[2] = 'r';          // Silently fails! (Memory at 0x5000 is read-only)
-str = str + "s";       // Allocates NEW Heap Address 0x6000: ['c', 'a', 't', 's']
-                       // Old string at 0x5000 waits for Garbage Collection.
-```
-
----
-
-## 2. How Arrays and Strings Work Step-by-Step
-
-### Array Memory Address Calculation
-
-How does the computer look up `arr[i]` in $O(1)$ time?
-Because memory slots are contiguous and uniform in width, the processor calculates the memory location using basic arithmetic:
-
-$$\text{Address}(arr[i]) = \text{BaseAddress} + (i \times \text{ElementSize})$$
-
-If the array begins at memory address `1000` and each item occupies `8` bytes:
-- `arr[0] = 1000 + (0 \times 8) = 1000`
-- `arr[1] = 1000 + (1 \times 8) = 1008`
-- `arr[5] = 1000 + (5 \times 8) = 1040`
-
-The processor executes this arithmetic in a single clock cycle. It does not scan through elements $0, 1, 2, 3, 4$ to reach index $5$.
-
-### Core Array Operations and Complexity
-
-| Operation | Syntax | Time Complexity | Memory Work Performed |
-| :--- | :--- | :---: | :--- |
-| **Lookup by Index** | `arr[i]` | **$O(1)$** | Direct address calculation and memory read |
-| **Update by Index** | `arr[i] = val` | **$O(1)$** | Direct address calculation and memory write |
-| **Append to End** | `arr.push(val)` | **$O(1)$ amortized** | Writes to next pre-allocated buffer slot |
-| **Remove from End** | `arr.pop()` | **$O(1)$** | Decrements internal length counter |
-| **Prepend to Start** | `arr.unshift(val)` | **$O(n)$** | Slides every existing element 1 slot right |
-| **Remove from Start**| `arr.shift()` | **$O(n)$** | Slides every remaining element 1 slot left |
-| **Search by Value** | `arr.indexOf(val)` | **$O(n)$** | Linear scan checking indices from $0$ to $n-1$ |
-| **Copy Slice** | `arr.slice(start, end)` | **$O(k)$** | Allocates new array and copies $k$ elements |
-| **Splice Middle** | `arr.splice(i, count)` | **$O(n)$** | Shifts elements left or right to fill or make room |
-
-### The `shift()` Performance Trap
-
-Using `arr.shift()` inside a loop is one of the most common causes of backend API slowdowns:
+To picture this physically, imagine a hallway of 100 numbered metal lockers bolted side-by-side into a wall (`[0], [1], [2] ... [99]`):
+* **Instant Lookup ($O(1)$):** Because every locker has the exact same physical width, you do not need to walk down the hall counting from door 0. Your eyes calculate the exact distance down the hallway and step directly in front of Locker #42 in one single motion.
+* **Fast End Append ($O(1)$):** Bolting a brand-new locker onto the empty far-right end of the hallway takes one step. No other lockers have to move.
+* **Expensive Front Insertion ($O(n)$):** Inserting a new locker into slot #0 requires unbolting and sliding all 100 existing lockers one slot to the right before the new locker can fit.
 
 ```javascript
 // Node.js code
 "use strict";
 
-// ❌ ANTI-PATTERN: arr.shift() inside a loop turns an O(n) task into O(n^2)!
-function processQueueSlow(tasks) {
-  const processed = [];
-  while (tasks.length > 0) {
-    // shift() forces all remaining n elements to slide over in memory on EVERY step!
-    const task = tasks.shift(); 
-    processed.push(task * 2);
-  }
-  return processed;
-}
+const scores = [85, 92, 78, 90];
 
-// ✅ CORRECT: Use an integer head pointer for true O(n) linear execution
-function processQueueFast(tasks) {
-  const processed = [];
-  let head = 0; // Simple integer pointer tracker
-  while (head < tasks.length) {
-    const task = tasks[head++]; // O(1) read + pointer advance
-    processed.push(task * 2);
-  }
-  return processed;
-}
+// O(1) Instant element lookup by index offset
+console.log(scores[0]); // 85
+console.log(scores[2]); // 78
+
+// O(1) In-place value update
+scores[1] = 95;
+console.log(scores);    // [85, 95, 78, 90]
 ```
 
-### The String Building Trap: $O(n^2)$ vs Array Buffer $O(n)$
+### 1.1 Zero-Based Indexing
 
-Because JavaScript strings are immutable, adding characters using `+=` inside a loop forces the engine to allocate a brand-new string and copy every single previous character on every iteration:
+Array indices start at `0` rather than `1` because the index represents a **memory offset**—how many element widths to skip from the beginning of the array.
+
+When code accesses `arr[i]`, the CPU calculates the memory address in a single hardware cycle:
+
+$$\text{Memory Address} = \text{Base Address} + (\text{Index} \times \text{Element Size})$$
 
 ```text
-Iteration 1: copy 1 char
-Iteration 2: copy 2 chars
-Iteration 3: copy 3 chars
-...
-Iteration n: copy n chars
-Total copies = 1 + 2 + 3 + ... + n = n(n + 1) / 2 = O(n^2) operations!
+Array Base Memory Address = 1000, Element Size = 8 bytes
+
+Index [0] ──> 1000 + (0 × 8) = Byte 1000 (Start address, 0 steps away)
+Index [1] ──> 1000 + (1 × 8) = Byte 1008 (Skip 1 element width)
+Index [3] ──> 1000 + (3 × 8) = Byte 1024 (Skip 3 element widths)
 ```
 
-```javascript
-// Node.js code
-"use strict";
+Because this calculation requires only one multiplication and one addition, accessing any index in an array takes identical $O(1)$ constant time regardless of whether the array holds 5 elements or 5,000,000 elements.
 
-// ❌ ANTI-PATTERN: String concatenation in loop allocates O(n^2) temporary bytes
-function buildLogStringSlow(items) {
+> [!NOTE]
+> **Self-Check:** Why does accessing `arr[999999]` take the exact same time as accessing `arr[0]`?  
+> *Answer:* The CPU calculates the physical memory address directly via arithmetic multiplication (`Base + 999999 * 8`), jumping straight to the byte offset in 1 clock cycle without scanning earlier items.
+
+---
+
+### 1.2 Insertion and Deletion
+
+The time complexity of changing an array depends entirely on **where** the modification happens:
+
+```text
+Insert at Index 0:
+Original:    [ 10 ] [ 20 ] [ 30 ]
+                │      │      │
+Slide right:    ▼      ▼      ▼
+New:   [ 5 ] [ 10 ] [ 20 ] [ 30 ]  (Requires n shift operations = O(n))
+
+Insert at End:
+Original:    [ 10 ] [ 20 ] [ 30 ]
+                                   └──> Append [ 40 ] (0 shifts = O(1))
+```
+
+* **At the End (`push` / `pop`):** Runs in **$O(1)$ time**. The memory boundary expands or contracts by one slot; zero existing elements change position.
+* **At the Beginning (`unshift` / `shift`):** Runs in **$O(n)$ time**. Adding or removing at index `0` forces all $n$ following elements to slide one memory address to the right or left.
+* **In the Middle (`splice`):** Runs in **$O(n)$ time**. Every element to the right of the insertion or deletion index must be shifted to fill the gap or make room.
+
+```javascript
+const items = [10, 20, 30];
+
+// O(1) Fast append to end
+items.push(40);
+console.log(items); // [10, 20, 30, 40]
+
+// O(1) Fast removal from end
+items.pop();
+console.log(items); // [10, 20, 30]
+
+// O(n) Expensive front insertion: shifts 10, 20, 30 in memory
+items.unshift(5);
+console.log(items); // [5, 10, 20, 30]
+
+// O(n) Expensive front deletion: shifts all items left
+items.shift();
+console.log(items); // [10, 20, 30]
+```
+
+---
+
+### 1.3 Dynamic Arrays and Amortized O(1)
+
+In low-level systems like C, a standard array is **static**—its size is fixed at allocation and cannot change. JavaScript arrays are **dynamic arrays**: they automatically expand as you push more items.
+
+To manage this in the V8 engine:
+1. The engine allocates a contiguous chunk of memory on the heap called a **backing store** with an initial fixed capacity (e.g., 4 slots).
+2. As elements are added with `.push()`, they fill the allocated empty slots in $O(1)$ time.
+3. When the backing store is full and a new element arrives, the engine:
+   - Allocates a brand-new contiguous block with **double the capacity** (e.g., capacity grows from 4 to 8, then 8 to 16).
+   - Copies all existing $n$ elements from the old block into the new block ($O(n)$ copy cost).
+   - Frees the old memory block.
+   - Appends the new item into the first free slot.
+
+```text
+Capacity = 4: [ 1 ][ 2 ][ 3 ][ 4 ] (FULL)
+Push 5!
+1. Allocate new memory block of Capacity = 8
+2. Copy 4 items: [ 1 ][ 2 ][ 3 ][ 4 ][   ][   ][   ][   ]
+3. Insert 5:     [ 1 ][ 2 ][ 3 ][ 4 ][ 5 ][   ][   ][   ]
+```
+
+#### The Amortized O(1) Mathematical Derivation
+Even though an occasional resize takes $O(n)$ work, dynamic array appending is classified as **Amortized $O(1)$ time**:
+* To insert $N$ items into an initially empty dynamic array doubling at sizes $1, 2, 4, 8, \dots, N$:
+$$\text{Total Copies} = 1 + 2 + 4 + 8 + \dots + \frac{N}{2} = N - 1$$
+* Adding the $N$ regular insertions gives:
+$$\text{Total Operations} = N \text{ (insertions)} + (N - 1) \text{ (copies)} = 2N - 1 \text{ operations}$$
+* The average cost per single append is:
+$$\frac{2N - 1}{N} \approx 2 \text{ operations} = \mathbf{O(1) \text{ Amortized Time}}$$
+
+> [!NOTE]
+> **Self-Check:** If pushing an element sometimes takes $O(n)$ time to resize the backing store, why is `.push()` called an $O(1)$ operation?  
+> *Answer:* Resizes happen exponentially less often as the array grows ($1, 2, 4, 8, 16\dots$). The expensive $O(n)$ resize cost is averaged out ("amortized") across all the cheap $O(1)$ insertions that preceded it, making the average cost per insert a constant $\approx 2$ operations.
+
+---
+
+### 1.4 Stack Memory vs Heap Memory
+
+JavaScript divides runtime memory into two primary regions:
+
+```text
+STACK MEMORY (Fast, Ordered, Fixed-Size)
+┌─────────────────────────┬─────────────────────────┐
+│ Variable Name           │ Stored Value            │
+├─────────────────────────┼─────────────────────────┤
+│ age                     │ 30                      │
+│ price                   │ 99.5                    │
+│ listRef                 │ 0x4F2A (Pointer to Heap)│
+└─────────────────────────┴─────────────────────────┘
+                                   │
+                                   ▼
+HEAP MEMORY (Dynamic, Unordered, Flexible Storage)
+┌───────────────────────────────────────────────────┐
+│ Address 0x4F2A: [ 10, 20, 30, 40 ] (Array Buffer) │
+└───────────────────────────────────────────────────┘
+```
+
+1. **Stack Memory (Primitives):** Stores primitive types (`Number`, `Boolean`, `null`, `undefined`, `Symbol`, `BigInt`, and pointer addresses). Values are stored directly in stack frames and copied **by value** (independent clones).
+2. **Heap Memory (Reference Types):** Stores variable-sized objects, arrays, and functions. Variables in stack frames hold only an **address pointer** referencing the object's physical location on the heap. Assigning an array copies only the **pointer reference**, not the underlying contents.
+
+```javascript
+// 1. PRIMITIVES: Copied by Value (Independent)
+let a = 10;
+let b = a; // b gets a brand-new independent copy of 10
+b = 99;
+console.log(a); // 10 (a is completely unchanged)
+console.log(b); // 99
+
+// 2. REFERENCES: Copied by Reference (Shared Pointer)
+const listA = [1, 2, 3];
+const listB = listA; // listB points to the EXACT same heap address as listA
+
+listB.push(999);
+console.log(listA); // [1, 2, 3, 999] (listA is modified too!)
+console.log(listB); // [1, 2, 3, 999]
+
+// To create an independent heap copy:
+const listClone = [...listA];
+listClone.pop();
+console.log(listA);     // [1, 2, 3, 999] (Original preserved)
+console.log(listClone); // [1, 2, 3]
+```
+
+---
+
+### 1.5 Packed vs Holey Arrays
+
+The V8 engine optimizes arrays based on their internal structure ("ElementsKind"):
+* **Packed Arrays:** Every index from `0` to `length - 1` holds an allocated value (`[1, 2, 3, 4]`).
+* **Holey (Sparse) Arrays:** The array contains empty, unassigned gaps (holes) between indices.
+
+```javascript
+// Packed Array (Fastest optimization tier)
+const packed = [1, 2, 3, 4];
+
+// Holey Array (De-optimized tier)
+const holey = [1, 2];
+holey[10] = 99; // Indices 2 through 9 are empty holes!
+
+console.log(holey.length); // 11
+console.log(holey);        // [ 1, 2, <8 empty items>, 99 ]
+console.log(holey[5]);     // undefined
+```
+
+When reading an index from a packed array, V8 inspects the exact memory offset directly ($O(1)$). When reading an index from a holey array and finding a hole, V8 cannot assume the value is `undefined`. It must walk up the prototype chain (`Array.prototype`, `Object.prototype`) to confirm no prototype property exists with that index name. This prototype lookup makes holey array operations run up to **10× slower**.
+
+> [!NOTE]
+> **Self-Check:** What is the performance danger of using `delete arr[2]` on an array?  
+> *Answer:* `delete` removes the property and leaves an empty hole in the array, permanently degrading it to a slow holey elements kind. Use `arr.splice(2, 1)` or re-allocation instead.
+
+---
+
+### 1.6 Multi-Dimensional Arrays
+
+A multi-dimensional array (matrix) in JavaScript is an array whose elements are themselves references to other arrays. Elements are accessed using coordinate pairs: `matrix[row][col]`.
+
+```javascript
+const matrix = [
+  [1, 2, 3], // Row 0
+  [4, 5, 6], // Row 1
+  [7, 8, 9]  // Row 2
+];
+
+console.log(matrix[0][0]); // 1 (Row 0, Col 0)
+console.log(matrix[1][2]); // 6 (Row 1, Col 2)
+
+// Row-major traversal (Cache-friendly)
+for (let r = 0; r < matrix.length; r++) {
+  for (let c = 0; c < matrix[r].length; c++) {
+    // Accesses contiguous items sequentially
+    const val = matrix[r][c];
+  }
+}
+```
+
+---
+
+### 1.7 Essential Array Methods
+
+| Method | What It Does | Mutates Original? | Time Complexity | Quick Example |
+| :--- | :--- | :---: | :---: | :--- |
+| `push(val)` | Appends to end | ✅ Yes | **$O(1)$** (Amortized) | `[1, 2].push(3)` $\to$ `[1, 2, 3]` |
+| `pop()` | Removes last element | ✅ Yes | **$O(1)$** | `[1, 2, 3].pop()` $\to$ `3` |
+| `unshift(val)` | Inserts at start (shifts all) | ✅ Yes | **$O(n)$** | `[2, 3].unshift(1)` $\to$ `[1, 2, 3]` |
+| `shift()` | Removes first element (shifts all) | ✅ Yes | **$O(n)$** | `[1, 2, 3].shift()` $\to$ `1` |
+| `indexOf(val)` | Finds first index of item | ❌ No | **$O(n)$** | `["a", "b"].indexOf("b")` $\to$ `1` |
+| `includes(val)` | Checks if value exists | ❌ No | **$O(n)$** | `[1, 2].includes(2)` $\to$ `true` |
+| `slice(start, end)` | Copies shallow slice | ❌ No | **$O(k)$** ($k = \text{end} - \text{start}$) | `[1, 2, 3, 4].slice(1, 3)` $\to$ `[2, 3]` |
+| `splice(start, count)` | Removes / inserts in middle | ✅ Yes | **$O(n)$** | `[1, 2, 3].splice(1, 1)` $\to$ `[1, 3]` |
+| `concat(arr2)` | Merges two arrays into new array | ❌ No | **$O(n + m)$** | `[1].concat([2])` $\to$ `[1, 2]` |
+| `join(separator)` | Converts elements to string | ❌ No | **$O(n)$** | `["a", "b"].join("-")` $\to$ `"a-b"` |
+
+---
+
+## 2. Strings and Character Encodings
+
+A **string** is an ordered sequence of 16-bit characters representing text. In JavaScript, strings are strictly **immutable**: once allocated in memory, individual characters can never be modified or replaced in-place.
+
+To picture this physically, imagine words chiseled into a solid slab of granite stone. You can inspect any letter instantly with your eyes. However, if you want to change the word `"cat"` to `"car"`, you cannot scrape off `'t'` and chisel `'r'`. You must discard the stone and chisel the complete word `"car"` onto a brand-new slab of granite.
+
+```javascript
+const word = "cat";
+
+// Reading by index offset
+console.log(word[0]); // "c"
+console.log(word[2]); // "t"
+
+// In-place character modification fails silently in JavaScript!
+word[0] = "b";
+console.log(word); // Still "cat"! (Does NOT become "bat")
+```
+
+### 2.1 String Concatenation
+
+Because strings are immutable, using `str += char` inside a loop forces the engine to allocate a brand-new string and copy all previous characters into it on every single iteration.
+
+If a loop runs $n$ times:
+$$\text{Total Copies} = 1 + 2 + 3 + \dots + n = \frac{n(n + 1)}{2} = \mathbf{O(n^2) \text{ Time and Memory Churn}}$$
+
+To prevent quadratic allocation bottlenecks, collect values in an array buffer and invoke `.join("")` once at the end ($O(n)$).
+
+```javascript
+// ❌ ANTI-PATTERN: String concatenation in loop (O(n^2) time & memory churn)
+function buildStringSlow(items) {
   let result = "";
   for (let i = 0; i < items.length; i++) {
-    result += items[i] + ","; // Copies previous result on every step!
+    result += items[i] + ","; // Copies entire previous string on every step!
   }
   return result;
 }
 
-// ✅ CORRECT: Accumulate in an array buffer and join once in O(n) time
-function buildLogStringFast(items) {
+// ✅ CORRECT: Array buffer joined once (Optimal: O(n) time & memory)
+function buildStringFast(items) {
   const buffer = [];
   for (let i = 0; i < items.length; i++) {
-    buffer.push(items[i]); // Amortized O(1) append
+    buffer.push(items[i]);
   }
-  return buffer.join(","); // Single O(n) allocation pass
+  return buffer.join(","); // Single linear allocation pass
 }
+
+console.log(buildStringFast(["apple", "banana", "cherry"])); // "apple,banana,cherry"
 ```
 
-### V8 Engine String Taxonomy
+---
 
-To optimize string manipulation, the V8 engine stores strings internally using different structures:
+### 2.2 Character Codes and ASCII Math
 
-1. **Flat String (`SeqString`)**: Characters stored side-by-side in contiguous memory. Random access via index is $O(1)$.
-2. **Cons-String**: A binary tree structure created when joining two strings with `+`. Instead of copying characters immediately, V8 creates a node linking both strings.
-   > **Cons-String**: A V8 internal tree where two strings are linked using pointers rather than copied right away. This delays the expensive copy until the string is finally read or printed.
-3. **Sliced String**: Created when calling `.slice()` on a large string. It stores a pointer to the original parent string along with an offset and length.
-   > **Sliced String**: A V8 internal pointer that references a section of a parent string with an offset and length, avoiding memory allocation until needed.
+Every character is stored numerically according to its integer code. In JavaScript, `str.charCodeAt(i)` returns the numeric character code at index `i`.
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           V8 STRING MEMORY TAXONOMY                         │
-└─────────────────────────────────────────────────────────────────────────────┘
+Useful standard ASCII values:
+* `'0'` through `'9'`: Codes `48` through `57`
+* `'A'` through `'Z'`: Codes `65` through `90`
+* `'a'` through `'z'`: Codes `97` through `122`
 
-  1. FLAT STRING (Contiguous Character Storage)
-     "hello"  --> [ 'h' | 'e' | 'l' | 'l' | 'o' ]
-     • Instant O(1) indexing: str[2] -> 'l'
-     • Read-only memory buffer
-
-  2. CONS-STRING (Binary Tree Concatenation)
-     strA + strB --> ConsString { left: ptr(strA), right: ptr(strB) }
-     • O(1) concatenation without copying immediately
-     • Flattened into a single string when characters are accessed
-
-  3. SLICED STRING (Window into Existing Parent String)
-     parentStr.slice(0, 5) --> SlicedString { parent: ptr(parentStr), offset: 0, len: 5 }
-     • O(1) slice creation
-     • Traps: Retains parent in RAM, preventing garbage collection!
-```
-
-### Unicode, Emojis, and UTF-16 Code Units
-
-JavaScript strings use **UTF-16 encoding**:
-- Basic Latin characters (`"A"`, `"z"`, `"9"`) occupy **1 code unit** (16 bits, length = 1).
-- Emojis and specialized characters (`"🚀"`, `"🔥"`, `"𝒽"`) require **2 code units** (called a **surrogate pair**).
+Subtracting `'a'.charCodeAt(0)` (`97`) from any lowercase letter normalizes the character directly into an array bucket index from `0` to `25`:
 
 ```javascript
-// Node.js code
-"use strict";
+const char = "c";
+const asciiCode = char.charCodeAt(0);  // 99
+const bucketIndex = asciiCode - 97;    // 99 - 97 = 2 (Slot 2 in a 26-slot array)
 
+console.log(asciiCode);   // 99
+console.log(bucketIndex); // 2
+```
+
+> [!NOTE]
+> **Self-Check:** How does subtracting `48` from a digit character code like `'7'.charCodeAt(0)` convert it into an integer?  
+> *Answer:* In ASCII, `'0'` is `48` and `'7'` is `55`. Calculating `55 - 48` evaluates to numeric `7` in single CPU clock cycles without calling `parseInt()`.
+
+---
+
+### 2.3 Unicode and Emojis
+
+JavaScript strings are encoded using **UTF-16 code units** (16 bits per unit). Standard alphanumeric characters fit within a single 16-bit code unit. However, modern emojis and specialized symbols require code points above `65535` and are represented as **two 16-bit code units** (a surrogate pair).
+
+```javascript
 const emoji = "🚀";
-console.log(emoji.length); // 2 (Counts UTF-16 code units, NOT human characters!)
 
-// ❌ ANTI-PATTERN: Naive reversal breaks surrogate pairs!
-const broken = emoji.split("").reverse().join("");
-console.log(broken); // "" (Corrupted characters!)
+console.log(emoji.length);        // 2 (Counts UTF-16 code units, NOT visible glyphs!)
+console.log(emoji.charCodeAt(0)); // 55357 (High surrogate code unit)
+console.log(emoji.charCodeAt(1)); // 56960 (Low surrogate code unit)
 
-// ✅ CORRECT: Array.from() or for...of respects Unicode code points
-const safeCharacters = Array.from(emoji);
-console.log(safeCharacters.length); // 1
-console.log(safeCharacters.reverse().join("")); // "🚀" (Intact!)
+// ❌ Naive split breaks the surrogate pair and corrupts characters:
+console.log(emoji.split("").reverse().join("")); // Corrupted replacement characters!
+
+// ✅ Array.from respects full Unicode code points:
+console.log(Array.from(emoji).length); // 1
+console.log(Array.from(emoji).reverse().join("")); // "🚀" (Intact!)
 ```
 
 | Method | What It Reads | Safe with Emojis? | Time Complexity |
@@ -220,103 +359,259 @@ console.log(safeCharacters.reverse().join("")); // "🚀" (Intact!)
 
 ---
 
-## 3. Pattern Recognition of Arrays & Strings
+### 2.4 Essential String Methods
 
-### Problem Triggers and Keywords
-
-| Problem Keyword | What the Interviewer Means | Recommended Approach |
-| :--- | :--- | :--- |
-| **"In-place"** | Do not allocate a new array ($O(1)$ extra memory). | Two Pointers (swapping inward or read/write indices). |
-| **"Contiguous subarray"** | Elements must be adjacent with no gaps. | Sliding Window or Prefix Sum. |
-| **"Palindrome"** | Reads identical forwards and backwards. | Inward Two Pointers (`left` at start, `right` at end). |
-| **"Subsequence"** | Order preserved, but items do not need to be adjacent. | Greedy Two Pointers or Dynamic Programming. |
-| **"Anagram"** | Same character counts rearranged. | Frequency Counter (Hash Map or fixed 26-slot array). |
-| **"Prefix / Suffix"** | Cumulative values from start or end. | Prefix running total or rolling window. |
-
-### The $10^7$ Constraint Rule for Arrays
-
-Always inspect the input constraint $n$ before writing code:
-- **$n \le 10^3$**: An $O(n^2)$ nested loop will execute in $\approx 10^6$ operations and pass within 1 second.
-- **$n \le 10^5$**: An $O(n^2)$ algorithm executes $10^{10}$ operations and **will freeze Node.js**. You must use an $O(n)$ single-pass two-pointer or $O(n \log n)$ divide-and-conquer strategy.
-- **$n \le 10^7$**: Only an $O(n)$ or $O(\log n)$ algorithm will succeed.
-
-### When to Use Arrays vs Alternative Data Structures
-
-- **Use Arrays when**: You need ordered sequences, frequent access by numeric index, or contiguous memory cache friendliness.
-- **Do NOT use Arrays when**: You need instant $O(1)$ lookup by non-numeric key (use `Map`), unique values without duplicates (use `Set`), or frequent FIFO queue removals from the front (use a pointer-based Queue).
+| Method | What It Does | Mutates Original? | Time Complexity | Quick Example |
+| :--- | :--- | :---: | :---: | :--- |
+| `str[i]` / `charAt(i)` | Reads character code unit at index $i$ | ❌ No (Immutable) | **$O(1)$** | `"Code"[1]` $\to$ `"o"` |
+| `charCodeAt(i)` | Gets UTF-16 integer at index $i$ | ❌ No | **$O(1)$** | `"A".charCodeAt(0)` $\to$ `65` |
+| `slice(start, end)` | Extracts substring interval | ❌ No | **$O(k)$** ($k = \text{end} - \text{start}$) | `"Hello".slice(1, 4)` $\to$ `"ell"` |
+| `indexOf(substr)` | Finds first starting index of substring | ❌ No | **$O(n)$** | `"hello".indexOf("ll")` $\to$ `2` |
+| `includes(substr)` | Checks if substring exists | ❌ No | **$O(n)$** | `"hello".includes("ell")` $\to$ `true` |
+| `split(separator)` | Splits string into array of segments | ❌ No | **$O(n)$** | `"a,b,c".split(",")` $\to$ `["a", "b", "c"]` |
+| `trim()` | Strips leading and trailing whitespace | ❌ No | **$O(n)$** | `"  hi  ".trim()` $\to$ `"hi"` |
+| `toLowerCase()` | Converts all characters to lowercase | ❌ No | **$O(n)$** | `"Hi!".toLowerCase()` $\to$ `"hi!"` |
+| `replace(old, new)` | Replaces first occurrence | ❌ No | **$O(n)$** | `"cat".replace("c", "b")` $\to$ `"bat"` |
 
 ---
 
-## 4. Problem 1: Valid Palindrome
+## 3. Two Pointers Pattern Overview
 
-### Problem Statement
-A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the exact same forward and backward.
-Given a string `s`, return `true` if it is a palindrome, or `false` otherwise.
+The **Two Pointers** pattern optimizes array and string problems by using two numeric variables to track indices simultaneously. Instead of scanning with nested loops ($O(n^2)$), the pointers navigate the collection in linear time ($O(n)$) while allocating zero extra memory ($O(1)$ space).
 
-```text
-Input: s = "A man, a plan, a canal: Panama"
-Output: true (Cleaned: "amanaplanacanalpanama" reads identical forwards and backwards)
+### Two Pointers Pattern Family
+* **Inward Converging Pointers:** One pointer starts at index `0` (`left`) and the second starts at index `n - 1` (`right`). They move toward each other until they meet. Used for palindromes, reversals, and sorted two-sum problems.
+* **Read and Write Pointers (Fast & Slow):** Both pointers move in the same direction. The `read` pointer inspects elements sequentially while the `write` pointer marks the boundary of modified or valid elements. Used for in-place deduplication, compaction, and filtering.
 
-Input: s = "race a car"
-Output: false (Cleaned: "raceacar" vs "racaecar")
-```
+### Pattern Recognition Table
 
-### Step 1: Physical Simulation
-Take the sentence written on a paper strip: `"A m a n ,   P a n a m a"`
-1. Place your left index finger on the first letter `'A'`.
-2. Place your right index finger on the last letter `'a'`.
-3. If a finger lands on a space, comma, or colon, slide that finger inward to the next valid letter.
-4. Compare the letters under your two fingers (ignoring case): `'a'` matches `'a'`.
-5. Slide both fingers inward by one step and repeat.
-6. If the fingers cross without finding a mismatch, the word is a palindrome.
+| Problem Keyword | What It Asks | Recommended Approach |
+| :--- | :--- | :--- |
+| **"In-place" / "$O(1)$ extra memory"** | Transform array without allocating a second array. | Read & Write Pointers or In-place Swapping. |
+| **"Palindrome"** | Verify text reads identically forward and backward. | Inward Converging Pointers (`left = 0`, `right = n - 1`). |
+| **"Move all elements matching X to the end"** | Compact or partition elements maintaining relative order. | Read & Write Pointers. |
+| **"Reverse array or string"** | Invert order in-place. | Inward Swapping Pointers (`swap(arr[l], arr[r])`). |
 
-### Step 2: Brute Force Approach
-The naive translation cleans the string using regular expressions, reverses the result, and compares equality:
+### When to Use
+* The input is a contiguous array or string where elements can be addressed by index offset in $O(1)$ time.
+* The problem asks to reverse, filter, compact, or partition items in-place with $O(1)$ auxiliary memory.
+* The problem asks to compare elements symmetrically from opposite ends.
+
+### When NOT to Use
+* The collection is a singly linked list where backward indexing is impossible without $O(n)$ per step.
+* You need random lookup across arbitrary non-adjacent pairs (use a `Map` or `Set` instead).
+* The elements are unsorted and the problem asks for arbitrary sub-ranges (use Prefix Sum or Hash Tables).
+
+### The $10^7$ Operations Constraint Rule
+If an array contains $n = 100,000$ items:
+* A naive nested loop takes $(100,000)^2 = 10^{10}$ operations (10 billion operations), taking over **100 seconds** and freezing single-threaded Node.js.
+* Two pointers inspects each element at most twice ($2n = 200,000$ operations), finishing in **under 2 milliseconds**.
+
+---
+
+## 4. Problem Walkthroughs
+
+---
+
+### 4.1 Move Zeroes
+
+#### 4.1.1 Problem Statement
+Given an integer array `nums`, move all `0`s to the end of it while maintaining the relative order of the non-zero elements. You must do this **in-place** without making a copy of the array.
+
+* **Sample Input 1:** `nums = [0, 1, 0, 3, 12]` $\to$ **Expected Output:** `[1, 3, 12, 0, 0]`
+* **Sample Input 2:** `nums = [0]` $\to$ **Expected Output:** `[0]`
+* **Sample Input 3:** `nums = [2, 1]` $\to$ **Expected Output:** `[2, 1]`
+* **Constraints:** $1 \le nums.length \le 10^5$, $-2^{31} \le nums[i] \le 2^{31} - 1$.
+
+#### 4.1.2 How to Think About It
+Imagine a row of numbered tiles laid across a table: `[0, 1, 0, 3, 12]`.
+
+Place your left index finger at the start of the table (`write = 0`). This finger marks the next available spot for a non-zero number.
+Use your right index finger (`read`) to slide from left to right across all tiles:
+1. At index 0, the tile is `0`. Skip it.
+2. At index 1, the tile is `1`. Swap the `1` into your left finger's slot (`write = 0`) and advance your left finger to slot 1.
+3. At index 2, the tile is `0`. Skip it.
+4. At index 3, the tile is `3`. Swap the `3` into your left finger's slot (`write = 1`) and advance your left finger to slot 2.
+5. At index 4, the tile is `12`. Swap the `12` into slot 2 and advance your left finger to slot 3.
+
+All non-zero numbers are packed together at the front in their original relative order, and zeroes naturally collect at the end.
+
+#### 4.1.3 Brute Force Approach & Bottleneck
+The naive approach loops through the array, calls `.splice(i, 1)` whenever it encounters a zero, and calls `.push(0)` to send it to the back:
 
 ```javascript
-// Naive Brute Force
-function isPalindromeBrute(s) {
-  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, ""); // Allocates new string
-  const reversed = cleaned.split("").reverse().join("");      // Allocates array + new string
+function moveZeroesBruteForce(nums) {
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === 0) {
+      nums.splice(i, 1); // Costly memory shift!
+      nums.push(0);
+      i--; // Adjust index after deletion
+    }
+  }
+  return nums;
+}
+```
+
+* **The Bottleneck:** Calling `nums.splice(i, 1)` forces the engine to shift all remaining elements to the left in memory ($O(n)$ operations). Calling this inside a loop creates an **$O(n^2)$ quadratic bottleneck**. For $10^5$ elements, this freezes the program.
+
+#### 4.1.4 The Pattern Insight
+Instead of shifting memory blocks with `splice()`, use **Read & Write Pointers**:
+* The `read` pointer scans every element once from index `0` to `n - 1`.
+* The `write` pointer advances only when a non-zero element is swapped into its position.
+* Every element is swapped at most once in a single linear pass ($O(n)$ time, $O(1)$ memory).
+
+#### 4.1.5 Pseudocode
+
+```text
+FUNCTION MoveZeroes(nums):
+  write = 0
+
+  FOR read FROM 0 TO length(nums) - 1:
+    IF nums[read] != 0:
+      // Swap non-zero element into write position
+      temp = nums[write]
+      nums[write] = nums[read]
+      nums[read] = temp
+
+      write = write + 1
+
+  RETURN nums
+```
+
+#### 4.1.6 Optimal Solution
+
+```javascript
+// ✅ CORRECT: Optimal O(n) time and O(1) space Read & Write Two Pointers
+function moveZeroes(nums) {
+  if (!Array.isArray(nums) || nums.length <= 1) return nums;
+
+  let write = 0;
+
+  for (let read = 0; read < nums.length; read++) {
+    if (nums[read] !== 0) {
+      // Only swap if pointers are at different positions to avoid redundant self-swaps
+      if (read !== write) {
+        const temp = nums[write];
+        nums[write] = nums[read];
+        nums[read] = temp;
+      }
+      write++;
+    }
+  }
+
+  return nums;
+}
+
+// Example runs
+console.log(moveZeroes([0, 1, 0, 3, 12])); // [1, 3, 12, 0, 0]
+console.log(moveZeroes([0]));             // [0]
+console.log(moveZeroes([4, 2, 0, 1]));    // [4, 2, 1, 0]
+```
+
+#### 4.1.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Calling splice() inside an array traversal loop
+function buggyMoveZeroes(nums) {
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === 0) {
+      // BUG: splice() shifts all following elements in RAM on every match -> O(n^2) time!
+      nums.splice(i, 1);
+      nums.push(0);
+      i--; // Dangerous index tracking under mutation
+    }
+  }
+  return nums;
+}
+```
+* **Why it fails:** In-place deletions with `splice()` rewrite memory across the remainder of the array on every zero encountered, causing quadratic performance degradation.
+
+#### 4.1.8 Complexity Derivation
+* **Time Complexity:** $\mathbf{O(n)}$. The `read` pointer visits each index exactly once. At each step, a constant-time swap and increment occur.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. No new arrays are allocated; the transformation happens strictly in-place.
+
+---
+
+### 4.2 Valid Palindrome
+
+#### 4.2.1 Problem Statement
+A phrase is a palindrome if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward. Alphanumeric characters include letters and numbers. Given a string `s`, return `true` if it is a palindrome, or `false` otherwise.
+
+* **Sample Input 1:** `s = "A man, a plan, a canal: Panama"` $\to$ **Expected Output:** `true`
+* **Sample Input 2:** `s = "race a car"` $\to$ **Expected Output:** `false`
+* **Sample Input 3:** `s = " "` $\to$ **Expected Output:** `true`
+* **Constraints:** $1 \le s.length \le 2 \times 10^5$, `s` consists only of printable ASCII characters.
+
+#### 4.2.2 How to Think About It
+Imagine the sentence printed on a long paper tape.
+
+Place your left index finger at the very first character (`left = 0`) and your right index finger at the very last character (`right = s.length - 1`):
+1. If your left finger is touching punctuation, a colon, or a space, slide it right until it touches a letter or number.
+2. If your right finger is touching punctuation or a space, slide it left until it touches a letter or number.
+3. Compare the characters under both fingers (ignoring case). If they do not match, the paper is not a palindrome—stop immediately!
+4. If they match, advance both fingers inward. If your fingers meet or cross in the middle without finding a single mismatch, the phrase is a valid palindrome.
+
+#### 4.2.3 Brute Force Approach & Bottleneck
+The naive approach uses regular expressions to clean the string, splits it into an array, reverses the array, and compares strings:
+
+```javascript
+function isPalindromeBruteForce(s) {
+  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const reversed = cleaned.split("").reverse().join("");
   return cleaned === reversed;
 }
 ```
-- **Time Complexity**: $O(n)$ — Three passes (regex replace, split/reverse/join, comparison).
-- **Space Complexity**: $O(n)$ — Allocates auxiliary heap memory for `cleaned`, the split array, and `reversed`.
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-The brute force approach allocates multiple intermediate strings and arrays in the V8 heap. If `s` is a 10MB document, `s.toLowerCase().replace(...)` copies 10MB of characters, `split("")` allocates an array of 10,000,000 string pointers, and `join("")` allocates another 10MB string.
-This generates severe memory churn and forces the V8 garbage collector to pause execution. Why allocate new memory when we can compare characters in-place using two index pointers?
+* **The Bottleneck:** Allocates multiple large objects on the heap: the lowercase string, the regex-replaced string, the split array, and the reversed string. For large inputs ($n = 200,000$), this burns $O(n)$ heap memory and triggers heavy garbage collection pauses.
 
-### Step 4: The Pattern Discovery
-Instead of allocating auxiliary memory, we place two integer pointers:
-- `left = 0` (starting at the front)
-- `right = s.length - 1` (starting at the end)
+#### 4.2.4 The Pattern Insight
+Instead of allocating fresh memory, use **Inward Converging Two Pointers**:
+* `left` starts at index `0`; `right` starts at index `s.length - 1`.
+* Use ASCII code checking (`charCodeAt`) to skip non-alphanumeric characters directly without allocating regex copies.
+* Compare characters in-place. The algorithm exits early on the first mismatch, achieving $O(1)$ auxiliary memory.
 
-We advance `left` forward past non-alphanumeric characters, decrement `right` backward past non-alphanumeric characters, and compare characters at `s[left]` and `s[right]`. This requires zero heap allocations ($O(1)$ extra memory).
+#### 4.2.5 Pseudocode
 
-### Step 5: The Optimal Solution
+```text
+FUNCTION IsPalindrome(s):
+  left = 0
+  right = length(s) - 1
+
+  WHILE left < right:
+    WHILE left < right AND NOT IsAlphaNumeric(s[left]):
+      left = left + 1
+
+    WHILE left < right AND NOT IsAlphaNumeric(s[right]):
+      right = right - 1
+
+    IF ToLower(s[left]) != ToLower(s[right]):
+      RETURN false
+
+    left = left + 1
+    right = right - 1
+
+  RETURN true
+```
+
+#### 4.2.6 Optimal Solution
 
 ```javascript
-// Node.js code
-"use strict";
-
-// Helper function to check alphanumeric characters via ASCII codes
-function isAlphaNumeric(charCode) {
+// Fast helper: ASCII alphanumeric check without regex allocation
+function isAlphaNumeric(code) {
   return (
-    (charCode >= 48 && charCode <= 57) || // 0-9
-    (charCode >= 65 && charCode <= 90) || // A-Z
-    (charCode >= 97 && charCode <= 122)   // a-z
+    (code >= 48 && code <= 57) || // 0-9
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122)   // a-z
   );
 }
 
-// ✅ CORRECT: Inward Two Pointers with O(1) Auxiliary Memory
+// ✅ CORRECT: Optimal O(n) time, O(1) space Inward Two Pointers
 function isPalindrome(s) {
+  if (typeof s !== "string" || s.length <= 1) return true;
+
   let left = 0;
   let right = s.length - 1;
 
-  // Invariant: All characters outside [left ... right] have matched symmetrically.
   while (left < right) {
     // Skip non-alphanumeric characters from left
     while (left < right && !isAlphaNumeric(s.charCodeAt(left))) {
@@ -327,7 +622,7 @@ function isPalindrome(s) {
       right--;
     }
 
-    // Compare characters in lower case
+    // Compare characters in lowercase
     if (s[left].toLowerCase() !== s[right].toLowerCase()) {
       return false; // Mismatch found
     }
@@ -336,64 +631,59 @@ function isPalindrome(s) {
     right--;
   }
 
-  return true; // All symmetric pairs matched
-}
-
-// ❌ ANTI-PATTERN: Inner while loops without bounds checking (causes out-of-bounds loops)
-function buggyPalindrome(s) {
-  let left = 0;
-  let right = s.length - 1;
-  while (left < right) {
-    // BUG: Missing 'left < right' check inside inner loops!
-    // On a string of all spaces "   ", left increments past string length!
-    while (!isAlphaNumeric(s.charCodeAt(left))) left++;
-    while (!isAlphaNumeric(s.charCodeAt(right))) right--;
-    if (s[left].toLowerCase() !== s[right].toLowerCase()) return false;
-    left++; right--;
-  }
   return true;
 }
 
-// ==========================================
-// Example Test Runs
-// ==========================================
+// Example runs
 console.log(isPalindrome("A man, a plan, a canal: Panama")); // true
-console.log(isPalindrome("race a car")); // false
-console.log(isPalindrome(" ")); // true
-console.log(isPalindrome("0P")); // false
+console.log(isPalindrome("race a car"));                     // false
+console.log(isPalindrome(" "));                              // true
 ```
 
-- **Time Complexity**: $O(n)$ — Each character is visited at most twice (once by the skip loop, once by comparison).
-- **Space Complexity**: $O(1)$ — Only two integer pointer variables allocated.
+#### 4.2.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Heap-heavy regex and string reversal
+function memoryHeavyPalindrome(s) {
+  // BUG: Allocates 3 new strings and 1 intermediate array on the heap
+  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return cleaned === cleaned.split("").reverse().join("");
+}
+```
+* **Why it fails:** While computationally $O(n)$, this allocates $4n$ bytes of heap memory, creating severe memory churn and blocking the single-threaded Node.js event loop during garbage collection.
+
+#### 4.2.8 Complexity Derivation
+* **Time Complexity:** $\mathbf{O(n)}$. The pointers advance toward each other, inspecting each character at most twice.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. No strings, arrays, or regex objects are allocated; only two integer index variables are used.
 
 ---
 
-## 5. Problem 2: Reverse Array In-Place
+### 4.3 Reverse Array In-Place
 
-### Problem Statement
-Write a function that reverses an array of elements **in-place**.
-You must modify the input array directly with **$O(1)$ extra memory**.
+#### 4.3.1 Problem Statement
+Given an array `arr`, reverse the order of its elements **in-place** without allocating a second array.
 
-```text
-Input: arr = [1, 2, 3, 4, 5]
-Output: [5, 4, 3, 2, 1]
-```
+* **Sample Input 1:** `arr = [1, 2, 3, 4, 5]` $\to$ **Expected Output:** `[5, 4, 3, 2, 1]`
+* **Sample Input 2:** `arr = ["a", "b", "c", "d"]` $\to$ **Expected Output:** `["d", "c", "b", "a"]`
+* **Sample Input 3:** `arr = [42]` $\to$ **Expected Output:** `[42]`
+* **Constraints:** $0 \le arr.length \le 10^5$.
 
-### Step 1: Physical Simulation
-Imagine 5 playing cards laid out in a row on a table: `[ 1 | 2 | 3 | 4 | 5 ]`
-1. Place your left hand on Card 0 (`1`) and your right hand on Card 4 (`5`).
-2. Swap the two cards. The row becomes: `[ 5 | 2 | 3 | 4 | 1 ]`.
-3. Move your left hand one card right (to `2`) and your right hand one card left (to `4`).
-4. Swap the two cards. The row becomes: `[ 5 | 4 | 3 | 2 | 1 ]`.
-5. Move both hands inward again. Both hands now point to Card 2 (`3`).
-6. Because your hands met in the middle, stop. The cards are completely reversed.
+#### 4.3.2 How to Think About It
+Imagine 5 cards laid out in order: `[1, 2, 3, 4, 5]`.
 
-### Step 2: Brute Force Approach
-The naive instinct is to allocate a new array and populate it backward:
+Place your left hand on Card 0 (`1`) and your right hand on Card 4 (`5`).
+1. Pick up both cards and swap their positions.
+2. Move your left hand one step right to Card 1 (`2`) and your right hand one step left to Card 3 (`4`).
+3. Swap both cards.
+4. Move your left hand right and right hand left. Both hands meet at Card 2 (`3`). A card cannot swap with itself—stop!
+
+The array is completely reversed after only 2 swaps.
+
+#### 4.3.3 Brute Force Approach & Bottleneck
+The naive approach creates a new empty array, iterates backwards through the original array, and pushes each item into the new array:
 
 ```javascript
-// Naive Brute Force
-function reverseArrayBrute(arr) {
+function reverseArrayOutOfPlace(arr) {
   const reversed = [];
   for (let i = arr.length - 1; i >= 0; i--) {
     reversed.push(arr[i]);
@@ -401,30 +691,45 @@ function reverseArrayBrute(arr) {
   return reversed;
 }
 ```
-- **Time Complexity**: $O(n)$ — Single pass over $n$ elements.
-- **Space Complexity**: $O(n)$ — Allocates a duplicate array of size $n$, violating the in-place constraint!
 
-### Step 3: Bottleneck
-Where is the CPU sweating?
-Allocating a secondary array wastes $O(n)$ memory and forces V8 to allocate fresh contiguous memory heap blocks. The original array already holds $n$ pre-allocated memory slots. We can repurpose those existing slots by swapping elements directly.
+* **The Bottleneck:** Allocates a brand-new array of size $n$ on the heap ($O(n)$ auxiliary space), violating the strict $O(1)$ in-place memory constraint.
 
-### Step 4: The Pattern Discovery
-By maintaining two pointers (`left = 0`, `right = arr.length - 1`), we swap the elements at `arr[left]` and `arr[right]` using a temporary variable or destructuring assignment, then increment `left` and decrement `right` until `left >= right`.
+#### 4.3.4 The Pattern Insight
+Symmetric reversal is the purest form of **Inward Two Pointers**:
+* Pointer `left = 0` and pointer `right = arr.length - 1`.
+* In each iteration, swap `arr[left]` and `arr[right]` using a temporary variable.
+* Stop when `left >= right`. The total work is strictly $\lfloor n / 2 \rfloor$ swaps.
 
-### Step 5: The Optimal Solution
+#### 4.3.5 Pseudocode
+
+```text
+FUNCTION ReverseArray(arr):
+  left = 0
+  right = length(arr) - 1
+
+  WHILE left < right:
+    temp = arr[left]
+    arr[left] = arr[right]
+    arr[right] = temp
+
+    left = left + 1
+    right = right - 1
+
+  RETURN arr
+```
+
+#### 4.3.6 Optimal Solution
 
 ```javascript
-// Node.js code
-"use strict";
+// ✅ CORRECT: Optimal O(n) time, O(1) space in-place array reversal
+function reverseArray(arr) {
+  if (!Array.isArray(arr) || arr.length <= 1) return arr;
 
-// ✅ CORRECT: Inward Two-Pointer In-Place Swap
-function reverseArrayInPlace(arr) {
   let left = 0;
   let right = arr.length - 1;
 
-  // Invariant: Elements at indices < left and indices > right are in their final reversed positions.
   while (left < right) {
-    // Swap elements in-place using temporary variable
+    // In-place primitive value swap
     const temp = arr[left];
     arr[left] = arr[right];
     arr[right] = temp;
@@ -436,410 +741,90 @@ function reverseArrayInPlace(arr) {
   return arr;
 }
 
-// ❌ ANTI-PATTERN: Iterating up to arr.length swaps elements twice, restoring the original array!
-function buggyReverseTwice(arr) {
+// Example runs
+console.log(reverseArray([1, 2, 3, 4, 5])); // [5, 4, 3, 2, 1]
+console.log(reverseArray(["a", "b", "c"])); // ["c", "b", "a"]
+console.log(reverseArray([42]));            // [42]
+```
+
+#### 4.3.7 Common Anti-Pattern
+
+```javascript
+// ❌ ANTI-PATTERN: Iterating up to arr.length un-reverses the array!
+function buggyReverse(arr) {
   for (let i = 0; i < arr.length; i++) {
-    // Swapping for the entire length reverses the array in the first half,
-    // and then un-reverses it back to its original state in the second half!
+    // BUG: Swapping for all n iterations reverses the array, then reverses it right back!
     const target = arr.length - 1 - i;
     const temp = arr[i];
     arr[i] = arr[target];
     arr[target] = temp;
   }
-  return arr;
-}
-
-// ==========================================
-// Example Test Runs
-// ==========================================
-const testArr1 = [1, 2, 3, 4, 5];
-reverseArrayInPlace(testArr1);
-console.log(testArr1); // [ 5, 4, 3, 2, 1 ]
-
-const testArr2 = ["a", "b", "c", "d"];
-reverseArrayInPlace(testArr2);
-console.log(testArr2); // [ "d", "c", "b", "a" ]
-
-const buggyArr = [1, 2, 3, 4, 5];
-buggyReverseTwice(buggyArr);
-console.log(buggyArr); // [ 1, 2, 3, 4, 5 ] (buggy: restored to original!)
-```
-
-- **Time Complexity**: $O(n)$ — Executes exactly $\lfloor n/2 \rfloor$ swaps.
-- **Space Complexity**: $O(1)$ — Transforms elements directly inside the caller's array.
-
----
-
-## 6. Under the Hood: V8 & Node.js
-
-### V8 Elements Kinds Transitions
-
-In C++, an array must hold elements of a single fixed type. In JavaScript, arrays can hold any mix of numbers, strings, and objects.
-To maintain high performance, the V8 engine inspects the elements in your array and assigns an internal **ElementsKind**:
-
-1. **`PACKED_SMI_ELEMENTS` (Fastest)**: An array containing only Small Integers (31-bit signed integers). V8 stores these as unboxed numbers in raw memory without pointer dereferencing.
-2. **`PACKED_DOUBLE_ELEMENTS`**: An array containing floating-point numbers. V8 stores them as raw 64-bit IEEE floats.
-3. **`PACKED_ELEMENTS`**: An array containing mixed types (strings, objects, functions). V8 must store pointers to heap objects.
-4. **`HOLEY_*_ELEMENTS` (Slowest)**: An array with missing slots (gaps).
-
-```text
-V8 ELEMENTS KIND LATTICE (One-Way Transitions Only):
-
-       PACKED_SMI_ELEMENTS        (Fastest, unboxed integers)
-              │
-              ▼ (Add a float like 3.14)
-      PACKED_DOUBLE_ELEMENTS      (Unboxed IEEE floats)
-              │
-              ▼ (Add a string or object)
-        PACKED_ELEMENTS           (Pointers to heap memory)
-              │
-              ▼ (Delete an index or create a gap: arr[100] = 5)
-        HOLEY_ELEMENTS            (10x Slower: Checks prototype chain on reads!)
-```
-
-> [!WARNING]
-> ElementsKind transitions are **one-way**. Once an array transitions from `PACKED_SMI` to `HOLEY_ELEMENTS`, V8 will **never** optimize it back to packed, even if you fill the holes later!
-
-### Why Holey Arrays Degrade Performance
-
-When reading `arr[5]` on a packed array, V8 executes a single memory offset read.
-When reading `arr[5]` on a holey array, if index 5 is empty, JavaScript semantics require the engine to check if `arr.__proto__` or `Object.prototype` defined a property named `"5"`. This prototype chain walk makes missing-index reads up to **10x slower**.
-
-```javascript
-// ❌ Creates a HOLEY array:
-const holey = [];
-holey[1000] = 42; // Indices 0 to 999 are holes!
-
-// ✅ Creates a PACKED array:
-const packed = new Array(1000).fill(0);
-packed[1000] = 42;
-```
-
-### Sliced String Memory Retention in Node.js Services
-
-When processing large network payloads (such as a 50MB CSV or JSON upload), calling `largeString.slice(0, 10)` creates a **SlicedString** in V8:
-- The sliced string holds a pointer reference to the parent 50MB string.
-- Even if you drop all references to `largeString`, the garbage collector **cannot free the 50MB memory buffer** as long as that tiny 10-character sliced string is cached or stored in memory!
-- **Remediation**: Force string flattening by concatenating with an empty string or using `Buffer.from()`:
-  ```javascript
-  const unlinked = (" " + largeString.slice(0, 10)).slice(1);
-  ```
-
-### Node.js `Buffer` vs JavaScript `String`
-
-- **`String`**: UTF-16 encoded, managed inside the V8 JavaScript heap, subject to V8 heap size limits ($\approx 1.4\text{ GB} - 4\text{ GB}$).
-- **`Buffer`**: Contiguous raw byte array allocated in **C++ external memory** outside the V8 heap.
-- In Node.js backend streams (HTTP file uploads, TCP sockets, database drivers), always process data using `Buffer` streams to avoid garbage collection pauses on the main thread.
-
----
-
-## 7. Hands-On Exercise
-
-### The Scenario
-You are building an audit log sanitizer for a Node.js microservice. The service receives raw user access logs containing timestamped tokens.
-A junior engineer wrote the token validation pipeline, but the service is timing out under high load.
-
-The pipeline must:
-1. Process tokens from an incoming queue.
-2. Check if the token's alphanumeric characters form a valid palindrome.
-3. Construct a comma-separated sanitized audit string.
-
-### The Buggy Code
-```javascript
-// Node.js code
-function processAuditLogsBuggy(tokens) {
-  let output = "";
-
-  // Bug 1: Using tokens.shift() in a while loop causes O(n^2) array memory shifting!
-  while (tokens.length > 0) {
-    const token = tokens.shift();
-
-    // Bug 2: Naive regex and reverse allocation causes O(k) memory allocations per token
-    const cleaned = token.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const reversed = cleaned.split("").reverse().join("");
-
-    if (cleaned === reversed && cleaned.length > 0) {
-      // Bug 3: String concatenation += in a loop causes O(m^2) string buffer re-allocations
-      output += cleaned + ",";
-    }
-  }
-
-  return output.slice(0, -1);
+  return arr; // Array ends up back in original order!
 }
 ```
+* **Why it fails:** Swapping across the entire length of the array swaps elements in the first half, and then swaps them a second time in the second half, restoring the original order. The loop condition must stop at the midpoint (`left < right` or `i < Math.floor(n / 2)`).
 
-### Acceptance Criteria
-1. Must process all tokens in **$O(n)$ linear time** without calling `shift()`.
-2. Must validate palindromes using an in-place two-pointer algorithm with **$O(1)$ auxiliary space** per token.
-3. Must construct the final string using an array buffer joined once in $O(m)$ time.
-4. Verified with test execution.
-
-### Verified Solution
-
-```javascript
-// Node.js code
-"use strict";
-
-function isTokenPalindrome(str) {
-  function isAlpha(code) {
-    return (
-      (code >= 48 && code <= 57) || // 0-9
-      (code >= 65 && code <= 90) || // A-Z
-      (code >= 97 && code <= 122)   // a-z
-    );
-  }
-
-  let l = 0;
-  let r = str.length - 1;
-  let hasValidChar = false;
-
-  while (l < r) {
-    while (l < r && !isAlpha(str.charCodeAt(l))) l++;
-    while (l < r && !isAlpha(str.charCodeAt(r))) r--;
-
-    if (str[l].toLowerCase() !== str[r].toLowerCase()) {
-      return false;
-    }
-
-    if (isAlpha(str.charCodeAt(l))) hasValidChar = true;
-    l++;
-    r--;
-  }
-
-  if (l === r && isAlpha(str.charCodeAt(l))) hasValidChar = true;
-  return hasValidChar;
-}
-
-function processAuditLogsFast(tokens) {
-  const validTokens = [];
-  let head = 0; // Pointer replaces shift()
-
-  while (head < tokens.length) {
-    const token = tokens[head++];
-    if (isTokenPalindrome(token)) {
-      // Extract alphanumeric characters in single O(k) pass
-      let cleaned = "";
-      for (let i = 0; i < token.length; i++) {
-        const code = token.charCodeAt(i);
-        if (
-          (code >= 48 && code <= 57) ||
-          (code >= 97 && code <= 122)
-        ) {
-          cleaned += token[i];
-        } else if (code >= 65 && code <= 90) {
-          cleaned += String.fromCharCode(code + 32);
-        }
-      }
-      validTokens.push(cleaned);
-    }
-  }
-
-  return validTokens.join(","); // Single O(m) join
-}
-
-// Example Test Run
-const sampleTokens = [
-  "RaceCar!",
-  "not_a_palindrome",
-  "A man, a plan, a canal: Panama",
-  "12321",
-  "xyz"
-];
-
-const result = processAuditLogsFast(sampleTokens);
-console.log(result); // "racecar,amanaplanacanalpanama,12321"
-```
+#### 4.3.8 Complexity Derivation
+* **Time Complexity:** $\mathbf{O(n)}$. The loop performs exactly $\lfloor n / 2 \rfloor$ swaps, which simplifies asymptotically to $O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Only one primitive `temp` variable and two index pointers are allocated.
 
 ---
 
-## 8. Tricky Points and Edge Cases
+## 5. Tricky Edge Cases
 
-### 1. Modifying String Indices Silently Fails
-In non-strict mode, assigning to a string index fails silently. In strict mode (`'use strict'`), it throws a `TypeError`:
-
-```javascript
-"use strict";
-const str = "hello";
-// str[0] = "H"; // TypeError: Cannot assign to read only property '0' of string 'hello'
-```
-
-### 2. The `new Array(n)` Empty Slot Trap
-Creating an array with `new Array(5)` creates an array with 5 empty holes, **not** `undefined`:
-
-```javascript
-const emptyHoles = new Array(3);
-console.log(emptyHoles); // [ <3 empty items> ]
-
-// Array iteration methods (.map, .forEach, .filter) SKIP empty holes!
-const mapped = emptyHoles.map(() => 1);
-console.log(mapped); // Still [ <3 empty items> ]! (Callback never executed!)
-
-// ✅ FIX: Use .fill() or Array.from()
-const filled = new Array(3).fill(0);
-console.log(filled.map(() => 1)); // [ 1, 1, 1 ]
-```
-
-### 3. Mutating vs Non-Mutating Array Methods
-
-| Mutating Methods (Change original array!) | Non-Mutating Methods (Return new copy) |
-| :--- | :--- |
-| `push()`, `pop()` | `concat()` |
-| `shift()`, `unshift()` | `slice()` |
-| `splice()` | `filter()`, `map()` |
-| `reverse()` | `toReversed()` (Node.js 20+) |
-| `sort()` | `toSorted()` (Node.js 20+) |
+* **Empty Input / Single Element:** Pointers for arrays of size 0 or 1 (`left = 0`, `right = -1` or `left = 0`, `right = 0`) must never enter `while (left < right)`. Always verify boundary conditions on empty collections.
+* **String In-Place Modification Traps:** Writing `str[0] = "x"` fails silently in non-strict mode and throws in strict mode without changing the string. Always convert to an array (`Array.from(str)`) if in-place transformations are required.
+* **Surrogate Pair Emoji Lengths:** Emojis like `🚀` or `👨‍👩‍👧‍👦` possess a `.length` greater than 1 due to 16-bit UTF-16 surrogate pairs. Using `s.split("").reverse().join("")` splits the pair into invalid unicode fragments. Always use `Array.from(s)` for character-level operations.
+* **Holey Array Transitions:** Using `delete arr[i]` leaves an empty gap rather than shifting elements. This permanently de-optimizes V8's internal backing store into a holey array. Always use `.splice()` or rebuild arrays cleanly.
+* **Double-Reversal Trap:** In two-pointer swapping algorithms, running a `for` loop up to `i < arr.length` swaps items twice and returns the original array unchanged. Stop at `left < right`.
 
 ---
 
-## 9. Comprehensive Summary
+## 6. Summary Cheat Sheet
 
-- **Arrays** provide $O(1)$ constant-time indexing because items are laid out contiguously in memory at $\text{BaseAddress} + (i \times \text{size})$.
-- **Array Prepending (`unshift` / `shift`)** runs in $O(n)$ time because every subsequent item must slide in memory. Use head pointers to process queues in $O(n)$ total time.
-- **Strings are Immutable**: Any character modification or string concatenation (`+=`) in a loop allocates a new string in heap memory, creating an $O(n^2)$ copying bottleneck. Use array buffers with `.join('')` for $O(n)$ string construction.
-- **UTF-16 & Unicode**: Standard characters take 1 code unit (16-bit). Emojis take 2 code units (surrogate pairs). Use `Array.from()` or `for...of` to avoid splitting surrogate pairs.
-- **V8 Elements Kinds**: Arrays transition monotonically from `PACKED_SMI` $\to$ `PACKED_DOUBLE` $\to$ `PACKED_ELEMENTS` $\to$ `HOLEY_ELEMENTS`. Holey arrays are up to 10x slower due to prototype chain traversals.
-- **In-Place Two-Pointer Pattern**: Reversing arrays and validating palindromes inward requires only $O(1)$ auxiliary space and $O(n)$ time by comparing and swapping inward from both ends.
-
----
-
-## 10. Cheat Sheet
-
-### Array & String Complexity Matrix
-
-| Operation | Array Time | Array Space | String Time | String Space |
-| :--- | :---: | :---: | :---: | :---: |
-| **Random Access (`[i]`)** | **$O(1)$** | $O(1)$ | **$O(1)$** | $O(1)$ |
-| **Write by Index (`[i] = x`)** | **$O(1)$** | $O(1)$ | ❌ Immutable | N/A |
-| **Append End (`push` / `+`)** | **$O(1)$ amortized**| $O(1)$ | $O(n)$ | $O(n)$ copy |
-| **Remove End (`pop`)** | **$O(1)$** | $O(1)$ | $O(n)$ (`slice`) | $O(n)$ |
-| **Prepend Start (`unshift`)** | $O(n)$ | $O(1)$ | $O(n)$ | $O(n)$ |
-| **Remove Start (`shift`)** | $O(n)$ | $O(1)$ | $O(n)$ (`slice`) | $O(n)$ |
-| **In-Place Reversal** | **$O(n)$** | **$O(1)$** | ❌ Requires copy | $O(n)$ |
-
-### Common Pitfalls List
-- **The Shift Trap**: Calling `arr.shift()` inside a `while` loop degrades algorithms from $O(n)$ to $O(n^2)$.
-- **String `+=` Accumulator**: Appending characters to a string inside a loop causes quadratic heap memory churn.
-- **Emoji `.length` Bug**: Counting characters via `.length` counts UTF-16 code units, counting emojis as 2.
-- **Holey Array Deoptimization**: Assigning beyond current array length creates holes that permanently deoptimize the array in V8.
-
-### Reusable Templates
-
-```javascript
-// Template 1: Inward Two-Pointer Scan
-let left = 0;
-let right = items.length - 1;
-while (left < right) {
-  // Check condition, swap, or increment/decrement
-  left++;
-  right--;
-}
-
-// Template 2: Array Buffer String Builder
-const buffer = [];
-for (const item of items) {
-  buffer.push(item);
-}
-const result = buffer.join("");
-```
+* **Array Memory:** Stored in contiguous RAM. Index access is instant **$O(1)$** via direct offset arithmetic (`Base + Index * Size`).
+* **Dynamic Resizing:** V8 doubles capacity ($4 \to 8 \to 16$) when backing stores fill. While copying costs $O(n)$, amortized append cost is **$O(1)$**.
+* **Memory Regions:** Primitives live on the Stack (copied by value). Objects and Arrays live in the Heap (copied by shared reference pointer).
+* **String Immutability:** Strings cannot be changed in-place. Avoid quadratic `+=` loops; accumulate in array buffers and call `.join("")` once.
+* **Unicode Reality:** `str.length` counts 16-bit code units, not visible glyphs. Emojis occupy 2 code units (surrogate pairs).
+* **Two Pointers Invariant:** Use Inward Pointers (`left < right`) for symmetrical checks/reversals; use Read/Write Pointers (`write <= read`) for filtering and compacting.
 
 ---
 
-## 11. Interview Q&A
+## 7. Practice Problems
 
-### 45-Second Technical Pitch
-> *"Arrays provide instant $O(1)$ random access because their elements are stored in contiguous memory addresses calculated via BaseAddress + index * elementSize. In contrast, JavaScript strings are immutable primitives allocated in heap memory, meaning in-place mutations are impossible and repeated += concatenations inside loops degrade to $O(n^2)$ time. In production Node.js systems, we prevent event loop stalling by avoiding shift() queues and string += loops, relying instead on integer pointer tracking and array buffer joins. For in-place array transformations and palindrome validations, we apply inward two-pointer patterns to achieve $O(n)$ time with $O(1)$ auxiliary space."*
-
----
-
-### 1. Why do arrays provide $O(1)$ random access while linked lists require $O(n)$?
-**Answer:**
-Arrays are stored in **contiguous memory blocks**. Because every slot has an identical size, the processor calculates the memory address of any index $i$ in a single CPU cycle using the formula $\text{BaseAddress} + (i \times \text{ElementSize})$. The CPU can jump directly to that physical RAM address without inspecting any intermediate elements.
-
-In contrast, a Linked List stores nodes at random, scattered addresses across the heap. Each node only stores a pointer to the next node. To find the $i$-th element, the computer has no direct arithmetic shortcut; it must follow pointers sequentially from the `head` node through nodes $0, 1, 2, \dots, i-1$, requiring $O(n)$ steps.
+### 7.1 Remove Element - Easy / Warm-Up
+Given an integer array `nums` and an integer `val`, remove all occurrences of `val` in-place and return the number of elements that are not equal to `val`.
+* **Sample Input 1:** `nums = [3, 2, 2, 3]`, `val = 3` $\to$ **Expected Output:** `2` (with first two elements being `[2, 2]`)
+* **Sample Input 2:** `nums = [0, 1, 2, 2, 3, 0, 4, 2]`, `val = 2` $\to$ **Expected Output:** `5` (with first five elements being `[0, 1, 3, 0, 4]`)
+* **Constraints:** $0 \le nums.length \le 100$, $0 \le nums[i], val \le 50$.
+* **Hint 1:** Initialize a `write` pointer at 0.
+* **Hint 2:** Iterate through the array with a `read` pointer. Whenever `nums[read] !== val`, copy `nums[read]` into `nums[write]` and increment `write`.
 
 ---
 
-### 2. What will the following code output in Node.js, and what is its time complexity?
-```javascript
-// Node.js code
-const arr = [1, 2, 3, 4, 5];
-const output = [];
-for (let i = 0; i < arr.length; i++) {
-  output.unshift(arr[i]);
-}
-console.log(output);
-```
-**Answer:**
-It outputs `[ 5, 4, 3, 2, 1 ]`.
-The time complexity is **$O(n^2)$**, not $O(n)$.
-While the `for` loop iterates $n$ times, `output.unshift()` must physically shift every existing item in the array one slot to the right in memory on every single insertion. Inserting item 1 takes 1 move, item 2 takes 2 moves, up to item $n$ taking $n$ moves:
-$$\sum_{i=1}^n i = \frac{n(n+1)}{2} \approx O(n^2)$$
-To reverse an array efficiently, use an in-place two-pointer swap ($O(n)$ time, $O(1)$ space) or push to the end and call `.reverse()` once.
-
----
-
-### 3. Spot and fix the performance and correctness bug in this palindrome validator:
-```javascript
-function isPalindrome(s) {
-  let left = 0;
-  let right = s.length - 1;
-  while (left < right) {
-    while (!/[a-zA-Z0-9]/.test(s[left])) left++;
-    while (!/[a-zA-Z0-9]/.test(s[right])) right--;
-    if (s[left].toLowerCase() !== s[right].toLowerCase()) return false;
-    left++;
-    right--;
-  }
-  return true;
-}
-```
-**Answer:**
-There is a critical correctness bug:
-The inner `while` loops lack boundary conditions (`left < right`). If the input string consists entirely of non-alphanumeric characters (such as `s = "     "` or `s = "???"`), `left` will increment past `s.length - 1`, causing `s[left]` to evaluate to `undefined`. In strict mode or regex execution, this throws errors or results in an out-of-bounds loop.
-In addition, compiling a regular expression (`/[a-zA-Z0-9]/`) inside the loop on every iteration introduces unnecessary regex engine overhead.
-The fix is to include `left < right` in both inner while loops and use integer character code comparisons (`charCodeAt`).
-
----
-
-### 4. In a high-traffic Node.js streaming service processing 50,000 requests per second, when would you use a `Buffer` instead of a UTF-8 `String`? Explain the system tradeoffs.
-**Answer:**
-In high-throughput services (like an API gateway, proxy, or file upload service), use **`Buffer`** whenever the application does not need to inspect or transform the text content:
-
-1. **V8 Heap vs Off-Heap Memory**: JavaScript `String` objects are allocated directly inside the V8 JavaScript heap. Storing large volumes of strings triggers frequent V8 Young and Old Generation garbage collection cycles, pausing the single-threaded event loop. In contrast, `Buffer` instances allocate memory **outside the V8 heap** in C++ memory via `ArrayBuffer`, dramatically reducing GC pressure.
-2. **Zero-Copy Network I/O**: Network sockets (libuv) read and write raw bytes. Converting network packets to strings requires a UTF-8 decoding pass, and sending them back out requires a UTF-8 encoding pass. Keeping data as `Buffer` chunks allows zero-copy piping directly from the incoming HTTP stream to disk or upstream microservices.
-3. **When to use String**: Only convert buffers to `String` when business logic specifically requires character manipulation, JSON parsing, regex routing, or templating.
-
----
-
-## 12. Practice Problems
-
-### 1. Valid Palindrome - Easy
-A phrase is a palindrome if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
-- **Sample Input 1:** `s = "A man, a plan, a canal: Panama"`
-- **Expected Output 1:** `true`
-- **Sample Input 2:** `s = "race a car"`
-- **Expected Output 2:** `false`
-- **Sample Input 3:** `s = " "`
-- **Expected Output 3:** `true`
-
-### 2. Reverse String - Easy
-Write a function that reverses a string. The input string is given as an array of characters `s`. You must do this by modifying the input array in-place with $O(1)$ extra memory.
-- **Sample Input 1:** `s = ["h","e","l","l","o"]`
-- **Expected Output 1:** `["o","l","l","e","h"]`
-- **Sample Input 2:** `s = ["H","a","n","n","a","h"]`
-- **Expected Output 2:** `["h","a","n","n","a","H"]`
-
-### 3. Longest Common Prefix - Easy
+### 7.2 Longest Common Prefix - Medium
 Write a function to find the longest common prefix string amongst an array of strings. If there is no common prefix, return an empty string `""`.
-- **Sample Input 1:** `strs = ["flower","flow","flight"]`
-- **Expected Output 1:** `"fl"`
-- **Sample Input 2:** `strs = ["dog","racecar","car"]`
-- **Expected Output 2:** `""`
+* **Sample Input 1:** `strs = ["flower", "flow", "flight"]` $\to$ **Expected Output:** `"fl"`
+* **Sample Input 2:** `strs = ["dog", "racecar", "car"]` $\to$ **Expected Output:** `""`
+* **Constraints:** $1 \le strs.length \le 200$, $0 \le strs[i].length \le 200$, `strs[i]` consists of only lowercase English letters.
+* **Hint 1:** Take the first string `strs[0]` as your candidate prefix.
+* **Hint 2:** For each character index in `strs[0]`, check if every other string in `strs` has the exact same character at that index. If any string is shorter or has a mismatch, return the prefix up to that point.
+
+---
+
+### 7.3 Rotate Array - Hard / Advanced
+Given an integer array `nums`, rotate the array to the right by `k` steps, where `k` is non-negative. You must solve this in-place with **$O(1)$ auxiliary space**.
+* **Sample Input 1:** `nums = [1, 2, 3, 4, 5, 6, 7]`, `k = 3` $\to$ **Expected Output:** `[5, 6, 7, 1, 2, 3, 4]`
+* **Sample Input 2:** `nums = [-1, -100, 3, 99]`, `k = 2` $\to$ **Expected Output:** `[3, 99, -1, -100]`
+* **Constraints:** $1 \le nums.length \le 10^5$, $-2^{31} \le nums[i] \le 2^{31} - 1$, $0 \le k \le 10^5$.
+* **Hint 1:** `k` can be larger than the array length. Normalize it first using `k = k % nums.length`.
+* **Hint 2:** Any rotation can be achieved using three reversals: reverse the entire array, reverse the first `k` elements, and reverse the remaining $n - k$ elements.
 
 ---
 
 <nav aria-label="Lecture navigation">
 
-[Previous: Big O Complexity & Problem Solving](day-01-big-o-complexity-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Searching & Elementary Sorting](day-03-searching-and-sorting-algorithms.md)
+[Previous: Big O Complexity & Algorithmic Problem Solving](day-01-big-o-complexity-and-problem-solving.md) | [Roadmap](../javascript-dsa-roadmap.md) | [Next: Searching & Elementary Sorting Algorithms](day-03-searching-and-sorting-algorithms.md)
 
 </nav>

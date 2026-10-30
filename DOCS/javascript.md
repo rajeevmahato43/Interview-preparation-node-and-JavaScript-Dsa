@@ -27,4 +27,7 @@ Cover primitives and objects, type coercion and equality, variable scoping (`var
 3. **Step-by-Step Visual Traces:** Walk through execution line-by-line using ASCII diagrams for call-stack frames, heap memory references, and prototype chains.
 4. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG` with inline comments explaining why it fails.
 5. **Backend Node.js Connection:** Connect language concepts directly to backend Node.js realities (memory leaks in closures, unhandled promise rejections, event loop blocking).
-6. **13-Section Blueprint:** Follow the exact 13-section lecture blueprint from Top Navigation to Bottom Navigation. Target ~650–850 lines per lecture.
+6. **No Artificial Line Count Limits:** Never constrain lectures to arbitrary line counts. Lectures can be as long and comprehensive as necessary to deliver exhaustive, world-class depth, line-by-line runtime derivations, and complete clarity without superficial summaries or forced truncation.
+7. **Topic-Appropriate Architecture:** Structure each lecture according to its core discipline (foundational runtime internals vs language feature deep-dives) rather than a rigid, robotic template.
+8. **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Closure`, `### 1.1 Scope Chain`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings.
+9. **No Preachy Meta-Interview Talk:** Deliver the computational, language engine, and runtime insights directly without preachy meta-interview commentary.
