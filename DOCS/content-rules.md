@@ -23,7 +23,7 @@ Our goal is to build an independent engineer. The learner must be able to face a
 ## The 5 Success Criteria
 
 Every lecture must guarantee that the candidate can:
-1. **Explain the concept clearly** using simple everyday English and physical real-world comparisons before touching code.
+1. **Explain the concept clearly** using basic everyday English and physical real-world comparisons before touching code.
 2. **Solve related problems independently** by deriving logic from brute force instead of memorized templates.
 3. **Answer interview questions confidently** using structured 45-second pitches and trade-off matrices.
 4. **Recognize patterns in unseen problems** by spotting problem keywords and constraint numbers.
@@ -39,7 +39,18 @@ Every lecture must guarantee that the candidate can:
 - **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings (e.g., do NOT write `What Big O Actually Measures: Operations vs. Wall-Clock Time` or `Linear Search (The Linear Scan)`).
 - **No Preachy Meta-Interview Talk:** Avoid writing meta-interview filler like "In technical interviews, you must distinguish between...", "Interviewers will test you on...", or "A common interview trick is...". Deliver the engineering, computational, and systems insights directly.
 - **Strict Scope Discipline (Prevent Concept Bleed):** Keep each lecture strictly focused on its intended day's scope. Do not prematurely introduce complex mechanisms that belong in later dedicated lectures (e.g., recursion call stack memory belongs to Day 18; dynamic array resizing in V8 belongs to Day 2).
-- **Basic English, Simple Words:** Use plain, direct English. Define core concepts in simple everyday language. Avoid heavy words, academic vocabulary, or confusing jargon.
+- **Basic English, Simple Words:** Write in simple, direct, Basic English. Plain English can still sound stiff or academic; our target is **Basic Everyday English** that a non-native speaker can read effortlessly without stumbling over jargon.
+  - Break long, multi-clause sentences into short, punchy sentences.
+  - Never use heavy, formal words when simple words exist:
+    - Write *"count how many times each item appears"* instead of *"tally occurrences in a single linear pass"*.
+    - Write *"check items one by one"* instead of *"inspect elements sequentially"*.
+    - Write *"how steps grow as input gets bigger"* instead of *"asymptotic operational scaling"*.
+    - Write *"shared key"* instead of *"canonical key signature"*.
+    - Write *"checking every pair with nested loops"* instead of *"quadratic pairwise scanning"*.
+    - Write *"stored side-by-side in memory"* instead of *"contiguous memory allocation"*.
+    - Write *"subtract 1 from count"* instead of *"decrement frequency"*.
+    - Write *"extra memory"* instead of *"auxiliary space allocation"*.
+  - Keep 100% technical accuracy (Big O, exact engine behavior, exact data structures) while using simple, welcoming words.
 - **Data Structures First, Patterns Second:** Always teach foundational data structures (e.g., `Map` and `Set`, `Array` and `String`) before introducing algorithmic patterns that utilize them (e.g., `Frequency Counter`, `Two Pointers`).
 - **Clean Numbering Hierarchy:** Use clean decimal numbering across sections, sub-topics, problem sub-steps, and challenges (`1.1`, `1.2`, `3.1.1` – `3.1.8`, `6.1` – `6.3`).
 - **No Meta-Labels in Headings:** Never use robotic labels in headings like `### Definition`, `### Basic Example`, or `### The Laundry Basket Analogy`. Analogies and definitions flow as natural prose directly under topic sections.
@@ -74,7 +85,7 @@ Rather than forcing a rigid, one-size-fits-all checklist onto every subject, str
 Used for topics centered on data structures and problem-solving patterns (e.g., Arrays, Two Pointers, Sliding Window, Stacks, Trees):
 1. **Title & Top Navigation:** `# Day XX: <Topic Title>` and `<nav aria-label="Lecture navigation">`.
 2. **`## 1. <Primary Data Structure or Core Concept>`:**
-   - Concept explanation in plain English.
+   - Concept explanation in basic English.
    - Physical visual analogy woven directly into text.
    - Clean, runnable basic example.
    - Sub-Topics (`1.1`, `1.2`, ...) with focused explanations, ASCII traces, and `> [!NOTE]` Self-Check callouts.
@@ -99,7 +110,7 @@ Used for topics centered on data structures and problem-solving patterns (e.g., 
 Used for topics centered on computation theory, runtime mechanics, and architecture (e.g., Big O & Complexity Analysis, JavaScript Execution Model, Event Loop, Memory Management):
 1. **Title & Top Navigation:** `# Day XX: <Topic Title>` and `<nav aria-label="Lecture navigation">`.
 2. **`## 1. <Core Theory / Foundational Concept>`:**
-   - Plain English definition, operational mechanisms, and physical mental models.
+   - Basic English definition, operational mechanisms, and physical mental models.
    - Sub-topics (`1.1`, `1.2`, ...) detailing mathematical definitions, execution mechanics, and in-place term callouts.
 3. **`## 2. <Runtime Internals & Engine Mechanics>`:**
    - V8 memory layout, heap/stack behavior, event loop phases, or hardware abstraction.

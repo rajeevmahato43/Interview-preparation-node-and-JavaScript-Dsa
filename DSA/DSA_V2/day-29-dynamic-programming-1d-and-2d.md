@@ -6,17 +6,25 @@
 
 </nav>
 
+---
+
 ## 1. Dynamic Programming Fundamentals
 
-Dynamic Programming (DP) is an algorithmic optimization paradigm that solves complex problems by breaking them down into simpler, overlapping subproblems, computing each subproblem's solution once, and storing the result in a table (cache) so that no calculation is ever repeated.
+**Dynamic Programming (DP)** is a smart way to solve big problems without doing the same math twice. You break a problem into smaller pieces, solve each small piece once, and write down the answer in a table (or cache). Whenever you need that answer again, you just look it up.
 
-Dynamic Programming transforms exponential-time brute force algorithms ($O(2^n)$ or $O(n!)$) into polynomial-time solutions ($O(n)$ or $O(n^2)$), allowing otherwise intractable calculations to finish in milliseconds.
+DP turns slow brute-force algorithms that take $O(2^n)$ or $O(n!)$ time into lightning-fast code that runs in $O(n)$ or $O(n^2)$ time:
 
-- **Dynamic Programming:** A method for solving complex optimization problems by decomposing them into subproblems, caching subproblem solutions, and recombining them.
-- **Overlapping Subproblems:** When a recursive decomposition revisits the exact same subproblems repeatedly rather than generating new ones.
-- **Optimal Substructure:** When an optimal solution to the overall problem is composed directly of optimal solutions to its smaller subproblems.
+- **Dynamic Programming:** Remembering past answers so you never have to solve the same math twice.
+- **Overlapping Subproblems:** When the same small problems keep showing up over and over again.
+- **Optimal Substructure:** When the best answer to the big problem is made from the best answers to smaller pieces.
 
-Imagine writing on a blackboard: `1 + 1 + 1 + 1 + 1`. You count them: 5. Then you write another `+ 1` on the right side: `1 + 1 + 1 + 1 + 1 + 1`. What is the new total? You immediately say 6. You did not recount the first five numbers from scratch. You remembered that the previous total was 5, and simply added 1 ($5 + 1 = 6$). Dynamic Programming is remembering past subproblem results to solve future states without redundant work.
+Imagine writing this on a blackboard: `1 + 1 + 1 + 1 + 1`.
+You count them: 5.
+Now someone writes another `+ 1` at the end: `1 + 1 + 1 + 1 + 1 + 1`.
+What is the new total?
+You say 6 right away!
+You did not recount the first five numbers from scratch. You remembered that the old total was 5, and simply added 1 ($5 + 1 = 6$).
+Dynamic Programming is just like that: **remembering past answers to solve future steps without repeating work.**
 
 ```javascript
 // Baseline demonstration: Climbing Stairs using space-optimized bottom-up DP
@@ -62,8 +70,8 @@ Production Best     Prototyping                     Production-Grade Code
 ```
 
 > [!NOTE]
-> Why is bottom-up tabulation preferred in Node.js backends?
-> Because recursive memoization consumes call stack frames. For $N = 15,000$, top-down memoization crashes with `RangeError: Maximum call stack size exceeded`. Bottom-up tabulation runs iteratively with zero call stack overhead.
+> Self-Check: Why is bottom-up tabulation preferred in Node.js backends?
+> Answer: Recursive functions eat up call stack memory. For $N = 15,000$, top-down recursion crashes with `RangeError: Maximum call stack size exceeded`. Bottom-up tabulation uses a simple `for` loop with zero call stack overhead.
 
 ### 1.2 The 0/1 Knapsack Decision Pattern
 
@@ -141,7 +149,10 @@ You are given an integer array `coins` representing coins of different denominat
 - **Constraints:** $1 \le coins.length \le 12$, $1 \le coins[i] \le 2^{31} - 1$, $0 \le amount \le 10^4$.
 
 #### 3.1.2 How to Think About It
-Imagine a cashier building change for 11 dollars. If you decide the last coin you hand over is a 5-dollar coin, you now only need to provide the optimal change for $11 - 5 = 6$ dollars, plus that 1 coin. If you decide the last coin is a 2-dollar coin, you need the optimal change for $11 - 2 = 9$ dollars, plus that 1 coin. You pick whichever prior option requires fewer total coins.
+Imagine making change for 11 dollars:
+- If the last coin you hand over is a 5-dollar coin, you only need to know the fewest coins to make $11 - 5 = 6$ dollars, plus that 1 coin.
+- If the last coin is a 2-dollar coin, you only need to know the fewest coins to make $11 - 2 = 9$ dollars, plus that 1 coin.
+You check all your coins and pick whichever option needs fewer total coins!
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 Recursively try every coin for the current amount:
@@ -238,9 +249,9 @@ Given two strings `text1` and `text2`, return the length of their longest common
 - **Constraints:** $1 \le text1.length, text2.length \le 1,000$, strings consist of lowercase English letters.
 
 #### 3.2.2 How to Think About It
-Imagine two conveyor belts carrying letter blocks. You compare the current blocks on each belt:
-- If the letters match, you take that letter, count +1, and advance both belts.
-- If the letters differ, you can either discard the letter on belt 1 or discard the letter on belt 2. You choose whichever option leads to the longer match downstream.
+Imagine two conveyor belts carrying letter blocks:
+- If the letters match, take that letter, add +1 to your count, and move both belts forward.
+- If the letters are different, you can either drop the letter from belt 1 or drop the letter from belt 2. You choose whichever choice gives you more matching letters downstream.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Generating all $2^M$ subsequences of `text1` and $2^N$ subsequences of `text2`:
@@ -336,10 +347,10 @@ You are a professional robber planning to rob houses along a street. Each house 
 - **Constraints:** $1 \le nums.length \le 100$, $0 \le nums[i] \le 400$.
 
 #### 3.3.2 How to Think About It
-At house $i$, you have two choices:
-1. **Rob house $i$:** You gain `nums[i]`, but you cannot rob house $i - 1$. You add this to the maximum loot possible up to house $i - 2$.
-2. **Skip house $i$:** Your loot is simply the maximum loot possible up to house $i - 1$.
-You pick whichever choice results in more money.
+At each house, you have two simple choices:
+1. **Rob this house:** You take its cash `nums[i]`, but you cannot touch the house right next to it (`i - 1`). You add this cash to the best loot you made up to house `i - 2`.
+2. **Skip this house:** Your loot is the best loot you made up to house `i - 1`.
+You pick whichever gives you more cash!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Explore rob/skip branches recursively:

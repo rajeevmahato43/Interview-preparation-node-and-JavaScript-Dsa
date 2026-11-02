@@ -10,15 +10,15 @@
 
 ## 1. Linked List Reversals
 
-In a singly linked list, each node points only forward. **Reversal** is the process of inverting every `next` pointer so that the original tail becomes the new head, and the original head points to `null`.
+In a singly linked list, each node points only forward. **Reversing** means turning every `next` pointer backward so the last node becomes the new head, and the first node points to `null`.
 
-To picture this physically, imagine people in a conga line holding the shoulders of the person in front of them:
-1. Person 1 holds Person 2's shoulders, Person 2 holds Person 3's shoulders.
-2. To reverse the line without anyone moving from their floor spots:
-   * Person 1 lets go and places their hands at their sides (points to `null`).
-   * Person 2 turns around and holds Person 1's shoulders.
-   * Person 3 turns around and holds Person 2's shoulders.
-3. The person formerly at the back is now the leader (**New Head**)!
+To picture this physically, imagine a conga line where people hold the shoulders of the person in front of them:
+1. Person 1 holds Person 2's shoulders, and Person 2 holds Person 3's shoulders.
+2. To turn the line around without anyone moving to a different spot on the floor:
+   * Person 1 lets go and drops their hands (points to `null`).
+   * Person 2 turns around and places their hands on Person 1's shoulders.
+   * Person 3 turns around and places their hands on Person 2's shoulders.
+3. The person who was at the back is now the new leader (**New Head**)!
 
 ```text
 REVERSAL FLOW:
@@ -66,99 +66,96 @@ console.log(output); // [ 3, 2, 1 ]
 
 ### 1.1 The 3-Pointer Iterative Reversal Engine
 
-To reverse a list in-place without losing references, maintain three pointers sliding forward together:
-* `prev`: Tracks the node behind us (initially `null`).
-* `curr`: Tracks the node currently being inverted (initially `head`).
-* `nextTemp`: Temporarily holds `curr.next` so the rest of the list is not lost when `curr.next` is severed.
+To reverse a list in-place without losing any nodes, move three pointers forward together:
+* `prev`: Points to the node behind us (starts as `null`).
+* `curr`: Points to the node we are currently turning around (starts as `head`).
+* `nextTemp`: Temporarily holds `curr.next` so we don't lose the rest of the list when we turn `curr.next` around.
 
 ```text
 Step 1: Save next:    nextTemp = curr.next
-Step 2: Invert link:  curr.next = prev
-Step 3: Advance prev: prev = curr
-Step 4: Advance curr: curr = nextTemp
+Step 2: Turn around:  curr.next = prev
+Step 3: Move prev:    prev = curr
+Step 4: Move curr:    curr = nextTemp
 ```
 
 ---
 
-### 1.2 Iterative Invariant vs Recursion Stack Hazards
+### 1.2 Why Loops are Better Than Recursion
 
-In production Node.js backends, linked list reversals must **always be iterative**:
-* V8 allocates a fixed call-stack memory budget (typically ~10,000 frames).
-* A recursive reversal creates a new stack frame per node. A list with 15,000 nodes crashes immediately with `RangeError: Maximum call stack size exceeded`.
-* The iterative 3-pointer method operates in strictly **$O(1)$ stack space**.
+In production Node.js systems, always reverse linked lists with **loops, not recursion**:
+* V8 allows only a limited number of function calls on the call stack (usually ~10,000 frames).
+* A recursive reversal adds one function call per node. If a list has 15,000 nodes, it crashes immediately with `RangeError: Maximum call stack size exceeded`.
+* A `while` loop runs in **$O(1)$ constant memory** and will never run out of stack space.
 
 > [!NOTE]
-> **Self-Check:** What happens if you execute `curr.next = prev` before saving `const nextTemp = curr.next`?  
-> *Answer:* You immediately sever the only reference to the rest of the list. The remaining nodes become unreachable and are lost forever in memory.
+> **Self-Check:** What happens if you run `curr.next = prev` before saving `const nextTemp = curr.next`?  
+> *Answer:* You cut your only bridge to the rest of the list. All remaining nodes are lost and become unreachable in memory.
 
 ---
 
 ## 2. Cycle Detection Mechanics
 
-A **Cycle** occurs when a node's `next` pointer points back to a previously visited node instead of terminating at `null`, causing any naive traversal loop to run indefinitely.
+A **Cycle** happens when a node's `next` pointer points back to an earlier node instead of ending at `null`. If a cycle exists, a normal `while (curr !== null)` loop will run forever.
 
-To picture this physically, imagine two runners on a circular stadium track:
-* **Runner S (Slow):** Runs at 1 meter per second.
-* **Runner F (Fast):** Runs at 2 meters per second.
+To picture this physically, imagine two runners on a circular track:
+* **Runner S (Slow):** Runs at 1 lap per hour.
+* **Runner F (Fast):** Runs at 2 laps per hour.
 * If the track is straight and ends at a wall (`null`), Runner F reaches the end first.
-* If the track loops into a circle, Runner F enters the loop and laps Runner S from behind. The relative velocity difference is $2 - 1 = 1$ meter per second. The gap shrinks by 1 meter on every step, guaranteeing collision without skipping!
+* If the track loops into a circle, Runner F enters the circle and catches up to Runner S from behind. Because the fast runner closes the gap by 1 step in every round ($2 - 1 = 1$), they are guaranteed to meet!
 
 ```text
 CYCLE DETECTION (Floyd's Tortoise & Hare):
 [ Head ] ──► [ Node A ] ──► [ Entry Node ] ──► [ Node B ]
                                   ▲                   │
                                   │                   ▼
-                              [ Node D ] ◄──────── [ Node C ]
+                               [ Node D ] ◄──────── [ Node C ]
 ```
 
 ---
 
-### 2.1 Cycle Entry Point Mathematical Derivation
+### 2.1 Finding the Cycle Start Node
 
-When `slow` ($1\times$) and `fast` ($2\times$) collide in a cycle:
-* Let $L$ = Distance from `head` to cycle entry.
-* Let $x$ = Distance from cycle entry to collision point.
-* Let $C$ = Total cycle circumference.
+When `slow` (1 step) and `fast` (2 steps) meet inside a cycle:
+* Let $L$ = Distance from `head` to the start of the cycle.
+* Let $x$ = Distance from cycle start to the meeting point.
+* Let $C$ = Total length around the loop.
 
-$$\text{Distance by Slow} = L + x$$
-$$\text{Distance by Fast} = L + x + k \cdot C \quad (k \ge 1)$$
-
-Because `fast` runs at twice the speed of `slow`:
+Because `fast` moves twice as fast as `slow`:
 $$2(L + x) = L + x + k \cdot C \implies L + x = k \cdot C \implies L = (k - 1)C + (C - x)$$
 
-**The Core Insight:** $(C - x)$ is the remaining distance from the collision point back to the cycle entry!
-Therefore, the distance from `head` to the entry node ($L$) is mathematically equal to the distance from the collision point to the entry node.
-* **Algorithm:** Once collision occurs, reset one pointer to `head` and walk both at 1 step per tick. They will meet at the **Cycle Entry Node**.
+**The Core Insight:** $(C - x)$ is the remaining distance from the meeting point back to the start of the cycle!  
+This means the distance from `head` to the cycle start ($L$) is mathematically identical to the distance from the meeting point to the cycle start.
+* **Algorithm:** Once they collide, put one pointer back at `head` and leave the other pointer at the collision spot. Move both forward by 1 step at a time. They will collide exactly at the **Cycle Entry Node**!
 
 ---
 
 ### 2.2 Pattern Family
-* **3-Pointer Inversion:** Sliding `prev`, `curr`, and `nextTemp` to reverse link direction in $O(1)$ space.
-* **Floyd's Tortoise & Hare:** 1x vs 2x velocities to detect loops and find midpoints in $O(1)$ space.
-* **Phase 2 Entry Discovery:** Resetting one pointer to `head` post-collision to find the cycle start node.
-* **Midpoint Split & Merge:** Fast/slow to split list at midpoint, reversing the second half for palindrome and reorder checks.
+* **3-Pointer Inversion:** Sliding `prev`, `curr`, and `nextTemp` to reverse links in $O(1)$ space.
+* **Floyd's Tortoise & Hare:** 1-step vs 2-step speeds to find loops and find midpoints in $O(1)$ space.
+* **Phase 2 Entry Discovery:** Resetting one pointer to `head` after collision to locate the loop start.
+* **Midpoint Split & Merge:** Using fast/slow pointers to split a list in half, reversing the second half to check palindromes.
 
 ### 2.3 Pattern Recognition Table
 
 | Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"Reverse linked list"** | Invert direction of links. | 3-pointer iterative (`prev`, `curr`, `nextTemp`). |
-| **"Detect cycle / circular dependency"** | Determine if loop exists in $O(1)$ space. | Floyd's Tortoise & Hare (`slow`, `fast`). |
-| **"Find beginning of cycle"** | Locate cycle entry node in $O(1)$ space. | Floyd's Phase 1 (collision) + Phase 2 (walk from head). |
-| **"Palindrome linked list"** | Verify symmetrical sequence. | Midpoint split $\to$ reverse second half $\to$ compare. |
+| **"Reverse linked list"** | Turn pointer directions around. | 3-pointer iterative loop (`prev`, `curr`, `nextTemp`). |
+| **"Detect cycle / circular list"** | Check if a loop exists in $O(1)$ space. | Floyd's Tortoise & Hare (`slow`, `fast`). |
+| **"Find beginning of cycle"** | Find the exact node where loop starts. | Phase 1 (collision) + Phase 2 (walk from head). |
+| **"Palindrome linked list"** | Check if list reads same forwards and backwards. | Split at middle $\to$ reverse second half $\to$ compare. |
 
 ### 2.4 When to Use vs When NOT to Use
 * **When to Use**:
-  * You need to reverse full lists or sub-ranges in strictly $O(1)$ auxiliary space.
-  * Detecting circular loops or finding list midpoints without knowing total length $n$.
-  * Symmetrical list comparisons without allocating array buffers.
+  * You need to reverse a whole list or part of a list using $O(1)$ extra space.
+  * You need to check for loops or find the middle node in one pass.
+  * Checking if a linked list is a palindrome without making extra arrays.
 * **When NOT to Use**:
-  * The list contains backward pointers (Doubly Linked List; simply swap `next` and `prev` on each node).
-  * The data structure is an indexed array (use Opposing Two Pointers).
+  * The list already has backward pointers (Doubly Linked List; just swap `next` and `prev` on each node).
+  * You are working with a normal indexed array (use Opposing Two Pointers).
 
 ### 2.5 The 10^7 Operations Rule
-* Iterating through $n = 100,000$ nodes with Floyd's algorithm takes at most $2n = 200,000$ steps, finishing in **under 2 milliseconds** in Node.js.
-* Storing nodes in a `Set` to check cycles takes $O(n)$ heap space ($\approx 8\text{MB}$ memory). Floyd's algorithm uses **$O(1)$ space** (zero heap allocations).
+* Walking through $n = 100,000$ nodes with Floyd's algorithm takes at most $2n = 200,000$ steps, finishing in **under 2 milliseconds** in Node.js.
+* Storing nodes in a `Set` to check for cycles takes $O(n)$ extra memory ($\approx 8\text{MB}$). Floyd's algorithm uses **$O(1)$ extra space** (zero extra memory allocations).
 
 ---
 
@@ -179,15 +176,15 @@ Given the `head` of a singly linked list, reverse the list, and return the rever
 #### 3.1.2 How to Think About It
 5 numbered cards on a desk: `[ 1 ] -> [ 2 ] -> [ 3 ] -> [ 4 ] -> [ 5 ] -> null`.
 * Put a marker `prev` pointing to `null`.
-* Your left hand points to Card `1` (`curr`).
-* Before rewiring Card `1`, put your right hand on Card `2` (`nextTemp = curr.next`) so the rest of the list isn't lost.
-* Now safely rewire Card `1`'s arrow backward to `prev`.
+* Put your left hand on Card `1` (`curr`).
+* Before changing Card `1`, put your right hand on Card `2` (`nextTemp = curr.next`) so the rest of the cards aren't lost.
+* Now turn Card `1`'s arrow backward to point to `prev`.
 * Slide `prev` to Card `1`. Slide `curr` to Card `2` (where your right hand was waiting).
-* Repeat until your left hand falls off the desk (`curr === null`).
+* Keep going until your left hand falls off the desk (`curr === null`).
 * The card under `prev` is Card `5` — your new head!
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-Extracting all node values into an array, reversing the array, and overwriting node values:
+Copying all node values into an array, reversing the array, and overwriting node values:
 
 ```javascript
 function reverseListBrute(head) {
@@ -201,7 +198,7 @@ function reverseListBrute(head) {
 }
 ```
 
-* **The Bottleneck:** Allocates an $O(n)$ auxiliary array buffer. Fails completely if node objects themselves must be preserved and reoriented.
+* **The Bottleneck:** Wastes $O(n)$ extra memory. It fails if the actual node objects themselves must be kept and rewired.
 
 #### 3.1.4 The Pattern Insight
 Use a **3-Pointer Iterative Slide** (`prev`, `curr`, `nextTemp`):
@@ -209,7 +206,7 @@ Use a **3-Pointer Iterative Slide** (`prev`, `curr`, `nextTemp`):
 * `curr.next = prev`
 * `prev = curr`
 * `curr = nextTemp`
-* Every node link is inverted in a single pass in $O(1)$ memory.
+* Every node pointer is reversed in a single pass using $O(1)$ memory.
 
 #### 3.1.5 Pseudocode
 
@@ -277,11 +274,11 @@ function recursiveReverse(head) {
   return newHead;
 }
 ```
-* **Why it fails:** Recursion consumes $O(n)$ stack frames. In single-threaded Node.js, large linked lists crash the engine with maximum call stack exhaustion.
+* **Why it fails:** Recursion uses $O(n)$ stack memory. In Node.js, large linked lists crash the engine with maximum call stack size exceeded.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The loop visits each node exactly once.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Only three reference pointer variables are stored.
+* **Time Complexity:** $\mathbf{O(n)}$. The loop checks each node once.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use three simple pointer variables.
 
 ---
 
@@ -289,25 +286,26 @@ function recursiveReverse(head) {
 
 #### 3.2.1 Problem Statement
 Given the `head` of a linked list, return the **node where the cycle begins**. If there is no cycle, return `null`.
+
 Do not modify the linked list. Solve it using **$O(1)$ auxiliary space**.
 
-* **Sample Input 1:** `head = [3, 2, 0, -4]`, `pos = 1` (tail connects to node index 1) $\to$ **Expected Output:** `Node with value 2`
+* **Sample Input 1:** `head = [3, 2, 0, -4]`, `pos = 1` $\to$ **Expected Output:** `Node with value 2`
 * **Sample Input 2:** `head = [1, 2]`, `pos = 0` $\to$ **Expected Output:** `Node with value 1`
-* **Sample Input 3:** `head = [1]`, `pos = -1` (no cycle) $\to$ **Expected Output:** `null`
+* **Sample Input 3:** `head = [1]`, `pos = -1` $\to$ **Expected Output:** `null`
 * **Constraints:** The number of nodes in the list is in the range $[0, 10^4]$, $-10^5 \le Node.val \le 10^5$.
 
 #### 3.2.2 How to Think About It
-An access road leading to a circular roundabout:
-* Road from gate (`head`) to entrance (`entry`): length $L$.
-* Roundabout circumference: $C$.
-* Runner S ($1\times$) and Runner F ($2\times$) start at the gate.
-* They enter the roundabout and collide at a milestone.
-* Leave Runner S at the collision milestone. Send a new walker from the gate (`head`).
-* Move both forward at the same speed ($1\times$).
-* Because the distance from `head` to `entry` equals the distance from collision point to `entry`, **both walkers meet at the roundabout entrance**!
+A road leading to a roundabout:
+* Road from start (`head`) to roundabout entrance: length $L$.
+* Around the roundabout: length $C$.
+* Runner S (1 step) and Runner F (2 steps) start at the entrance.
+* They run into the roundabout and meet at a collision point.
+* Leave Runner S at the collision point. Put a new runner `ptr` at `head`.
+* Walk both forward at the exact same speed (1 step each).
+* Because the distance from `head` to entrance equals the distance from collision point to entrance, **both runners will meet right at the roundabout entrance**!
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-Recording visited nodes in a `Set`:
+Storing visited nodes in a `Set`:
 
 ```javascript
 function detectCycleBrute(head) {
@@ -322,12 +320,12 @@ function detectCycleBrute(head) {
 }
 ```
 
-* **The Bottleneck:** Allocates $O(n)$ heap memory. For $10^5$ nodes, storing object references in a `Set` wastes megabytes of heap and triggers GC pauses.
+* **The Bottleneck:** Uses $O(n)$ extra memory. For $10^5$ nodes, holding node references in a `Set` wastes megabytes of memory.
 
 #### 3.2.4 The Pattern Insight
 Use **Floyd's 2-Phase Cycle Detection**:
-* **Phase 1 (Collision):** Move `slow` by 1 and `fast` by 2 until `slow === fast`. If `fast` hits `null`, no cycle exists.
-* **Phase 2 (Entry Find):** Set `ptr = head`. Advance both `ptr` and `slow` by 1 step. The node where `ptr === slow` is the exact cycle entry node.
+* **Phase 1 (Find Meeting Point):** Move `slow` by 1 and `fast` by 2 until `slow === fast`. If `fast` hits `null`, there is no cycle.
+* **Phase 2 (Find Entrance):** Put `ptr = head`. Move both `ptr` and `slow` by 1 step. The node where `ptr === slow` is the start of the cycle.
 
 #### 3.2.5 Pseudocode
 
@@ -415,11 +413,11 @@ function buggyDetectCycle(head) {
   return null;
 }
 ```
-* **Why it fails:** In JavaScript, linked list nodes must be compared by **object identity** (`slow === fast`), not by their value (`slow.val === fast.val`). Comparing values causes false positive cycle detection when different nodes hold identical numbers.
+* **Why it fails:** In JavaScript, nodes must be compared by **reference identity** (`slow === fast`), not by their value (`slow.val === fast.val`). Comparing values triggers false cycle alerts when different nodes hold the same number.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. Phase 1 runs in $\le 2n$ steps. Phase 2 runs in $\le n$ steps. Total operations: $O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Uses three reference pointer variables.
+* **Time Complexity:** $\mathbf{O(n)}$. Phase 1 takes $\le 2n$ steps. Phase 2 takes $\le n$ steps. Total operations: $O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use three simple pointer variables.
 
 ---
 
@@ -434,12 +432,12 @@ Given the `head` of a singly linked list, return `true` if it is a palindrome or
 * **Constraints:** The number of nodes in the list is in the range $[1, 10^5]$, $0 \le Node.val \le 9$.
 
 #### 3.3.2 How to Think About It
-A string palindrome like `"racecar"` is checked from both ends moving inward.
-In a singly linked list, we cannot walk backward from the tail.
-1. Find the middle node of the list using a Tortoise and Hare runner.
-2. Invert the second half of the list in-place using the 3-pointer reversal engine.
-3. Walk two pointers: one starting at `head`, the other starting at the head of the reversed second half.
-4. Compare node values step-by-step. If all match, it is a palindrome!
+A palindrome word like `"racecar"` is checked from both sides toward the center.  
+In a singly linked list, we cannot walk backward from the tail.  
+1. Find the middle node using fast and slow pointers.
+2. Reverse the second half of the list in-place using our 3-pointer reversal method.
+3. Walk two pointers together: one starting at `head`, the other starting at the head of the reversed second half.
+4. Compare values step-by-step. If all values match, the list is a palindrome!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Copying values into an array and using two pointers:
@@ -457,13 +455,13 @@ function isPalindromeBrute(head) {
 }
 ```
 
-* **The Bottleneck:** Allocates $O(n)$ heap space for the array. For $10^5$ nodes, this violates the strict $O(1)$ auxiliary memory constraint.
+* **The Bottleneck:** Uses $O(n)$ extra memory for the array. For $10^5$ nodes, this breaks the strict $O(1)$ memory requirement.
 
 #### 3.3.4 The Pattern Insight
-Combine the two core techniques of this lecture:
-1. **Find Midpoint:** Advance `slow` by 1 and `fast` by 2. When `fast.next === null || fast.next.next === null`, `slow` is at the first half's end.
-2. **Reverse Second Half:** Invert the sublist starting from `slow.next`.
-3. **Compare Halves:** Traverse both halves simultaneously.
+Combine the two main patterns of this lecture:
+1. **Find Midpoint:** Move `slow` by 1 and `fast` by 2. When `fast.next === null || fast.next.next === null`, `slow` is at the end of the first half.
+2. **Reverse Second Half:** Invert the sub-list starting from `slow.next`.
+3. **Compare Halves:** Walk both halves side-by-side.
 
 #### 3.3.5 Pseudocode
 
@@ -561,28 +559,28 @@ function buggyIsPalindrome(head) {
   return s === s.split("").reverse().join("");
 }
 ```
-* **Why it fails:** String concatenation fails when values are larger than 9 (e.g. `[1, 10]` becomes `"110"`, reversed `"011"`, incorrectly treated as mismatch; or `[10, 1]` vs `[1, 01]`). Also creates $O(n)$ heap string churn.
+* **Why it fails:** Turning numbers into strings fails when values have multiple digits (e.g. `[1, 10]` vs `[11, 0]`). It also creates extra garbage collection memory overhead.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. Finding the midpoint takes $n / 2$ steps. Reversing the second half takes $n / 2$ steps. Comparing halves takes $n / 2$ steps. Total operations: $\frac{3n}{2} \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Pointer manipulation is performed entirely in-place.
+* **Time Complexity:** $\mathbf{O(n)}$. Finding the midpoint takes $n / 2$ steps. Reversing the second half takes $n / 2$ steps. Comparing halves takes $n / 2$ steps. Total: $\frac{3n}{2} \implies O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We rewire pointers directly in place.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Order of Pointer Severing:** When inverting pointers, always save `const nextTemp = curr.next` before executing `curr.next = prev`.
-* **Fast Pointer Null Guard:** Always check `while (fast !== null && fast.next !== null)`. Checking `fast.next.next` on an odd-length acyclic list will crash with a null property exception.
-* **Comparing Node Identity vs Value:** In cycle detection, always test `slow === fast` (identity), never `slow.val === fast.val`.
-* **Single Node or Empty Lists:** Reversal and cycle checks on `[]` or `[1]` must exit cleanly without executing loop bodies.
+* **Order of Changing Pointers:** When inverting pointers, always save `const nextTemp = curr.next` before running `curr.next = prev`.
+* **Checking Fast Pointers for Null:** Always check `while (fast !== null && fast.next !== null)`. Accessing `fast.next.next` on an odd-length list without checking `fast.next` causes a null pointer crash.
+* **Comparing Reference vs Value:** In cycle detection, always test `slow === fast` (exact object), never `slow.val === fast.val`.
+* **Single Node or Empty Lists:** Reversals and cycle checks on `[]` or `[1]` must exit safely right away.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
 * **Iterative Reversal:** `nextTemp = curr.next; curr.next = prev; prev = curr; curr = nextTemp;`. Runs in $O(n)$ time and $O(1)$ space.
-* **Floyd's Tortoise and Hare:** Advance `slow` by 1 and `fast` by 2. Relative speed of 1 node/tick guarantees collision inside any cycle.
-* **Cycle Entrance Formula:** Distance from `head` to entry equals distance from collision to entry. Reset one pointer to `head` and walk both at 1x speed to find entrance.
+* **Floyd's Tortoise and Hare:** Move `slow` by 1 and `fast` by 2. The 1-step relative difference guarantees they meet inside any cycle.
+* **Cycle Start Formula:** Distance from `head` to loop start equals distance from collision to loop start. Put one pointer at `head` and walk both at 1x speed to find the entrance.
 * **Palindrome Pattern:** Fast/slow to find midpoint $\to$ 3-pointer reversal of second half $\to$ compare halves in $O(n)$ time and $O(1)$ space.
 
 ---
@@ -597,7 +595,7 @@ Given `head`, the head of a linked list, determine if the linked list has a cycl
 * **Sample Input 1:** `head = [3, 2, 0, -4]`, `pos = 1` $\to$ **Expected Output:** `true`
 * **Sample Input 2:** `head = [1]`, `pos = -1` $\to$ **Expected Output:** `false`
 * **Constraints:** Number of nodes is in range $[0, 10^4]$, $-10^5 \le Node.val \le 10^5$.
-* **Hint 1:** Initialize `slow = head` and `fast = head`.
+* **Hint 1:** Set `slow = head` and `fast = head`.
 * **Hint 2:** In each step, move `slow = slow.next` and `fast = fast.next.next`. If `slow === fast`, return `true`.
 
 ---
@@ -610,15 +608,15 @@ Given the `head` of a singly linked list and two integers `left` and `right` whe
 * **Sample Input 1:** `head = [1, 2, 3, 4, 5]`, `left = 2`, `right = 4` $\to$ **Expected Output:** `[1, 4, 3, 2, 5]`
 * **Sample Input 2:** `head = [5]`, `left = 1`, `right = 1` $\to$ **Expected Output:** `[5]`
 * **Constraints:** Number of nodes is in range $[1, 500]$, $1 \le left \le right \le n$.
-* **Hint 1:** Use a dummy node `dummy = new ListNode(0, head)` to handle `left === 1`.
-* **Hint 2:** Advance `pre` to the node before position `left`. Let `start = pre.next`.
-* **Hint 3:** For `right - left` times, pluck `then = start.next` and move it directly after `pre`.
+* **Hint 1:** Use a dummy node `dummy = new ListNode(0, head)` to handle the case where `left === 1`.
+* **Hint 2:** Move a pointer `pre` to the node right before position `left`. Let `start = pre.next`.
+* **Hint 3:** For `right - left` times, take `then = start.next` and move it directly after `pre`.
 
 ---
 
 ### 6.3 Reorder List
 
-You are given the head of a singly linked-list: $L_0 \to L_1 \to \dots \to L_{n-1} \to L_n$. Reorder the list to be: $L_0 \to L_n \to L_1 \to L_{n-1} \to L_2 \to L_{n-2} \to \dots$. You must do this in-place without altering node values.
+You are given the head of a singly linked list: $L_0 \to L_1 \to \dots \to L_{n-1} \to L_n$. Reorder the list to be: $L_0 \to L_n \to L_1 \to L_{n-1} \to L_2 \to L_{n-2} \to \dots$. You must do this in-place without altering node values.
 
 * **Difficulty:** Medium | **Focus:** Midpoint Split, Reversal & Weave
 * **Sample Input 1:** `head = [1, 2, 3, 4]` $\to$ **Expected Output:** `[1, 4, 2, 3]`
@@ -626,7 +624,7 @@ You are given the head of a singly linked-list: $L_0 \to L_1 \to \dots \to L_{n-
 * **Constraints:** Number of nodes is in range $[1, 5 \times 10^4]$.
 * **Hint 1:** Step 1: Use fast and slow pointers to find the middle of the list.
 * **Hint 2:** Step 2: Reverse the second half of the list starting from `slow.next`. Disconnect `slow.next = null`.
-* **Hint 3:** Step 3: Weave the two halves together by alternating nodes from the first and reversed second half.
+* **Hint 3:** Step 3: Weave the two halves together by alternating nodes from the first half and the reversed second half.
 
 ---
 

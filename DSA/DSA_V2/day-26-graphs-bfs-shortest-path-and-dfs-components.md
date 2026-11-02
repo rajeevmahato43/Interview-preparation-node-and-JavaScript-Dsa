@@ -6,16 +6,21 @@
 
 </nav>
 
+---
+
 ## 1. Graph Fundamentals
 
-A Graph is a non-linear data structure consisting of a finite set of Vertices (nodes) and a collection of Edges (links) connecting pairs of vertices. Trees are actually a specialized subset of graphs: a tree is simply a connected, undirected graph with $V$ vertices, $V - 1$ edges, and zero cycles.
+A **Graph** is a collection of points called **Vertices** (nodes) connected by lines called **Edges**. In fact, a tree is just a simple graph that has no closed loops (cycles).
 
-In general graphs, however, connections are arbitrary:
-- Graphs may contain **cycles** (paths starting and ending at the same node).
-- Graphs may be **directed** (one-way links, such as web hyperlinks or task dependencies) or **undirected** (two-way relationships, such as mutual friendships).
-- Graphs may be **disconnected** into multiple independent clusters (connected components).
+In real-world graphs, connections can go anywhere:
+- Graphs can have **cycles** (loops where you can walk around and end up back where you started).
+- Graphs can be **directed** (one-way streets, like following someone on social media) or **undirected** (two-way streets, like mutual friends).
+- Graphs can be **disconnected** into separate islands or groups.
 
-Imagine an airline flight network. Cities are vertices, and direct non-stop flights between them are edges. If you want to fly from Seattle to Miami with the minimum number of layovers, you use Breadth-First Search (BFS). BFS explores all 1-hop direct flights, then all 2-hop flights, then 3-hop flights, guaranteeing that the first time you arrive in Miami, you took the shortest route in terms of flights. Now imagine a separate local carrier operating solely between islands in Hawaii. A flight search starting in Seattle will never reach Hawaii. To discover all airlines in the world, you must run an outer loop across all airports to visit every disconnected flight cluster (Connected Components).
+Imagine an airline flight map:
+- Cities are the nodes, and non-stop flights between them are the edges.
+- If you want to fly from Seattle to Miami with the fewest flight stops, you use **Breadth-First Search (BFS)**. BFS checks all direct flights first, then flights with 1 layover, then 2 layovers. The very first time you land in Miami, you are guaranteed to have taken the fewest flights!
+- Now imagine a separate island airline flying only between cities in Hawaii. A flight search starting in Seattle will never reach Hawaii. To find every airport in the world, you must run a loop over every city on the map to visit all the separate flight groups (**Connected Components**).
 
 ```javascript
 // Graph representation using an Adjacency List
@@ -74,9 +79,9 @@ console.log("BFS Route Order:", bfsGraph(flightNetwork, "Seattle"));
 
 ### 1.1 Adjacency List vs Adjacency Matrix
 
-Real-world graphs are overwhelmingly sparse (each node connects to only a tiny fraction of total nodes):
+Most real-world networks are spread out (sparse):
 
-- **Adjacency Matrix ($V \times V$ 2D Array):** Fast $O(1)$ edge lookup `matrix[u][v]`, but consumes $O(V^2)$ memory. In a network of $1,000,000$ users where each has 100 friends, an adjacency matrix allocates $10^{12}$ cells ($\approx 1$ TB of RAM), wasting over 99.99% of memory.
+- **Adjacency Matrix ($V \times V$ 2D Array):** Checking if two nodes are connected is fast (`matrix[u][v]`), but it wastes huge amounts of memory ($O(V^2)$). In a network of $1,000,000$ users where each has 100 friends, an adjacency matrix allocates $10^{12}$ cells ($\approx 1$ TB of RAM), wasting over 99.99% of memory.
 - **Adjacency List (Map or Array of Arrays):** Consumes $O(V + E)$ memory, storing only actual edges. Finding neighbors takes $O(\text{degree}(u))$ time, which is optimal for traversal.
 
 ### 1.2 The Enqueue-Time Visited Invariant
@@ -84,8 +89,8 @@ Real-world graphs are overwhelmingly sparse (each node connects to only a tiny f
 Because graphs contain cycles ($A \to B \to C \to A$), traversing without tracking visited nodes creates infinite loops.
 
 > [!NOTE]
-> Why MUST we mark a node as `visited` at ENQUEUE time rather than DEQUEUE time?
-> Because if you wait until a node is dequeued to mark it visited, multiple neighbors can discover and enqueue that exact same node dozens of times while it sits in the queue. In dense graphs, this causes exponential queue swelling and out-of-memory crashes.
+> Self-Check: Why MUST we mark a node as `visited` the moment it is ADDED to the queue, instead of waiting until it is removed?
+> Answer: If you wait until a node is removed from the queue to mark it visited, multiple neighbors can discover and add that same node to the queue over and over again while it sits waiting. This blows up the queue and crashes Node.js with an out-of-memory error.
 
 ```text
 Enqueue-Time vs Dequeue-Time Marking:
@@ -150,7 +155,7 @@ Graph problems group into three foundational archetypes:
   - You need in-place matrix flood filling with low code complexity.
   - You need to detect cycles in directed graphs (via 3-color state tracking).
 - **When NOT to use BFS:**
-  - Finding shortest paths in **weighted** graphs (where edges have non-uniform costs). Use Dijkstra's Algorithm ($O((V + E) \log V)$) or Bellman-Ford instead.
+  - Finding shortest paths in **weighted** graphs (where edges have different costs). Use Dijkstra's Algorithm ($O((V + E) \log V)$) or Bellman-Ford instead.
 
 ### 2.4 The 10^7 Operations Rule
 
@@ -180,7 +185,7 @@ Given an $m \times n$ 2D binary grid `grid` which represents a map of `'1'`s (la
 - **Constraints:** $1 \le m, n \le 300$, `grid[i][j]` is `'0'` or `'1'`.
 
 #### 3.1.2 How to Think About It
-Imagine looking down at an archipelago of islands. You scan top to bottom, left to right. When you spot land (`'1'`), you increment your island counter. Then, you immediately sink that entire connected landmass into the ocean by changing all adjacent `'1'`s to `'0'`. You continue scanning. Any new `'1'` you encounter must belong to a completely separate island.
+Imagine looking down at an ocean with islands from an airplane. You scan the map from top to bottom, left to right. When you spot land (`'1'`), you add 1 to your island counter. Then you immediately sink that entire island into the ocean by turning all connected land cells into water (`'0'`). You keep scanning. Any new land you find later must belong to a completely different island!
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 Allocating a separate $M \times N$ boolean `visited` matrix and checking `!visited[r][c]`:
@@ -196,7 +201,7 @@ function numIslandsNaive(grid) {
 The bottleneck is auxiliary memory allocation. Creating a 2D array on the V8 heap creates hundreds of array objects, increasing garbage collection overhead.
 
 #### 3.1.4 The Pattern Insight
-Mutate the grid in-place: whenever a `'1'` is encountered, run a DFS helper that sets `grid[r][c] = '0'` and recursively sinks all 4 adjacent neighbors. Once sunk, future scans naturally skip those cells. Auxiliary heap memory is strictly $O(1)$.
+Change the grid directly in-place: whenever a `'1'` is encountered, run a DFS helper that sets `grid[r][c] = '0'` and recursively sinks all 4 adjacent neighbors. Once sunk, future scans naturally skip those cells. Auxiliary heap memory is strictly $O(1)$.
 
 #### 3.1.5 Pseudocode
 ```text
@@ -300,7 +305,7 @@ Given an $n \times n$ binary matrix `grid`, return the length of the shortest cl
 - **Constraints:** $n == grid.length == grid[i].length$, $1 \le n \le 100$, `grid[i][j]` is `0` or `1`.
 
 #### 3.2.2 How to Think About It
-Imagine water dropped on cell `(0, 0)`. The water expands outward into all open neighboring cells (`0`) in all 8 directions at speed 1 step per second. The first moment water reaches the bottom-right corner `(n - 1, n - 1)`, the elapsed time is guaranteed to be the shortest path.
+Imagine dropping a splash of water at the top-left square `(0, 0)`. The water spreads outward to all open neighbor squares (`0`) in all 8 directions at a speed of 1 step per second. The very first second that water touches the bottom-right corner `(n - 1, n - 1)`, that time is guaranteed to be the shortest path!
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Using DFS to explore all paths:
@@ -423,7 +428,7 @@ Given a reference of a node in a connected undirected graph, return a deep copy 
 - **Constraints:** Number of nodes is in range $[0, 100]$, $1 \le Node.val \le 100$, values are unique, no self-loops or repeated edges.
 
 #### 3.3.2 How to Think About It
-Imagine photocopying a web of interconnected index cards where strings connect cards to one another in loops. If you just copy card 1 and follow its strings, you create card 2. Card 2 has a string pointing back to card 1! If you blindly create a new card 1, you enter an infinite duplication loop. You need a registry: whenever you copy a card, you write it in a logbook (`Map<OriginalCard, ClonedCard>`). When connecting strings, you look up whether the target card was already cloned.
+Imagine copying a spiderweb of cards connected by strings in loops. If you copy card 1 and follow its strings, you make card 2. But card 2 has a string pointing right back to card 1! If you blindly make another card 1, you will keep making cards forever in an infinite loop. You need a notebook: whenever you make a clone of a card, write it down (`Map<OriginalCard, ClonedCard>`). When connecting strings, check the notebook first to see if that card was already cloned!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Recursively copying neighbors without maintaining an original-to-clone hash map:

@@ -46,7 +46,18 @@ Strictly reject:
    - `X.Y.7 Common Anti-Pattern` (The common trap, off-by-one bug, or memory-heavy alternative)
    - `X.Y.8 Complexity Derivation` (Time and space bounds)
 10. **Interactive Self-Check Callout Notes:** Place strategic 1-sentence questions formatted as `> [!NOTE]` callouts under key concepts and problems to test active recall.
-11. **Basic English Only:** Rewrite dense, academic, or jargon-heavy sentences into plain, direct English.
+11. **Basic English Only:** Rewrite dense, academic, or jargon-heavy sentences into simple, Basic Everyday English. Plain English can still sound stiff or formal; our target is language that a non-native speaker can read effortlessly without stumbling over vocabulary.
+    - Break long, multi-clause sentences into short, punchy sentences.
+    - Never use heavy, formal words when simple words exist:
+      - Write *"count how many times each item appears"* instead of *"tally occurrences in a single linear pass"*.
+      - Write *"check items one by one"* instead of *"inspect elements sequentially"*.
+      - Write *"how steps grow as input gets bigger"* instead of *"asymptotic operational scaling"*.
+      - Write *"shared key"* instead of *"canonical key signature"*.
+      - Write *"checking every pair with nested loops"* instead of *"quadratic pairwise scanning"*.
+      - Write *"stored side-by-side in memory"* instead of *"contiguous memory allocation"*.
+      - Write *"subtract 1 from count"* instead of *"decrement frequency"*.
+      - Write *"extra memory"* instead of *"auxiliary space allocation"*.
+    - Keep 100% technical accuracy (Big O, exact engine behavior, exact data structures) while using simple, welcoming words.
 12. **Dual-Case Implementations:** Every code example must show both `✅ CORRECT` and `❌ ANTI-PATTERN / COMMON BUG`.
 13. **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.
 

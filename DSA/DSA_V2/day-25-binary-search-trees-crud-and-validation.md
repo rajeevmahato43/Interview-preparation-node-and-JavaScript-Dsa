@@ -6,17 +6,25 @@
 
 </nav>
 
+---
+
 ## 1. Binary Search Tree Fundamentals
 
-A standard binary tree enforces no specific numerical ordering among its keys. A Binary Search Tree (BST) enforces a strict global ordering invariant that makes searching, insertion, and deletion run in $O(\log n)$ average time:
+A normal binary tree puts numbers wherever it wants without any order. A **Binary Search Tree (BST)** follows one strict rule that makes finding, adding, and deleting items run in fast $O(\log n)$ average time:
 
-- **The Universal BST Invariant:** For every node $X$ in the tree:
-  1. All keys in the **left subtree** must be **strictly less** than $X.val$.
-  2. All keys in the **right subtree** must be **strictly greater** than $X.val$.
-  3. Both the left and right subtrees must themselves be valid binary search trees.
-- **In-Order Monotonicity:** An In-Order Traversal (`Left -> Node -> Right`) of a valid BST visits keys in strictly ascending sorted order.
+- **The Core BST Rule:** For every single node:
+  1. Every number in its **left subtree** must be **strictly smaller** than the node's number.
+  2. Every number in its **right subtree** must be **strictly larger** than the node's number.
+  3. All subtrees below it must also follow these exact same rules.
+- **Sorted Walk (In-Order):** Walking through a BST in In-Order (`Left -> Node -> Right`) visits numbers in sorted order, from smallest to biggest.
 
-Imagine an alphabetical filing cabinet organized in drawers. The root drawer is labeled "M". If you are looking for "P", you know "P" comes after "M" alphabetically, so you immediately turn right. You discard the entire left half of drawers ("A" through "L") without looking inside a single one. At the next drawer ("T"), "P" comes before "T", so you turn left, eliminating "U" through "Z". You find "P" in two steps instead of scanning the entire cabinet. Crucially, the rule is global: a file labeled "W" cannot be stored inside the left subtree of "M", even if it happens to sit to the right of "F".
+Imagine an alphabetical filing cabinet organized with drawers:
+- The top main drawer is labeled "M".
+- If you are looking for the letter "P", you know "P" comes after "M" in the alphabet. You immediately pull open the right drawer.
+- You can completely ignore the left drawers ("A" through "L") without looking at a single folder inside!
+- At the next drawer ("T"), "P" comes before "T", so you open the left side.
+- You find "P" in just two steps instead of searching through the whole cabinet!
+- This rule applies to the whole tree: a folder labeled "W" can never sit on the left side of "M", even if it is to the right of "F".
 
 ```javascript
 // Definition of a Binary Tree Node
@@ -86,18 +94,19 @@ Result: [ 1, 2, 3, 4, 5, 7 ] (Strictly ascending!)
 ```
 
 > [!NOTE]
-> Why does local verification (`node.left.val < node.val && node.right.val > node.val`) fail to prove a tree is a valid BST? Because local checks ignore ancestor boundaries. A node deep in the right subtree of 10 could have value 6; locally it may be smaller than its parent 15, but globally it violates the rule that all right descendants of 10 must be $> 10$.
+> Self-Check: Why is checking only immediate children (`node.left.val < node.val && node.right.val > node.val`) not enough to prove a tree is a valid BST?
+> Answer: Checking only immediate children misses rules set by ancestors higher up. A node deep down in the right subtree of 10 could be 6. Even if 6 is smaller than its parent 15, it still breaks the rule that everything under 10's right side must be greater than 10.
 
 ### 1.2 BST Deletion Cases
 
-Deleting a node from a BST is more complex than insertion because the ordering invariant must be preserved after removal. Deletion breaks into three distinct cases:
+Deleting a node from a BST is trickier than inserting because we must keep the tree sorted. There are three cases:
 
-- **Case 1 (Zero Children / Leaf Node):** The node has no children. Simply remove it by setting the parent's pointer to `null`.
-- **Case 2 (One Child):** The node has exactly one child. Bypass the node by linking the parent directly to the node's single child.
-- **Case 3 (Two Children):** The node has two subtrees. You cannot remove it directly without fragmenting the tree. Instead:
-  1. Find the node's **In-Order Successor** (the smallest node in the right subtree).
-  2. Copy the successor's value into the target node.
-  3. Recursively delete the successor node from the right subtree (the successor has at most one child, reducing to Case 1 or Case 2).
+- **Case 1 (No Children / Leaf Node):** The node has no children. Just remove it by setting the parent's pointer to `null`.
+- **Case 2 (One Child):** The node has only one child. Bypass the node by connecting the parent directly to that single child.
+- **Case 3 (Two Children):** The node has two subtrees. You cannot simply delete it without breaking the tree apart. Instead:
+  1. Find the **In-Order Successor** (the smallest node in its right subtree).
+  2. Copy that successor's number into the target node.
+  3. Delete the successor node from the right subtree (since it was the smallest, it has at most one child, which is easy to delete).
 
 ```text
 Deleting Node 5 (has two children: left subtree root 3, right subtree root 8):
@@ -187,7 +196,7 @@ Given the `root` of a binary tree, determine if it is a valid binary search tree
 - **Constraints:** $1 \le \text{number of nodes} \le 10^4$, $-2^{31} \le Node.val \le 2^{31} - 1$.
 
 #### 3.1.2 How to Think About It
-Imagine a bouncer at a club checking ID ages. The root bouncer (age 50) says: anyone going to the left room must be younger than 50. In that left room, another bouncer (age 30) says: anyone going to their right room must be older than 30. Therefore, anyone entering that room must be between 30 and 50 years old. Checking only the immediate bouncer is not enough; the candidate must satisfy all inherited upper and lower age bounds.
+Imagine a club bouncer checking IDs. The main bouncer at the door (age 50) says: anyone going to the left room must be younger than 50. In that left room, another bouncer (age 30) says: anyone going to the right room must be older than 30. That means anyone entering that inner room must be between 30 and 50 years old. Checking only the nearest bouncer is not enough; you must satisfy all the limits set by every bouncer above you.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 Checking only immediate parent-child relationships locally:

@@ -14,7 +14,7 @@ Examples exist to make code behavior clear, testable, and reliable. Every major 
   ```
 - **Self-Contained & Runnable:** Code blocks must be complete and runnable directly in Node.js without missing variables or hidden setup.
 - **Direct Clean Execution:** Provide direct functions with clear example calls (`console.log`) showing expected outputs without requiring `assert` imports.
-- **Basic English Comments:** Write inline comments in simple, plain English explaining *what* happens and *why*.
+- **Basic English Comments:** Write inline comments in simple, everyday Basic English explaining *what* happens and *why*. Avoid heavy words or academic jargon in comments.
 
 ---
 

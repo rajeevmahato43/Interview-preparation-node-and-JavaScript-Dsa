@@ -10,15 +10,15 @@
 
 ## 1. Fast & Slow Pointers
 
-**Fast & Slow pointers** start at the beginning of a collection and traverse forward in the **same direction** at different velocities or under different conditional rules.
+**Fast & Slow pointers** start at the beginning of an array or list. Both pointers move in the **same direction**, but at different speeds or following different rules.
 
-Instead of creating a new auxiliary array or calling memory-shifting methods like `.splice()` ($O(n^2)$), one pointer reads ahead while the other pointer writes valid data in-place ($O(n)$ time, $O(1)$ space).
+Instead of making a new array or calling slow methods like `.splice()` ($O(n^2)$), one pointer reads ahead while the other pointer writes good data right into the original array ($O(n)$ time, $O(1)$ extra space).
 
-To picture this physically, imagine sorting a deck of cards laid out along a conveyor belt:
-* **The Scout (`fast`):** Walks quickly ahead, inspecting every card on the belt.
-* **The Scribe (`slow`):** Points to the next clean slot on your table.
-* When the Scout sees junk (e.g. duplicate cards or zeroes), it skips them.
-* When the Scout finds a valid card, it copies that card into the Scribe's slot, and the Scribe steps one slot forward.
+To picture this physically, imagine sorting a line of playing cards on a table:
+* **The Scout (`fast`):** Walks quickly ahead, looking at every card on the table.
+* **The Scribe (`slow`):** Points to the next empty spot where a kept card belongs.
+* When the Scout sees junk (like duplicate cards or zeroes), it skips them.
+* When the Scout finds a good card, it copies that card into the Scribe's spot, and the Scribe takes one step forward.
 
 ```text
 Array: [ 0, 1, 0, 3, 12 ], Target: Move Zeroes
@@ -59,9 +59,9 @@ console.log(numbers); // [ 1, 3, 12, 0, 0 ]
 
 ### 1.1 Read and Write Pointer Partitioning
 
-In in-place array compaction, both pointers advance forward with distinct responsibilities:
-* **The Read Pointer (`fast`):** Scans every element from index `0` to `n - 1`.
-* **The Write Pointer (`slow`):** Marks the boundary of confirmed, valid items. It only advances when `fast` encounters an item that meets the retention criteria.
+When rewriting an array in-place, both pointers move forward with clear jobs:
+* **The Reader (`fast`):** Checks every item from index `0` to `n - 1`.
+* **The Writer (`slow`):** Marks the spot for the next kept item. It only steps forward when `fast` finds an item we want to keep.
 
 ```text
 [  Valid Kept Items  |  Discarded Items  |  Uninspected Items  ]
@@ -69,62 +69,62 @@ In in-place array compaction, both pointers advance forward with distinct respon
 ```
 
 > [!NOTE]
-> **Self-Check:** What is the fundamental performance difference between calling `arr.splice(i, 1)` and using a `slow` write pointer?  
-> *Answer:* `splice()` physically shifts all remaining elements in RAM on every call ($O(n)$ work per deletion, leading to $O(n^2)$ total time). A `slow` pointer simply overwrites the memory slot at `arr[slow]` in $O(1)$ time without shifting any elements.
+> **Self-Check:** What is the performance difference between calling `arr.splice(i, 1)` and using a `slow` write pointer?  
+> *Answer:* `splice()` shifts every remaining item in memory to the left on each call ($O(n)$ work per delete, leading to $O(n^2)$ total time). A `slow` pointer directly overwrites `arr[slow]` in $O(1)$ time without moving other items.
 
 ---
 
-### 1.2 Tortoise and Hare Velocity Mechanics
+### 1.2 Tortoise and Hare Speeds
 
-When traversing pointer-linked structures (such as linked lists), pointers move at different velocities:
-* **Tortoise (`slow`):** Advances **1 step** per tick.
-* **Hare (`fast`):** Advances **2 steps** per tick.
+When moving through linked lists, the two pointers move at different speeds:
+* **Tortoise (`slow`):** Moves **1 step** at a time.
+* **Hare (`fast`):** Moves **2 steps** at a time.
 
-If a cycle exists, the fast pointer enters the cycle and laps the slow pointer from behind. Because the gap between them shrinks by exactly 1 step on every tick ($2 - 1 = 1$), collision is guaranteed without skipping. If no cycle exists, the fast pointer reaches the end (`null`) in $O(n)$ time.
+If there is a loop, the fast pointer enters the loop and catches up to the slow pointer from behind. Because the gap between them shrinks by 1 step in every round ($2 - 1 = 1$), they are guaranteed to meet. If there is no loop, the fast pointer reaches the end (`null`) in $O(n)$ time.
 
 ---
 
 ### 1.3 Pointer Movement Summary
 
-| Strategy | Speed of Slow | Speed of Fast | Primary Use Case | Time Complexity | Auxiliary Space |
+| Strategy | Speed of Slow | Speed of Fast | Main Use Case | Time Complexity | Extra Space |
 | :--- | :---: | :---: | :--- | :---: | :---: |
-| **Reader / Writer** | Moves on condition | Advances every loop | Deduplication, moving zeroes, filtering | **$O(n)$** | **$O(1)$** |
-| **Tortoise & Hare** | 1 step per tick | 2 steps per tick | Cycle detection, finding middle node | **$O(n)$** | **$O(1)$** |
-| **Three-Way Partition**| Low boundary | Mid scanner & High | Dutch National Flag (sorting 3 values) | **$O(n)$** | **$O(1)$** |
+| **Reader / Writer** | Moves on condition | Moves every step | Remove duplicates, move zeroes, filter items | **$O(n)$** | **$O(1)$** |
+| **Tortoise & Hare** | 1 step per turn | 2 steps per turn | Find loops, find middle node | **$O(n)$** | **$O(1)$** |
+| **Three-Way Partition**| Low boundary | Mid scanner & High | Dutch National Flag (sort 3 values) | **$O(n)$** | **$O(1)$** |
 
 ---
 
 ## 2. Pattern Overview
 
 ### Pattern Family
-* **Reader & Writer Pointers:** Both pointers advance forward; `fast` reads every item while `slow` writes retained elements in-place.
-* **Tortoise & Hare (Floyd's Algorithm):** 1x vs 2x speed differential for cycle detection and midpoint discovery.
-* **Dutch National Flag (3-Pointer Partitioning):** Low, Mid, and High pointers partitioning an array into three discrete segments in a single pass.
+* **Reader & Writer Pointers:** Both pointers move forward. `fast` reads every item while `slow` writes kept items into the array.
+* **Tortoise & Hare (Floyd's Algorithm):** 1-step vs 2-step speeds to find cycles and middle nodes.
+* **Dutch National Flag (3 Pointers):** Low, Mid, and High pointers that divide an array into three parts in one pass.
 
 ### Pattern Recognition Table
 
 | Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"In-place" + "$O(1)$ extra space"** | Reorganize array without allocating buffer arrays. | Reader & Writer Pointers. |
-| **"Remove duplicates from sorted array"** | Retain single copies of adjacent unique values. | `nums[fast] !== nums[slow]` overwrite. |
-| **"Remove all instances of val"** | Filter out a specific value without gaps. | Copy `nums[fast]` to `nums[slow]` when `!== val`. |
-| **"Sort 3 values" / "Dutch National Flag"** | Partition array into three segments in-place. | Three-way pointers (`low`, `mid`, `high`). |
-| **"Find middle of linked list"** | Locate midpoint in one pass. | Tortoise (1x) & Hare (2x). |
+| **"In-place" + "$O(1)$ extra space"** | Change the array without making a new copy. | Reader & Writer Pointers. |
+| **"Remove duplicates from sorted array"** | Keep only one copy of each number. | Overwrite when `nums[fast] !== nums[slow]`. |
+| **"Remove all instances of val"** | Filter out a specific value without empty gaps. | Copy `nums[fast]` to `nums[slow]` when `!== val`. |
+| **"Sort 3 values" / "Dutch National Flag"** | Group an array into 3 sections in-place. | Three pointers (`low`, `mid`, `high`). |
+| **"Find middle of linked list"** | Find the center node in one pass. | Tortoise (1 step) & Hare (2 steps). |
 
 ### When to Use
-* The problem asks to deduplicate, compact, or partition an array in-place with $O(1)$ auxiliary memory.
-* The collection is sorted or clustered, guaranteeing that duplicate values are adjacent.
-* You need to eliminate $O(n^2)$ memory-shifting operations like `splice()`.
+* The problem asks to clean up, remove duplicates, or group an array in-place using $O(1)$ extra space.
+* The array is already sorted, so duplicate values sit right next to each other.
+* You need to avoid slow $O(n^2)$ array shifts from `splice()`.
 
 ### When NOT to Use
-* Element ordering does not matter and deletions can be handled by swapping with the last element in $O(1)$.
-* Searching for pairs that sum to a target in sorted arrays (use Opposing Two Pointers).
-* Dynamic contiguous range queries with sum constraints (use Sliding Window).
+* The order of items does not matter and you can delete an item by swapping it with the last element in $O(1)$ time.
+* You need to find two numbers that add up to a target in a sorted array (use Opposing Two Pointers).
+* You need to find contiguous sub-arrays with sum or length limits (use Sliding Window).
 
 ### The $10^7$ Operations Constraint Rule
-If an array contains $n = 50,000$ elements:
-* Calling `splice()` inside a loop shifts up to $50,000$ elements on every call, executing $\approx \frac{n^2}{2} = 1.25 \times 10^9$ operations and freezing Node.js for several seconds.
-* Fast and slow pointers visit each element once with zero memory shifting ($50,000$ operations), finishing in **under 1 millisecond**.
+If an array has $n = 50,000$ items:
+* Calling `splice()` inside a loop shifts up to $50,000$ items on every call. That runs $\approx \frac{n^2}{2} = 1.25 \times 10^9$ operations and freezes Node.js for several seconds.
+* Fast and slow pointers visit each item once with zero memory shifting ($50,000$ operations). This finishes in **under 1 millisecond**.
 
 ---
 
@@ -135,25 +135,26 @@ If an array contains $n = 50,000$ elements:
 ### 3.1 Remove Duplicates from Sorted Array
 
 #### 3.1.1 Problem Statement
-Given an integer array `nums` sorted in non-decreasing order, remove the duplicates **in-place** such that each unique element appears only **once**. The relative order of the elements must be kept the same. Then return the number of unique elements in `nums`.
-Consider the number of unique elements of `nums` to be `k`. You must modify the array such that the first `k` elements contain the unique elements in original order.
+Given an integer array `nums` sorted in non-decreasing order, remove the duplicates **in-place** so that each unique element appears only **once**. Keep the relative order of the elements the same. Then return the number of unique elements in `nums`.
+
+Let `k` be the count of unique elements. You must change `nums` so that the first `k` spots hold the unique numbers in their original order.
 
 * **Sample Input 1:** `nums = [1, 1, 2]` $\to$ **Expected Output:** `k = 2`, `nums = [1, 2, _]`
 * **Sample Input 2:** `nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]` $\to$ **Expected Output:** `k = 5`, `nums = [0, 1, 2, 3, 4, _, _, _, _, _]`
 * **Constraints:** $1 \le nums.length \le 3 \times 10^4$, $-100 \le nums[i] \le 100$, `nums` is sorted in non-decreasing order.
 
 #### 3.1.2 How to Think About It
-Cards on a table: `[0, 0, 1, 1, 1, 2, 2, 3, 3, 4]`.
-Card 0 (`0`) is the very first card—it is guaranteed to be unique.
-Place your left index finger (`slow`) at card 0.
-Use your right index finger (`fast`) to scan starting at card 1:
-1. Card at `fast` is `0`. It matches the card at `slow` (`0 === 0`). Duplicate! Skip it.
-2. Card at `fast` is `1`. It does not match the card at `slow`. It is a brand-new unique number!
-3. Move your left finger to slot 1 (`slow++`) and copy the card `1` into that slot.
-4. Repeat until `fast` finishes. All unique cards are packed contiguously from slot `0` to `slow`.
+Picture cards laid out on a table: `[0, 0, 1, 1, 1, 2, 2, 3, 3, 4]`.  
+The first card (`0`) is already unique because it is the very first one.  
+Place your left index finger (`slow`) on card 0.  
+Use your right index finger (`fast`) to look through the cards starting from card 1:
+1. Card at `fast` is `0`. It matches the card at `slow` (`0 === 0`). This is a duplicate! Skip it.
+2. Card at `fast` is `1`. It does not match the card at `slow`. This is a brand new unique number!
+3. Move your left finger to slot 1 (`slow++`) and write card `1` into that slot.
+4. Keep going until `fast` reaches the end. All unique cards are now packed tightly from index `0` to `slow`.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-The naive approach loops through the array and calls `.splice(i + 1, 1)` whenever two adjacent numbers match:
+The naive way loops through the array and calls `.splice(i + 1, 1)` whenever two neighbor numbers are the same:
 
 ```javascript
 function removeDuplicatesBrute(nums) {
@@ -169,11 +170,11 @@ function removeDuplicatesBrute(nums) {
 }
 ```
 
-* **The Bottleneck:** Every call to `splice()` shifts all remaining elements left in memory ($O(n)$ work). For $30,000$ duplicates, this causes millions of memory copies ($O(n^2)$ time).
+* **The Bottleneck:** Every time `splice()` runs, it shifts all remaining items to the left in memory ($O(n)$ work). For $30,000$ duplicates, this causes millions of item shifts ($O(n^2)$ time).
 
 #### 3.1.4 The Pattern Insight
-Because `nums` is sorted, all identical numbers sit contiguously side-by-side.
-We do not need to delete elements from memory. We let `fast` search for the next number that differs from `nums[slow]`. When found, advance `slow++` and overwrite `nums[slow] = nums[fast]`.
+Because `nums` is sorted, identical numbers always sit side-by-side.  
+We do not need to delete anything. We just let `fast` search for the next number that differs from `nums[slow]`. When found, move `slow++` and write `nums[slow] = nums[fast]`.
 
 #### 3.1.5 Pseudocode
 
@@ -234,11 +235,11 @@ function removeDuplicatesSet(nums) {
   return unique.length;
 }
 ```
-* **Why it fails:** Allocating an auxiliary Set and a secondary array violates the strict $O(1)$ auxiliary space constraint.
+* **Why it fails:** Making a new `Set` and a new helper array wastes extra memory. The problem requires $O(1)$ extra space.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer scans each index from `1` to `n - 1` exactly once.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Operates strictly in-place with zero heap allocations.
+* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer checks each index from `1` to `n - 1` exactly once.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We modify the array directly without allocating extra data structures.
 
 ---
 
@@ -246,6 +247,7 @@ function removeDuplicatesSet(nums) {
 
 #### 3.2.1 Problem Statement
 Given an array `nums` with $n$ objects colored red (`0`), white (`1`), or blue (`2`), sort them **in-place** so that objects of the same color are adjacent, with the colors in the order red, white, and blue.
+
 You must solve this problem without using the library's sort function and in a single pass using $O(1)$ constant extra space.
 
 * **Sample Input 1:** `nums = [2, 0, 2, 1, 1, 0]` $\to$ **Expected Output:** `[0, 0, 1, 1, 2, 2]`
@@ -254,19 +256,19 @@ You must solve this problem without using the library's sort function and in a s
 * **Constraints:** $n == nums.length$, $1 \le n \le 300$, `nums[i]` is either `0`, `1`, or `2`.
 
 #### 3.2.2 How to Think About It
-Imagine three sorting bins marked for pool balls: Red (`0`), White (`1`), and Blue (`2`).
-Place three boundary markers along the table:
-* `low = 0`: Left boundary where the next Red (`0`) belongs.
-* `high = n - 1`: Right boundary where the next Blue (`2`) belongs.
-* `mid = 0`: Your scanner inspecting each ball.
+Imagine three bins for pool balls: Red (`0`), White (`1`), and Blue (`2`).  
+Place three markers along the table:
+* `low = 0`: The spot where the next Red (`0`) belongs.
+* `high = n - 1`: The spot where the next Blue (`2`) belongs.
+* `mid = 0`: Your scanner checking each ball one by one.
 
 As `mid` walks forward:
-1. **If ball is 0 (Red):** Swap it into the `low` bin (`swap(nums[low], nums[mid])`), then advance both `low++` and `mid++`.
-2. **If ball is 1 (White):** It is already in the correct middle segment! Simply step forward: `mid++`.
-3. **If ball is 2 (Blue):** Swap it into the `high` bin (`swap(nums[mid], nums[high])`), then shrink the blue boundary: `high--`. **Do not advance `mid`**, because the ball swapped in from `high` has not been inspected yet!
+1. **If ball is 0 (Red):** Swap it into the `low` bin (`swap(nums[low], nums[mid])`), then step both `low++` and `mid++`.
+2. **If ball is 1 (White):** It is already in the right middle zone! Simply step forward: `mid++`.
+3. **If ball is 2 (Blue):** Swap it into the `high` bin (`swap(nums[mid], nums[high])`), then shrink the blue boundary: `high--`. **Do not move `mid`**, because the new ball brought in from `high` has not been checked yet!
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-The naive approach counts the occurrences of 0, 1, and 2 in a first pass (or uses `nums.sort((a, b) => a - b)` taking $O(n \log n)$ time), then overwrites the array in a second pass:
+The naive way counts how many 0s, 1s, and 2s exist in a first pass (or sorts with `nums.sort((a, b) => a - b)` in $O(n \log n)$ time), then writes them back in a second pass:
 
 ```javascript
 function sortColorsCounting(nums) {
@@ -284,18 +286,18 @@ function sortColorsCounting(nums) {
 }
 ```
 
-* **The Bottleneck:** Requires two full passes over the array. While $O(n)$, the problem constraints explicitly require a **single-pass in-place partitioning algorithm** using pointer boundaries.
+* **The Bottleneck:** This needs two full passes over the array. While it runs in $O(n)$ time, the interview question explicitly asks for a **single-pass in-place partitioning** algorithm.
 
 #### 3.2.4 The Pattern Insight
-Use **Dutch National Flag (Three-Way Partitioning)**:
-Partition the array into four invariant regions:
-* `[0 ... low - 1]`: Confirmed `0`s.
-* `[low ... mid - 1]`: Confirmed `1`s.
-* `[mid ... high]`: Uninspected items.
-* `[high + 1 ... n - 1]`: Confirmed `2`s.
+Use the **Dutch National Flag (Three-Way Partitioning)** algorithm:  
+Divide the array into four clear zones:
+* `[0 ... low - 1]`: All confirmed `0`s.
+* `[low ... mid - 1]`: All confirmed `1`s.
+* `[mid ... high]`: Unchecked items.
+* `[high + 1 ... n - 1]`: All confirmed `2`s.
 
-The loop runs while `mid <= high`.
-When swapping with `high`, we do not advance `mid` because the newly placed element at `nums[mid]` could be `0` or `2`, which must be evaluated on the next iteration.
+The loop runs while `mid <= high`.  
+When swapping with `high`, we do not advance `mid` because the ball that arrived at `nums[mid]` could be a `0` or `2`. We must check it on the next step.
 
 #### 3.2.5 Pseudocode
 
@@ -386,11 +388,11 @@ function buggySortColors(nums) {
   return nums;
 }
 ```
-* **Why it fails:** Swapping `nums[mid]` with `nums[high]` places an unknown, uninspected value at index `mid`. Incrementing `mid++` skips that element. If the swapped value was `0`, it gets permanently trapped in the middle of the array.
+* **Why it fails:** Swapping `nums[mid]` with `nums[high]` brings an unchecked number into `nums[mid]`. Moving `mid++` skips that number. If the number was `0`, it stays stuck in the middle of the array forever.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. In every iteration, either `mid` increments or `high` decrements. The scanner covers at most $n$ total operations.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Operates strictly in-place with three integer pointer variables.
+* **Time Complexity:** $\mathbf{O(n)}$. In every step, either `mid` moves right or `high` moves left. We inspect each item at most once.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use three number pointers to sort the array directly.
 
 ---
 
@@ -398,29 +400,30 @@ function buggySortColors(nums) {
 
 #### 3.3.1 Problem Statement
 Given an integer array `nums` and an integer `val`, remove all occurrences of `val` in `nums` **in-place**. The order of the elements may be changed. Then return the number of elements in `nums` which are not equal to `val`.
-Consider the number of elements in `nums` which are not equal to `val` be `k`. You must modify the array such that the first `k` elements contain the retained elements.
+
+Let `k` be the count of elements that are not equal to `val`. You must modify `nums` so that the first `k` spots hold the kept elements.
 
 * **Sample Input 1:** `nums = [3, 2, 2, 3]`, `val = 3` $\to$ **Expected Output:** `k = 2`, `nums = [2, 2, _, _]`
 * **Sample Input 2:** `nums = [0, 1, 2, 2, 3, 0, 4, 2]`, `val = 2` $\to$ **Expected Output:** `k = 5`, `nums = [0, 1, 3, 0, 4, _, _, _]`
 * **Constraints:** $0 \le nums.length \le 100$, $0 \le nums[i], val \le 50$.
 
 #### 3.3.2 How to Think About It
-Imagine a bouncer checking an invitation list.
-The target `val` is on the banned list.
-* `slow` marks the next open seat for an approved guest (`slow = 0`).
-* `fast` walks through every person on the list:
-  - If person at `fast` is banned (`nums[fast] === val`), skip them!
-  - If person at `fast` is approved (`nums[fast] !== val`), copy them to `nums[slow]` and increment `slow++`.
+Imagine a bouncer checking a guest list.  
+The number `val` is on the banned list.  
+* `slow` marks the next chair for an approved guest (`slow = 0`).
+* `fast` walks through every person in line:
+  - If the person at `fast` is banned (`nums[fast] === val`), skip them!
+  - If the person at `fast` is approved (`nums[fast] !== val`), give them the chair at `nums[slow]` and move `slow++`.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-Using `splice()` inside a loop shifts elements left every time `val` is found, burning $O(n^2)$ time.
+Using `.splice()` inside a loop shifts items left every time `val` is found. This burns $O(n^2)$ time.
 
 #### 3.3.4 The Pattern Insight
-Instead of shifting memory, overwrite values in-place: `fast` reads every item, and `nums[slow] = nums[fast]` only executes when the item is **not** equal to `val`. `slow` naturally tracks the count of kept items.
+Instead of shifting memory, overwrite items in-place. `fast` reads every item, and we only write `nums[slow] = nums[fast]` when the item is **not** equal to `val`. `slow` naturally keeps count of all kept items.
 
 > [!NOTE]
-> **Self-Check:** Why does `removeDuplicates` return `slow + 1`, whereas `removeElement` returns `slow`?  
-> *Answer:* In `removeDuplicates`, `slow` represents the *index* of the last unique item, so count is `slow + 1`. In `removeElement`, `slow` begins at 0 and increments *immediately after* writing each retained item, so it already stores the total *count* of retained items.
+> **Self-Check:** Why does `removeDuplicates` return `slow + 1`, while `removeElement` returns `slow`?  
+> *Answer:* In `removeDuplicates`, `slow` is the *index* of the last unique item, so the total count is `slow + 1`. In `removeElement`, `slow` starts at 0 and increments *right after* writing each kept item, so it already holds the total *count* of kept items.
 
 #### 3.3.5 Pseudocode
 
@@ -483,31 +486,31 @@ function buggyRemoveElement(nums, val) {
   return slow;
 }
 ```
-* **Why it fails:** Advancing `slow` when `nums[fast] === val` corrupts the front of the array by preserving the banned values and overwriting valid data.
+* **Why it fails:** Moving `slow` when `nums[fast] === val` ruins the front of the array. It keeps the banned numbers and overwrites valid numbers.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer executes a single pass over `nums`.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Modifies array strictly in-place.
+* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer takes one single pass through `nums`.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We rewrite items directly in the existing array.
 
 ---
 
 ## 4. Tricky Edge Cases
 
 * **Index vs Count Confusion (`slow` vs `slow + 1`):**
-  - In `removeDuplicates`, `slow` marks the *index* of the last unique item; the count is **`slow + 1`**.
-  - In `removeElement`, `slow` increments *after* writing; `slow` is already the **count**.
-* **All Elements Match Target (`nums = [2, 2, 2]`, `val = 2`):** `slow` never increments, and the function correctly returns `0`.
-* **All Elements Unique (`nums = [1, 2, 3]`):** `fast` and `slow` advance side-by-side. The check `if (slow !== fast)` prevents redundant self-swapping writes.
-* **Empty Input Array (`[]`):** Always guard small arrays upfront so loops do not throw index errors and return `0` immediately.
+  - In `removeDuplicates`, `slow` is the *index* of the last unique item, so return **`slow + 1`**.
+  - In `removeElement`, `slow` increments *after* writing, so `slow` is already the **count**.
+* **All Items Match Target (`nums = [2, 2, 2]`, `val = 2`):** `slow` never increments, and the function correctly returns `0`.
+* **All Items Unique (`nums = [1, 2, 3]`):** `fast` and `slow` move side-by-side. The check `if (slow !== fast)` prevents copying an item onto itself.
+* **Empty Input Array (`[]`):** Always check empty arrays at the top so loops do not throw errors and return `0` immediately.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Fast & Slow Mechanics:** Both pointers move in the same direction. `fast` scans every item; `slow` marks the boundary of kept items.
-* **Eliminates `splice()`:** Replaces $O(n^2)$ memory-shifting deletions with $O(1)$ in-place overwrites.
-* **Sorting Synergy:** When an array is sorted, duplicates are guaranteed to be adjacent (`nums[fast] !== nums[slow]`).
-* **Velocity Difference:** Moving at 1x vs 2x speed detects cycles in linked structures without extra memory.
+* **Fast & Slow Mechanics:** Both pointers move in the same direction. `fast` reads every item; `slow` marks the spot for kept items.
+* **Eliminates `splice()`:** Replaces slow $O(n^2)$ memory shifts with fast $O(1)$ in-place overwrites.
+* **Sorted Array Synergy:** When an array is sorted, matching items always sit next to each other (`nums[fast] !== nums[slow]`).
+* **Speed Difference:** Moving at 1-step vs 2-step speeds detects cycles in linked structures without extra memory.
 
 ---
 
@@ -515,28 +518,28 @@ function buggyRemoveElement(nums, val) {
 
 ### 6.1 Remove Duplicates from Sorted Array II
 
-Given an integer array `nums` sorted in non-decreasing order, remove some duplicates in-place such that each unique element appears **at most twice**. The relative order of the elements should be kept the same. Return `k` after placing the final result in the first `k` slots of `nums`.
+Given an integer array `nums` sorted in non-decreasing order, remove some duplicates in-place so that each unique element appears **at most twice**. Keep the relative order of the elements the same. Return `k` after placing the final result in the first `k` spots of `nums`.
 
 * **Difficulty:** Medium | **Focus:** At Most K Duplicates
 * **Sample Input 1:** `nums = [1, 1, 1, 2, 2, 3]` $\to$ **Expected Output:** `5`, `nums = [1, 1, 2, 2, 3, _]`
 * **Sample Input 2:** `nums = [0, 0, 1, 1, 1, 1, 2, 3, 3]` $\to$ **Expected Output:** `7`, `nums = [0, 0, 1, 1, 2, 3, 3, _]`
 * **Constraints:** $1 \le nums.length \le 3 \times 10^4$, $-10^4 \le nums[i] \le 10^4$, `nums` is sorted.
-* **Hint 1:** Any array with length $\le 2$ is already valid. Initialize `slow = 2` and `fast = 2`.
-* **Hint 2:** Compare `nums[fast]` with `nums[slow - 2]`. If they are different, copy `nums[slow] = nums[fast]` and increment `slow++`.
+* **Hint 1:** Any array with length $\le 2$ is already valid. Start with `slow = 2` and `fast = 2`.
+* **Hint 2:** Compare `nums[fast]` with `nums[slow - 2]`. If they are different, write `nums[slow] = nums[fast]` and increment `slow++`.
 
 ---
 
 ### 6.2 Linked List Cycle
 
-Given `head`, the head of a singly linked list, determine if the linked list has a cycle in it. Return `true` if there is a cycle; otherwise, return `false`.
+Given `head`, the head of a singly linked list, check if the linked list has a cycle in it. Return `true` if there is a cycle; otherwise, return `false`.
 
-* **Difficulty:** Easy | **Focus:** Tortoise & Hare Velocity Differential
+* **Difficulty:** Easy | **Focus:** Tortoise & Hare Speeds
 * **Sample Input 1:** `head = [3, 2, 0, -4]`, `pos = 1` $\to$ **Expected Output:** `true`
 * **Sample Input 2:** `head = [1, 2]`, `pos = 0` $\to$ **Expected Output:** `true`
 * **Sample Input 3:** `head = [1]`, `pos = -1` $\to$ **Expected Output:** `false`
 * **Constraints:** The number of nodes in the list is in the range $[0, 10^4]$, $-10^5 \le Node.val \le 10^5$.
-* **Hint 1:** Initialize two pointers: `slow = head` and `fast = head`.
-* **Hint 2:** In each step, advance `slow` by 1 node and `fast` by 2 nodes. If `fast` or `fast.next` hits `null`, there is no cycle. If `slow === fast`, a cycle exists.
+* **Hint 1:** Set two pointers: `slow = head` and `fast = head`.
+* **Hint 2:** In each step, move `slow` by 1 node and `fast` by 2 nodes. If `fast` or `fast.next` hits `null`, there is no cycle. If `slow === fast`, a cycle exists.
 
 ---
 
@@ -544,12 +547,12 @@ Given `head`, the head of a singly linked list, determine if the linked list has
 
 Given the `head` of a singly linked list, return the middle node of the linked list. If there are two middle nodes, return the second middle node.
 
-* **Difficulty:** Easy | **Focus:** Midpoint Discovery
+* **Difficulty:** Easy | **Focus:** Finding the Middle Node
 * **Sample Input 1:** `head = [1, 2, 3, 4, 5]` $\to$ **Expected Output:** Node with value `3`
 * **Sample Input 2:** `head = [1, 2, 3, 4, 5, 6]` $\to$ **Expected Output:** Node with value `4`
 * **Constraints:** The number of nodes in the list is in the range $[1, 100]$, $1 \le Node.val \le 100$.
-* **Hint 1:** Initialize `slow = head` and `fast = head`.
-* **Hint 2:** In each step, advance `slow = slow.next` (1 step) and `fast = fast.next.next` (2 steps). When `fast` reaches `null` or `fast.next === null`, `slow` is at the midpoint.
+* **Hint 1:** Set `slow = head` and `fast = head`.
+* **Hint 2:** In each step, move `slow = slow.next` (1 step) and `fast = fast.next.next` (2 steps). When `fast` reaches `null` or `fast.next === null`, `slow` is right at the middle.
 
 ---
 

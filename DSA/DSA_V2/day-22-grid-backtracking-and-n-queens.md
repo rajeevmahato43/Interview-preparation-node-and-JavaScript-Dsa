@@ -6,15 +6,17 @@
 
 </nav>
 
+---
+
 ## 1. Grid Backtracking & Spatial Constraints
 
-In linear backtracking, we explore a 1D sequence of numbers or characters. In Grid Backtracking, our decision space expands into a 2D coordinate plane ($M \times N$). Every step requires making spatial decisions—moving Up, Down, Left, or Right—while respecting geometric boundaries and avoiding infinite cycles.
+Before this, we made choices along a single flat line of numbers. In **Grid Backtracking**, we move across a 2D grid like a chess board or a map ($M \times N$). At each step, we can move in 4 directions: Up, Down, Left, or Right. We must stay inside the grid walls and never walk in circles.
 
-In Constraint Satisfaction Problems (such as N-Queens or Sudoku), decisions are governed by global spatial invariants: no two pieces may share the same row, column, or diagonal line.
+In puzzle problems like N-Queens or Sudoku, we also follow strict board rules: no two pieces can sit on the same row, column, or diagonal line.
 
-Consider two physical metaphors:
-1. **The Sinking Stepping Stones (Word Search):** You must spell a password by stepping across labeled stones across a pond. When you step on stone `(r, c)`, your weight temporarily submerges it underwater (Choose: `board[r][c] = '#'`). You can only step to adjacent stones (Up, Down, Left, Right). If you reach a stone that does not match the required letter, you pull your foot back, and the stone floats back up to the surface (Unchoose: `board[r][c] = originalChar`). The stone is now available for alternative paths.
-2. **The Queen's Laser Sightlines (N-Queens):** A chess queen attacks along rows, columns, and diagonals. Instead of visually scanning all eight directions across the entire board for every placement, imagine installing three laser sensors: one pointing down the column, one down the main diagonal (\), and one down the anti-diagonal (/). If any sensor detects an active beam, the position is rejected in $O(1)$ time.
+Physical visual analogies:
+1. **Stepping Stones in a Pond (Word Search):** You must spell out a secret word by walking on labeled stones across a pond. When you step on a stone, your weight pushes it under the water (Choose: `board[r][c] = '#'`). That way, you cannot step on it twice for the same word. You can only step to neighbor stones (Up, Down, Left, Right). If you hit a stone that has the wrong letter, you pull your foot back, and the stone floats back up to the top of the water (Unchoose: `board[r][c] = originalChar`). Now other paths can use that stone!
+2. **Laser Beams on a Chessboard (N-Queens):** A queen in chess attacks across its row, column, and diagonals. Instead of looking across all 8 directions every time you place a queen, imagine shining three laser beams from each queen: one down the column, one along the main diagonal (\), and one along the reverse diagonal (/). If any laser beam is already shining on a square, you know right away that the square is not safe!
 
 ```javascript
 // Baseline demonstration of 4-directional grid movement with in-place rollback
@@ -57,13 +59,13 @@ console.log("Reachable cells from (0,0):", countReachableCells(sampleGrid, 0, 0)
 
 ### 1.1 In-Place Grid Masking
 
-In an $M \times N$ matrix, maintaining a separate 2D boolean array `visited` requires allocating $M$ arrays on the V8 heap and constantly reading heap pointer offsets. 
+In an $M \times N$ grid, making a whole new 2D `visited` array wastes memory and slows down Node.js. 
 
-Instead, modify the grid in-place:
-1. Save the original character: `const temp = board[r][c];`
-2. Mark as visited with an invalid sentinel character: `board[r][c] = '#';` (Choose)
-3. Explore the 4 orthogonal neighbors recursively (Explore)
-4. Restore original character: `board[r][c] = temp;` (Unchoose / Rollback)
+Instead, change the grid directly in-place:
+1. Save the current letter: `const temp = board[r][c];`
+2. Mark it as visited using a special character like `'#'`: `board[r][c] = '#';` (Choose)
+3. Step to the 4 neighbor cells recursively (Explore)
+4. Put the original letter back: `board[r][c] = temp;` (Unchoose / Rollback)
 
 ```text
 Walking across cells:
@@ -75,11 +77,12 @@ Finish:    [ 'A', 'B' ]   (Restoring 'A' - Board restored to pristine state)
 ```
 
 > [!NOTE]
-> Why is in-place masking faster than maintaining a `visited` Set of string keys `"r,c"`? Because string concatenation and Set hashing in tight recursive loops create hundreds of thousands of heap objects. In-place modification requires zero heap allocations.
+> Self-Check: Why is changing the grid in-place faster than keeping a `visited` Set of string keys `"r,c"`?
+> Answer: Making strings like `"r,c"` inside a deep recursive loop creates thousands of tiny objects in memory. Changing the grid directly uses zero extra heap memory.
 
 ### 1.2 Diagonal Mathematical Invariants
 
-On an $N \times N$ grid, determining whether cell `(r, c)` shares a diagonal with an existing queen can be checked in $O(1)$ time using coordinate arithmetic:
+On an $N \times N$ board, you can check whether a queen attacks cell `(r, c)` on a diagonal in fast $O(1)$ time with simple math:
 
 ```text
 =============================================================================
@@ -102,7 +105,7 @@ On an $N \times N$ grid, determining whether cell `(r, c)` shares a diagonal wit
 =============================================================================
 ```
 
-By storing active `row - col` and `row + col` values inside two small sets (`mainDiags`, `antiDiags`), safety checks take $O(1)$ time.
+By storing active `row - col` and `row + col` values inside two small sets (`mainDiags`, `antiDiags`), safety checks take instant $O(1)$ time.
 
 ### 1.3 Operations Reference Table
 
@@ -168,7 +171,7 @@ Given an $m \times n$ grid of characters `board` and a string `word`, return `tr
 - **Constraints:** $1 \le m, n \le 6$, $1 \le word.length \le 15$.
 
 #### 3.1.2 How to Think About It
-Imagine spelling a word across stepping stones in a pond. You scan the pond for the first letter `'A'`. Once found, you stand on it (submerging it so you cannot step on it again). You look around in the four cardinal directions for the next letter `'B'`. When found, you step to `'B'`. If at any point no neighboring stone matches the required next letter, you step backward and restore the previous stone.
+Imagine spelling a word across stepping stones in a pond. You scan the pond for the first letter `'A'`. Once found, you stand on it (pushing it underwater so you do not step on it twice). You look around in the four directions for the next letter `'B'`. When found, you step to `'B'`. If you get stuck and no neighbor stone has the next letter, you step back and let the stone float back up.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 The naive approach clones a 2D boolean `visited` matrix on every step:
@@ -185,15 +188,15 @@ function existNaive(board, word) {
     nextVisited[r][c] = true;
 
     return dfs(r + 1, c, idx + 1, nextVisited) ||
-           dfs(r - 1, c, idx + 1, nextVisited) ||
-           dfs(r, c + 1, idx + 1, nextVisited) ||
-           dfs(r, c - 1, idx + 1, nextVisited);
+            dfs(r - 1, c, idx + 1, nextVisited) ||
+            dfs(r, c + 1, idx + 1, nextVisited) ||
+            dfs(r, c - 1, idx + 1, nextVisited);
   }
   // ...
 }
 ```
 
-The bottleneck is memory churn. Cloning an array of arrays at each of the $4^L$ branch steps creates millions of intermediate objects on the V8 heap, triggering heavy garbage collection pauses.
+The bottleneck is memory churn. Cloning an array of arrays at each of the $4^L$ branch steps creates millions of temporary objects on the V8 heap, triggering heavy garbage collection pauses.
 
 #### 3.1.4 The Pattern Insight
 1. **In-Place Board Masking:** Save `board[r][c]`, overwrite with `'#'`, recurse into the 4 neighbors, and restore `board[r][c]` upon return. Auxiliary memory drops to $O(L)$ stack frames with zero heap allocations.
@@ -336,7 +339,7 @@ The $n$-queens puzzle asks to place $n$ queens on an $n \times n$ chessboard suc
 - **Constraints:** $1 \le n \le 9$.
 
 #### 3.2.2 How to Think About It
-On an $n \times n$ board, no two queens can share a row. Therefore, each row must contain exactly one queen. We proceed row by row from row 0 to row $n - 1$. At row $r$, we test columns $c = 0 \dots n - 1$. A column is safe only if no existing queen occupies that column, the main diagonal ($r - c$), or the anti-diagonal ($r + c$).
+On an $n \times n$ board, two queens can never sit on the same row. That means every single row must have exactly one queen. We can go row by row: row 0, row 1, down to row $n - 1$. In each row, we try columns from 0 to $n - 1$. A square is safe only if no queen already sits in that column, main diagonal ($r - c$), or anti-diagonal ($r + c$).
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Placing $n$ queens randomly across $n^2$ positions creates $\binom{n^2}{n}$ configurations. For $n = 8$, this is $\approx 4.4 \times 10^9$ possibilities. Furthermore, scanning the board in 8 directions to verify safety takes $O(n)$ time per cell.
@@ -467,7 +470,7 @@ Consider a rat placed at `(0, 0)` in a square matrix `m` of order $n \times n$. 
 - **Constraints:** $2 \le n \le 5$, cells are `0` or `1`.
 
 #### 3.3.2 How to Think About It
-The rat starts at the top-left corner. From each open cell, it can take one of four steps: Down, Left, Right, or Up. To produce paths in alphabetical order (`'D'`, `'L'`, `'R'`, `'U'`), we attempt directions in that exact sequence. When a cell is entered, it is marked blocked (`0`) so the rat cannot loop back into it. When backing out, the cell is marked open (`1`) again.
+The rat starts at the top-left corner `(0, 0)`. From any open square, it can step in 4 directions: Down, Left, Right, or Up. To list the paths in alphabetical order (`'D'`, `'L'`, `'R'`, `'U'`), we try moves in that exact order. When the rat enters a square, it closes the door behind it (`0`) so it does not walk in circles. When backing out, it opens the door (`1`) again.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Naive path generation without marking visited cells creates infinite ping-pong cycles between adjacent open cells (`D -> U -> D -> U`), crashing with call stack overflow.
@@ -501,7 +504,6 @@ function findPath(m, n):
                 dfs(nr, nc)
                 path.pop()
         m[r][c] = 1 // rollback
-
     dfs(0, 0)
     return result
 ```

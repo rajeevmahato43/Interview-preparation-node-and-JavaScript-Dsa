@@ -18,13 +18,13 @@ We strictly reject rote memorization, "magic trick" algorithms, and raw informat
 ## Core Pillars & Frameworks
 
 Every generated lecture must satisfy:
-1. **The 5 Success Criteria:** Plain English intuition before code, independent brute-force derivation, structured 45-second pitches, pattern recognition via constraint triggers, and V8/Node.js production application.
+1. **The 5 Success Criteria:** Basic everyday English intuition before code, independent brute-force derivation, structured 45-second pitches, pattern recognition via constraint triggers, and V8/Node.js production application.
 2. **Topic-Appropriate Architecture:** Reject rigid, one-size-fits-all templates. Foundational theory lectures (such as Big O & Complexity Analysis, JavaScript Execution Model, Event Loop, or System Architecture) must focus 100% on their core subject matter—teaching line-by-line calculation, memory behavior, runtime internals, and analysis problems—without forcing artificial pattern-recognition tables or unrelated LeetCode problem walkthroughs.
 3. **The 8-Part Logic-Building Problem Blueprint:** For coding problems, strictly follow the 8-part progression (`X.Y.1 Problem Statement` to `X.Y.8 Complexity Derivation`).
 4. **No Artificial Line Count Limits:** Never constrain lectures to arbitrary line counts. Lectures can be as long and comprehensive as necessary to deliver exhaustive, world-class depth, line-by-line mathematical derivations, and complete clarity without superficial summaries or forced truncation.
 5. **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings.
 6. **No Preachy Meta-Interview Talk:** Avoid writing meta-interview filler like "In technical interviews, you must distinguish between...", "Interviewers will test you on...", or "A common interview trick is...". Deliver the engineering, computational, and systems insights directly.
-7. **Basic English Mandate:** Always use simple, clear words. Define core concepts in simple everyday language. Avoid heavy academic words or confusing jargon.
+7. **Basic English Mandate:** Always write in simple, direct, Basic Everyday English. Avoid heavy words, stiff academic speech, or confusing jargon. Break long sentences into short, punchy statements and use everyday vocabulary that any non-native English speaker can easily understand.
 8. **Dual-Case Implementations:** Always show `✅ CORRECT / POSITIVE CASE` alongside `❌ ANTI-PATTERN / COMMON BUG`.
 9. **Direct Clean Runnable Code:** Code blocks must be self-contained Node.js functions with example calls (`console.log`) without requiring `assert` imports.
 

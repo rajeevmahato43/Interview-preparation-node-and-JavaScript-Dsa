@@ -6,17 +6,22 @@
 
 </nav>
 
+---
+
 ## 1. Binary Heap & Priority Queue Fundamentals
 
-A standard FIFO queue serves elements strictly in the order they arrived. However, real-world backend systems require prioritizing tasks based on urgency, cost, deadline, or weight. A Priority Queue is an Abstract Data Type (ADT) where each element has a priority, and the element with the highest (or lowest) priority is always served first.
+A normal queue serves people in the order they line up (first come, first served). But in real-world systems, some jobs are much more urgent than others. A **Priority Queue** is a list where every item has a priority level, and the most important item is always pulled out first.
 
-A Binary Heap is the standard data structure used to implement a Priority Queue. It represents a Complete Binary Tree stored inside a single flat contiguous array with zero pointer overhead.
+A **Binary Heap** is the best way to build a priority queue. It looks like a balanced tree, but it is actually stored inside one flat, simple array with no node objects or pointers:
 
-- **Complete Binary Tree:** A binary tree where every level is completely filled, except possibly the last level, which is filled strictly from left to right with no gaps.
-- **Min-Heap Invariant:** For every node $i$ other than the root: $\text{val}(\text{parent}(i)) \le \text{val}(i)$. The absolute minimum element sits at index `0`.
-- **Max-Heap Invariant:** For every node $i$ other than the root: $\text{val}(\text{parent}(i)) \ge \text{val}(i)$. The absolute maximum element sits at index `0`.
+- **Complete Binary Tree:** A tree where every level is full, and the bottom level is filled strictly from left to right with no gaps.
+- **Min-Heap Rule:** Every parent is smaller than or equal to its children. The smallest number in the whole heap always sits right at index `0`.
+- **Max-Heap Rule:** Every parent is larger than or equal to its children. The largest number in the whole heap always sits right at index `0`.
 
-Imagine a hospital emergency room triage. In a standard bank queue, Person A arrived at 9:00 AM and is served before Person B who arrived at 9:01 AM. In an emergency room, Patient A arrives with a mild wrist sprain (Priority 3). Patient B arrives with an ear infection (Priority 4). Patient C arrives in an ambulance with severe cardiac arrest (Priority 1). Patient C does not wait behind Patients A and B. Patient C bubbles directly to the top of the triage list in $O(\log n)$ time and is treated immediately in $O(1)$ time.
+Imagine a hospital emergency room:
+- In a bank line, Person A arrived at 9:00 AM and is helped before Person B who arrived at 9:01 AM.
+- In an emergency room, Patient A arrives with a small sprain (Priority 3). Patient B arrives with an earache (Priority 4). Then an ambulance arrives with Patient C who is having a heart attack (Priority 1).
+- Patient C does not wait behind Patients A and B. Patient C bubbles right up to the front of the line in fast $O(\log n)$ time and is seen immediately in $O(1)$ time!
 
 ```javascript
 // Production-grade MinHeap supporting custom comparator functions
@@ -106,7 +111,7 @@ console.log("New min element:", testHeap.peek());   // Output: 20
 
 ### 1.1 Complete Binary Tree Array Index Arithmetic
 
-Because a binary heap is a complete binary tree with no missing nodes, it can be mapped directly into an array without storing node objects or child pointers:
+Because a heap has no gaps, we can store it in a normal array:
 
 ```text
 Array representation:
@@ -121,8 +126,8 @@ Parent-Child Formulas:
 ```
 
 > [!NOTE]
-> Why are array-backed binary heaps faster than balanced BSTs in practice despite both having $O(\log n)$ operations?
-> Because an array stores elements contiguously in RAM, maximizing L1 and L2 CPU cache line hits. Tree nodes with object pointers are scattered across the V8 heap, causing CPU cache misses on pointer dereferences.
+> Self-Check: Why are array-based heaps faster in practice than tree structures with node objects, even though both take $O(\log n)$ time?
+> Answer: Array items sit side by side in memory. The computer's CPU cache can read them all at once. Tree nodes with object pointers are scattered in memory, which forces the CPU to wait on slow memory lookups.
 
 ### 1.2 Bubble-Up and Bubble-Down Mechanics
 
@@ -191,7 +196,7 @@ Given an integer array `nums` and an integer `k`, return the $k$ most frequent e
 - **Constraints:** $1 \le nums.length \le 10^5$, $k$ is in range $[1, \text{unique elements}]$.
 
 #### 3.1.2 How to Think About It
-Suppose you are tracking the top 2 bestselling books in a store. You keep a small podium that holds exactly 2 books. The book on the bottom of the podium is the current lowest seller among the top 2. When a new book arrives, if it has sold more copies than the book on the bottom of the podium, you kick out the bottom book and place the new one on the podium. At all times, the podium holds the top 2 sellers.
+Imagine tracking the top 2 bestselling books in a bookstore. You have a small display table with room for exactly 2 books. The book on the left is the lowest seller among the top 2. When a new book arrives, if it has sold more copies than the book on the left, you kick out the weaker book and put the new book on the table. At all times, the table holds the top 2 bestsellers.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 Count frequencies using a map, dump all unique entries into an array, and sort descending by frequency:
@@ -289,7 +294,7 @@ You are given an array of $k$ linked lists `lists`, each linked list is sorted i
 - **Constraints:** $0 \le k \le 10^4$, total nodes across all lists $\le 10^4$.
 
 #### 3.2.2 How to Think About It
-Imagine $K$ competitors standing at the front of $K$ lines of people sorted by height. The shortest person in the room must be one of the $K$ people standing at the front of the lines. You compare the $K$ front runners, take the shortest one, and have the next person in their line step forward.
+Imagine $K$ lines of people sorted by height, from shortest to tallest. The shortest person in the whole room must be standing at the front of one of those $K$ lines. You compare the $K$ people at the front, pick the shortest one, and have the next person in their line step up.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Extracting all node values into a giant array, sorting it with `arr.sort((a, b) => a - b)`, and building a new linked list:
@@ -411,10 +416,10 @@ The median is the middle value in an ordered integer list. If the size of the li
 - **Constraints:** $-10^5 \le num \le 10^5$, at most $5 \times 10^4$ calls to `addNum` and `findMedian`.
 
 #### 3.3.2 How to Think About It
-Imagine splitting all numbers into two equal halves:
+Imagine splitting all numbers into two equal groups:
 - A lower half containing all numbers $\le$ the median.
 - An upper half containing all numbers $\ge$ the median.
-The median only depends on the **largest number in the lower half** and the **smallest number in the upper half**. All other numbers in the stream do not affect the median calculation.
+The median only depends on two numbers: the **largest number in the lower half** and the **smallest number in the upper half**. All other numbers do not matter!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Inserting numbers into an array and calling `arr.sort((a, b) => a - b)` on every call to `findMedian()`:

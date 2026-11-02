@@ -8,7 +8,7 @@ Every lecture and study guide must teach the underlying concepts thoroughly befo
 
 When summarizing a core topic or pattern:
 - Provide a concise, spoken-style summary of the topic.
-- Use simple English and clean physical comparisons.
+- Use simple, Basic Everyday English and clean physical comparisons.
 - Explain what it is, what bottleneck it solves, its time/space complexity, and where it is used in real systems.
 - Avoid meta-interview filler phrases (e.g. do not write "In technical interviews, you should say..."). Deliver the engineering pitch directly.
 

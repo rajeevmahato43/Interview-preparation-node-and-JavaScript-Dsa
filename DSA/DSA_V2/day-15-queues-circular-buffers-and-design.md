@@ -10,15 +10,20 @@
 
 ## 1. Queues Foundation
 
-A **Queue** is a linear data structure that operates strictly on the **FIFO (First-In, First-Out)** principle. Elements are added at the rear (**Enqueue**) and removed from the front (**Dequeue**). The earliest element added is always the very first element to be served or removed.
+A **Queue** is a line of items that follows one main rule: **FIFO (First-In, First-Out)**. This means the first item to enter the line is always the first item to leave. You add new items to the back (**Enqueue**) and remove items from the front (**Dequeue**).
 
-Imagine standing in line at a bank teller. Customer A arrives first and stands at the counter window (the **front** or **head**). Customer B arrives next and stands directly behind Customer A (the **rear** or **tail**). Customer C arrives and stands behind B. When the teller finishes serving Customer A, Customer A exits through the front door, and Customer B steps up to the window. No one is permitted to cut into the front of the line or leave from the middle.
+To picture this physically, imagine standing in line at a bank:
+* Customer A arrives first and stands at the counter window (the **front**).
+* Customer B arrives next and stands behind Customer A (the **back**).
+* Customer C arrives and stands behind Customer B.
+* When the teller finishes with Customer A, Customer A leaves through the front door, and Customer B steps up to the window.
+* No one can cut in line or leave from the middle.
 
-A **Circular Buffer (Ring Buffer)** is a fixed-size queue implemented over a fixed-length array where the end of the array wraps around to the beginning using modulo arithmetic. 
+A **Circular Buffer (Ring Buffer)** is a fixed-size queue built using an array where the end of the array wraps right back around to the beginning using modulo math (`%`).
 
-Think of a circular airport luggage carousel with 8 physical slots numbered 0 through 7:
-- Suitcases are loaded onto open slots at the rear. When slot 7 is filled, the next suitcase drops into slot 0, wrapping around in a circle.
-- Passengers pick up their bags from the front. The carousel does not rebuild itself or shift suitcases when one is lifted off; the front pointer simply advances clockwise to the next slot.
+Think of a circular luggage carousel at an airport with 8 slots numbered 0 to 7:
+* Suitcases drop onto open slots at the back. When slot 7 is filled, the next suitcase drops into slot 0, wrapping around in a circle.
+* Passengers pick up bags from the front. The carousel does not rebuild itself or move other bags when one bag is lifted off; the front pointer simply moves clockwise to the next slot.
 
 ```text
 CIRCULAR BUFFER (CAPACITY = 6):
@@ -95,124 +100,103 @@ console.log(queue.dequeue()); // 10
 console.log(queue.size());    // 2
 ```
 
+---
+
 ### 1.1 The Array Shift Performance Trap
 
-In JavaScript, developers often use native arrays to represent queues:
+In JavaScript, developers often use normal arrays to build queues:
+* `push()` adds an item to the end in fast $O(1)$ time.
+* `shift()` removes an item from the front.
 
-```javascript
-// ❌ ANTI-PATTERN: Array shift() turns dequeue into an O(n) operation
-const queue = [];
-queue.push(10);            // O(1) enqueue
-const item = queue.shift(); // O(n) DEQUEUE BOTTLENECK!
-```
+**Why `shift()` is a dangerous trap:**  
+When you call `arr.shift()`, JavaScript must physically shift every remaining item in memory one spot to the left.  
+If your queue has $100,000$ items, calling `shift()` moves up to $100,000$ items on every single call! Doing this inside a loop creates an $O(n^2)$ bottleneck that freezes Node.js.
 
-JavaScript arrays are stored in contiguous memory blocks. When `arr.shift()` removes index 0, the V8 engine must copy and shift every single remaining element ($1$ to $n - 1$) one memory slot to the left. 
+Always use a linked list or circular buffer for queues where you need true $O(1)$ dequeue speed.
 
-In a backend service processing a stream of $100,000$ queued tasks, calling `shift()` on each task forces $100,000 \times 100,000 / 2 = 5 \times 10^9$ memory operations. Because JavaScript runs on a single main thread, this contiguous memory movement blocks the Node.js event loop for several seconds.
+---
 
-> [!NOTE]
-> Self-Check: Why is `arr.pop()` fast ($O(1)$) while `arr.shift()` is slow ($O(n)$) in V8?
-> Answer: `arr.pop()` removes an element from the end of the contiguous array, requiring only a length decrement. `arr.shift()` removes the first element, requiring every remaining element in memory to be moved leftward by one slot.
+### 1.2 Circular Buffer Wrap-Around
 
-### 1.2 Doubly-Linked Queue Mechanics
+A circular buffer uses the modulo operator (`%`) to wrap indices around automatically:
 
-A singly or doubly linked list with explicit `head` and `tail` pointers provides guaranteed worst-case $O(1)$ operations for both enqueue and dequeue:
+$$\text{nextIndex} = (\text{currentIndex} + 1) \pmod{\text{capacity}}$$
 
 ```text
-LINKED QUEUE ARCHITECTURE:
-
-Head (Dequeue side)                         Tail (Enqueue side)
-       │                                           │
-       ▼                                           ▼
-   ┌───────┬──────┐   ┌───────┬──────┐   ┌───────┬──────┐
-   │ val:1 │ next ├──>│ val:2 │ next ├──>│ val:3 │ null │
-   └───────┴──────┘   └───────┴──────┘   └───────┴──────┘
-
-Enqueue(4): Create Node(4). Point tail.next = Node(4). Update tail = Node(4).  (O(1))
-Dequeue():   Read head.val. Update head = head.next.                           (O(1))
+Array of length 4: [ 0, 1, 2, 3 ]
+(0 + 1) % 4 = 1
+(1 + 1) % 4 = 2
+(2 + 1) % 4 = 3
+(3 + 1) % 4 = 0  <-- Wraps back to slot 0!
 ```
 
-Because node additions and removals only reassign pointer references, no elements ever shift in memory.
+---
 
-### 1.3 Circular Buffer Mechanics
+### 1.3 Empty vs Full with Size Tracking
 
-When a queue has a known maximum capacity (such as an audio playback buffer, network socket buffer, or sliding telemetry window), a **Circular Buffer (Ring Buffer)** achieves constant $O(1)$ operations while completely avoiding garbage collection churn.
-
-Instead of allocating new node objects on the heap, a circular buffer pre-allocates a fixed array of size $k$ and manages positions using modulo arithmetic:
-
-```text
-STATE VARIABLES:
-- buffer: Fixed array of length k
-- head: Index of oldest element
-- size: Number of active elements currently stored (0 <= size <= k)
-- capacity: Maximum capacity k
-
-FORMULAS:
-- Insertion index (tail):  (head + size) % capacity
-- Read rear index:         (head + size - 1) % capacity
-- Advance head on dequeue: (head + 1) % capacity
-- Full condition:          size === capacity
-- Empty condition:         size === 0
-```
+In a circular buffer, if you only track `head` and `tail`, both an empty buffer and a full buffer have `head === tail`.  
+To fix this ambiguity, always keep a simple `size` number variable:
+* `isEmpty()`: `size === 0`
+* `isFull()`: `size === capacity`
+* Insertion index: `(head + size) % capacity`
+* Last element index: `(head + size - 1) % capacity`
 
 > [!NOTE]
-> Self-Check: How does tracking an explicit `size` variable eliminate the classical circular buffer ambiguity?
-> Answer: Without a `size` variable, both an empty buffer and a full buffer have `head === tail`. An explicit `size` counter makes empty (`size === 0`) and full (`size === capacity`) unambiguous.
+> **Self-Check:** How does tracking an explicit `size` variable eliminate ambiguity in a circular buffer?  
+> *Answer:* Without a `size` count, both an empty buffer and a full buffer have `head === tail`. Keeping a separate `size` counter makes empty (`size === 0`) and full (`size === capacity`) completely distinct and easy to check.
+
+---
 
 ### 1.4 Queue Implementations Reference
 
-| Implementation | Enqueue Time | Dequeue Time | Space Overhead | Best Used When |
+| Implementation | Enqueue Time | Dequeue Time | Extra Space | Best Used When |
 | :--- | :---: | :---: | :---: | :--- |
-| **Naive JS Array (`shift`)** | $O(1)$ amortized | $O(n)$ (Slow) | Low | Small scripts with $< 100$ items |
+| **Naive JS Array (`shift`)** | $O(1)$ on average | $O(n)$ (Slow) | Low | Small scripts with $< 100$ items |
 | **Linked List Queue** | $O(1)$ strict | $O(1)$ strict | High (Node pointers) | Unbounded dynamic FIFO queue |
 | **Circular Buffer (Ring)** | $O(1)$ strict | $O(1)$ strict | Minimal ($O(k)$ pre-allocated) | Fixed capacity, streaming, zero GC |
-| **Dual-Stack Queue** | $O(1)$ strict | $O(1)$ amortized | Low | Constrained environments, interview tasks |
+| **Dual-Stack Queue** | $O(1)$ strict | $O(1)$ on average | Low | Interview questions using stacks |
 
 ---
 
 ## 2. Queue & Container Design Patterns
 
 ### 2.1 Pattern Family
-
-Queue design patterns split into four core architectural paradigms:
-
-- **Dynamic FIFO Queues**: Unbounded queues backed by linked lists for asynchronous task dispatch and Breadth-First Search (BFS) traversals.
-- **Fixed Circular Buffers**: Ring buffers backed by contiguous arrays for high-throughput streaming, zero-allocation buffers, and packet caches.
-- **Dual-Stack Transformation**: Reversing order through a pair of stacks (`inStack` and `outStack`) with lazy transfers to achieve amortized $O(1)$ FIFO behavior.
-- **Sliding Window Aggregators**: Tracking running statistics (moving averages, counts within time windows) by evicting stale events at the queue head.
+* **Dynamic FIFO Queues:** Linked list queues for task scheduling and Breadth-First Search (BFS) level-order traversals.
+* **Fixed Circular Buffers:** Ring buffers over arrays for fixed memory, streaming audio/video, and zero memory churn.
+* **Dual-Stack Transformation:** Using two stacks (`inStack` and `outStack`) to turn LIFO stacks into a FIFO queue.
+* **Sliding Window Aggregators:** Keeping running averages or counts within a time window by removing old events from the queue head.
 
 ### 2.2 Pattern Recognition Table
 
-| Problem Trigger / Keywords | What It Asks | Recommended Approach |
+| Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| "Process events in order of arrival" | Standard FIFO scheduling | Fast Linked List Queue |
-| "Implement Queue using Stacks" | FIFO behavior using LIFO primitives | Dual Stacks with Lazy Transfer |
-| "Design circular queue / ring buffer" | Fixed-capacity queue with wrap-around | Array of size $k$ with modulo indexing |
-| "Moving average of last k values" | Rolling average over sliding window | Fixed circular buffer with running sum |
-| "Number of recent calls within 3000ms" | Discard entries older than threshold | Monotonic time queue with head evictions |
+| **"Process events in arrival order"** | Standard FIFO scheduling. | Fast Linked List Queue. |
+| **"Implement Queue using Stacks"** | FIFO queue using only stack operations. | Dual Stacks with Lazy Transfer. |
+| **"Design circular queue / ring buffer"** | Fixed-size queue with wrap-around. | Array of size $k$ with modulo math. |
+| **"Moving average of last k numbers"** | Running average over sliding window. | Circular buffer with running sum. |
+| **"Recent calls within 3000ms"** | Remove events older than a time window. | Time queue with head removals. |
 
 ### 2.3 When to Use vs When NOT to Use
-
-- **When to Use**:
-  - Processing elements in exact arrival order (FIFO scheduling).
-  - Breadth-First Search tree or graph traversal level-by-level.
-  - Streaming data with fixed memory constraints (audio/video packet buffering).
-  - Managing time-windowed request rate limiters.
-
-- **When NOT to Use**:
-  - Processing elements in reverse order of arrival (use a Stack).
-  - Retrieving the element with the highest priority or smallest weight (use a Priority Queue / Min-Heap).
-  - Fast search by unique identifier or key lookup (use a Hash Map).
+* **When to Use**:
+  * You need to process items in the exact order they arrive (FIFO).
+  * Breadth-First Search tree or graph traversal level-by-level.
+  * Streaming data with fixed memory limits.
+  * Rate-limiting requests within a time window.
+* **When NOT to Use**:
+  * You need to process the most recent items first (use a **Stack**).
+  * You need the item with the highest priority or smallest number (use a **Priority Queue / Heap**).
+  * Fast search by key or id (use a **Map**).
 
 ### 2.4 The $10^7$ Operations Rule
-
-In high-throughput services handling $10^5$ events:
-- A naive `arr.shift()` approach requires $10^5 \times 10^5 / 2 = 5 \times 10^9$ operations, freezing the Node.js event loop.
-- A proper $O(1)$ queue or circular buffer performs $10^5$ operations, well below the $10^7$ budget, finishing in under 15 milliseconds.
+In systems handling $100,000$ events:
+* Using `arr.shift()` runs $\approx 5 \times 10^9$ operations and freezes the Node.js event loop.
+* A proper $O(1)$ queue or circular buffer runs $100,000$ operations in under 15 milliseconds.
 
 ---
 
 ## 3. Problem Walkthroughs
+
+---
 
 ### 3.1 Implement Queue using Stacks
 
@@ -227,36 +211,30 @@ Implement the `MyQueue` class:
 
 You must use only standard stack operations (`push` to top, `peek`/`pop` from top, `size`, and `isEmpty`).
 
-```text
-Input:
-["MyQueue", "push", "push", "peek", "pop", "empty"]
-[[], [1], [2], [], [], []]
-
-Output:
-[null, null, null, 1, 1, false]
-
-Explanation:
-MyQueue myQueue = new MyQueue();
-myQueue.push(1); // queue is: [1]
-myQueue.push(2); // queue is: [1, 2]
-myQueue.peek(); // return 1
-myQueue.pop();  // return 1, queue is [2]
-myQueue.empty(); // return false
-```
+* **Sample Input:**
+  ```text
+  ["MyQueue", "push", "push", "peek", "pop", "empty"]
+  [[], [1], [2], [], [], []]
+  ```
+* **Expected Output:**
+  ```text
+  [null, null, null, 1, 1, false]
+  ```
+* **Constraints:** $1 \le x \le 9$, at most $100$ calls to `push`, `pop`, `peek`, `empty`.
 
 #### 3.1.2 How to Think About It
-Imagine two narrow vertical tubes that hold tennis balls (Tube A and Tube B). You can only drop balls into the top of a tube and pull balls from the top of a tube.
-
-1. Drop Ball 1 into Tube A, then Ball 2, then Ball 3.
+Imagine two narrow tubes that hold tennis balls (Tube A and Tube B). You can only drop balls into the top and pull balls from the top:
+1. Drop Ball 1 into Tube A, then Ball 2, then Ball 3.  
    Tube A: `[ Bottom: 1 | 2 | Top: 3 ]`.
-2. A customer arrives asking for Ball 1 (the oldest ball). But Ball 1 is trapped at the very bottom of Tube A!
+2. Someone asks for Ball 1 (the oldest ball). But Ball 1 is stuck at the bottom of Tube A!
 3. **The Pouring Trick**: Pour balls from Tube A into Tube B one by one:
    - Pop Ball 3 from Tube A $\to$ drop into Tube B.
    - Pop Ball 2 from Tube A $\to$ drop into Tube B.
    - Pop Ball 1 from Tube A $\to$ drop into Tube B.
-4. Look at Tube B: `[ Bottom: 3 | 2 | Top: 1 ]`!
+4. Look at Tube B: `[ Bottom: 3 | 2 | Top: 1 ]`!  
    The order is completely reversed. Ball 1 is now sitting right at the top of Tube B!
-5. **The Key Insight**: You do not need to pour balls back into Tube A! As long as Tube B has balls, any `pop()` or `peek()` can be served immediately from the top of Tube B in $O(1)$ time. Only when Tube B becomes completely empty do you pour from Tube A again.
+5. **The Big Insight**: You do not need to pour balls back into Tube A!  
+   As long as Tube B has balls, you can serve `pop()` or `peek()` directly from Tube B in $O(1)$ fast time. Only when Tube B becomes completely empty do you pour balls from Tube A again.
 
 ```text
 TUBE TRACE:
@@ -282,7 +260,7 @@ No pouring needed!
 ```
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-A brute-force strategy pours elements back and forth on every single operation:
+Pouring elements back and forth on every single push:
 
 ```javascript
 class SlowQueue {
@@ -299,40 +277,40 @@ class SlowQueue {
 }
 ```
 
-The bottleneck is constant transferring. Every single `push()` takes $O(n)$ time because all existing elements are transferred twice. For $n$ insertions, this degrades total time to $O(n^2)$.
+* **The Bottleneck:** Every single `push()` takes $O(n)$ time because all existing items are moved back and forth twice. For $n$ pushes, this takes $O(n^2)$ time.
 
 #### 3.1.4 The Pattern Insight
-Use **Lazy Transfer**.
-- `push(x)` always pushes directly to `inStack` in strict $O(1)$ time.
-- `pop()` and `peek()` draw from `outStack`.
-- Only when `outStack` is empty do we dump the contents of `inStack` into `outStack`.
-
-Each element enters `inStack` once, transfers to `outStack` once, and leaves `outStack` once. Across its entire lifetime, each element undergoes exactly 3 operations, guaranteeing an **amortized $O(1)$ runtime**.
+Use **Lazy Transfer**:
+* `push(x)` always pushes directly to `inStack` in $O(1)$ time.
+* `pop()` and `peek()` pull from `outStack`.
+* Only when `outStack` is empty do we pour `inStack` into `outStack`.
+Every element enters `inStack` once, moves to `outStack` once, and leaves `outStack` once. Across its whole life, each item takes only 3 steps, giving an **amortized $O(1)$ runtime**.
 
 #### 3.1.5 Pseudocode
+
 ```text
-class MyQueue:
-  constructor():
+CLASS MyQueue:
+  CONSTRUCTOR():
     inStack = []
     outStack = []
 
-  method push(x):
+  METHOD push(x):
     inStack.push(x)
 
-  method pop():
+  METHOD pop():
     shiftStacks()
-    return outStack.pop()
+    RETURN outStack.pop()
 
-  method peek():
+  METHOD peek():
     shiftStacks()
-    return outStack.top()
+    RETURN outStack.top()
 
-  method empty():
-    return inStack.isEmpty() AND outStack.isEmpty()
+  METHOD empty():
+    RETURN inStack.isEmpty() AND outStack.isEmpty()
 
-  helper shiftStacks():
-    if outStack is empty:
-      while inStack not empty:
+  HELPER shiftStacks():
+    IF outStack IS EMPTY:
+      WHILE inStack IS NOT EMPTY:
         outStack.push(inStack.pop())
 ```
 
@@ -410,14 +388,15 @@ buggy.push(3);
 // BUG: pops 3 instead of 2 because 3 was dumped on top of 2!
 console.log(buggy.pop()); // 3 (Expected: 2)
 ```
+* **Why it fails:** If `outStack` still has items, dumping new items on top of it puts new items in front of old items, destroying the FIFO order.
 
 #### 3.1.8 Complexity Derivation
-- **Time Complexity**:
-  - `push(x)`: $O(1)$ strict.
-  - `pop()`: $O(1)$ amortized. Transferring $k$ elements takes $O(k)$ steps, but occurs only once per element.
-  - `peek()`: $O(1)$ amortized.
-  - `empty()`: $O(1)$ strict.
-- **Auxiliary Space Complexity**: $O(n)$. Elements are distributed between `inStack` and `outStack`, storing at most $n$ total items.
+* **Time Complexity:**
+  - `push(x)`: $\mathbf{O(1)}$.
+  - `pop()`: $\mathbf{O(1)}$ amortized.
+  - `peek()`: $\mathbf{O(1)}$ amortized.
+  - `empty()`: $\mathbf{O(1)}$.
+* **Auxiliary Space Complexity:** $\mathbf{O(n)}$. The items are split between `inStack` and `outStack`, storing at most $n$ items total.
 
 ---
 
@@ -437,40 +416,29 @@ Implement the `MyCircularQueue` class:
 
 You must not use built-in queue or dynamic resizing data structures.
 
-```text
-Input:
-["MyCircularQueue", "enQueue", "enQueue", "enQueue", "enQueue", "Rear", "isFull", "deQueue", "enQueue", "Rear"]
-[[3], [1], [2], [3], [4], [], [], [], [4], []]
-
-Output:
-[null, true, true, true, false, 3, true, true, true, 4]
-
-Explanation:
-MyCircularQueue myCircularQueue = new MyCircularQueue(3);
-myCircularQueue.enQueue(1); // return True
-myCircularQueue.enQueue(2); // return True
-myCircularQueue.enQueue(3); // return True
-myCircularQueue.enQueue(4); // return False, queue is full
-myCircularQueue.Rear();     // return 3
-myCircularQueue.isFull();   // return True
-myCircularQueue.deQueue();  // return True (removes 1)
-myCircularQueue.enQueue(4); // return True (inserts 4 at slot 0)
-myCircularQueue.Rear();     // return 4
-```
+* **Sample Input:**
+  ```text
+  ["MyCircularQueue", "enQueue", "enQueue", "enQueue", "enQueue", "Rear", "isFull", "deQueue", "enQueue", "Rear"]
+  [[3], [1], [2], [3], [4], [], [], [], [4], []]
+  ```
+* **Expected Output:**
+  ```text
+  [null, true, true, true, false, 3, true, true, true, 4]
+  ```
+* **Constraints:** $1 \le k \le 1000$, $0 \le value \le 1000$, at most $3000$ calls to methods.
 
 #### 3.2.2 How to Think About It
-Imagine 3 numbered chairs placed in a circle: Chair 0, Chair 1, and Chair 2.
-
+Imagine 3 chairs placed in a circle: Chair 0, Chair 1, and Chair 2.
 1. **enQueue(1)**: Place Person 1 in Chair 0. Total seated: 1. `head = 0`.
 2. **enQueue(2)**: Place Person 2 in Chair 1. Total seated: 2. `head = 0`.
 3. **enQueue(3)**: Place Person 3 in Chair 2. Total seated: 3. All chairs are full!
-4. **enQueue(4)**: All 3 chairs are occupied. Reject with `false`.
+4. **enQueue(4)**: All 3 chairs are full. Reject with `false`.
 5. **Inspect Rear**: Who was seated last?
-   $$\text{rearIndex} = (\text{head} + \text{size} - 1) \pmod 3 = (0 + 3 - 1) \pmod 3 = 2 \pmod 3 = 2 \text{ (Person 3)}$$
-6. **deQueue()**: Person 1 stands up and leaves Chair 0. 
+   $$\text{rearIndex} = (\text{head} + \text{size} - 1) \pmod 3 = (0 + 3 - 1) \pmod 3 = 2 \text{ (Person 3)}$$
+6. **deQueue()**: Person 1 stands up and leaves Chair 0.  
    Advance `head = (0 + 1) % 3 = 1`. Total seated is now 2.
 7. **enQueue(4)**: A chair is open! Where does Person 4 sit?
-   $$\text{insertIndex} = (\text{head} + \text{size}) \pmod 3 = (1 + 2) \pmod 3 = 3 \pmod 3 = 0$$
+   $$\text{insertIndex} = (\text{head} + \text{size}) \pmod 3 = (1 + 2) \pmod 3 = 0$$
    Chair 0 is reused for Person 4!
 8. **Inspect Rear**: Last seated person is Person 4 at Chair 0!
 
@@ -486,7 +454,7 @@ Rear is at index (1 + 3 - 1) % 3 = 0 -> value 4!
 ```
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-A naive implementation relies on JavaScript arrays using `push()` and `shift()`:
+Using a normal array with `push()` and `shift()`:
 
 ```javascript
 class SlowCircularQueue {
@@ -507,48 +475,48 @@ class SlowCircularQueue {
 }
 ```
 
-The bottleneck is `arr.shift()`, which forces memory shifting on every dequeue. It also constantly grows and shrinks heap memory, triggering garbage collection cycles.
+* **The Bottleneck:** Calling `shift()` moves every item in memory on every dequeue. It also creates memory allocations and garbage collection pauses.
 
 #### 3.2.4 The Pattern Insight
-Pre-allocate a fixed-size array `new Array(k)` on initialization. Maintain two integer pointers:
-- `head`: The index of the front element.
-- `size`: The count of currently occupied slots.
-
-Modulo arithmetic (`% k`) wraps pointers around naturally without array copying or memory allocations.
+Pre-allocate an array `new Array(k)` upfront. Keep two simple numbers:
+* `head`: The index of the front item.
+* `size`: The count of currently occupied slots.
+Modulo arithmetic (`% k`) wraps around automatically without shifting items in memory.
 
 #### 3.2.5 Pseudocode
+
 ```text
-class MyCircularQueue:
-  constructor(k):
+CLASS MyCircularQueue:
+  CONSTRUCTOR(k):
     capacity = k
-    buffer = array of size k
+    buffer = Array of size k
     head = 0
     size = 0
 
-  method enQueue(val):
-    if isFull(): return false
+  METHOD enQueue(val):
+    IF isFull(): RETURN false
     insertIdx = (head + size) % capacity
     buffer[insertIdx] = val
     size = size + 1
-    return true
+    RETURN true
 
-  method deQueue():
-    if isEmpty(): return false
+  METHOD deQueue():
+    IF isEmpty(): RETURN false
     head = (head + 1) % capacity
     size = size - 1
-    return true
+    RETURN true
 
-  method Front():
-    if isEmpty(): return -1
-    return buffer[head]
+  METHOD Front():
+    IF isEmpty(): RETURN -1
+    RETURN buffer[head]
 
-  method Rear():
-    if isEmpty(): return -1
+  METHOD Rear():
+    IF isEmpty(): RETURN -1
     rearIdx = (head + size - 1) % capacity
-    return buffer[rearIdx]
+    RETURN buffer[rearIdx]
 
-  method isEmpty(): return size == 0
-  method isFull(): return size == capacity
+  METHOD isEmpty(): RETURN size == 0
+  METHOD isFull(): RETURN size == capacity
 ```
 
 #### 3.2.6 Optimal Solution
@@ -641,10 +609,11 @@ class BuggyCircularQueue {
   isFull() { return this.head === this.tail; }
 }
 ```
+* **Why it fails:** Without a `size` variable, an empty buffer and a completely full buffer both look like `head === tail`. Keeping an explicit `size` counter makes the state crystal clear.
 
 #### 3.2.8 Complexity Derivation
-- **Time Complexity**: Strict $O(1)$ for every single method (`enQueue`, `deQueue`, `Front`, `Rear`, `isEmpty`, `isFull`). Arithmetic operations and array index reads execute in constant time.
-- **Auxiliary Space Complexity**: Strict $O(k)$. Fixed-size pre-allocation ensures no dynamic memory growth or garbage collection churn occurs during runtime.
+* **Time Complexity:** Strict $\mathbf{O(1)}$ for every method (`enQueue`, `deQueue`, `Front`, `Rear`, `isEmpty`, `isFull`).
+* **Auxiliary Space Complexity:** Strict $\mathbf{O(k)}$. Memory is allocated once at the start and never grows.
 
 ---
 
@@ -657,35 +626,29 @@ Implement the `MovingAverage` class:
 - `MovingAverage(int size)`: Initializes the object with the size of the window `size`.
 - `double next(int val)`: Returns the moving average of the last `size` values of the stream.
 
-```text
-Input:
-["MovingAverage", "next", "next", "next", "next"]
-[[3], [1], [10], [3], [5]]
-
-Output:
-[null, 1.0, 5.5, 4.66667, 6.0]
-
-Explanation:
-MovingAverage movingAverage = new MovingAverage(3);
-movingAverage.next(1); // return 1.0 = 1 / 1
-movingAverage.next(10); // return 5.5 = (1 + 10) / 2
-movingAverage.next(3); // return 4.66667 = (1 + 10 + 3) / 3
-movingAverage.next(5); // return 6.0 = (10 + 3 + 5) / 3 (1 was evicted)
-```
+* **Sample Input:**
+  ```text
+  ["MovingAverage", "next", "next", "next", "next"]
+  [[3], [1], [10], [3], [5]]
+  ```
+* **Expected Output:**
+  ```text
+  [null, 1.0, 5.5, 4.66667, 6.0]
+  ```
+* **Constraints:** $1 \le size \le 1000$, $-10^5 \le val \le 10^5$, at most $10^4$ calls to `next`.
 
 #### 3.3.2 How to Think About It
-Imagine a whiteboard that only has room to write 3 numbers. Next to the whiteboard is a calculator showing the running total of those numbers.
-
-1. `next(1)`: Write `1` in slot 0. Add `1` to total ($1$). Average: $1 / 1 = 1.0$.
-2. `next(10)`: Write `10` in slot 1. Add `10` to total ($11$). Average: $11 / 2 = 5.5$.
-3. `next(3)`: Write `3` in slot 2. Add `3` to total ($14$). Average: $14 / 3 = 4.6667$.
-4. `next(5)`: The whiteboard is full! The oldest slot is slot 0 (which holds `1`).
+Imagine a whiteboard with room for only 3 numbers, and a calculator next to it showing the running sum:
+1. `next(1)`: Write `1` in slot 0. Total = $1$. Average = $1 / 1 = 1.0$.
+2. `next(10)`: Write `10` in slot 1. Total = $11$. Average = $11 / 2 = 5.5$.
+3. `next(3)`: Write `3` in slot 2. Total = $14$. Average = $14 / 3 = 4.6667$.
+4. `next(5)`: The whiteboard is full! Slot 0 holds the oldest number (`1`).
    - Subtract `1` from total: $14 - 1 = 13$.
    - Overwrite slot 0 with `5`.
    - Add `5` to total: $13 + 5 = 18$.
    - Average: $18 / 3 = 6.0$.
 
-Notice you never re-sum the numbers from scratch. You only adjust the running sum by subtracting the evicted number and adding the incoming number.
+Notice you never add up all 3 numbers from scratch. You only subtract the leaving number and add the entering number!
 
 ```text
 SLOT TRACE (capacity = 3):
@@ -695,7 +658,7 @@ Average: 18 / 3 = 6.0
 ```
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-A brute-force solution stores incoming numbers in an array, calls `arr.shift()` when the array exceeds `size`, and sums all elements with `reduce()` on every call:
+Using an array with `shift()` and recalculating the sum with `reduce()` every time:
 
 ```javascript
 class SlowMovingAverage {
@@ -714,45 +677,41 @@ class SlowMovingAverage {
 }
 ```
 
-The bottlenecks are twofold:
-1. `arr.shift()` shifts array elements in memory ($O(k)$).
-2. `reduce()` scans the entire window on every single invocation ($O(k)$).
-
-For a window size $k = 10,000$ receiving $100,000$ telemetry pings, this takes $10^9$ operations.
+* **The Bottleneck:** Calling `shift()` moves items in memory ($O(k)$), and calling `reduce()` re-adds all items ($O(k)$). For $k = 10,000$ and $100,000$ queries, this runs $10^9$ operations and causes severe latency.
 
 #### 3.3.4 The Pattern Insight
-Use a **Fixed Circular Buffer of size `size`** alongside a **`runningSum` accumulator variable**.
-- When `count > capacity`, find the slot holding the oldest element: `slot = head`.
-- Subtract `buffer[slot]` from `runningSum`.
-- Overwrite `buffer[slot] = val`.
-- Add `val` to `runningSum`.
-- Advance `head = (head + 1) % capacity`.
-
-Both sum updating and circular overwriting execute in strict $O(1)$ time with zero memory allocations.
+Use a **Fixed Circular Buffer of size `size`** alongside a **`runningSum` variable**:
+* When `count > capacity`, find the slot holding the oldest number.
+* Subtract the old number from `runningSum`.
+* Write the new number into that slot.
+* Add the new number to `runningSum`.
+* Advance `head = (head + 1) % capacity`.
+Both sum updating and circular overwriting run in strict $O(1)$ time with zero memory allocations.
 
 #### 3.3.5 Pseudocode
+
 ```text
-class MovingAverage:
-  constructor(size):
+CLASS MovingAverage:
+  CONSTRUCTOR(size):
     capacity = size
-    buffer = array of size size filled with 0
+    buffer = Array of size size filled with 0
     head = 0
     count = 0
     runningSum = 0
 
-  method next(val):
+  METHOD next(val):
     count = count + 1
     slot = (head + (count - 1)) % capacity
 
-    if count > capacity:
+    IF count > capacity:
       runningSum = runningSum - buffer[slot]
       head = (head + 1) % capacity
 
     buffer[slot] = val
     runningSum = runningSum + val
 
-    effectiveWindow = min(count, capacity)
-    return runningSum / effectiveWindow
+    effectiveWindow = MIN(count, capacity)
+    RETURN runningSum / effectiveWindow
 ```
 
 #### 3.3.6 Optimal Solution
@@ -823,90 +782,104 @@ class BuggyMovingAverage {
   }
 }
 ```
+* **Why it fails:** For integer inputs, running sum is exact. But for decimal numbers, repeatedly subtracting and adding fractional decimals can cause tiny rounding errors to add up.
 
 #### 3.3.8 Complexity Derivation
-- **Time Complexity**: Strict $O(1)$ per `next()` invocation. Updating the running sum and computing the division involves constant-time arithmetic operations.
-- **Auxiliary Space Complexity**: Strict $O(k)$, where $k$ is the specified window size. Pre-allocated array memory remains constant.
+* **Time Complexity:** Strict $\mathbf{O(1)}$ per call to `next()`. Updating the sum and calculating the average takes constant time.
+* **Auxiliary Space Complexity:** Strict $\mathbf{O(k)}$, where $k$ is the window size. Memory is allocated once and never grows.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-- **Modulo Wrap-Around Arithmetic**: When calculating the rear index `(head + size - 1) % capacity`, ensure values are non-negative. In JavaScript, because `head >= 0` and `size >= 1`, `head + size - 1 >= 0`, preventing negative remainder bugs.
-- **Distinguishing Empty vs Full in Circular Buffers**: Maintaining an explicit `size` counter eliminates the ambiguity where `head === tail` occurs during both empty and full states.
-- **Exhausting `outStack` in Dual-Stack Queues**: In a dual-stack queue, never transfer elements from `inStack` to `outStack` unless `outStack` is completely empty. Transferring early breaks the FIFO sequence.
-- **Single Capacity Buffers ($k = 1$)**: When buffer capacity is 1, `head` and `tail` refer to the identical memory slot. Verify `enQueue` correctly rejects incoming items when `size === 1`.
-- **Stream Warm-Up Phase in Moving Average**: During the initial warm-up period (`count < capacity`), divide the running sum by `count` rather than `capacity` to prevent deflating initial averages.
+* **Modulo Wrap-Around Math:** When calculating the rear index `(head + size - 1) % capacity`, make sure numbers stay non-negative.
+* **Telling Empty vs Full Apart:** Keeping an explicit `size` variable prevents `head === tail` confusion when the buffer is completely empty or completely full.
+* **Dual-Stack Emptying Order:** Never pour items from `inStack` to `outStack` unless `outStack` is completely empty. Transferring early breaks the FIFO order.
+* **Buffer with Capacity 1 ($k = 1$):** When capacity is 1, `head` and `tail` point to the exact same slot. Verify `enQueue` correctly rejects incoming items when `size === 1`.
+* **Warm-Up Phase in Moving Average:** When the stream is just starting (`count < capacity`), divide `runningSum` by `count`, not `capacity`.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-- **FIFO Access Model**: Queues process data in First-In, First-Out order. Enqueue occurs at the rear; dequeue occurs at the front.
-- **Avoid `arr.shift()`**: In JavaScript, `arr.shift()` forces $O(n)$ contiguous memory moves in V8. Use a linked list or circular buffer for true $O(1)$ performance.
-- **Circular Buffer (Ring Buffer)**: Pre-allocates a fixed array of size $k$. Modulo arithmetic (`% k`) navigates positions circularly, avoiding garbage collection pauses.
-- **Dual-Stack Queue**: Implements FIFO using two LIFO stacks. Lazy transferring only when `outStack` is empty guarantees amortized $O(1)$ runtime per operation.
-- **Running Accumulator**: Sliding window averages should maintain an incremental `runningSum` variable ($O(1)$) rather than recalculating the sum with array scans ($O(k)$).
+* **FIFO Model:** Queues process data in First-In, First-Out order. Add at the back; remove from the front.
+* **Avoid `arr.shift()`:** Calling `arr.shift()` shifts all items in memory ($O(n)$ slow time). Use linked lists or circular buffers for true $O(1)$ speed.
+* **Circular Buffer (Ring Buffer):** Allocates a fixed array of size $k$. Modulo math (`% k`) wraps pointers around in a circle without creating extra memory.
+* **Dual-Stack Queue:** Builds a queue using two stacks. Pouring items only when `outStack` is empty gives an amortized $O(1)$ runtime per step.
+* **Running Sum Accumulator:** Maintain an incremental `runningSum` variable ($O(1)$) instead of re-adding array items from scratch ($O(k)$).
 
 ---
 
 ## 6. Practice Problems
 
 ### 6.1 Implement Stack using Queues
+
 Implement a Last-In, First-Out (LIFO) stack using only standard FIFO queue operations (`enqueue`, `dequeue`, `peek`, `isEmpty`).
 
 Implement the `MyStack` class supporting `push`, `pop`, `top`, and `empty`.
 
-```text
-Sample Input:
-["MyStack", "push", "push", "top", "pop", "empty"]
-[[], [1], [2], [], [], []]
+* **Difficulty:** Easy | **Focus:** Queue Rotation Transformation
+* **Sample Input:**
+  ```text
+  ["MyStack", "push", "push", "top", "pop", "empty"]
+  [[], [1], [2], [], [], []]
+  ```
+* **Expected Output:**
+  ```text
+  [null, null, null, 2, 2, false]
+  ```
+* **Constraints:** $1 \le x \le 9$, at most $100$ calls to methods.
+* **Hint 1:** You can build a stack with a single queue by rotating elements whenever you add a new item.
+* **Hint 2:** When pushing an element `x`, enqueue `x`, then dequeue and re-enqueue all previous $n - 1$ items behind it.
+* **Hint 3:** This moves the newly added item to the front of the queue, making `pop()` and `top()` simple $O(1)$ queue operations.
 
-Expected Output:
-[null, null, null, 2, 2, false]
-```
-
-- *Hint 1*: A stack can be implemented using a single queue by rotating elements upon insertion.
-- *Hint 2*: When pushing element `x`, enqueue `x`, then dequeue and re-enqueue all preceding $n - 1$ elements behind it.
-- *Hint 3*: This leaves the most recently added element at the front of the queue, making `pop()` and `top()` simple $O(1)$ queue operations.
+---
 
 ### 6.2 Design Circular Deque
+
 Design your implementation of the circular double-ended queue (Deque) supporting insertion and deletion at both ends in $O(1)$ time.
 
 Implement methods: `insertFront`, `insertLast`, `deleteFront`, `deleteLast`, `getFront`, `getRear`, `isEmpty`, `isFull`.
 
-```text
-Sample Input:
-["MyCircularDeque", "insertLast", "insertLast", "insertFront", "insertFront", "getRear", "isFull", "deleteLast", "insertFront", "getFront"]
-[[3], [1], [2], [3], [4], [], [], [], [4], []]
+* **Difficulty:** Medium | **Focus:** Bidirectional Ring Buffer
+* **Sample Input:**
+  ```text
+  ["MyCircularDeque", "insertLast", "insertLast", "insertFront", "insertFront", "getRear", "isFull", "deleteLast", "insertFront", "getFront"]
+  [[3], [1], [2], [3], [4], [], [], [], [4], []]
+  ```
+* **Expected Output:**
+  ```text
+  [null, true, true, true, false, 2, true, true, true, 4]
+  ```
+* **Constraints:** $1 \le k \le 1000$, $0 \le value \le 1000$, at most $2000$ calls.
+* **Hint 1:** Track `head`, `size`, and `capacity` just like a circular queue.
+* **Hint 2:** For `insertFront`, step `head` backward: `head = (head - 1 + capacity) % capacity`.
+* **Hint 3:** For `deleteLast`, decrement `size`. For `deleteFront`, move `head = (head + 1) % capacity` and decrement `size`.
 
-Expected Output:
-[null, true, true, true, false, 2, true, true, true, 4]
-```
-
-- *Hint 1*: Maintain `head`, `size`, and `capacity` just like a circular queue.
-- *Hint 2*: For `insertFront`, decrement `head`: `head = (head - 1 + capacity) % capacity`.
-- *Hint 3*: For `deleteLast`, decrement `size`. For `deleteFront`, advance `head = (head + 1) % capacity` and decrement `size`.
+---
 
 ### 6.3 Number of Recent Calls
+
 You have a `RecentCounter` class which counts the number of recent requests within a certain time frame.
 
 Implement the `RecentCounter` class:
 - `RecentCounter()`: Initializes the counter with zero recent requests.
 - `int ping(int t)`: Adds a new request at time `t` (in milliseconds) and returns the number of requests that have happened in the past 3000 milliseconds (including the new request), strictly within `[t - 3000, t]`. It is guaranteed that every call to `ping` uses a strictly larger value of `t` than the previous call.
 
-```text
-Sample Input:
-["RecentCounter", "ping", "ping", "ping", "ping"]
-[[], [1], [100], [3001], [3002]]
-
-Expected Output:
-[null, 1, 2, 3, 3]
-```
-
-- *Hint 1*: Timestamps are guaranteed to arrive in strictly increasing chronological order.
-- *Hint 2*: Enqueue `t` into a FIFO queue.
-- *Hint 3*: While the timestamp at the front of the queue is strictly less than `t - 3000`, dequeue that stale timestamp. Return the remaining queue size.
+* **Difficulty:** Easy | **Focus:** Monotonic Time Queue Eviction
+* **Sample Input:**
+  ```text
+  ["RecentCounter", "ping", "ping", "ping", "ping"]
+  [[], [1], [100], [3001], [3002]]
+  ```
+* **Expected Output:**
+  ```text
+  [null, 1, 2, 3, 3]
+  ```
+* **Constraints:** $1 \le t \le 10^9$, each call to `ping` has strictly larger `t`, at most $10^4$ calls.
+* **Hint 1:** Timestamps always arrive in increasing order.
+* **Hint 2:** Enqueue `t` into a queue.
+* **Hint 3:** While the timestamp at the front of the queue is smaller than `t - 3000`, remove that old timestamp. Return the remaining queue size.
 
 ---
 

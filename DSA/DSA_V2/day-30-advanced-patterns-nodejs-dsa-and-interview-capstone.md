@@ -6,17 +6,23 @@
 
 </nav>
 
+---
+
 ## 1. Systems Data Structures Fundamentals
 
-In production backend engineering, high-throughput systems require composing multiple foundational data structures together to meet strict performance SLAs. These composite structures form the backbone of modern web frameworks, operating systems, and caching tiers:
+In real backend systems, we often connect two or more data structures together to make our code super fast. These combined structures power web frameworks, routers, and caching layers:
 
-- **LRU Cache (Least Recently Used):** A fixed-capacity key-value cache that evicts the least recently accessed item in strict $O(1)$ time whenever capacity is exceeded.
-- **Trie (Prefix Tree):** A specialized tree where nodes represent characters, allowing prefix lookups, autocomplete, and routing in $O(L)$ time, strictly independent of total dataset size.
-- **Interval Sweep-Line:** Managing 1D continuous coordinate ranges `[start, end]`, resolved by sorting start boundaries to detect overlaps in calendar booking and CPU schedulers.
+- **LRU Cache (Least Recently Used):** A cache with a set size limit. When full, it throws out the item that has not been used in the longest time, in fast $O(1)$ time.
+- **Trie (Prefix Tree):** A tree made of letters. It lets you search prefixes, run autocomplete, and match URL routes in $O(L)$ time (where $L$ is word length), no matter how many millions of words exist in your database.
+- **Interval Sweep-Line:** Handling time ranges `[start, end]`. We sort ranges by their start time to spot overlapping calendar meetings or scheduled jobs.
 
-Imagine an office desk that can only hold 3 open books at once (Capacity = 3). When you read a book, you place it right in front of you (Most Recently Used). When you need a 4th book, your desk is full. You do not throw away a random book; you take the book that has been sitting untouched at the far corner of your desk the longest (Least Recently Used) and return it to the shelf. Both retrieving a book and promoting it to the front must run in $O(1)$ time.
+Imagine an office desk with room for only 3 open books (Capacity = 3):
+- Whenever you open and read a book, you place it right in front of you (**Most Recently Used**).
+- When you want to open a 4th book, your desk has no room. You do not throw away a random book; you take the book that has been sitting untouched at the far corner of your desk the longest (**Least Recently Used**) and put it back on the shelf.
+- Both finding a book and moving it to the front must run in fast $O(1)$ time!
 
-Now imagine a telephone switchboard. When someone dials `+1` (USA) $\to$ `415` (San Francisco) $\to$ `555` $\to$ `0199`, the switchboard does not scan a flat database of 8 billion phone numbers. It walks down a prefix tree: `Root -> '1' -> '4' -> '1' -> '5'`. Each digit narrows the path instantly in $O(1)$ time per character.
+Now imagine dialing a phone number:
+When someone dials `+1` (USA) $\to$ `415` (San Francisco) $\to$ `555` $\to$ `0199`, the phone system does not search through a flat list of 8 billion people. It walks down a letter tree: `Root -> '1' -> '4' -> '1' -> '5'`. Each number narrows the search down immediately in $O(1)$ time per digit.
 
 ```javascript
 // Baseline demonstration of LRU Cache using Map + Doubly Linked List
@@ -109,8 +115,8 @@ Most Recently Used                                   Least Recently Used
 ```
 
 > [!NOTE]
-> Why MUST the node in an LRU cache store both `key` and `value`?
-> Because when evicting `dummyTail.prev`, we must delete that item from `this.map`. If the linked list node only stored `value`, we would have no way to look up its corresponding key in the Map in $O(1)$ time.
+> Self-Check: Why MUST the node in an LRU cache store both `key` and `value`?
+> Answer: When evicting `dummyTail.prev`, we must delete that item from `this.map`. If the linked list node only stored `value`, we would have no way to look up its corresponding key in the Map in $O(1)$ time.
 
 ### 1.2 The Trie (Prefix Tree) Node Architecture
 
@@ -361,7 +367,7 @@ A trie (prefix tree) is a tree data structure used to store and retrieve keys in
 - **Constraints:** $1 \le word.length, prefix.length \le 2,000$, words consist of lowercase English letters, at most $3 \times 10^4$ total calls.
 
 #### 3.2.2 How to Think About It
-Imagine a paper dictionary with thumb tabs. You open to tab 'a', then follow section 'p', then sub-entry 'p', then 'l', then 'e'. At 'apple', there is a black dot marking a valid word. If you search for 'app', you reach the letters 'a-p-p', but unless there is a dot on 'p', 'app' is just a prefix of another word, not a word itself.
+Imagine a paper dictionary with thumb tabs on the edge. You open to tab 'a', then follow section 'p', then sub-entry 'p', then 'l', then 'e'. At 'apple', there is a black checkmark showing it is a real word. If you search for 'app', you find the path 'a-p-p', but unless there is a checkmark on 'p', 'app' is just the start of another word, not a word itself.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Storing words in an array or Set:

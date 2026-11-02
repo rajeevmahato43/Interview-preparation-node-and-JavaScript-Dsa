@@ -6,17 +6,21 @@
 
 </nav>
 
+---
+
 ## 1. Binary Tree BFS & Views Core Concepts
 
-While Depth-First Search (DFS) traverses deep down a single branch before backtracking, Breadth-First Search (BFS)—also known as Level-Order Traversal—explores nodes horizontally, level by level, from top to bottom and left to right.
+While Depth-First Search (DFS) dives deep down one branch all the way to the bottom before turning back, **Breadth-First Search (BFS)**—also called **Level-Order Traversal**—visits nodes floor by floor, from top to bottom and left to right.
 
-BFS guarantees that every node at depth $d$ is visited strictly before any node at depth $d + 1$. This property makes BFS the standard approach for finding shortest paths in unweighted trees, determining minimum tree depths, and capturing directional tree views (e.g., viewing a tree from its right or left facade).
+BFS visits every node on floor $d$ before touching any node on floor $d + 1$. This makes BFS the best choice for finding the shortest way down, finding the closest leaf, and looking at trees from the outside (like looking at a tree from the right side).
 
-- **Level-Order BFS:** Visiting nodes layer by layer using a First-In, First-Out (FIFO) queue.
-- **Tree View:** The set of visible nodes observed when looking at a tree structure from a specific vantage point (Right View, Left View, Top View).
-- **Lowest Common Ancestor (LCA):** The deepest node in a tree that has both target nodes $p$ and $q$ as descendants (where a node can be a descendant of itself).
+- **Level-Order BFS:** Checking nodes floor by floor using a queue (first in, first out).
+- **Tree View:** The nodes you can see when looking at a tree from one side (like the Right View or Left View).
+- **Lowest Common Ancestor (LCA):** The lowest shared parent node that has both nodes $p$ and $q$ below it.
 
-Imagine an apartment building. In Level-Order BFS, a building inspector inspects Floor 0 (the penthouse), then Floor 1, then Floor 2, checking every room on a floor before taking the stairs down. In Right-Side View, an observer stands on the sidewalk looking at the right facade of the building at dusk. On each floor, only the rightmost room's window is visible; inner rooms and leftmost rooms are blocked from view by the rightmost room.
+Imagine an apartment building:
+- In **Level-Order BFS**, a building inspector checks Floor 0 (the top penthouse), then walks down to Floor 1 and checks every room, then walks down to Floor 2. They finish every room on a floor before taking the stairs down to the next floor.
+- In **Right-Side View**, you stand on the street looking at the right side of the building. On each floor, you can only see the window of the room on the far right. The rooms in the middle and on the left are hidden behind that rightmost room!
 
 ```javascript
 // Definition of a standard Binary Tree Node
@@ -65,14 +69,15 @@ console.log("Level-Order:", levelOrderBasic(sampleTree));
 
 ### 1.1 The Level-Order BFS Pattern and Frozen Size
 
-The defining mechanic of level-order BFS is freezing the queue length at the start of each level:
+The key trick in level-order BFS is saving the queue length at the start of each level:
 ```javascript
 const levelSize = queue.length - head;
 ```
-Because child nodes are pushed to the back of the queue as parents are processed, without snapshotting `levelSize`, the loop would not know where the current depth ends and the next depth begins. Freezing `levelSize` isolates depth layers cleanly.
+Because child nodes are added to the back of the queue while parents are processed, without saving `levelSize`, the loop would not know where the current floor ends and the next floor begins. Freezing `levelSize` keeps each floor cleanly separated.
 
 > [!NOTE]
-> Why is `queue.shift()` considered an anti-pattern in Node.js interviews? Because `shift()` re-indexes every remaining element in the array, turning an $O(N)$ traversal into a quadratic $O(N^2)$ algorithm for large inputs. Using an advancing `head` pointer provides true $O(1)$ dequeues.
+> Self-Check: Why is using `queue.shift()` a bad idea in Node.js?
+> Answer: Calling `shift()` moves every remaining item in the array to the left. For large arrays, this turns an $O(N)$ traversal into a slow $O(N^2)$ crawl. Keeping a moving pointer `head` gives true $O(1)$ dequeues.
 
 ### 1.2 Lowest Common Ancestor Mechanics
 
@@ -214,7 +219,6 @@ function levelOrder(root) {
   const result = [];
   const queue = [root];
   let head = 0; // O(1) dequeue pointer
-
   while (head < queue.length) {
     const levelSize = queue.length - head; // Snapshot current level size
     const currentLevel = [];
@@ -367,7 +371,7 @@ Given a binary tree, find the lowest common ancestor (LCA) of two given nodes `p
 - **Constraints:** Number of nodes is in range $[2, 10^5]$, all node values are unique, $p \neq q$, and both $p$ and $q$ exist in the tree.
 
 #### 3.3.2 How to Think About It
-Imagine tracing the family tree of two cousins. You trace the lineage of cousin $p$ up to the root, and the lineage of cousin $q$ up to the root. The lowest person where both family lines meet is their lowest common ancestor. If one person is the direct parent of the other, that parent is the ancestor.
+Imagine tracing the family tree of two cousins. You trace cousin $p$'s family line up to the top, and cousin $q$'s family line up to the top. The lowest person where both family lines meet is their lowest shared ancestor. If one cousin is the parent of the other, that parent is the ancestor.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Find the path from the root to node $p$ (e.g. `[3, 5]`) and store it in an array. Find the path from the root to node $q$ (e.g. `[3, 1]`) and store it in an array. Compare both arrays element by element until they diverge. Storing paths takes two full traversals and allocates extra arrays on the heap.

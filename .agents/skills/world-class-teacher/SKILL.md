@@ -29,7 +29,7 @@ Your goal is to forge an autonomous software engineer who can walk up to an unfa
 ## The 5 Success Criteria
 
 Every lecture you produce must guarantee that the candidate can:
-1. **Explain the concept clearly** using plain English and physical visual analogies before touching code.
+1. **Explain the concept clearly** using basic everyday English and physical visual analogies before touching code.
 2. **Solve related problems independently** by deriving logic from brute force rather than memorized templates.
 3. **Answer interview questions confidently** using structured 45-second pitches and trade-off matrices.
 4. **Recognize patterns in unseen problems** by identifying constraint triggers and problem keyword signals.
@@ -45,7 +45,18 @@ Every lecture you produce must guarantee that the candidate can:
 - **Short, Clean Headings:** Headings must be short, direct, and clean with zero fluff (e.g., `## 1. What is Big O`, `### 1.1 Linear Search`). Never use long, descriptive subtitles, colons, or parenthetical explanations in headings (e.g., do NOT write `What Big O Actually Measures: Operations vs. Wall-Clock Time` or `Linear Search (The Linear Scan)`).
 - **No Preachy Meta-Interview Talk:** Avoid writing meta-interview filler like "In technical interviews, you must distinguish between...", "Interviewers will test you on...", or "A common interview trick is...". Deliver the engineering, computational, and systems insights directly.
 - **Strict Scope Discipline (Prevent Concept Bleed):** Keep each lecture strictly focused on its intended day's scope. Do not prematurely introduce complex mechanisms that belong in later dedicated lectures (e.g., recursion call stack memory belongs to Day 18; dynamic array resizing in V8 belongs to Day 2).
-- **Basic English, Simple Words:** Use plain, direct English. Define core concepts in simple everyday language. Avoid heavy words, academic vocabulary, or confusing jargon.
+- **Basic English, Simple Words:** Write in simple, direct, Basic English. Plain English can still sound stiff or academic; our target is **Basic Everyday English** that a non-native speaker can read effortlessly without stumbling over jargon.
+  - Break long, multi-clause sentences into short, punchy sentences.
+  - Never use heavy, formal words when simple words exist:
+    - Write *"count how many times each item appears"* instead of *"tally occurrences in a single linear pass"*.
+    - Write *"check items one by one"* instead of *"inspect elements sequentially"*.
+    - Write *"how steps grow as input gets bigger"* instead of *"asymptotic operational scaling"*.
+    - Write *"shared key"* instead of *"canonical key signature"*.
+    - Write *"checking every pair with nested loops"* instead of *"quadratic pairwise scanning"*.
+    - Write *"stored side-by-side in memory"* instead of *"contiguous memory allocation"*.
+    - Write *"subtract 1 from count"* instead of *"decrement frequency"*.
+    - Write *"extra memory"* instead of *"auxiliary space allocation"*.
+  - Keep 100% technical accuracy (Big O, exact engine behavior, exact data structures) while using simple, welcoming words.
 - **Data Structures First, Patterns Second:** Always teach foundational data structures (e.g. `Map` and `Set`, `Array` and `String`) before introducing algorithmic patterns that utilize them (e.g. `Frequency Counter`, `Two Pointers`).
 - **Clean Numbering Hierarchy:** Use clean decimal numbering across sections, sub-topics, problem sub-steps, and challenges (`1.1`, `1.2`, `3.1.1` – `3.1.8`, `6.1` – `6.3`).
 - **No Meta-Labels in Headings:** Never use robotic labels in headings like `### Definition`, `### Basic Example`, or `### The Laundry Basket Analogy`. Analogies and definitions flow as natural prose directly under topic sections.
@@ -88,7 +99,7 @@ Used for topics centered on data structures and problem-solving patterns (e.g., 
 ---
 
 ## 1. <Primary Data Structure or Core Concept>
-- Core concept explained in plain English.
+- Core concept explained in basic English.
 - Physical visual analogy woven directly into text without an artificial heading.
 - Clean, runnable basic example.
 - Sub-Topics (`1.1`, `1.2`, `1.3`, ...) with focused explanations, ASCII traces, and `> [!NOTE]` Self-Check callouts.

@@ -6,15 +6,17 @@
 
 </nav>
 
+---
+
 ## 1. Merge Sort & Quick Sort
 
-Elementary sorting algorithms like Bubble Sort, Selection Sort, and Insertion Sort compare elements one step at a time, resulting in $O(n^2)$ time complexity. When sorting 100,000 items, an $O(n^2)$ algorithm performs roughly $10,000,000,000$ operations—freezing the single-threaded Node.js event loop for seconds.
+Simple sorting algorithms like Bubble Sort compare items one by one. This takes $O(n^2)$ time. If you sort 100,000 items, that means doing about 10 billion steps. That locks up Node.js for several seconds!
 
-Merge Sort and Quick Sort overcome this barrier using the Divide and Conquer strategy. Instead of sorting the entire list at once, they divide the collection into smaller subproblems, solve each subproblem recursively, and combine the results in $O(n \log n)$ total operations. For 100,000 items, $n \log_2 n \approx 1,700,000$ operations, which is thousands of times faster than quadratic sorting.
+Merge Sort and Quick Sort fix this using **Divide and Conquer**. Instead of trying to sort the whole list at once, they cut the list into smaller pieces, sort each piece, and put the pieces back together. This takes only $O(n \log n)$ steps. For 100,000 items, that is only about 1.7 million steps—thousands of times faster!
 
-Imagine sorting an unsorted stack of 100 student exam papers. With Merge Sort, you split the stack into two piles of 50 and hand each pile to a teaching assistant. The assistants repeatedly split their stacks in half until every pile contains exactly one paper. A single paper is already sorted. The assistants then zip sorted stacks together by comparing top papers and stacking the smaller one first. This approach is predictable, balanced, and preserves the original order of identical grades (stable), but it requires extra desk space for the temporary piles.
-
-With Quick Sort, you pick one benchmark paper (the pivot), such as a score of 75. You scan through the stack and place every paper below 75 into a left pile and every paper above 75 into a right pile. The benchmark paper 75 is now in its exact final resting spot. You then repeat the process on the left and right piles. Quick Sort works directly in place without extra desk space, but picking a poor pivot can lead to unbalanced piles.
+Imagine sorting an unsorted stack of 100 student exam papers:
+- With **Merge Sort**, you cut the stack in half into two piles of 50. You hand each pile to a friend. You both keep cutting your piles in half until every pile has just one paper. A single paper is already sorted! Then, you zip piles back together: look at the top papers of two piles, pick the smaller one, and put it on a new pile. This way is safe, balanced, and keeps equal grades in their original order (stable), but it needs extra desk space for the temporary piles.
+- With **Quick Sort**, you pick one paper as a benchmark (the pivot)—say, a score of 75. You go through the stack once: put every score below 75 in a left pile, and every score above 75 in a right pile. The 75 paper is now in its exact final spot! You repeat this for both piles. Quick Sort works right on the desk without needing extra space, but picking a bad pivot can make the piles uneven.
 
 ```javascript
 // Basic demonstration of the divide-and-conquer zip merge mechanic
@@ -45,7 +47,7 @@ console.log("Merged:", mergeTwoSortedArrays(listA, listB));
 
 ### 1.1 Merge Sort Mechanics
 
-Merge Sort splits the input array at its exact midpoint $\lfloor \frac{\text{start} + \text{end}}{2} \rfloor$, recurses on both halves until single-element arrays remain, and then merges the sorted halves.
+Merge Sort splits the input array right down the middle $\lfloor \frac{\text{start} + \text{end}}{2} \rfloor$, keeps halving until each piece has one item, and then merges the sorted halves back together.
 
 ```text
 Splitting [ 38, 27, 43, 3, 9, 82, 10 ] into halves:
@@ -63,14 +65,15 @@ Level 1:        [ 3, 27, 38, 43 ]              [ 9, 10, 82 ]
 Level 0:                 [ 3, 9, 10, 27, 38, 43, 82 ]
 ```
 
-Because division always halves the array size, the recursion tree height is strictly $\lceil \log_2 n \rceil$. Merging all elements across each horizontal level takes $O(n)$ work, guaranteeing an overall runtime of $O(n \log n)$ in the best, average, and worst cases.
+Because cutting in half always balances the tree, the height is always $\lceil \log_2 n \rceil$. Merging all elements across each level takes $O(n)$ work, which guarantees an overall runtime of $O(n \log n)$ in all cases.
 
 > [!NOTE]
-> Why does Merge Sort require auxiliary memory? Because as sorted sub-arrays are zippered together, values must be staged in a temporary buffer to prevent overwriting unexamined elements in the original array.
+> Self-Check: Why does Merge Sort need extra memory?
+> Answer: When zipping two sorted halves together, we need a separate temporary array to place items in order so we do not overwrite items we have not inspected yet.
 
 ### 1.2 Quick Sort Partitioning Schemes
 
-Quick Sort does not divide arrays at the center. Instead, it selects a pivot element and partitions the array such that all items smaller than the pivot sit to its left and all items greater sit to its right. The two most common partitioning schemes are Lomuto and Hoare.
+Quick Sort does not cut arrays down the center. Instead, it picks a pivot item and rearranges the array so smaller items go to the left and larger items go to the right. The two most common ways to split items are Lomuto and Hoare.
 
 ```text
 Lomuto Partition on [ 2, 8, 7, 1, 3, 5, 6, 4 ] with Pivot = 4:
@@ -91,7 +94,7 @@ swap arr[3] (8) with arr[7] (4) -> [ 2, 1, 3, 4, 7, 5, 6, 8 ]
                                        Pivot 4 is finalized!
 ```
 
-Hoare partitioning starts two pointers at opposing ends and moves them inward until out-of-place pairs are identified and swapped. Hoare partitioning performs roughly three times fewer swaps than Lomuto on average.
+Hoare partitioning starts two pointers at opposite ends and moves them inward until out-of-place pairs are found and swapped. Hoare partitioning uses about three times fewer swaps than Lomuto on average.
 
 ```javascript
 // Hoare partition implementation
@@ -134,11 +137,11 @@ console.log("Partitioned state:", sample);
 
 ### 2.1 Pattern Family
 
-Divide and conquer sorting problems fall into three main operational families:
+Divide and conquer sorting problems fall into three main patterns:
 
-- **Balanced Halving with External Combination (Merge Sort):** Subproblems are split blindly down the middle. Work occurs entirely during the merge phase when combining sorted subsets.
-- **Partitioning with Subproblem Pruning (Quickselect):** Subproblems are split around a pivot. When searching for a single ranked value ($K$-th element), the algorithm discards the non-qualifying partition and recurses on only one branch.
-- **Three-Way Dutch Flag Partitioning:** Used when inputs contain large numbers of duplicate keys. Partitions the input into three segments: values less than pivot, values equal to pivot, and values greater than pivot.
+- **Halving and Zipping Together (Merge Sort):** Split the list right down the middle. All the real work happens when zipping sorted halves together.
+- **Pivot Splitting and Discarding (Quickselect):** Split items around a pivot. When searching for the $K$-th item, throw away the side you do not need and keep searching only the other side.
+- **Three-Way Dutch Flag Splitting:** Used when there are many duplicate items. Split into three piles: items smaller than pivot, items equal to pivot, and items greater than pivot.
 
 ### 2.2 Pattern Recognition Table
 
@@ -153,21 +156,21 @@ Divide and conquer sorting problems fall into three main operational families:
 ### 2.3 When to Use vs When NOT to Use
 
 - **Use Merge Sort when:**
-  - Stable sorting is mandatory (e.g., sorting objects by price while keeping existing alphabetical secondary ordering).
-  - Worst-case predictable performance is required (e.g., real-time systems where $O(n^2)$ spikes are unacceptable).
-  - Sorting linked lists, where pointer re-linking takes $O(1)$ auxiliary space without memory buffer copies.
+  - Stable sorting is needed (e.g., sorting items by price while keeping existing alphabetical order for ties).
+  - You need guaranteed predictable performance with no slowdowns.
+  - Sorting linked lists, where moving pointers takes $O(1)$ extra memory.
 - **When NOT to use Merge Sort:**
-  - Memory is constrained and allocating an auxiliary array of size $n$ risks memory limits.
+  - Memory is very tight and allocating an extra array of size $n$ takes too much RAM.
 - **Use Quick Sort / Quickselect when:**
-  - You need fast, cache-friendly in-place sorting with minimal auxiliary memory.
-  - You need to locate a specific rank element ($K$-th largest) in $O(n)$ average time.
+  - You need fast in-place sorting with minimal extra memory.
+  - You need to find a single ranked item ($K$-th largest) in $O(n)$ average time.
 - **When NOT to use Quick Sort:**
-  - Order stability is required.
-  - Worst-case time must never degrade to $O(n^2)$ under adversarial inputs.
+  - Original order of equal items must be preserved (stability).
+  - You cannot risk an $O(n^2)$ worst-case slowdown on sorted data.
 
 ### 2.4 The 10^7 Operations Rule
 
-Node.js executes approximately $10^7$ to $10^8$ operations per second on a single thread. When $n = 100,000$, an $O(n^2)$ algorithm performs $10^{10}$ comparisons, locking the thread for tens of seconds. Both Merge Sort and Quick Sort perform $n \log_2 n \approx 1.7 \times 10^6$ operations, completing in under 20 milliseconds.
+Node.js runs roughly $10^7$ to $10^8$ operations per second on a single thread. When $n = 100,000$, an $O(n^2)$ algorithm runs $10^{10}$ comparisons, locking the thread for tens of seconds. Both Merge Sort and Quick Sort run $n \log_2 n \approx 1.7 \times 10^6$ operations, finishing in under 20 milliseconds.
 
 ---
 
@@ -183,7 +186,7 @@ Given an array of integers `nums`, sort the array in ascending order without usi
 - **Constraints:** $1 \le nums.length \le 50,000$, $-50,000 \le nums[i] \le 50,000$.
 
 #### 3.1.2 How to Think About It
-Imagine a deck of numbered cards spread out face down. You divide the deck in half, and in half again, until you have piles of one card each. You then pick up pairs of piles. With one card in your left hand and one in your right hand, you place the smaller card down first, followed by the larger card. When combining larger piles, you keep eyes on the top cards of each pile, repeatedly moving the smaller card to the output pile.
+Imagine a deck of numbered cards spread out face down. You divide the deck in half, and in half again, until you have piles of one card each. You then pick up pairs of piles. With one card in your left hand and one in your right hand, you place the smaller card down first, followed by the larger card. When combining larger piles, you keep your eyes on the top cards of each pile, repeatedly moving the smaller card to the output pile.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 The naive approach uses recursive slicing: calling `arr.slice(0, mid)` and `arr.slice(mid)` on every recursion step.
@@ -208,7 +211,7 @@ function naiveMergeSort(arr) {
 }
 ```
 
-The bottleneck is memory churn. For an array of 50,000 numbers, `arr.slice()` creates tens of thousands of intermediate short-lived arrays on the V8 heap. This triggers continuous garbage collection cycles, degrading execution speed significantly.
+The bottleneck is memory churn. For an array of 50,000 numbers, `arr.slice()` creates tens of thousands of temporary arrays on the V8 heap. This forces continuous garbage collection cycles, which slows down execution significantly.
 
 #### 3.1.4 The Pattern Insight
 Instead of allocating fresh slices at every level, allocate a single auxiliary buffer of size $n$ once before starting the recursion. Pass index boundaries (`start`, `mid`, `end`). Read from the main array into the auxiliary buffer for comparison, and write sorted values directly back into the original array indices.

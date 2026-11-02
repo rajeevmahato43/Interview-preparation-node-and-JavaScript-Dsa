@@ -6,18 +6,20 @@
 
 </nav>
 
+---
+
 ## 1. Subsets, Permutations & Combinations Core Concepts
 
-Almost every combinatorial search question maps directly onto one of three core mathematical structures: Subsets, Combinations, or Permutations. Recognizing how they differ structurally dictates your recursion loop boundaries and visited-state tracking.
+Almost every backtracking problem falls into one of three buckets: Subsets, Combinations, or Permutations. Knowing which one you are solving tells you how to set up your loop and how to track used items:
 
-- **Subset (Power Set):** Any selection of elements from a set, of any length from $0$ to $n$. Order does not matter (`[1, 2]` is the same subset as `[2, 1]`). Total count: $2^n$.
-- **Combination ($n$ choose $k$):** A selection of exactly $k$ items from a collection of $n$ items where order does not matter. Total count: $\binom{n}{k} = \frac{n!}{k!(n - k)!}$.
-- **Permutation:** An arrangement of all $n$ items in a specific sequential order. Order does matter (`[1, 2, 3]` is distinct from `[3, 2, 1]`). Total count: $n!$.
+- **Subsets (Power Set):** Picking any number of items from a group, from $0$ items all the way to all $n$ items. Order does not matter (`[1, 2]` is the exact same subset as `[2, 1]`). Total count: $2^n$.
+- **Combinations ($n$ choose $k$):** Picking an exact number of items ($k$) from $n$ items. Order does not matter. Total count: $\binom{n}{k} = \frac{n!}{k!(n - k)!}$.
+- **Permutations:** Arranging all $n$ items in a specific order. Order matters (`[1, 2, 3]` is completely different from `[3, 2, 1]`). Total count: $n!$.
 
 Consider these physical analogies:
-1. **Subsets (Pizza Toppings):** You have 3 toppings: Olives, Mushrooms, Peppers. For each topping, you have a binary choice: put it on the pizza, or do not. You can make $2^3 = 8$ distinct pizzas, ranging from plain cheese `[]` to the works `[O, M, P]`. Length varies from $0$ to $n$, and topping order does not matter.
-2. **Combinations (Hiring a Committee):** You have 5 engineers and must choose exactly 3 for an interview panel. A committee of {Alice, Bob, Charlie} is identical to {Charlie, Alice, Bob}. The length is fixed at $k = 3$, and order does not matter.
-3. **Permutations (Olympic Podium):** Three runners finish a race: Alice, Bob, Charlie. Alice winning Gold and Bob winning Silver is completely different from Bob winning Gold and Alice winning Silver. Every element is used, length is fixed at $n$, and ordering matters.
+1. **Subsets (Pizza Toppings):** You have 3 toppings: Olives, Mushrooms, and Peppers. For each topping, you have a simple choice: put it on the pizza, or do not. You can make $2^3 = 8$ different pizzas, from plain cheese `[]` to everything on it `[O, M, P]`. The size can be anything from 0 to 3, and topping order does not matter.
+2. **Combinations (Picking a Team):** You have 5 players and need to pick 3 players for a team. The team {Alice, Bob, Charlie} is the exact same team as {Charlie, Alice, Bob}. The team size is fixed at $k = 3$, and order does not matter.
+3. **Permutations (Running Race Medals):** Three runners finish a race: Alice, Bob, and Charlie. Alice winning Gold and Bob winning Silver is completely different from Bob winning Gold and Alice winning Silver! Every runner gets a medal, the size is fixed at $n$, and the exact order matters.
 
 ```javascript
 // Baseline demonstration of Subsets using startIndex
@@ -67,22 +69,23 @@ Duplicate pruning   i > start && n[i]==n[i-1]i > start && n[i]==n[i-1]n[i]==n[i-
 - **Combinations and Permutations collect only leaf nodes** that satisfy the target length requirement.
 
 > [!NOTE]
-> Why does Subsets save `[...currentPath]` unconditionally at the top of the function, while Permutations checks `currentPath.length === nums.length`? Because an empty set or a 1-element prefix is a valid subset, but not a complete permutation.
+> Self-Check: Why does Subsets save `[...currentPath]` unconditionally at the very top of the function, while Permutations checks `currentPath.length === nums.length`?
+> Answer: An empty group or a 1-item pick is already a valid subset. But a permutation is only finished once every single item has been placed in line.
 
 ### 1.2 The Duplicate Handling Invariants
 
-When inputs contain duplicate values (e.g., `[1, 2, 2]`), sorting the array upfront is mandatory so duplicates are placed adjacent to each other.
+When an array has duplicate numbers (like `[1, 2, 2]`), always sort the array first so identical numbers sit side by side:
 
-- For **Subsets and Combinations**, loop starting at `startIndex`:
+- For **Subsets and Combinations**, the loop starts at `startIndex`:
   ```javascript
   if (i > startIndex && nums[i] === nums[i - 1]) continue;
   ```
-  `i > startIndex` ensures we permit identical elements vertically down the same branch (`[2, 2]`), but skip identical choices horizontally across sibling branches.
-- For **Permutations**, loop starting at index `0`:
+  `i > startIndex` allows taking identical items deeper down the same branch (`[2, 2]`), but skips picking the same number again across the same level.
+- For **Permutations**, the loop starts at index `0`:
   ```javascript
   if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) continue;
   ```
-  `!used[i - 1]` ensures identical numbers are chosen strictly in left-to-right order. If `used[i - 1]` is false, it means the earlier duplicate was already explored and popped; picking `nums[i]` now would duplicate that branch.
+  `!used[i - 1]` makes sure we only pick identical numbers from left to right. If `used[i - 1]` is false, it means we already explored that duplicate number at this spot. Picking `nums[i]` now would create the exact same word again.
 
 ### 1.3 Operations Reference Table
 
@@ -149,7 +152,12 @@ Given an integer array `nums` of unique elements, return all possible subsets (t
 - **Constraints:** $1 \le nums.length \le 10$, all elements are distinct.
 
 #### 3.1.2 How to Think About It
-Imagine a row of 3 light switches labeled 1, 2, and 3. You start with all switches OFF: `[]`. You can flip switch 1 ON: `[1]`. From there, you can also flip switch 2 ON: `[1, 2]`. Then switch 3 ON: `[1, 2, 3]`. You flip switch 3 back OFF, then flip switch 2 back OFF, and explore turning switch 3 ON instead: `[1, 3]`. Every unique combination of switch settings represents a valid subset.
+Imagine 3 light switches on a wall labeled 1, 2, and 3. You start with all switches OFF: `[]`.
+- Flip switch 1 ON: `[1]`.
+- Keep switch 1 ON and flip switch 2 ON: `[1, 2]`.
+- Flip switch 3 ON: `[1, 2, 3]`.
+- Flip switch 3 back OFF, then switch 2 back OFF, and flip switch 3 ON instead: `[1, 3]`.
+Every unique pattern of ON switches gives a valid subset.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 The naive approach generates subsets by string concatenation or copying arrays without index discipline:
@@ -243,7 +251,7 @@ Given an integer array `nums` that may contain duplicates, return all possible u
 - **Constraints:** $1 \le nums.length \le 10$, $-10 \le nums[i] \le 10$.
 
 #### 3.2.2 How to Think About It
-Suppose you have three coins: one dime and two identical pennies. If you choose the dime and the first penny, you hold {dime, penny}. If your friend instead chooses the dime and the second penny, they also hold {dime, penny}. These are identical subsets. To avoid duplicates, you decide: if you have two identical pennies sitting on the table, you may only pick the second penny if you have already picked the first penny.
+Suppose you have three coins: one dime and two identical pennies. If you take the dime and the first penny, you hold {dime, penny}. If your friend takes the dime and the second penny, they also hold {dime, penny}. These are the exact same subset! To avoid making the same set twice, use this rule: if you have two identical pennies, you can only pick the second penny if you have already picked the first penny.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Generate all $2^n$ subsets naively, sort each subset, convert each subset to a string (`"1,2"`), and insert into a `Set`:
@@ -274,12 +282,12 @@ function subsetsWithDupNaive(nums) {
 The bottleneck is memory churn and wasted traversal. The algorithm still explores all $2^n$ recursive branches, generating strings and computing hash collisions for redundant paths.
 
 #### 3.2.4 The Pattern Insight
-1. Sort `nums` ascending upfront so duplicate numbers are adjacent.
-2. In the loop, skip identical items at the same horizontal tree level:
+1. Sort `nums` first so duplicate numbers sit side by side.
+2. In the loop, skip identical numbers across the same level:
    ```javascript
    if (i > startIndex && nums[i] === nums[i - 1]) continue;
    ```
-   When `i === startIndex`, we are going deeper into child branches (e.g. picking the second 2 to form `[2, 2]`). When `i > startIndex`, we are iterating over sibling alternatives at the same depth; picking the second 2 here would duplicate the branch started by the first 2.
+   When `i === startIndex`, we are going deeper down a branch (picking the second 2 to make `[2, 2]`). When `i > startIndex`, we are trying alternative choices at the same level; picking the second 2 here would repeat the work already done by the first 2.
 
 #### 3.2.5 Pseudocode
 ```text
@@ -364,7 +372,7 @@ Given a collection of numbers `nums` that might contain duplicates, return all p
 - **Constraints:** $1 \le nums.length \le 8$, $-10 \le nums[i] \le 10$.
 
 #### 3.3.2 How to Think About It
-Suppose you are placing three scrabble tiles on a board: two identical letter `A` tiles and one letter `B` tile. If you place the first `A` at spot 1, the second `A` at spot 2, and `B` at spot 3, you form `AAB`. If you swap the two identical `A` tiles, you still form `AAB`. To avoid generating duplicate arrangements, enforce an order rule: you may only place the second `A` tile on the board if the first `A` tile is already placed in the current word.
+Suppose you are placing three letter tiles on a board: two identical `A` tiles and one `B` tile. If you place the first `A` at spot 1, the second `A` at spot 2, and `B` at spot 3, you get `AAB`. If you swap the two identical `A` tiles, you still get `AAB`. To avoid making the same word twice, follow this rule: only place the second `A` on the board if the first `A` is already being used in the current word.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 Generate all $n!$ permutations using a standard visited tracker, serialize them to strings, and filter duplicates with a Set:
@@ -401,12 +409,12 @@ function permuteUniqueNaive(nums) {
 For an array of 8 identical numbers `[1, 1, 1, 1, 1, 1, 1, 1]`, there is only 1 unique permutation. The naive approach generates all $8! = 40,320$ identical permutations and hashes 40,320 strings, wasting CPU and memory.
 
 #### 3.3.4 The Pattern Insight
-1. Sort `nums` ascending upfront.
-2. Maintain a boolean array `used = new Array(nums.length).fill(false)`.
-3. Loop from `i = 0` to `nums.length - 1`:
-   - If `used[i]` is true, skip (element already picked in the current word).
+1. Sort `nums` first.
+2. Keep a boolean array `used = new Array(nums.length).fill(false)`.
+3. Loop from `0` to the end:
+   - If `used[i]` is true, skip (item is already used in the word).
    - If `nums[i] === nums[i - 1]` and `!used[i - 1]`, skip!
-   If `used[i - 1]` is false, it means the earlier duplicate was already explored as a choice at this position and has already been backtracked. Starting a new choice with `nums[i]` would reproduce an identical permutation tree.
+   If `used[i - 1]` is false, it means the earlier duplicate was already tried at this position and removed. Trying `nums[i]` now would create the exact same arrangement all over again.
 
 #### 3.3.5 Pseudocode
 ```text

@@ -6,16 +6,24 @@
 
 </nav>
 
+---
+
 ## 1. Binary Tree Fundamentals
 
-A Binary Tree is a hierarchical data structure composed of nodes, where each node contains a value and references to at most two child nodes, designated as `left` and `right`. Unlike linear arrays or linked lists where every element has exactly one predecessor and successor, trees model parent-child relationships, nested directories, and hierarchical decision boundaries.
+A **Binary Tree** is a data structure made of connected nodes. Each node holds a value and points to at most two children: a `left` child and a `right` child. Unlike a flat array or a single-file line of cards, trees branch out like an upside-down family tree:
 
-- **Root Node:** The topmost node in the tree with no incoming parent edges.
-- **Leaf Node:** A node with both `left === null` and `right === null`.
-- **Depth:** The number of edges on the path from the root down to a specific node (the root has depth 0).
-- **Height:** The number of edges on the longest downward path from a node to a leaf (a leaf has height 0).
+- **Root Node:** The very top node. It has no parent above it.
+- **Leaf Node:** A node at the bottom with no children (`left === null` and `right === null`).
+- **Depth:** How many steps down from the root to a node (the root has depth 0).
+- **Height:** How many steps down from a node to its farthest leaf (a leaf has height 0).
 
-Imagine an enterprise organizational chart. The CEO sits at the root. The CEO manages two Vice Presidents, each VP manages two engineering directors, and individual developers sit at the bottom as leaf nodes. When the CEO announces a company-wide initiative, information flows top-down from parent to children (Pre-Order traversal). When calculating annual headcount budgets, each team rolls up estimates to their VP, and VPs aggregate numbers before reporting to the CEO (Post-Order bottom-up aggregation). The CEO cannot determine total company headcount until both VP branches finish calculating.
+Imagine a company org chart:
+- The CEO is at the top (**Root Node**).
+- The CEO manages two Vice Presidents. Each VP manages two directors.
+- Individual engineers sit at the bottom (**Leaf Nodes**).
+- When the CEO sends out an email to all staff, the message flows top-down from boss to worker (**Pre-Order**).
+- When planning the yearly team budget, each engineer sends their numbers up to their director. Directors combine the numbers and send them up to their VP. Finally, VPs send the combined total up to the CEO (**Post-Order**).
+- The CEO cannot know the total company budget until both VPs finish adding up their teams' numbers!
 
 ```javascript
 // Definition of a standard Binary Tree Node
@@ -64,10 +72,10 @@ console.log("Post-Order:", postOrder(sampleTree)); // [ 4, 5, 2, 3, 1 ]
 
 ### 1.1 Traversal Orders and Mental Models
 
-Tree problems overwhelmingly fall into one of two recursive mental models:
+Tree problems usually follow one of two ways of thinking:
 
-- **Top-Down (Pre-Order Propagation):** The parent calculates a state (such as `currentSum + node.val`) and passes it down into child function arguments.
-- **Bottom-Up (Post-Order Aggregation):** The function asks: *"If my left child provides its answer, and my right child provides its answer, how do I combine them to return my answer to my parent?"*
+- **Top-Down (Pre-Order):** The parent calculates a value (like `currentSum + node.val`) and passes it down to its children in function arguments.
+- **Bottom-Up (Post-Order):** The parent asks: *"If my left child gives me its answer, and my right child gives me its answer, how do I combine them to return my answer to my parent?"*
 
 ```text
 Pre-Order:    Parent -> Left Subtree -> Right Subtree
@@ -76,13 +84,14 @@ Post-Order:   Left Subtree -> Right Subtree -> Parent
 ```
 
 > [!NOTE]
-> Why is bottom-up post-order the primary tool for computing heights, balances, and diameters? Because a parent cannot compute its own height until both of its children have completed calculating their respective heights.
+> Self-Check: Why is bottom-up post-order the best way to find height or balance?
+> Answer: A parent node cannot know its own height until both of its children finish calculating their heights first.
 
 ### 1.2 Iterative DFS and V8 Stack Safety
 
-Node.js limits the V8 call stack to approximately 10,000 frames. If an unbalanced tree with 15,000 nodes is shaped like a linked list (every node has only a left child), recursive DFS crashes with `RangeError: Maximum call stack size exceeded`.
+Node.js gives each thread about 10,000 frames of call stack memory. If an unbalanced tree with 15,000 nodes forms a straight line (every node only has a left child), recursive DFS crashes with `RangeError: Maximum call stack size exceeded`.
 
-In production backends handling unvalidated tree depths, convert recursive DFS to an iterative DFS using an explicit JavaScript array on the heap as a stack:
+In production backends where trees might be huge, use an iterative DFS with a regular JavaScript array on the heap as your stack:
 
 ```javascript
 // Iterative DFS using heap-allocated array to prevent call stack overflow
@@ -132,9 +141,9 @@ console.log("Iterative depth of 12,000 skewed nodes:", maxDepthIterative(deepRoo
 
 Binary tree DFS problems fall into three structural patterns:
 
-- **Bottom-Up Post-Order Aggregation:** Children return scalar metrics (height, validity, count) up to the parent. The parent combines these values and returns its own metric upward.
-- **Side-Effect State Tracking:** During a post-order traversal, the function returns one value up the call chain (such as subtree height), while updating an independent global variable (such as maximum diameter) as a side effect.
-- **Simultaneous Dual-Pointer DFS:** Two pointers traverse two separate tree branches in parallel to evaluate symmetry, structural equivalence, or subtree matching.
+- **Bottom-Up Post-Order Aggregation:** Children return values (height, validity, count) up to the parent. The parent combines these values and returns its own result upward.
+- **Side-Effect State Tracking:** During a post-order traversal, the function returns one value up the call chain (such as subtree height), while updating an independent variable (such as maximum diameter) as a side effect.
+- **Simultaneous Dual-Pointer DFS:** Two pointers walk two separate tree branches in parallel to check symmetry, structural equality, or matching subtrees.
 
 ### 2.2 Pattern Recognition Table
 
@@ -151,11 +160,11 @@ Binary tree DFS problems fall into three structural patterns:
 
 - **Use Tree DFS when:**
   - Calculations depend on recursive subtree properties (height, balance, diameter).
-  - You must explore paths from root down to leaves.
-  - You want concise, natural recursive implementations.
+  - You need to check paths from the root down to leaves.
+  - You want clean, natural recursive code.
 - **When NOT to use Tree DFS:**
-  - The problem asks for **level-by-level processing** (e.g., printing nodes row by row or finding shortest distance in unweighted graphs). Use Breadth-First Search (BFS) with a queue.
-  - The tree is known to have arbitrary or unconstrained depth ($N > 10,000$) in single-threaded Node.js without iterative heap protections.
+  - The problem asks for **level-by-level work** (like printing row by row or finding shortest distance). Use Breadth-First Search (BFS) with a queue instead.
+  - The tree might have deep recursion ($N > 10,000$) in single-threaded Node.js without iterative heap protections.
 
 ### 2.4 The 10^7 Operations Rule
 
@@ -177,10 +186,10 @@ Given the `root` of a binary tree, return its maximum depth. A binary tree's max
 - **Constraints:** $0 \le \text{number of nodes} \le 10^4$, $-100 \le Node.val \le 100$.
 
 #### 3.1.2 How to Think About It
-Imagine standing at the base of a tree looking upward. If you are standing at an empty spot (`null`), the height is 0. If you are standing at a node, you ask your left child for its height and your right child for its height. Your own height is simply 1 plus whichever child's height is greater.
+Imagine standing at a node in a tree. You ask your left child: "How tall are you?" You ask your right child: "How tall are you?" Your own height is simply 1 plus whichever child is taller. If you hit an empty spot (`null`), the height is 0.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-The basic post-order approach is already mathematically optimal at $O(N)$ time. The naive trap is maintaining redundant global counters that are incremented and decremented during traversal, introducing state synchronization bugs across recursive branches.
+The basic post-order approach is already mathematically optimal at $O(N)$ time. The naive trap is using a global counter outside the function. If you forget to decrement it when walking back up, or if multiple calls run, your counter gives wrong answers.
 
 #### 3.1.4 The Pattern Insight
 Use pure functional bottom-up recursion:
@@ -254,7 +263,7 @@ $$\forall \text{ node } u: |\text{height}(u.left) - \text{height}(u.right)| \le 
 - **Constraints:** $0 \le \text{number of nodes} \le 5,000$.
 
 #### 3.2.2 How to Think About It
-Imagine a hanging mobile sculpture. At every crossbar, the left arm and right arm must hang at almost equal depths (differing by at most 1 unit of height). If any branch is lopsided by 2 or more units, the entire sculpture tips over.
+Imagine a hanging mobile sculpture above a baby's crib. At every wooden crossbar, the left side and right side must hang at almost equal heights (differing by at most 1). If either side is 2 or more steps lower, the mobile tilts and falls over.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Compute the height of the left and right subtrees from the root, then recursively call `isBalanced` on both children:
@@ -278,7 +287,7 @@ function isBalancedNaive(root) {
 }
 ```
 
-The bottleneck is repeated traversal. For a skewed tree of $N$ nodes, `getHeight()` runs in $O(N)$ for every node, producing $O(N^2)$ time complexity.
+The bottleneck is repeated work. For a straight-line tree of $N$ nodes, calling `getHeight()` for every single node runs in $O(N^2)$ time. It visits nodes over and over.
 
 #### 3.2.4 The Pattern Insight
 Combine height computation and balance verification into a single bottom-up post-order pass.
@@ -376,7 +385,7 @@ Given the `root` of a binary tree, return the length of the diameter of the tree
 - **Constraints:** $1 \le \text{number of nodes} \le 10^4$, $-100 \le Node.val \le 100$.
 
 #### 3.3.2 How to Think About It
-Imagine a suspension bridge hanging between two mountain peaks. The longest path between any two hikers turns at some highest peak node. For any node $u$, the longest path turning at $u$ is the maximum downward path into its left subtree plus the maximum downward path into its right subtree: $\text{path} = H_{left} + H_{right}$. Crucially, the highest peak might not be the root of the entire tree.
+Imagine hiking over mountain peaks. The longest path between any two hikers goes up to some highest peak and down the other side. For any node $u$, the longest path turning at $u$ is the height of its left subtree plus the height of its right subtree: $\text{path} = H_{left} + H_{right}$. Crucially, the highest turning peak might not be the root of the whole tree!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
 At every node, compute `maxDepth(node.left) + maxDepth(node.right)`. Recursively call the function on `node.left` and `node.right` to find the maximum over all nodes. This repeats depth calculations at every level, running in $O(N^2)$ time.

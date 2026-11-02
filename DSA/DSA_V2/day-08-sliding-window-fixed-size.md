@@ -10,16 +10,16 @@
 
 ## 1. Fixed Sliding Window
 
-A **Fixed Sliding Window** is an algorithmic pattern designed for contiguous subarrays or substrings of an exact, constant length $k$.
+A **Fixed Sliding Window** is a technique used when working with sub-arrays or sub-strings of an exact, fixed size $k$.
 
-Instead of evaluating each window of length $k$ from scratch ($O(k)$ work per window, leading to an $O(n \cdot k)$ bottleneck), the algorithm slides the window forward by one position on each step. It updates the state in $O(1)$ time by subtracting the element that exited on the left and adding the element that entered on the right:
+Instead of recalculating every window of size $k$ from scratch (which takes $O(k)$ time per window and causes a slow $O(n \cdot k)$ bottleneck), we slide the window forward by one step. We update our result in $O(1)$ fast time by subtracting the item leaving on the left and adding the item entering on the right:
 
-$$\text{New Window State} = \text{Current Window State} - \text{Outgoing Element} + \text{Incoming Element}$$
+$$\text{New Window State} = \text{Current Window State} - \text{Item Leaving} + \text{Item Entering}$$
 
-To picture this physically, imagine sitting on a passenger train looking out a rectangular window that frames exactly $k = 3$ telephone poles along the tracks:
+To picture this physically, imagine looking out a train window that frames exactly $k = 3$ telephone poles along the tracks:
 * As the train moves forward, you **do not close your eyes and recount all three poles**.
 * The middle two poles did not change at all.
-* Exactly **one pole leaves your view** behind the left frame edge, and **one new pole enters your view** past the right frame edge.
+* Exactly **one pole leaves your view** on the left edge, and **one new pole enters your view** on the right edge.
 * You subtract the value of the pole leaving and add the value of the pole entering.
 
 ```text
@@ -69,15 +69,15 @@ console.log(maxSubarraySum([2, 1, 5, 1, 3, 2], 3)); // 9
 
 ### 1.1 Invariant State Transition
 
-The fixed sliding window operates under a strict size invariant:
+A fixed sliding window always keeps the exact same size $k$:
 
 $$\text{Active Window: } \text{arr}[i - k + 1 \dots i] \implies \text{Contains exactly } k \text{ elements}$$
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   FIXED WINDOW LIFECYCLE PHASES                        │
+│                      FIXED WINDOW LIFECYCLE PHASES                     │
 ├─────────────────────┬──────────────────┬─────────────────┬─────────────┤
-│ Index Range         │ Outgoing Element │ Incoming Element│ Action      │
+│ Index Range         │ Item Leaving     │ Item Entering   │ Action      │
 ├─────────────────────┼──────────────────┼─────────────────┼─────────────┤
 │ 0 to k - 1          │ None             │ arr[i]          │ Build window│
 │ k to n - 1          │ arr[i - k]       │ arr[i]          │ Slide: -out +in│
@@ -85,66 +85,66 @@ $$\text{Active Window: } \text{arr}[i - k + 1 \dots i] \implies \text{Contains e
 ```
 
 > [!NOTE]
-> **Self-Check:** If an input array contains $n = 100,000$ numbers and $k = 30,000$, how many total addition operations does the sliding window perform versus naive recalculation?  
-> *Answer:* Naive recalculation performs $(n - k + 1) \times k \approx 70,000 \times 30,000 = 2.1 \times 10^9$ operations (freezing Node.js). The sliding window performs $k$ initial additions and $2(n - k)$ additions/subtractions $\approx 170,000$ operations (finishing in under 2 milliseconds).
+> **Self-Check:** If an input array has $n = 100,000$ numbers and $k = 30,000$, how many math operations does the sliding window perform versus recalculating from scratch?  
+> *Answer:* Recalculating from scratch takes $(n - k + 1) \times k \approx 70,000 \times 30,000 = 2.1 \times 10^9$ operations (freezing Node.js). The sliding window does $k$ initial additions and then 2 operations per step $\approx 170,000$ operations (finishing in under 2 milliseconds).
 
 ---
 
 ### 1.2 Rolling Arithmetic vs Recomputation
 
-| Strategy | Operations Per Window | Total Time Complexity | Auxiliary Space | Event Loop Impact |
+| Strategy | Operations Per Window | Total Time Complexity | Extra Space | Node.js Impact |
 | :--- | :---: | :---: | :---: | :--- |
-| **Naive Slicing (`.slice().reduce()`)** | $O(k)$ | **$O(n \cdot k)$** | $O(k)$ heap churn | High GC pauses, thread lock |
+| **Naive Slicing (`.slice().reduce()`)** | $O(k)$ | **$O(n \cdot k)$** | $O(k)$ memory churn | Garbage collector pauses, slow execution |
 | **Fixed Sliding Window** | $O(1)$ | **$O(n)$** | $O(1)$ | Non-blocking, instant execution |
 
-When working with averages, dividing by $k$ inside the loop causes floating-point rounding errors to accumulate across thousands of iterations. Always maintain raw integer sums inside the loop and perform a single division at the return boundary.
+When calculating averages, do not divide by $k$ inside the loop. Small decimal rounding errors add up over thousands of steps. Keep the raw sum as an integer inside the loop, and divide by $k$ just once at the very end.
 
 ---
 
 ### 1.3 Operations Reference Table
 
-| Operation | Role in Fixed Window | Time Complexity | Auxiliary Space | Code Example |
+| Operation | Role in Fixed Window | Time Complexity | Extra Space | Code Example |
 | :--- | :--- | :---: | :---: | :--- |
-| **Build Initial Window** | Sums first $k$ elements ($0 \dots k - 1$) | $O(k)$ | $O(1)$ | `for (let i = 0; i < k; i++) sum += arr[i]` |
-| **Slide Window** | Subtract outgoing `arr[i - k]`, add incoming `arr[i]` | $O(1)$ | $O(1)$ | `sum += arr[i] - arr[i - k]` |
-| **Update Global Optimal** | Tracks max/min accumulated metric | $O(1)$ | $O(1)$ | `maxSum = Math.max(maxSum, sum)` |
-| **Frequency Map Update** | Adjust counts in 26-slot typed array | $O(1)$ | $O(1)$ | `counts[inCode]++; counts[outCode]--` |
-| **Frequency Equality Check**| Compare 26 frequency slots | $O(1)$ | $O(1)$ | `arraysEqual(pCount, sCount)` |
+| **Build Initial Window** | Sums first $k$ items ($0 \dots k - 1$) | $O(k)$ | $O(1)$ | `for (let i = 0; i < k; i++) sum += arr[i]` |
+| **Slide Window** | Subtract leaving `arr[i - k]`, add entering `arr[i]` | $O(1)$ | $O(1)$ | `sum += arr[i] - arr[i - k]` |
+| **Update Best Answer** | Keeps track of maximum or minimum sum | $O(1)$ | $O(1)$ | `maxSum = Math.max(maxSum, sum)` |
+| **Update Frequency Counts** | Adjust counts in 26-slot typed array | $O(1)$ | $O(1)$ | `counts[inCode]++; counts[outCode]--` |
+| **Check Counts Match** | Compare 26 frequency slots | $O(1)$ | $O(1)$ | `arraysEqual(pCount, sCount)` |
 
 ---
 
 ## 2. Pattern Overview
 
 ### 2.1 Pattern Family
-* **Rolling Sum / Average:** Maintaining a scalar accumulator across fixed contiguous ranges.
-* **Character Frequency Window:** Maintaining a 26-slot frequency array across fixed-length substrings (e.g. anagram matching).
-* **Rolling Hash (Rabin-Karp):** Polynomial hash rolling across strings for substring search.
-* **Monotonic Deque Window:** Maintaining extreme elements (max/min) across a fixed window using a double-ended queue in $O(n)$ time.
+* **Rolling Sum / Average:** Keeping a running total across fixed sub-arrays.
+* **Character Frequency Window:** Keeping a 26-slot count array across fixed-length substrings (like anagram matching).
+* **Rolling Hash (Rabin-Karp):** Rolling a hash value across strings to find substrings quickly.
+* **Monotonic Deque Window:** Keeping track of the maximum or minimum item in every window of size $k$ using a double-ended queue in $O(n)$ time.
 
 ### 2.2 Pattern Recognition Table
 
 | Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"Subarray of length $k$" + "Max/Min sum or average"** | Optimize scalar aggregation over fixed length. | Fixed window with running sum. |
-| **"Find all anagrams" / "Permutation of string"** | Match character counts across fixed window $|p|$. | Fixed window with 26-slot frequency arrays. |
-| **"Substrings of size $k$ with distinct characters"** | Validate unique characters in fixed chunks. | Fixed window with character set / map. |
-| **"Sliding window maximum"** | Find max element in every window of size $k$. | Fixed window with Monotonic Deque. |
+| **"Subarray of length $k$" + "Max/Min sum or average"** | Find the best sum or average over a fixed size $k$. | Fixed window with a running sum. |
+| **"Find all anagrams" / "Permutation of string"** | Match character counts across fixed window size $|p|$. | Fixed window with two 26-slot count arrays. |
+| **"Substrings of size $k$ with distinct characters"** | Check for unique characters in chunks of size $k$. | Fixed window with character set or count array. |
+| **"Sliding window maximum"** | Find the largest number in every window of size $k$. | Fixed window with Monotonic Deque. |
 
 ### 2.3 When to Use vs When NOT to Use
 * **When to Use**:
-* The problem explicitly provides a **fixed window size $k$** (or constant duration/interval).
-* The target requires contiguous sub-ranges, not scattered subsets.
-* The state of window $i + 1$ can be derived directly from window $i$ by subtracting the leaving item and adding the entering item.
+* The problem gives a **fixed window size $k$** (or a constant interval).
+* The problem asks about contiguous sub-arrays or sub-strings, not scattered items.
+* You can calculate the next window by subtracting the item that left and adding the item that entered.
 
 * **When NOT to Use**:
-* The window length must grow or shrink dynamically based on conditions (use **Variable Sliding Window**, Day 09).
+* The window must grow or shrink based on conditions (use **Variable Sliding Window**, Day 09).
 * Negative numbers exist and you need an exact target sum with arbitrary lengths (use **Prefix Sum + Hash Map**, Day 10).
-* Elements can be chosen out of order (use **Greedy** or **Two Pointers**).
+* Items can be picked in any order (use **Greedy** or **Two Pointers**).
 
 ### 2.4 The 10^7 Operations Rule
 If $n = 100,000$ and $k = 50,000$:
-* A brute-force nested loop executes $(n - k + 1) \times k \approx 2.5 \times 10^9$ operations, freezing single-threaded Node.js for over 15 seconds.
-* A fixed sliding window executes $n = 100,000$ single-step operations, completing in **under 2 milliseconds**.
+* A brute-force nested loop runs $(n - k + 1) \times k \approx 2.5 \times 10^9$ operations, freezing single-threaded Node.js for over 15 seconds.
+* A fixed sliding window runs $n = 100,000$ single-step operations, finishing in **under 2 milliseconds**.
 
 ---
 
@@ -164,24 +164,24 @@ You are given an integer array `nums` consisting of $n$ elements, and an integer
 * **Constraints:** $n == nums.length$, $1 \le k \le n \le 10^5$, $-10^4 \le nums[i] \le 10^4$.
 
 #### 3.1.2 How to Think About It
-Lay out numbered cards on a table: `[ 1, 12, -5, -6, 50, 3 ]`.
-Take a cardboard frame that reveals exactly $k = 4$ cards at a time.
-1. Place the frame over the first 4 cards: `[ 1, 12, -5, -6 ]`.
-   Sum them up: $1 + 12 - 5 - 6 = 2$.
+Lay out numbered cards on a table: `[ 1, 12, -5, -6, 50, 3 ]`.  
+Take a cardboard frame that shows exactly $k = 4$ cards at a time.
+1. Place the frame over the first 4 cards: `[ 1, 12, -5, -6 ]`.  
+   Add them up: $1 + 12 - 5 - 6 = 2$.  
    Save `maxSum = 2`.
-2. Slide the frame one spot to the right:
-   Card `1` (at index 0) exits on the left.
-   Card `50` (at index 4) enters on the right.
-   New sum = $2 - 1 + 50 = 51$.
-   $51 > 2$, so update `maxSum = 51`.
-3. Slide the frame one more spot:
-   Card `12` exits, card `3` enters.
-   New sum = $51 - 12 + 3 = 42$.
-   $42 < 51$, so `maxSum` stays $51$.
-4. Divide `maxSum` by $k = 4$ once at the very end: $51 / 4 = 12.75$.
+2. Slide the frame one spot to the right:  
+   Card `1` (at index 0) leaves on the left.  
+   Card `50` (at index 4) enters on the right.  
+   New sum = $2 - 1 + 50 = 51$.  
+   Since $51 > 2$, update `maxSum = 51`.
+3. Slide the frame one more spot:  
+   Card `12` leaves, card `3` enters.  
+   New sum = $51 - 12 + 3 = 42$.  
+   Since $42 < 51$, `maxSum` stays $51$.
+4. Divide `maxSum` by $k = 4$ just once at the very end: $51 / 4 = 12.75$.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-The naive approach recalculates every window from scratch using nested loops:
+The naive way recalculates every window from scratch using nested loops:
 
 ```javascript
 function findMaxAverageBrute(nums, k) {
@@ -197,14 +197,14 @@ function findMaxAverageBrute(nums, k) {
 }
 ```
 
-* **The Bottleneck:** Adjacent windows share $k - 1$ identical elements. The brute force approach re-adds those identical elements every single time, leading to $O(n \cdot k)$ work ($2.5 \times 10^9$ operations for large arrays).
+* **The Bottleneck:** Neighbor windows share $k - 1$ identical numbers. The brute force way re-adds those same numbers every single time, causing $O(n \cdot k)$ work ($2.5 \times 10^9$ operations on big arrays).
 
 #### 3.1.4 The Pattern Insight
-Instead of re-adding $k$ elements, reuse the existing sum:
-* Subtract the outgoing element `nums[i - k]`.
-* Add the incoming element `nums[i]`.
-* This converts the calculation into $O(1)$ constant time per window.
-* Maintaining raw integer sums and dividing by $k$ only at the return statement prevents floating-point accumulation errors.
+Instead of re-adding $k$ items, reuse the sum you already have:
+* Subtract the leaving item `nums[i - k]`.
+* Add the entering item `nums[i]`.
+* This makes each window update take $O(1)$ constant time.
+* Keep the raw sum as an integer and divide by $k$ only at the return statement to avoid floating-point errors.
 
 #### 3.1.5 Pseudocode
 
@@ -275,11 +275,11 @@ function buggyFindMaxAverage(nums, k) {
   return maxAvg;
 }
 ```
-* **Why it fails:** If all window averages are negative (e.g. `nums = [-5, -2], k = 2`), initializing `maxAvg = 0` causes the function to return `0` instead of `-3.5`. Dividing by $k$ on every step accumulates floating-point errors.
+* **Why it fails:** If all numbers are negative (like `nums = [-5, -2], k = 2`), setting `maxAvg = 0` makes the code return `0` instead of `-3.5`. Also, dividing by $k$ inside the loop causes decimal precision drift.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. Phase 1 executes $k$ iterations. Phase 2 executes $n - k$ iterations. Total operations: $k + (n - k) = n$ steps.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Only scalar numeric variables (`currentSum`, `maxSum`) are stored in memory.
+* **Time Complexity:** $\mathbf{O(n)}$. The first loop does $k$ steps. The second loop does $n - k$ steps. Total steps: $k + (n - k) = n$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only store two numbers (`currentSum` and `maxSum`) in memory.
 
 ---
 
@@ -287,6 +287,7 @@ function buggyFindMaxAverage(nums, k) {
 
 #### 3.2.1 Problem Statement
 Given two strings `s` and `p`, return an array of all the start indices of `p`'s anagrams in `s`. You may return the answer in any order.
+
 An Anagram is a word or phrase formed by rearranging the letters of another word or phrase, using all the original letters exactly once.
 
 * **Sample Input 1:** `s = "cbaebabacd"`, `p = "abc"` $\to$ **Expected Output:** `[0, 6]`  
@@ -296,15 +297,15 @@ An Anagram is a word or phrase formed by rearranging the letters of another word
 * **Constraints:** $1 \le s.length, p.length \le 3 \times 10^4$, `s` and `p` consist of lowercase English letters.
 
 #### 3.2.2 How to Think About It
-Imagine you have target letter blocks `p = "abc"`. Its length is $k = 3$.
-You slide a 3-slot window across `s = "cbaebabacd"`:
-1. Slot 0 (`"cba"`): Count of `'a'` is 1, `'b'` is 1, `'c'` is 1. Matches target! Record index `0`.
-2. Slide to Slot 1: Drop `'c'` on the left, add `'e'` on the right. Current window is `"bae"`. Letter `'e'` does not belong! Mismatch.
-3. Slide to Slot 2: Drop `'b'`, add `'b'`. Window is `"aeb"`. Mismatch.
-4. Continue sliding until index 6 (`"bac"`). Counts match target again! Record index `6`.
+Imagine you have letter tiles for `p = "abc"`. Its length is $k = 3$.  
+You slide a 3-letter frame across `s = "cbaebabacd"`:
+1. Window at index 0 is `"cba"`. Count of `'a'` is 1, `'b'` is 1, `'c'` is 1. This matches `p`! Add index `0` to results.
+2. Slide to index 1: Drop `'c'` on the left, add `'e'` on the right. Current window is `"bae"`. Letter `'e'` does not belong! Mismatch.
+3. Slide to index 2: Drop `'b'`, add `'b'`. Window is `"aeb"`. Mismatch.
+4. Keep sliding until index 6 (`"bac"`). The letter counts match `p` again! Add index `6` to results.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-The naive approach slices each substring of length $k$, sorts it, and compares it to sorted `p`:
+The naive way cuts out every substring of length $k$, sorts its letters, and compares it to sorted `p`:
 
 ```javascript
 function findAnagramsBrute(s, p) {
@@ -322,15 +323,15 @@ function findAnagramsBrute(s, p) {
 }
 ```
 
-* **The Bottleneck:** Sorting each substring takes $O(k \log k)$ time, leading to $O(n \cdot k \log k)$ overall runtime. Creating millions of temporary strings triggers severe garbage collection pauses.
+* **The Bottleneck:** Sorting every chunk takes $O(k \log k)$ time, leading to $O(n \cdot k \log k)$ total time. Creating new strings on every step also causes heavy memory allocations.
 
 #### 3.2.4 The Pattern Insight
-An anagram check does not require sorting; it only requires matching character frequency counts.
+You do not need to sort strings to check for an anagram. You only need to compare letter counts.
 * The window size is fixed at $k = p.length$.
 * Use two fixed 26-slot integer arrays (`pCount` and `sCount`).
 * On each slide:
-  - Decrement count for exiting character: `sCount[s.charCodeAt(i - k) - 97]--`.
-  - Increment count for entering character: `sCount[s.charCodeAt(i) - 97]++`.
+  - Subtract 1 from count of the leaving letter: `sCount[s.charCodeAt(i - k) - 97]--`.
+  - Add 1 to count of the entering letter: `sCount[s.charCodeAt(i) - 97]++`.
   - Compare the two 26-slot arrays in $O(26) = O(1)$ constant time.
 
 #### 3.2.5 Pseudocode
@@ -428,11 +429,11 @@ function buggyFindAnagramsMap(s, p) {
   return result;
 }
 ```
-* **Why it fails:** Allocating a new `Map` instance on every index creates massive garbage collection pressure, turning an $O(n)$ pattern into an $O(n \cdot k)$ bottleneck.
+* **Why it fails:** Making a brand new `Map` on every loop step wastes memory and slows down execution, turning an $O(n)$ pattern back into an $O(n \cdot k)$ bottleneck.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$, where $n = s.length$. Initializing counts takes $O(k)$ time. Sliding the window executes $n - k$ times. In each iteration, updating the 26-slot array is $O(1)$ and checking equality takes 26 scalar checks ($O(1)$). Total time: $O(k) + 26 \times O(n - k) = O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Exactly two fixed 26-slot typed arrays are allocated, independent of string size.
+* **Time Complexity:** $\mathbf{O(n)}$, where $n = s.length$. Setting up initial counts takes $O(k)$ time. Sliding the window runs $n - k$ times. In each step, updating the array is $O(1)$ and checking equality takes 26 steps ($O(1)$). Total time: $O(k) + 26 \times O(n - k) = O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We allocate exactly two 26-slot typed arrays, which never grow with string length.
 
 ---
 
@@ -440,7 +441,8 @@ function buggyFindAnagramsMap(s, p) {
 
 #### 3.3.1 Problem Statement
 Given two strings `s1` and `s2`, return `true` if `s2` contains a permutation of `s1`, or `false` otherwise.
-In other words, return `true` if one of `s1`'s permutations is the substring of `s2`.
+
+In other words, return `true` if one of `s1`'s permutations is a substring of `s2`.
 
 * **Sample Input 1:** `s1 = "ab"`, `s2 = "eidbaooo"` $\to$ **Expected Output:** `true`  
   *(Substring `"ba"` at index 3 is a permutation of `"ab"`)*
@@ -449,19 +451,19 @@ In other words, return `true` if one of `s1`'s permutations is the substring of 
 * **Constraints:** $1 \le s1.length, s2.length \le 10^4$, `s1` and `s2` consist of lowercase English letters.
 
 #### 3.3.2 How to Think About It
-A permutation of `s1` is simply an anagram of `s1`.
-Because all permutations of `s1` have length equal to `s1.length`, the problem is identical to checking if any fixed window of size $k = s1.length$ in `s2` has the exact same character counts as `s1`.
-Slide a frame of size `s1.length` across `s2`. The moment the character frequencies inside the window match `s1`, return `true` immediately!
+A permutation of `s1` has the exact same letters and length as `s1`.  
+Because every permutation has length equal to `s1.length`, this problem is identical to checking if any window of size $k = s1.length$ in `s2` has the exact same letter counts as `s1`.  
+Slide a frame of size `s1.length` across `s2`. The moment the counts inside the window match `s1`, return `true` right away!
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-Generating all permutations of `s1` takes $O(k!)$ factorial time. For $k = 10$, $10! = 3,628,800$ permutations. Testing them against `s2` causes immediate thread crash.
+Generating all permutations of `s1` takes $O(k!)$ factorial time. If $k = 10$, $10! = 3,628,800$ permutations. Checking them against `s2` freezes your application immediately.
 
 #### 3.3.4 The Pattern Insight
 Never generate permutations. Use a **Fixed Sliding Window of size $k = s1.length$**:
-* Track character frequencies with two 26-slot integer arrays.
+* Track letter counts using two 26-slot arrays.
 * Slide the window across `s2`.
-* Check if frequencies match. If a match is found, exit early with `true`.
-* If the loop completes without a match, return `false`.
+* Check if counts match. If they match, exit early with `true`.
+* If the loop finishes without a match, return `false`.
 
 #### 3.3.5 Pseudocode
 
@@ -547,30 +549,30 @@ function buggyCheckInclusion(s1, s2) {
   return false;
 }
 ```
-* **Why it fails:** Generating all permutations of a string runs in $O(k!)$ factorial time. For $k = 10$, this exceeds 3.6 million allocations, freezing Node.js and exceeding memory limits.
+* **Why it fails:** Generating permutations takes factorial $O(k!)$ time. For $k = 10$, that is over 3.6 million strings, which crashes Node.js memory.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$, where $n = s2.length$. Building the initial window takes $O(k)$ steps. The slide loop executes $n - k$ times, performing $O(1)$ operations per step. Total time is bounded by $26 \times n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Exactly two 26-slot integer arrays are maintained in memory.
+* **Time Complexity:** $\mathbf{O(n)}$, where $n = s2.length$. Building the initial window takes $O(k)$ steps. The slide loop runs $n - k$ times, doing $O(1)$ operations per step. Total time is $O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only allocate two 26-slot integer arrays.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Window Size $k$ Exceeds Array Length ($k > n$):** Always validate `if (nums.length < k || k <= 0) return 0;` upfront. Skipping this causes negative indexing and `NaN` errors.
-* **All Negative Elements:** When tracking maximum window sum, initializing `maxSum = 0` causes the function to return `0` instead of the true negative maximum. Always initialize `maxSum` to the exact sum of the first window (`currentSum`) or `-Infinity`.
-* **Floating-Point Precision Drift:** Performing `sum += nums[i] / k` inside an $n$-iteration loop introduces cumulative IEEE-754 precision errors. Maintain raw integer sums and divide by $k$ once at return.
-* **Empty or Single-Element Arrays:** When $n = 1$ and $k = 1$, the slide loop does not execute; the function must return the sum of the initial window directly.
+* **Window Size $k$ Larger than Array ($k > n$):** Always check `if (nums.length < k || k <= 0) return 0;` at the beginning. If you miss this, negative indices cause `NaN` errors.
+* **All Negative Numbers:** When looking for the maximum sum, setting `maxSum = 0` will give the wrong answer `0` instead of the true negative max. Always start `maxSum` with the sum of the first window (`currentSum`) or `-Infinity`.
+* **Decimal Precision Drift:** Calculating `sum += nums[i] / k` inside an $n$-step loop creates small decimal rounding errors. Keep the raw sum as an integer and divide by $k$ once at the end.
+* **Single Element Arrays:** When $n = 1$ and $k = 1$, the sliding loop does not run. The code directly returns the initial window sum.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Fixed Sliding Window Invariant:** Window length is constant ($k$). The next window is calculated by adding the arriving element and subtracting the departing element.
-* **State Transition Formula:** $\text{windowState} = \text{windowState} + \text{arr}[i] - \text{arr}[i - k]$.
-* **Replaces $O(n \cdot k)$ with $O(n)$:** Adjacent windows share $k - 1$ items; re-adding them from scratch is redundant work.
-* **Frequency Matching:** For fixed string anagrams, use two fixed 26-slot typed arrays (`new Int32Array(26)`) and compare them in $O(1)$ constant time.
-* **Zero Heap Churn:** Avoid `slice()` and `reduce()` inside loops to eliminate garbage collection pauses in Node.js.
+* **Fixed Window Invariant:** The window length stays constant ($k$). Calculate each new window by subtracting the leaving item and adding the entering item.
+* **Formula:** $\text{windowState} = \text{windowState} + \text{arr}[i] - \text{arr}[i - k]$.
+* **Replaces $O(n \cdot k)$ with $O(n)$:** Neighbor windows share $k - 1$ items; re-adding them from scratch is wasted work.
+* **Character Matching:** For fixed string anagrams, use two 26-slot typed arrays (`new Int32Array(26)`) and compare them in $O(1)$ time.
+* **Avoid Array Slicing:** Avoid calling `slice()` and `reduce()` inside loops to keep garbage collection fast and smooth in Node.js.
 
 ---
 
@@ -585,8 +587,8 @@ Given a string `s`, return the number of good substrings of length three. A stri
 * **Sample Input 2:** `s = "aababcabc"` $\to$ **Expected Output:** `4` (Substrings: `"abc"`, `"bca"`, `"cab"`, `"abc"`)
 * **Sample Input 3:** `s = "aa"` $\to$ **Expected Output:** `0`
 * **Constraints:** $1 \le s.length \le 100$, `s` consists of lowercase English letters.
-* **Hint 1:** Because $k = 3$ is constant and very small, inspect characters directly via indices `i - 2`, `i - 1`, and `i` without calling `slice()`.
-* **Hint 2:** Test `s[i - 2] !== s[i - 1] && s[i - 1] !== s[i] && s[i - 2] !== s[i]`. If true, increment count.
+* **Hint 1:** Because $k = 3$ is constant and small, check characters directly using indices `i - 2`, `i - 1`, and `i` without calling `slice()`.
+* **Hint 2:** Test `s[i - 2] !== s[i - 1] && s[i - 1] !== s[i] && s[i - 2] !== s[i]`. If true, add 1 to your count.
 
 ---
 
@@ -599,9 +601,9 @@ Given a string `s` and an integer `k`, return the maximum number of vowel letter
 * **Sample Input 2:** `s = "aeiou"`, `k = 2` $\to$ **Expected Output:** `2`
 * **Sample Input 3:** `s = "leetcode"`, `k = 3` $\to$ **Expected Output:** `2`
 * **Constraints:** $1 \le s.length \le 10^5$, $1 \le k \le s.length$, `s` consists of lowercase English letters.
-* **Hint 1:** Create a helper or Set to test if a character is a vowel in $O(1)$ time.
-* **Hint 2:** Build the initial vowel count for the first $k$ characters.
-* **Hint 3:** Slide from $i = k$ to $n - 1$: if incoming character is a vowel, increment count; if outgoing character `s[i - k]` was a vowel, decrement count. Maintain `maxVowels`.
+* **Hint 1:** Create a helper or Set to check if a character is a vowel in $O(1)$ time.
+* **Hint 2:** Count the vowels in the first $k$ characters.
+* **Hint 3:** Slide from $i = k$ to $n - 1$: if the entering character is a vowel, add 1 to count. If the leaving character `s[i - k]` was a vowel, subtract 1 from count. Keep track of `maxVowels`.
 
 ---
 
@@ -614,9 +616,9 @@ You are given an array of integers `nums`, there is a sliding window of size `k`
 * **Sample Input 2:** `nums = [1]`, `k = 1` $\to$ **Expected Output:** `[1]`
 * **Sample Input 3:** `nums = [1, -1]`, `k = 1` $\to$ **Expected Output:** `[1, -1]`
 * **Constraints:** $1 \le nums.length \le 10^5$, $-10^4 \le nums[i] \le 10^4$, $1 \le k \le nums.length$.
-* **Hint 1:** If an incoming element `nums[i]` is larger than earlier elements currently in the window, those earlier smaller elements can never be the maximum of this or future windows.
-* **Hint 2:** Maintain an index deque storing values in strictly decreasing order.
-* **Hint 3:** Before inserting `i`, pop smaller indices from the back. Evict front index if it falls outside window (`deque[front] <= i - k`). Once $i \ge k - 1$, `nums[deque[front]]` is the window maximum.
+* **Hint 1:** If an entering number `nums[i]` is bigger than older numbers in the window, those smaller numbers can never be the maximum of this or future windows.
+* **Hint 2:** Keep a double-ended queue (deque) of indices storing values in decreasing order.
+* **Hint 3:** Before adding `i`, remove smaller numbers from the back. Remove the front index if it has fallen outside the window (`deque[front] <= i - k`). Once $i \ge k - 1$, `nums[deque[front]]` is the maximum for that window.
 
 ---
 

@@ -10,18 +10,18 @@
 
 ## 1. Variable Sliding Window
 
-A **Variable Sliding Window** is an algorithmic pattern where the left and right boundaries of a window expand and contract dynamically based on problem-specific constraints.
+A **Variable Sliding Window** is a technique where the left and right edges of a window grow and shrink based on the rules of the problem.
 
-Instead of testing all $\frac{n(n+1)}{2}$ possible contiguous subarrays ($O(n^2)$ or $O(n^3)$), the algorithm uses two pointers:
-* The **`right` pointer** advances forward, expanding the window to incorporate new data.
-* The **`left` pointer** advances forward, contracting the window whenever the current range violates problem constraints (or to find the minimal boundary).
+Instead of testing all $\frac{n(n+1)}{2}$ possible contiguous subarrays ($O(n^2)$ or $O(n^3)$), we use two pointers:
+* The **`right` pointer** steps forward to grow the window and take in new items.
+* The **`left` pointer** steps forward to shrink the window whenever the window breaks a rule (or when we want to find the smallest valid size).
 
-Because both pointers move strictly from left to right and never move backward, the entire array is processed in **amortized $O(n)$ linear time**.
+Because both pointers only move forward from left to right and never move backward, the entire array is processed in **$O(n)$ linear time**.
 
-To picture this physically, imagine a caterpillar crawling along a tree branch:
-1. **The Head (`right` pointer):** Extends forward, exploring new leaves and stretching the caterpillar's body longer.
-2. **The Body (The Window):** Represents the active contiguous subarray or substring.
-3. **The Tail (`left` pointer):** When the body touches a thorn (violating a constraint like a duplicate character or exceeding an allowed sum), the tail pulls forward, contracting the body until the caterpillar is valid again.
+To picture this physically, imagine a caterpillar moving along a tree branch:
+1. **The Head (`right` pointer):** Reaches forward to grab new leaves, stretching the caterpillar's body longer.
+2. **The Body (The Window):** Represents the current sub-array or sub-string.
+3. **The Tail (`left` pointer):** When the body touches a thorn (breaks a rule like a duplicate letter or exceeding an allowed sum), the tail pulls forward, shrinking the body until the caterpillar is safe again.
 
 ```text
 The Expand and Contract Rhythm:
@@ -76,7 +76,7 @@ console.log(longestUniqueSubstr("abcabcbb")); // 3 ("abc")
 
 ### 1.1 The Two Operational Strategies
 
-Variable sliding window problems divide cleanly into two opposing strategies depending on whether the problem asks to maximize or minimize:
+Variable sliding window problems divide into two simple strategies depending on whether you want to find the longest or the shortest window:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -84,19 +84,19 @@ Variable sliding window problems divide cleanly into two opposing strategies dep
 ├─────────────────────────┬──────────────────────┬───────────────────────┤
 │ Property                │ Strategy 1: Longest  │ Strategy 2: Shortest  │
 ├─────────────────────────┼──────────────────────┼───────────────────────┤
-│ Target Goal             │ Maximize window size │ Minimize window size  │
-│ Contraction Condition   │ WHILE window INVALID │ WHILE window VALID    │
+│ Goal                    │ Find biggest window  │ Find smallest window  │
+│ Shrink Condition        │ WHILE window INVALID │ WHILE window VALID    │
 │ Update Location         │ AFTER while loop     │ INSIDE while loop     │
-│ Initialization          │ maxLen = 0           │ minLen = Infinity     │
-│ Canonical Example       │ LC 3 (Longest Substr)│ LC 209 (Min Subarray) │
+│ Starting Value          │ maxLen = 0           │ minLen = Infinity     │
+│ Classic Example         │ Longest Substring    │ Min Subarray Sum      │
 └─────────────────────────┴──────────────────────┴───────────────────────┘
 ```
 
 ---
 
-### 1.2 Amortized Linear Complexity Proof
+### 1.2 Why the Nested Loop is Still Linear O(n)
 
-At first glance, a `while` loop nested inside a `for` loop looks quadratic ($O(n^2)$):
+At first glance, a `while` loop inside a `for` loop looks like $O(n^2)$:
 
 ```javascript
 for (let right = 0; right < n; right++) {
@@ -106,64 +106,64 @@ for (let right = 0; right < n; right++) {
 }
 ```
 
-**Why this is guaranteed to run in $O(n)$ time:**
-1. The `right` pointer increments exactly $n$ times (one per iteration of the `for` loop).
-2. The `left` pointer only increments (`left++`). It **never moves backward and never resets to 0**.
-3. Across the entire execution of the program, `left` can increment at most $n$ times before reaching `right`.
-4. Total pointer operations: $n \text{ (right increments)} + n \text{ (left increments)} \le 2n$.
-5. $O(2n) \implies \mathbf{O(n)}$ linear time.
+**Why this always finishes in $O(n)$ time:**
+1. The `right` pointer moves forward $n$ times (once per turn of the `for` loop).
+2. The `left` pointer only moves forward (`left++`). It **never moves backward and never resets to 0**.
+3. Across the entire run, `left` can move at most $n$ times before it catches up to `right`.
+4. Total pointer movements: $n \text{ (right moves)} + n \text{ (left moves)} \le 2n$.
+5. $O(2n)$ simplifies to **$O(n)$ linear time**.
 
 > [!NOTE]
-> **Self-Check:** Why does the variable sliding window pattern fail if an array contains negative numbers in a subarray sum problem?  
-> *Answer:* Negative numbers destroy **monotonicity**. Adding an element can decrease the sum, and contracting `left` can increase the sum. The contract that advancing `left` strictly shrinks the sum no longer holds, causing valid subarrays to be skipped. Use **Prefix Sum + Hash Map (Day 10)** for negative numbers.
+> **Self-Check:** Why does the variable sliding window fail if an array has negative numbers when searching for a target sum?  
+> *Answer:* Negative numbers break the rule that growing the window increases the sum and shrinking the window decreases the sum. With negative numbers, adding an item could make the sum smaller, so you cannot know whether moving `left` helps or hurts. Use **Prefix Sum + Hash Map (Day 10)** for negative numbers.
 
 ---
 
 ### 1.3 Operations Reference Table
 
-| Operation | Role in Variable Window | Time Complexity | Auxiliary Space | Code Example |
+| Operation | Role in Variable Window | Time Complexity | Extra Space | Code Example |
 | :--- | :--- | :---: | :---: | :--- |
-| **Expand Right** | Incorporate incoming element `s[right]` into state | $O(1)$ | $O(1)$ | `seen.set(s[right], right)` |
-| **Contract Left** | Shrink window from `left` until invariant restored | $O(1)$ amortized | $O(1)$ | `while (invalid) { left++; }` |
-| **Direct Jump Left** | Fast-forward `left` past previous duplicate | $O(1)$ | $O(1)$ | `left = lastSeen.get(char) + 1` |
-| **Window Length Query** | Calculate current active window span | $O(1)$ | $O(1)$ | `const len = right - left + 1` |
-| **Update Optimal Bound**| Record longest or shortest valid window | $O(1)$ | $O(1)$ | `maxLen = Math.max(maxLen, len)` |
+| **Grow Right** | Add incoming item `s[right]` to window | $O(1)$ | $O(1)$ | `seen.set(s[right], right)` |
+| **Shrink Left** | Shrink window from `left` until valid | $O(1)$ on average | $O(1)$ | `while (invalid) { left++; }` |
+| **Jump Left** | Jump `left` straight past earlier duplicate | $O(1)$ | $O(1)$ | `left = lastSeen.get(char) + 1` |
+| **Window Length** | Measure current window size | $O(1)$ | $O(1)$ | `const len = right - left + 1` |
+| **Update Best Answer**| Save the longest or shortest window size | $O(1)$ | $O(1)$ | `maxLen = Math.max(maxLen, len)` |
 
 ---
 
 ## 2. Pattern Overview
 
 ### 2.1 Pattern Family
-* **Longest Valid Window (Strategy 1):** Eagerly expand `right`, contract `left` while invalid, record `maxLen` after the `while` loop.
-* **Shortest Valid Window (Strategy 2):** Expand `right`, contract `left` while valid, record `minLen` inside the `while` loop before shrinking.
-* **Character Frequency Window:** Tracking unique characters or counts using a `Map` or 128-slot ASCII array.
-* **Tolerated Flips / Errors Window:** Maintaining a count of zero/error elements and contracting when `zeros > k`.
+* **Longest Valid Window (Strategy 1):** Grow `right`, shrink `left` while invalid, record `maxLen` after the `while` loop.
+* **Shortest Valid Window (Strategy 2):** Grow `right`, shrink `left` while valid, record `minLen` inside the `while` loop before shrinking.
+* **Character Frequency Window:** Tracking letter counts using a `Map` or a 128-slot ASCII array.
+* **Allowed Flips / Mistakes Window:** Counting zeroes or errors, and shrinking when `zeros > k`.
 
 ### 2.2 Pattern Recognition Table
 
 | Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"Longest substring without repeating characters"** | Maximize unique contiguous characters. | Strategy 1: Set / Map + contract on duplicate. |
-| **"Minimum size subarray with sum $\ge target$"** | Minimize length of positive subarray $\ge target$. | Strategy 2: Accumulate sum + contract while valid. |
-| **"Max consecutive ones with at most K flips"** | Maximize sequence containing $\le K$ zeroes. | Strategy 1: Expand right, shrink when `zeroes > k`. |
-| **"Longest substring with at most K distinct chars"** | Maximize length where `map.size <= k`. | Strategy 1: Frequency map + shrink when `size > k`. |
-| **"Minimum window substring"** | Smallest substring containing all target characters. | Strategy 2: Character requirements map + contract while formed. |
+| **"Longest substring without repeating characters"** | Find the longest sub-string with all unique letters. | Strategy 1: Map + jump `left` on duplicate. |
+| **"Minimum size subarray with sum $\ge target$"** | Find the shortest positive sub-array that reaches target sum. | Strategy 2: Add to sum + shrink while sum $\ge$ target. |
+| **"Max consecutive ones with at most K flips"** | Find the longest streak with at most $k$ zeroes. | Strategy 1: Grow right, shrink when `zeroes > k`. |
+| **"Longest substring with at most K distinct chars"** | Find max length where `map.size <= k`. | Strategy 1: Map counts + shrink when `size > k`. |
+| **"Minimum window substring"** | Smallest sub-string holding all target letters. | Strategy 2: Match needed letter counts + shrink while valid. |
 
 ### 2.3 When to Use vs When NOT to Use
 * **When to Use**:
-* The problem asks for the **longest** or **shortest** contiguous subarray or substring satisfying a condition.
-* The collection exhibits **monotonicity** (e.g. positive numbers where adding increases value, removing decreases value).
-* The validity of the window can be tracked incrementally in $O(1)$ time per pointer movement.
+* The problem asks for the **longest** or **shortest** contiguous sub-array or sub-string matching a rule.
+* All numbers are positive (so adding always increases the total, and removing always decreases the total).
+* You can update the window state in $O(1)$ fast time whenever a pointer moves.
 
 * **When NOT to Use**:
-* The array contains negative numbers with sum targets (monotonicity breaks; use **Prefix Sum**, Day 10).
-* You can pick elements out of order or skip items (use **Greedy** or **Dynamic Programming**).
-* The window has a predetermined constant size (use **Fixed Sliding Window**, Day 08).
+* The array contains negative numbers with sum targets (use **Prefix Sum**, Day 10).
+* You can pick items out of order or skip items (use **Greedy** or **Dynamic Programming**).
+* The window has a fixed constant length $k$ (use **Fixed Sliding Window**, Day 08).
 
 ### 2.4 The 10^7 Operations Rule
 If $n = 50,000$:
-* Testing all $\frac{n(n+1)}{2} \approx 1.25 \times 10^9$ pairs in nested loops takes over **12 seconds**, triggering a Timeout error.
-* A variable sliding window visits each element at most twice ($2n = 100,000$ operations), finishing in **under 2 milliseconds**.
+* Testing all $\frac{n(n+1)}{2} \approx 1.25 \times 10^9$ pairs in nested loops takes over **12 seconds**, causing a timeout error.
+* A variable sliding window touches each item at most twice ($2n = 100,000$ operations), finishing in **under 2 milliseconds**.
 
 ---
 
@@ -181,22 +181,22 @@ Given a string `s`, find the length of the **longest substring** without repeati
 * **Sample Input 2:** `s = "bbbbb"` $\to$ **Expected Output:** `1`  
   *(The answer is `"b"`, with length 1)*
 * **Sample Input 3:** `s = "pwwkew"` $\to$ **Expected Output:** `3`  
-  *(The answer is `"wke"`, with length 3. Note that `"pwke"` is a subsequence, not a contiguous substring)*
+  *(The answer is `"wke"`, with length 3)*
 * **Constraints:** $0 \le s.length \le 5 \times 10^4$, `s` consists of English letters, digits, symbols, and spaces.
 
 #### 3.1.2 How to Think About It
-Cards on a table: `"a b c a b c b b"`.
-Start reading cards from left to right:
-1. `right = 0` (`'a'`): First time seeing `'a'`. Valid window: `[a]`, length = 1.
-2. `right = 1` (`'b'`): First time seeing `'b'`. Valid window: `[a, b]`, length = 2.
-3. `right = 2` (`'c'`): First time seeing `'c'`. Valid window: `[a, b, c]`, length = 3.
-4. `right = 3` (`'a'`): We have seen `'a'` before at index 0!
-   Instead of restarting from scratch, jump your left finger past the old `'a'` to index 1 (`left = 1`).
+Cards on a table: `"a b c a b c b b"`.  
+Read the cards from left to right:
+1. `right = 0` (`'a'`): First time seeing `'a'`. Window is `[a]`, length = 1.
+2. `right = 1` (`'b'`): First time seeing `'b'`. Window is `[a, b]`, length = 2.
+3. `right = 2` (`'c'`): First time seeing `'c'`. Window is `[a, b, c]`, length = 3.
+4. `right = 3` (`'a'`): We have seen `'a'` before at index 0!  
+   Instead of starting over, jump your left finger past the old `'a'` to index 1 (`left = 1`).  
    The window is now `[b, c, a]`, length = 3.
-5. Continue scanning to the end. The maximum length confirmed is 3.
+5. Keep scanning to the end. The longest valid window seen is 3.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-The naive approach generates all substrings and tests each for duplicate characters using a Set:
+The naive way creates every possible sub-string and checks each for duplicate characters using a Set:
 
 ```javascript
 function lengthOfLongestSubstringBrute(s) {
@@ -213,14 +213,14 @@ function lengthOfLongestSubstringBrute(s) {
 }
 ```
 
-* **The Bottleneck:** Quadratic $O(n^2)$ time ($2.5 \times 10^9$ operations for $50,000$ characters). When a duplicate `'a'` appears in `"abca"`, brute force discards `"bc"` and restarts scanning at `"b"`, repeating work that was already verified.
+* **The Bottleneck:** Quadratic $O(n^2)$ time ($2.5 \times 10^9$ operations for $50,000$ characters). When a duplicate `'a'` appears in `"abca"`, brute force throws away `"bc"` and restarts from `"b"`, checking letters it already checked.
 
 #### 3.1.4 The Pattern Insight
-Use a **Variable Sliding Window with Last-Seen Index Map**:
-* Store each character's latest index: `char -> lastSeenIndex`.
-* When `s[right]` is already in our map and its index is $\ge left$, jump `left = lastSeenIndex + 1` directly.
+Use a **Variable Sliding Window with a Last-Seen Map**:
+* Store the latest index where each character appeared: `char -> lastSeenIndex`.
+* When `s[right]` is already in the map and its index is $\ge left$, jump `left = lastSeenIndex + 1` directly.
 * Update `maxLen = Math.max(maxLen, right - left + 1)`.
-* Every character is processed in $O(1)$ time, eliminating all redundant rescanning.
+* Every character is checked in $O(1)$ time, eliminating repeated scans.
 
 #### 3.1.5 Pseudocode
 
@@ -296,11 +296,11 @@ function buggyLengthOfLongestSubstring(s) {
   return maxLen;
 }
 ```
-* **Why it fails:** Calling `.shift()` and `.includes()` degrades time complexity to $O(n \cdot k)$ and creates heavy garbage collection pauses from continuous array mutations.
+* **Why it fails:** Calling `.shift()` and `.includes()` inside a loop makes the code take $O(n \cdot k)$ time and creates heavy memory garbage.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer scans from $0$ to $n - 1$ once. Hash Map lookups and updates run in $O(1)$ time. Total operations: $n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(\min(n, m))}$, where $m$ is the size of the character alphabet (e.g. at most 128 for ASCII or 26 for lowercase letters).
+* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer steps through the string once. Map lookups and writes take $O(1)$ time. Total operations: $n \implies O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(\min(n, m))}$, where $m$ is the number of distinct characters in the alphabet (at most 128 for ASCII).
 
 ---
 
@@ -316,23 +316,23 @@ Given an array of positive integers `nums` and a positive integer `target`, retu
 * **Constraints:** $1 \le target \le 10^9$, $1 \le nums.length \le 10^5$, $1 \le nums[i] \le 10^4$.
 
 #### 3.2.2 How to Think About It
-Weights on a scale with target = 7: `[ 2, 3, 1, 2, 4, 3 ]`.
-1. Add 2 $\to$ sum = 2 (too small).
-2. Add 3 $\to$ sum = 5 (too small).
-3. Add 1 $\to$ sum = 6 (too small).
-4. Add 2 $\to$ sum = 8. Target reached! Window is `[2, 3, 1, 2]`, length = 4.
-   Can we make it smaller?
-   Remove 2 from left $\to$ sum = 6. Fell below target.
-5. Add 4 $\to$ sum = 10. Target reached! Window is `[3, 1, 2, 4]`, length = 4.
-   Shrink from left: remove 3 $\to$ sum = 7. Still valid! Length = 3 (`[1, 2, 4]`).
-   Remove 1 $\to$ sum = 6. Fell below target.
-6. Add 3 $\to$ sum = 9. Target reached! Window is `[2, 4, 3]`, length = 3.
-   Shrink left: remove 2 $\to$ sum = 7. Valid! Length = 2 (`[4, 3]`).
-   Remove 4 $\to$ sum = 3. Fell below target.
-7. Smallest valid window length found is 2.
+Adding weights onto a scale with target = 7: `[ 2, 3, 1, 2, 4, 3 ]`.
+1. Add 2 $\to$ sum = 2 (under target).
+2. Add 3 $\to$ sum = 5 (under target).
+3. Add 1 $\to$ sum = 6 (under target).
+4. Add 2 $\to$ sum = 8. Target reached! Window is `[2, 3, 1, 2]`, length = 4.  
+   Can we make it smaller?  
+   Remove 2 from left $\to$ sum = 6. Now below target.
+5. Add 4 $\to$ sum = 10. Target reached! Window is `[3, 1, 2, 4]`, length = 4.  
+   Shrink from left: remove 3 $\to$ sum = 7. Still valid! Length = 3 (`[1, 2, 4]`).  
+   Remove 1 $\to$ sum = 6. Below target.
+6. Add 3 $\to$ sum = 9. Target reached! Window is `[2, 4, 3]`, length = 3.  
+   Shrink from left: remove 2 $\to$ sum = 7. Still valid! Length = 2 (`[4, 3]`).  
+   Remove 4 $\to$ sum = 3. Below target.
+7. The smallest valid window length found is 2.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-The naive approach tests all subarrays starting from every index:
+The naive way checks every possible sub-array starting from every index:
 
 ```javascript
 function minSubArrayLenBrute(target, nums) {
@@ -351,17 +351,17 @@ function minSubArrayLenBrute(target, nums) {
 }
 ```
 
-* **The Bottleneck:** Evaluates $O(n^2)$ pairs. For $n = 100,000$, this executes $10^{10}$ additions, freezing single-threaded Node.js for tens of seconds.
+* **The Bottleneck:** Checks $O(n^2)$ pairs. For $n = 100,000$, this runs $10^{10}$ additions and freezes single-threaded Node.js for tens of seconds.
 
 #### 3.2.4 The Pattern Insight
-Because all elements are strictly positive, the sum is **monotonic**:
-* Adding an element strictly increases the sum.
-* Subtracting an element strictly decreases the sum.
+Because all numbers are positive, the sum is predictable:
+* Adding a number always increases the sum.
+* Removing a number always decreases the sum.
 Use **Strategy 2 (Shortest Window)**:
-* Advance `right` and add `nums[right]` to `currentSum`.
+* Move `right` forward and add `nums[right]` to `currentSum`.
 * **While `currentSum >= target`:**
   - Update `minLen = Math.min(minLen, right - left + 1)`.
-  - Contract window: subtract `nums[left]` and increment `left++`.
+  - Shrink window: subtract `nums[left]` and increment `left++`.
 * Total runtime drops from $O(n^2)$ to $O(n)$!
 
 #### 3.2.5 Pseudocode
@@ -435,11 +435,11 @@ function buggyMinSubArrayLenIf(target, nums) {
   return minLen === Infinity ? 0 : minLen;
 }
 ```
-* **Why it fails:** Using `if` instead of `while` contracts `left` at most once. If the subarray remains $\ge target$ after removing `nums[left]`, it fails to find the true minimal length.
+* **Why it fails:** Using `if` instead of `while` shrinks `left` only once per step. If the sub-array is still $\ge target$ after removing `nums[left]`, it misses the true shortest window.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer increments $n$ times. The `left` pointer increments at most $n$ times. Total operations: $2n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Only scalar integer index and sum variables are stored.
+* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer moves forward $n$ times. The `left` pointer moves forward at most $n$ times. Total steps: $2n \implies O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only store simple number variables in memory.
 
 ---
 
@@ -449,28 +449,28 @@ function buggyMinSubArrayLenIf(target, nums) {
 Given a binary array `nums` and an integer `k`, return the maximum number of consecutive `1`'s in the array if you can flip at most `k` `0`'s.
 
 * **Sample Input 1:** `nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0]`, `k = 2` $\to$ **Expected Output:** `6`  
-  *(Flipping two zeroes at indices 4 and 5 produces `[1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1]` with length 6)*
+  *(Flipping two zeroes at indices 4 and 5 gives `[1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1]` with length 6)*
 * **Sample Input 2:** `nums = [0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1]`, `k = 3` $\to$ **Expected Output:** `10`
 * **Sample Input 3:** `nums = [0, 0, 0, 0]`, `k = 0` $\to$ **Expected Output:** `0`
 * **Constraints:** $1 \le nums.length \le 10^5$, `nums[i]` is either `0` or `1`, $0 \le k \le nums.length$.
 
 #### 3.3.2 How to Think About It
-Rephrase the problem in plain English:  
-**Find the longest contiguous subarray that contains at most `k` zeroes.**
-Whenever a window contains $\le k$ zeroes, all those zeroes can be flipped into ones, making the entire window solid ones.
-1. Expand `right`: count every `0` that enters your view (`zeroCount++`).
-2. If `zeroCount > k`, the window is invalid!
-3. Contract `left`: advance your left finger forward until one `0` exits the window (`zeroCount--`).
-4. Record the maximum valid window size seen.
+Rephrase the problem in simple English:  
+**Find the longest sub-array that contains at most `k` zeroes.**  
+If a window has $\le k$ zeroes, we can flip all of them to ones, turning the whole window into ones.
+1. Expand `right`: count every `0` that enters the window (`zeroCount++`).
+2. If `zeroCount > k`, the window has too many zeroes!
+3. Shrink `left`: move your left finger forward until one `0` leaves the window (`zeroCount--`).
+4. Keep track of the largest valid window size you have seen.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-Testing all pairs of indices and counting zeroes takes $O(n^2)$ time. For $10^5$ items, this takes $10^{10}$ operations, causing complete thread freeze.
+Checking all pairs of indices and counting zeroes takes $O(n^2)$ time. For $10^5$ items, this takes $10^{10}$ operations and freezes Node.js.
 
 #### 3.3.4 The Pattern Insight
 Use **Strategy 1 (Longest Window)**:
-* `right` advances continuously, accumulating elements.
-* When `nums[right] === 0`, increment `zeroCount++`.
-* **While `zeroCount > k`:** if `nums[left] === 0`, decrement `zeroCount--`, then `left++`.
+* `right` moves forward continuously, taking in elements.
+* When `nums[right] === 0`, add 1 to `zeroCount`.
+* **While `zeroCount > k`:** if `nums[left] === 0`, subtract 1 from `zeroCount`, then increment `left++`.
 * Once valid, update `maxLen = Math.max(maxLen, right - left + 1)`.
 
 #### 3.3.5 Pseudocode
@@ -552,32 +552,32 @@ function buggyLongestOnes(nums, k) {
   return maxLen;
 }
 ```
-* **Why it fails:** Calling `.slice()` and `.filter()` inside nested loops creates $O(n^3)$ operations and massive memory churn, immediately timing out.
+* **Why it fails:** Calling `.slice()` and `.filter()` inside nested loops creates $O(n^3)$ operations, crashing performance immediately.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer runs $n$ times. The `left` pointer increments at most $n$ times. Total steps $\le 2n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Strictly in-place with primitive integer variables.
+* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer moves $n$ times. The `left` pointer moves at most $n$ times. Total steps $\le 2n \implies O(n)$.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use simple number variables.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Update Placement (Longest vs Shortest):**
-  - In **Longest Window** (e.g. Longest Substring), update `maxLen` **after** the `while` loop, once validity is restored.
-  - In **Shortest Window** (e.g. Min Subarray Sum), update `minLen` **inside** the `while` loop on every valid state before incrementing `left++`.
-* **Zero-Target or Unreachable Sums:** In shortest window problems, if the total sum never reaches `target`, `minLen` remains `Infinity`. Always return `minLen === Infinity ? 0 : minLen`.
-* **Window Length Calculation Formula:** The number of items between indices `left` and `right` inclusive is always **`right - left + 1`**. Forgetting `+ 1` is the single most common off-by-one bug.
-* **Empty Input Strings and Arrays:** Always guard `if (!arr || arr.length === 0) return 0;` at line 1.
+* **Where to Update Answer (Longest vs Shortest):**
+  - In **Longest Window** problems (like Longest Substring), update `maxLen` **after** the `while` loop, once the window is valid again.
+  - In **Shortest Window** problems (like Min Subarray Sum), update `minLen` **inside** the `while` loop while the window is valid, right before shrinking `left++`.
+* **Target Sum Never Reached:** In shortest window problems, if the total sum never reaches `target`, `minLen` stays `Infinity`. Always return `minLen === Infinity ? 0 : minLen`.
+* **Window Length Formula:** The number of items between index `left` and `right` inclusive is always **`right - left + 1`**. Forgetting `+ 1` is the most common off-by-one bug.
+* **Empty Input Strings and Arrays:** Always check `if (!arr || arr.length === 0) return 0;` at the very start of the function.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Variable Sliding Window:** Both pointers advance forward. `right` expands eagerly; `left` contracts dynamically to maintain invariants.
-* **$2n$ Amortized Bound:** Because neither pointer ever resets or moves backward, total operations are capped at $2n \implies O(n)$.
+* **Variable Sliding Window:** Both pointers move forward. `right` grows the window; `left` shrinks the window to keep rules satisfied.
+* **$2n$ Step Limit:** Because neither pointer ever resets or moves backward, total operations are capped at $2n \implies O(n)$.
 * **Strategy 1 (Longest):** Shrink while invalid (`while (invalid) left++`). Record answer after `while`.
 * **Strategy 2 (Shortest):** Shrink while valid (`while (valid) { update; left++; }`). Record answer inside `while`.
-* **Monotonicity Precondition:** In sum problems, elements must be non-negative ($\ge 0$). For negative numbers, use Prefix Sums.
+* **Positive Numbers Required:** In sum problems, numbers must be positive ($\ge 0$). For negative numbers, use Prefix Sums.
 
 ---
 
@@ -593,8 +593,8 @@ You are visiting a farm with trees in a row. You have 2 baskets, and each basket
 * **Sample Input 3:** `fruits = [1, 2, 3, 2, 2]` $\to$ **Expected Output:** `4`
 * **Constraints:** $1 \le fruits.length \le 10^5$, $0 \le fruits[i] < fruits.length$.
 * **Hint 1:** Rephrase: Find the length of the longest contiguous subarray with at most 2 distinct integer values.
-* **Hint 2:** Maintain a `Map` tracking frequency of fruit types in the active window.
-* **Hint 3:** While `map.size > 2`, decrement count of `fruits[left]`, delete if count hits 0, and advance `left++`. After shrinking, update `maxLen = Math.max(maxLen, right - left + 1)`.
+* **Hint 2:** Use a `Map` to count the fruit types inside the current window.
+* **Hint 3:** While `map.size > 2`, subtract 1 from the count of `fruits[left]`. Delete the key if its count reaches 0, and advance `left++`. After shrinking, update `maxLen = Math.max(maxLen, right - left + 1)`.
 
 ---
 
@@ -606,8 +606,8 @@ Given a string `s` and an integer `k`, return the length of the longest substrin
 * **Sample Input 1:** `s = "eceba"`, `k = 2` $\to$ **Expected Output:** `3` (Substring `"ece"`)
 * **Sample Input 2:** `s = "aa"`, `k = 1` $\to$ **Expected Output:** `2`
 * **Constraints:** $1 \le s.length \le 5 \times 10^4$, $0 \le k \le 50$.
-* **Hint 1:** Expand `right`, adding characters to a frequency `Map`.
-* **Hint 2:** While `map.size > k`, decrement `s[left]` frequency, remove from map if 0, and increment `left++`.
+* **Hint 1:** Grow `right`, adding characters to a frequency `Map`.
+* **Hint 2:** While `map.size > k`, subtract 1 from `s[left]` count, remove it from the map if 0, and increment `left++`.
 * **Hint 3:** Update `maxLen = Math.max(maxLen, right - left + 1)`.
 
 ---
@@ -621,9 +621,9 @@ Given two strings `s` and `t`, return the minimum window substring of `s` such t
 * **Sample Input 2:** `s = "a"`, `t = "a"` $\to$ **Expected Output:** `"a"`
 * **Sample Input 3:** `s = "a"`, `t = "aa"` $\to$ **Expected Output:** `""`
 * **Constraints:** $m == s.length$, $n == t.length$, $1 \le m, n \le 10^5$.
-* **Hint 1:** Build a frequency map of required characters for `t`. Maintain `formed` tracking how many unique characters have their required counts satisfied in current window.
-* **Hint 2:** Expand `right`. When `formed === requiredCount`, the window is valid.
-* **Hint 3:** While valid, compare against `minLen`, then contract `left`: if removing `s[left]` breaks count requirement, decrement `formed--`. Advance `left++`.
+* **Hint 1:** Build a frequency map of needed characters for `t`. Keep a counter `formed` tracking how many distinct characters have their needed counts satisfied.
+* **Hint 2:** Grow `right`. When `formed === requiredCount`, the window is valid.
+* **Hint 3:** While valid, compare against `minLen`, then shrink `left`: if removing `s[left]` drops its count below requirement, subtract 1 from `formed`. Advance `left++`.
 
 ---
 

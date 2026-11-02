@@ -26,7 +26,7 @@ We strictly reject:
 ## The 5 Success Criteria for Candidates
 
 Every preparation roadmap must guarantee that the candidate can:
-1. **Explain the concept clearly** using simple everyday English and physical visual analogies before touching code.
+1. **Explain the concept clearly** using basic everyday English and physical visual analogies before touching code.
 2. **Solve related problems independently** by deriving logic from brute force rather than memorized templates.
 3. **Answer interview questions confidently** using structured 45-second pitches and trade-off matrices.
 4. **Recognize patterns in unseen problems** by identifying constraint triggers ($10^7$ rule) and problem keyword signals.

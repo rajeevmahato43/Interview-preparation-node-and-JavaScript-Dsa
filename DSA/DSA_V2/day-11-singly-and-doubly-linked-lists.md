@@ -10,13 +10,13 @@
 
 ## 1. Singly Linked Lists
 
-A **Singly Linked List** is a linear data structure where elements are not stored in contiguous memory slots. Instead, each element is an independent object called a **Node** that contains its own data payload and a reference pointer (`next`) pointing to the succeeding node.
+A **Singly Linked List** is a list of items where elements are not stored side-by-side in memory. Instead, each element is a separate object called a **Node**. Each node stores two things: its own value, and a reference pointer (`next`) pointing to the next node in line.
 
-To picture this physically, imagine a city-wide scavenger hunt:
-1. You receive a card containing a clue and an address: *"Go to 42 Oak Street"* (The **Head**).
-2. You travel to 42 Oak Street. There you find a clue box and the next card: *"Go to 108 Pine Lane"* (The **Next Pointer**).
-3. You cannot jump directly to clue #5 because you do not know its address until you visit clue #4. You must visit each location sequentially in $O(n)$ time.
-4. The final clue box contains a card that reads *"The End"* (`null`).
+To picture this physically, imagine a scavenger hunt across town:
+1. You get a card with a clue and an address: *"Go to 42 Oak Street"* (The **Head**).
+2. You walk to 42 Oak Street. There you find a box with the next address: *"Go to 108 Pine Lane"* (The **Next Pointer**).
+3. You cannot jump directly to clue #5 because you do not know where it is until you visit clue #4. You must visit each location one by one in $O(n)$ time.
+4. The final box holds a card that says *"The End"* (`null`).
 
 ```text
 SINGLY LINKED LIST:
@@ -55,9 +55,9 @@ console.log(printList(head)); // [ 10, 20, 30 ]
 
 ---
 
-### 1.1 Node Reference Anatomy & Memory Layout
+### 1.1 Node Memory Layout
 
-In JavaScript, nodes are allocated as objects on the V8 heap:
+In JavaScript, nodes are created as objects on the V8 heap:
 
 ```text
 ┌───────────────────────────────────────┐
@@ -67,20 +67,20 @@ In JavaScript, nodes are allocated as objects on the V8 heap:
 └───────────────────┴───────────────────┘
 ```
 
-Unlike array elements stored side-by-side in contiguous memory buffers, linked list nodes can reside at non-adjacent heap addresses. Traversing a linked list requires **pointer chasing**: fetching an address, waiting for RAM, and jumping to the next memory location.
+Arrays store items side-by-side in continuous memory. Linked list nodes can be scattered across different memory locations. Walking through a linked list means **following pointers**: looking up an address, jumping to that spot in RAM, and repeating for the next item.
 
 ---
 
-### 1.2 Insertion and Deletion Mechanics
+### 1.2 Adding and Removing Nodes
 
-* **Insertion at Head ($O(1)$):**
+* **Add at Head ($O(1)$):**
   1. Create `newNode = new ListNode(val)`.
   2. Point `newNode.next = head`.
-  3. Reassign `head = newNode`.
-  *(No elements are shifted in memory!)*
-* **Deletion of Next Node ($O(1)$ given predecessor):**
-  1. Wire `curr.next = curr.next.next`.
-  2. The bypassed node is orphaned from the list and reclaimed by V8 garbage collection.
+  3. Set `head = newNode`.
+  *(No existing items need to move in memory!)*
+* **Delete Next Node ($O(1)$ if you have the node before it):**
+  1. Point `curr.next = curr.next.next`.
+  2. The skipped node is left behind with no connections, and JavaScript garbage collection cleans it up automatically.
 
 ```text
 INSERTION AT HEAD (Value 5):
@@ -96,31 +96,31 @@ DELETION OF NODE 20:
 ```
 
 > [!NOTE]
-> **Self-Check:** Why does deleting an item from the start of an array take $O(n)$ time, while deleting from the head of a linked list takes $O(1)$ time?  
-> *Answer:* An array is a contiguous memory block; removing index 0 forces the engine to shift all remaining $n - 1$ items left in memory. A linked list simply reassigns the `head` pointer to `head.next` in one instruction without moving any data.
+> **Self-Check:** Why does removing the first element from an array take $O(n)$ time, while removing the head of a linked list takes $O(1)$ time?  
+> *Answer:* An array is stored side-by-side in memory, so deleting item 0 forces the engine to shift all other $n - 1$ items left. A linked list simply points `head` to `head.next` in one quick step without moving any data.
 
 ---
 
 ### 1.3 Essential Singly Linked List Methods
 
-| Method | What It Does | Mutates List? | Time Complexity | Quick Example |
+| Method | What It Does | Changes List? | Time Complexity | Quick Example |
 | :--- | :--- | :---: | :---: | :--- |
-| `prepend(val)` | Inserts new node at head | ✅ Yes | **$O(1)$** | `head = new ListNode(val, head)` |
-| `append(val)` | Inserts new node at tail | ✅ Yes | **$O(1)$** (with tail) / $O(n)$ | Traverse to end, wire `tail.next` |
-| `deleteNext(node)` | Deletes node after current | ✅ Yes | **$O(1)$** | `node.next = node.next.next` |
+| `prepend(val)` | Adds new node at the front | ✅ Yes | **$O(1)$** | `head = new ListNode(val, head)` |
+| `append(val)` | Adds new node at the end | ✅ Yes | **$O(1)$** (with tail) / $O(n)$ | Walk to end, wire `tail.next` |
+| `deleteNext(node)` | Deletes node right after current | ✅ Yes | **$O(1)$** | `node.next = node.next.next` |
 | `get(index)` | Finds value at index $i$ | ❌ No | **$O(n)$** | Walk $i$ steps from head |
-| `contains(val)` | Checks if value exists | ❌ No | **$O(n)$** | Sequential scan until match/null |
+| `contains(val)` | Checks if value exists | ❌ No | **$O(n)$** | Walk until match or `null` |
 
 ---
 
 ## 2. Doubly Linked Lists
 
-A **Doubly Linked List** links nodes bidirectionally. Each node stores two pointers: `next` pointing forward and `prev` pointing backward.
+A **Doubly Linked List** connects nodes in both directions. Each node holds two pointers: `next` pointing forward and `prev` pointing backward.
 
-To picture this physically, imagine freight railcars linked together on a track:
-* Each car has a mechanical coupler to the car ahead (`next`) and a coupler to the car behind (`prev`).
-* A conductor can walk forward from engine to caboose, or backward from caboose to engine.
-* To remove a car in the middle, you disconnect its two couplers and hook the neighbor cars together directly in $O(1)$ time without moving any other train cars.
+To picture this physically, imagine train cars hooked together:
+* Each car has a front coupler to the car ahead (`next`) and a rear coupler to the car behind (`prev`).
+* You can walk forward from the locomotive to the caboose, or backward from the caboose to the locomotive.
+* To remove a car from the middle, you unhook its two couplers and connect the two neighbor cars directly in $O(1)$ time without moving any other cars.
 
 ```text
 DOUBLY LINKED LIST:
@@ -140,60 +140,60 @@ class DoublyNode {
 
 ---
 
-### 2.1 The Sentinel (Dummy) Node Pattern
+### 2.1 The Dummy Sentinel Node Pattern
 
-When modifying linked lists, edge cases involving empty lists, single-node lists, or deleting the `head` require tedious conditional checks.
+When changing linked lists, handling empty lists or deleting the very first node (`head`) often requires messy `if/else` checks.
 
-A **Sentinel (Dummy) Node** is an artificial node created with an arbitrary value (`0`) whose `.next` points to the real `head`:
+A **Dummy Sentinel Node** is a fake starter node with an arbitrary value (`0`) whose `.next` points to the real `head`:
 
 ```text
 [ Dummy: 0 | next ] ──► [ Head: 10 | next ] ──► [ 20 | null ]
 ```
 
-* **Uniform Deletions:** Deleting the very first real node is identical to deleting an interior node (`dummy.next = dummy.next.next`).
-* **Permanent Anchor:** You never lose track of the list start. When the algorithm finishes, always return **`dummy.next`**.
+* **Same Deletion Rule Everywhere:** Deleting the first real node is now identical to deleting any middle node (`dummy.next = dummy.next.next`).
+* **Never Lose the Start:** You always have a secure anchor. When your function finishes, simply return **`dummy.next`**.
 
 ---
 
 ### 2.2 Array vs Linked List Complexity Comparison
 
-| Operation | Array (Contiguous) | Singly Linked List | Doubly Linked List |
+| Operation | Array (Side-by-Side) | Singly Linked List | Doubly Linked List |
 | :--- | :---: | :---: | :---: |
-| **Index Access (`get(i)`)** | **$O(1)$** | $O(n)$ | $O(n)$ |
-| **Insert / Delete at Head** | $O(n)$ (memory shift) | **$O(1)$** | **$O(1)$** |
-| **Insert / Delete at Tail** | $O(1)$ amortized | **$O(1)$** (with tail) | **$O(1)$** |
-| **Delete Given Known Node** | $O(n)$ (memory shift) | $O(n)$ (needs predecessor) | **$O(1)$** |
-| **CPU Cache Locality** | **Excellent (Sequential)** | Poor (Pointer Chasing) | Poor (Pointer Chasing) |
+| **Lookup by Index (`get(i)`)** | **$O(1)$** | $O(n)$ | $O(n)$ |
+| **Insert / Delete at Front** | $O(n)$ (shifts items) | **$O(1)$** | **$O(1)$** |
+| **Insert / Delete at End** | $O(1)$ on average | **$O(1)$** (with tail) | **$O(1)$** |
+| **Delete Known Node** | $O(n)$ (shifts items) | $O(n)$ (needs previous node) | **$O(1)$** |
+| **CPU Cache Speed** | **Fast (stored together)** | Slower (pointer chasing) | Slower (pointer chasing) |
 
 ---
 
 ### 2.3 Pattern Family
-* **Dummy Sentinel Anchor:** Placing a dummy node before `head` to handle head deletions and empty boundary edge cases.
-* **Two-Pointer Splicing:** Weaving two sorted lists together by comparing values and updating pointer links.
-* **Gap Pointers (Lead/Follow):** Maintaining a fixed gap of $N$ nodes between two pointers to locate nodes relative to the end.
+* **Dummy Sentinel Anchor:** Putting a dummy node before `head` to handle head deletions and edge cases cleanly.
+* **Two-Pointer Splicing:** Merging two sorted lists by comparing values and reconnecting pointer links.
+* **Gap Pointers (Lead/Follow):** Keeping a fixed gap of $n$ nodes between two pointers to find nodes from the end.
 
 ### 2.4 Pattern Recognition Table
 
 | Problem Keyword | What It Asks | Recommended Approach |
 | :--- | :--- | :--- |
-| **"Delete nodes matching condition"** | Remove values where head might be deleted. | Dummy Sentinel Node (`dummy.next = head`). |
-| **"Merge two sorted lists"** | Splicing nodes in sorted order. | Two pointers + Dummy head accumulator. |
-| **"Remove Nth node from end"** | Single pass distance deletion. | Two pointers separated by gap of $N$. |
-| **"Implement LRU Cache"** | $O(1)$ node promotion and eviction. | Doubly Linked List + Hash Map (`Map<key, Node>`). |
+| **"Delete nodes matching condition"** | Remove values where the head might get deleted. | Dummy Node (`dummy.next = head`). |
+| **"Merge two sorted lists"** | Connect nodes into one sorted list. | Two pointers + Dummy head anchor. |
+| **"Remove Nth node from end"** | Delete node counting from the back in one pass. | Two pointers separated by a gap of $N$. |
+| **"Implement LRU Cache"** | Fast $O(1)$ item moving and removal. | Doubly Linked List + Hash Map (`Map<key, Node>`). |
 
 ### 2.5 When to Use vs When NOT to Use
 * **When to Use**:
-  * You need guaranteed **$O(1)$ insertions or deletions at the boundaries** without shifting array memory.
-  * The collection size is dynamic and you want to avoid dynamic array resizing copies.
-  * Implementing low-level buffers like LRU caches, browser history, or job queues.
+  * You need fast **$O(1)$ insertions or deletions at ends** without shifting memory.
+  * The size of the list changes frequently and you want to avoid resizing arrays.
+  * Building low-level queues, browser history, or LRU caches.
 * **When NOT to Use**:
-  * You require frequent random access by index ($O(1)$ index access is impossible; use an **Array**).
-  * Memory efficiency is paramount (each node adds 16-24 bytes of pointer overhead in 64-bit V8).
-  * High-volume sequential number crunching (arrays leverage hardware CPU cache prefetching; linked lists cause cache misses).
+  * You need to look up items by index often (linked lists cannot do $O(1)$ index lookup; use an **Array**).
+  * You need to minimize memory (each node adds 16-24 bytes of pointer overhead in 64-bit V8).
+  * High-speed math operations (arrays take advantage of CPU cache; linked lists cause cache misses).
 
 ### 2.6 The 10^7 Operations Rule
-* Iterating through $10^6$ linked list nodes takes $\approx 15\text{ms}$ in Node.js.
-* Because of CPU cache misses from pointer chasing, a linked list iteration runs **3x to 5x slower** than iterating an array of identical size, even though both are asymptotically $O(n)$.
+* Walking through $1,000,000$ linked list nodes takes $\approx 15\text{ms}$ in Node.js.
+* Because nodes are scattered across memory, traversing a linked list is **3x to 5x slower** than walking through an array of the same size, even though both run in $O(n)$ time.
 
 ---
 
@@ -212,21 +212,21 @@ Given the `head` of a linked list and an integer `val`, remove all nodes of the 
 * **Constraints:** The number of nodes in the list is in the range $[0, 10^4]$, $1 \le Node.val \le 50$, $0 \le val \le 50$.
 
 #### 3.1.2 How to Think About It
-Toy train cars linked on a track: `[ 1 ] -> [ 2 ] -> [ 6 ] -> [ 3 ] -> [ 6 ] -> null`, target `val = 6`.
-1. Place a dummy engine car before the head: `[ dummy: 0 ] -> [ 1 ] -> [ 2 ] -> [ 6 ] -> [ 3 ] -> [ 6 ]`.
-2. Stand on `dummy`. Look at the car directly in front of you (`curr.next`):
+Toy train cars linked together: `[ 1 ] -> [ 2 ] -> [ 6 ] -> [ 3 ] -> [ 6 ] -> null`, target `val = 6`.
+1. Place a fake engine car before the head: `[ dummy: 0 ] -> [ 1 ] -> [ 2 ] -> [ 6 ] -> [ 3 ] -> [ 6 ]`.
+2. Stand on `dummy`. Look at the car right in front of you (`curr.next`):
    - In front of `dummy` is `1`. Does `1 === 6`? No. Step forward to `1`.
    - In front of `1` is `2`. Does `2 === 6`? No. Step forward to `2`.
-   - In front of `2` is `6`. Does `6 === 6`? **Yes!**
-     Unhook car `6` by rewiring car `2`'s coupler directly to car `3` (`curr.next = curr.next.next`).
-     **Do not step forward yet!** You must check the new car now standing in front of you.
+   - In front of `2` is `6`. Does `6 === 6`? **Yes!**  
+     Unhook car `6` by connecting car `2` straight to car `3` (`curr.next = curr.next.next`).  
+     **Do not step forward yet!** You must check the new car now in front of you.
    - In front of `2` is `3`. Does `3 === 6`? No. Step forward to `3`.
-   - In front of `3` is `6`. Does `6 === 6`? **Yes!**
-     Unhook car `6` by rewiring car `3` to `null`.
+   - In front of `3` is `6`. Does `6 === 6`? **Yes!**  
+     Unhook car `6` by connecting car `3` to `null`.
 3. Return `dummy.next` (`[ 1 -> 2 -> 3 ]`).
 
 #### 3.1.3 Brute Force Approach & Bottleneck
-Extracting all node values into an array, filtering out `val`, and building brand new `ListNode` instances:
+Extracting all node values into an array, filtering out `val`, and building brand new `ListNode` objects:
 
 ```javascript
 function removeElementsBrute(head, val) {
@@ -240,16 +240,16 @@ function removeElementsBrute(head, val) {
 }
 ```
 
-* **The Bottleneck:** Allocates $O(n)$ auxiliary memory for arrays and duplicate heap objects when existing node pointers can simply be rewired in-place with zero memory allocation.
+* **The Bottleneck:** Allocates $O(n)$ extra memory for arrays and new objects when we can just rewire the existing pointers with zero extra memory.
 
 #### 3.1.4 The Pattern Insight
-Use a **Sentinel Dummy Node**:
-* Initialize `dummy = new ListNode(0, head)`.
+Use a **Dummy Sentinel Node**:
+* Create `dummy = new ListNode(0, head)`.
 * Set `curr = dummy`.
 * While `curr.next !== null`:
   - If `curr.next.val === val`: rewire `curr.next = curr.next.next`.
-  - Else: advance `curr = curr.next`.
-* Advancing `curr` *only* when no deletion occurs ensures consecutive target nodes (e.g. `[6, 6]`) are handled safely.
+  - Else: step forward `curr = curr.next`.
+* Moving `curr` *only* when no deletion occurs guarantees consecutive target nodes (like `[6, 6]`) are handled safely.
 
 #### 3.1.5 Pseudocode
 
@@ -326,11 +326,11 @@ function buggyRemoveElements(head, val) {
   return dummy.next;
 }
 ```
-* **Why it fails:** For `[6, 6, 1]` with `val = 6`, deleting the first `6` and immediately executing `curr = curr.next` moves `curr` onto the second `6` without checking it, returning `[6, 1]`.
+* **Why it fails:** For `[6, 6, 1]` with `val = 6`, deleting the first `6` and immediately moving `curr = curr.next` steps right onto the second `6` without checking it, returning `[6, 1]`.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The loop traverses each node in the list exactly once.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Only one sentinel node object is created on the stack.
+* **Time Complexity:** $\mathbf{O(n)}$. The loop visits each node in the list exactly once.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only create one fake dummy node.
 
 ---
 
@@ -338,6 +338,7 @@ function buggyRemoveElements(head, val) {
 
 #### 3.2.1 Problem Statement
 You are given the heads of two sorted linked lists `list1` and `list2`.
+
 Merge the two lists into one **sorted** linked list by splicing together the nodes of the first two lists. Return the head of the merged linked list.
 
 * **Sample Input 1:** `list1 = [1, 2, 4]`, `list2 = [1, 3, 4]` $\to$ **Expected Output:** `[1, 1, 2, 3, 4, 4]`
@@ -349,16 +350,16 @@ Merge the two lists into one **sorted** linked list by splicing together the nod
 Two stacks of sorted cards face-up on a table:
 * Stack A: `1 -> 2 -> 4`
 * Stack B: `1 -> 3 -> 4`
-1. Place an empty base card on the table (`dummy`). Your finger points to `tail = dummy`.
+1. Place an empty placeholder card on the table (`dummy`). Your finger points to `tail = dummy`.
 2. Look at the top of both stacks:
    - Stack A has `1`, Stack B has `1`. Pick Stack A's `1`: wire `tail.next = 1`, advance Stack A to `2`, move `tail`.
    - Stack A has `2`, Stack B has `1`. Stack B's `1` is smaller: wire `tail.next = 1`, advance Stack B to `3`, move `tail`.
    - Stack A has `2`, Stack B has `3`. Stack A's `2` is smaller: wire `tail.next = 2`, advance Stack A to `4`, move `tail`.
-3. Once Stack A runs out, wire `tail.next` directly to the entire remaining tail of Stack B in one step ($O(1)$)!
+3. Once Stack A runs out of cards, hook `tail.next` straight to the rest of Stack B in one step ($O(1)$)!
 4. Return `dummy.next`.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-Extracting all values into an array, sorting using `arr.sort((a, b) => a - b)`, and constructing brand new nodes:
+Copying all values into an array, sorting with `arr.sort((a, b) => a - b)`, and building brand new nodes:
 
 ```javascript
 function mergeTwoListsBrute(l1, l2) {
@@ -373,14 +374,14 @@ function mergeTwoListsBrute(l1, l2) {
 }
 ```
 
-* **The Bottleneck:** Sorting takes $O((n + m) \log(n + m))$ time and wastes memory, ignoring the fact that both inputs are already sorted.
+* **The Bottleneck:** Sorting takes $O((n + m) \log(n + m))$ time and creates new memory objects, ignoring the fact that both lists are already sorted.
 
 #### 3.2.4 The Pattern Insight
 Use a **Two-Pointer Splicing Loop** with a dummy head:
 * Compare `list1.val` and `list2.val`.
-* Wire `tail.next` to the smaller node and advance that list's pointer.
-* When one list reaches `null`, attach the remaining non-empty list in one line: `tail.next = list1 !== null ? list1 : list2`.
-* Runs in $O(n + m)$ time with strictly $O(1)$ auxiliary space.
+* Point `tail.next` to the smaller node and move that list's pointer forward.
+* When one list reaches `null`, attach the entire remaining list in one line: `tail.next = list1 !== null ? list1 : list2`.
+* Runs in $O(n + m)$ time with strictly $O(1)$ extra space.
 
 #### 3.2.5 Pseudocode
 
@@ -454,11 +455,11 @@ function slowMergeTwoLists(list1, list2) {
   return dummy.next;
 }
 ```
-* **Why it fails:** Traversing the remainder of `list1` or `list2` node-by-node executes unnecessary instructions when the entire remaining segment can be attached in one assignment.
+* **Why it fails:** Walking through the rest of the list node-by-node wastes code and execution steps when you can attach the entire remaining chain in a single assignment.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n + m)}$. Each loop iteration advances either `list1` or `list2`.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Done strictly in-place by updating pointer references.
+* **Time Complexity:** $\mathbf{O(n + m)}$. Each loop step advances either `list1` or `list2`.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We reuse the existing nodes by updating their pointers.
 
 ---
 
@@ -474,16 +475,16 @@ Given the `head` of a linked list, remove the $n$-th node from the end of the li
 * **Constraints:** The number of nodes in the list is in the range $[1, 30]$, $0 \le Node.val \le 100$, $1 \le n \le \text{length of list}$.
 
 #### 3.3.2 How to Think About It
-Imagine two runners tied together with a rope of length $n + 1$:
+Imagine two runners connected by a rope of length $n + 1$:
 * Place a `dummy` node before `head`.
-* Position both `fast` and `slow` runners at `dummy`.
-* Advance the `fast` runner forward by $n + 1$ steps. Now there is an exact gap of $n + 1$ nodes between them.
-* Now move both runners forward together at the same speed (1 step per tick).
-* When `fast` reaches the end of the track (`null`), `slow` will be standing **immediately before** the node that needs to be deleted!
-* Wire `slow.next = slow.next.next` to remove the target node.
+* Put both `fast` and `slow` runners at `dummy`.
+* Send the `fast` runner forward $n + 1$ steps. Now there is a gap of $n + 1$ nodes between them.
+* Now move both runners forward together at the exact same speed (1 step each).
+* When `fast` reaches the end of the track (`null`), `slow` will be standing **right before** the node you want to delete!
+* Wire `slow.next = slow.next.next` to remove the node.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-A two-pass approach traverses the list to count total length $L$, then traverses again $L - n$ steps to locate and remove the node:
+A two-pass approach walks the list once to count total length $L$, then walks again $L - n$ steps to find and delete the node:
 
 ```javascript
 function removeNthFromEndTwoPass(head, n) {
@@ -499,15 +500,15 @@ function removeNthFromEndTwoPass(head, n) {
 }
 ```
 
-* **The Bottleneck:** Requires two full traversals over the linked list. While asymptotically $O(n)$, systems interviews specifically require solving this in a **single pass**.
+* **The Bottleneck:** Needs two full passes over the list. While it runs in $O(n)$ time, interviewers specifically ask for a **single pass** solution.
 
 #### 3.3.4 The Pattern Insight
 Use **Gap Two Pointers (Lead/Follow)**:
 * Place `dummy` before `head`.
-* Initialize `fast = dummy` and `slow = dummy`.
-* Advance `fast` forward $n + 1$ times.
+* Set `fast = dummy` and `slow = dummy`.
+* Move `fast` forward $n + 1$ times.
 * Walk `fast` and `slow` forward together until `fast === null`.
-* `slow` is guaranteed to land on the predecessor of the target node.
+* `slow` is guaranteed to stop right before the target node.
 * Rewire `slow.next = slow.next.next` in one pass!
 
 #### 3.3.5 Pseudocode
@@ -579,30 +580,30 @@ function buggyRemoveNthFromEnd(head, n) {
   return head;
 }
 ```
-* **Why it fails:** For `head = [1], n = 1`, `fast` advances to `null`. Checking `fast.next` throws a `TypeError: Cannot read properties of null`. Using a dummy node guarantees `fast` can always safely advance $n + 1$ steps.
+* **Why it fails:** For `head = [1], n = 1`, `fast` walks off the list and becomes `null`. Checking `fast.next` crashes with a `TypeError: Cannot read properties of null`. Using a dummy node guarantees `fast` can always safely take $n + 1$ steps.
 
 #### 3.3.8 Complexity Derivation
 * **Time Complexity:** $\mathbf{O(n)}$. The list is traversed in a single pass.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. Uses two pointer variables and one dummy node.
+* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use two pointer variables and one dummy node.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Deleting the Head Node:** When the node to delete is the head (e.g. `removeElements` where `head.val === val`), using a dummy sentinel node ensures you never have null reference crashes.
-* **Consecutive Target Nodes:** When deleting nodes matching a target, never advance `curr = curr.next` in the deletion branch. Only advance when `curr.next.val !== val`.
-* **Single-Node Lists (`[1]`):** Operations like removing the 1st node from end should cleanly return `null` (`[]`).
-* **Dangling Pointers in Doubly Linked Lists:** When unhooking a doubly linked node, always disconnect both `node.prev = null` and `node.next = null` so garbage collection can clean it up.
+* **Deleting the Head Node:** When deleting the first node in a list (like `removeElements` where `head.val === val`), using a dummy sentinel node prevents null pointer crashes.
+* **Consecutive Matching Nodes:** When deleting nodes matching a target, never advance `curr = curr.next` inside the delete block. Only advance when `curr.next.val !== val`.
+* **Single-Node Lists (`[1]`):** Removing the 1st node from the end of a 1-node list must cleanly return `null` (`[]`).
+* **Dangling Pointers in Doubly Linked Lists:** When unhooking a doubly linked node, always clear both `node.prev = null` and `node.next = null` so garbage collection can clean it up.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Singly Linked Lists:** Nodes contain `val` and `next`. Provide $O(1)$ head insertions and deletions, but $O(n)$ index lookups.
-* **Doubly Linked Lists:** Nodes contain `val`, `prev`, and `next`. Enable true $O(1)$ deletion of any node whose reference is already known.
-* **Dummy Sentinel Pattern:** `dummy = new ListNode(0, head)`. Eliminates edge cases when mutating or deleting the head; always return `dummy.next`.
+* **Singly Linked Lists:** Nodes contain `val` and `next`. Fast $O(1)$ insertions and deletions at the head, but $O(n)$ lookup by index.
+* **Doubly Linked Lists:** Nodes contain `val`, `prev`, and `next`. Allows true $O(1)$ deletion of any node when you already have its reference.
+* **Dummy Sentinel Pattern:** `dummy = new ListNode(0, head)`. Removes edge cases when modifying the head; always return `dummy.next`.
 * **Two-Pointer Splicing:** Merges sorted lists in $O(n + m)$ time by rewiring existing node links.
-* **Gap Pointers:** Maintaining an $(n + 1)$ gap between `fast` and `slow` locates the $n$-th node from the end in a single pass.
+* **Gap Pointers:** Keeping an $(n + 1)$ gap between `fast` and `slow` finds the $n$-th node from the end in one single pass.
 
 ---
 
@@ -612,13 +613,13 @@ function buggyRemoveNthFromEnd(head, n) {
 
 Given the `head` of a singly linked list, return the middle node of the linked list. If there are two middle nodes, return the second middle node.
 
-* **Difficulty:** Easy | **Focus:** Tortoise & Hare Velocity Differential
+* **Difficulty:** Easy | **Focus:** Tortoise & Hare Speeds
 * **Sample Input 1:** `head = [1, 2, 3, 4, 5]` $\to$ **Expected Output:** `[3, 4, 5]`
 * **Sample Input 2:** `head = [1, 2, 3, 4, 5, 6]` $\to$ **Expected Output:** `[4, 5, 6]`
 * **Constraints:** Number of nodes is in range $[1, 100]$, $1 \le Node.val \le 100$.
-* **Hint 1:** Initialize two pointers: `slow = head` and `fast = head`.
-* **Hint 2:** In each step, advance `slow` by 1 node and `fast` by 2 nodes.
-* **Hint 3:** When `fast === null` or `fast.next === null`, `slow` is at the midpoint.
+* **Hint 1:** Set two pointers: `slow = head` and `fast = head`.
+* **Hint 2:** In each step, move `slow` by 1 node and `fast` by 2 nodes.
+* **Hint 3:** When `fast === null` or `fast.next === null`, `slow` is standing right on the middle node.
 
 ---
 
@@ -626,18 +627,18 @@ Given the `head` of a singly linked list, return the middle node of the linked l
 
 There is a singly-linked list and you want to delete a node in it. You are given the node to be deleted `node`. You will **not** be given access to the first node of the list (`head`).
 
-* **Difficulty:** Medium | **Focus:** In-Place Value Overwrite
+* **Difficulty:** Medium | **Focus:** Overwriting Values In-Place
 * **Sample Input 1:** `head = [4, 5, 1, 9]`, `node = 5` $\to$ **Expected Output:** `[4, 1, 9]`
 * **Sample Input 2:** `head = [4, 5, 1, 9]`, `node = 1` $\to$ **Expected Output:** `[4, 5, 9]`
 * **Constraints:** The node to be deleted is in the list and is not a tail node.
-* **Hint 1:** You do not have access to the predecessor node. Can you copy the next node's value into the current node?
+* **Hint 1:** You do not have the node before `node`. Can you copy the next node's value into the current node?
 * **Hint 2:** Set `node.val = node.next.val`, then bypass the next node: `node.next = node.next.next`.
 
 ---
 
 ### 6.3 Design Browser History
 
-You have a browser of one tab where you start on the `homepage` and you can visit another `url`, get back in the history number of `steps` or forward in the history number of `steps`. Implement `BrowserHistory` using a Doubly Linked List.
+You have a browser with one tab where you start on a `homepage` and you can visit a new `url`, go back in history by a number of `steps`, or go forward in history by a number of `steps`. Implement `BrowserHistory` using a Doubly Linked List.
 
 * **Difficulty:** Medium | **Focus:** Doubly Linked List Navigation
 * **Sample Input:**
@@ -649,9 +650,9 @@ You have a browser of one tab where you start on the `homepage` and you can visi
   bh.forward(1); // -> "facebook.com"
   ```
 * **Constraints:** $1 \le homepage.length, url.length \le 20$, at most $5000$ calls to `visit`, `back`, and `forward`.
-* **Hint 1:** Represent each visited URL as a `DoublyNode` with `prev` and `next` pointers.
-* **Hint 2:** When `visit(url)` is called, clear all forward history by setting `curr.next = newNode`, `newNode.prev = curr`, then advance `curr = newNode`.
-* **Hint 3:** `back(steps)` walks backward using `.prev` up to `steps` times while `curr.prev !== null`.
+* **Hint 1:** Store each visited page as a `DoublyNode` with `prev` and `next` pointers.
+* **Hint 2:** When `visit(url)` is called, clear any forward history by pointing `curr.next = newNode`, `newNode.prev = curr`, then advance `curr = newNode`.
+* **Hint 3:** `back(steps)` walks backward using `.prev` up to `steps` times as long as `curr.prev !== null`.
 
 ---
 

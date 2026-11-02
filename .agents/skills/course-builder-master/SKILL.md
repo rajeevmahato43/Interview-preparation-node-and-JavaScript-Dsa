@@ -27,7 +27,7 @@ We strictly reject:
 ## The 5 Success Criteria
 
 Every course curriculum and day lecture produced must guarantee that the candidate can:
-1. **Explain the concept clearly** using plain English and physical visual analogies before touching code.
+1. **Explain the concept clearly** using basic everyday English and physical visual analogies before touching code.
 2. **Solve related problems independently** by deriving logic from brute force rather than memorized templates.
 3. **Answer interview questions confidently** using structured 45-second pitches and trade-off matrices.
 4. **Recognize patterns in unseen problems** by identifying constraint triggers and problem keyword signals.
@@ -73,6 +73,9 @@ Whenever introducing a coding problem in the curriculum, strictly apply:
 8. `X.Y.8 Complexity Derivation` (Time and space bounds).
 
 ### 8. Language & Code Quality Standards
-- **Basic English Only:** Use plain, direct English. Avoid heavy words, academic vocabulary, or confusing jargon.
+- **Basic English Only:** Write in simple, direct, Basic English. Plain English can still sound stiff or academic; our target is **Basic Everyday English** that a non-native speaker can read effortlessly without stumbling over jargon.
+  - Break long, multi-clause sentences into short, punchy sentences.
+  - Never use heavy, formal words when simple words exist (e.g. write *"count how many times each item appears"* instead of *"tally occurrences in a single linear pass"*; write *"check items one by one"* instead of *"inspect elements sequentially"*; write *"shared key"* instead of *"canonical key signature"*).
+  - Keep 100% technical accuracy (Big O, exact engine behavior, exact data structures) while using simple, welcoming words.
 - **Dual-Case Implementations:** Always show `✅ CORRECT` alongside `❌ ANTI-PATTERN / COMMON BUG`.
 - **Direct Clean Runnable Code:** Code blocks must be self-contained, valid Node.js functions with example runs (`console.log`) without requiring `assert` imports.

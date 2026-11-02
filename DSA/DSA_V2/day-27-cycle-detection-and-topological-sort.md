@@ -6,17 +6,25 @@
 
 </nav>
 
+---
+
 ## 1. Directed Graphs, Cycles & DAGs
 
-A Directed Graph consists of vertices connected by one-way directed edges: an edge $u \to v$ denotes an asymmetric relationship where $u$ must precede or point directly to $v$.
+A **Directed Graph** is made of nodes connected by one-way arrows: an arrow $u \to v$ means you must do $u$ before you can do $v$.
 
-When a directed graph contains no closed loops (cycles), it is called a Directed Acyclic Graph (DAG). DAGs are the universal mathematical foundation for modeling build pipelines, workflow execution engines, database migration runners, and package dependency managers (like `npm` or `yarn`).
+When a directed graph has no closed loops (cycles), we call it a **Directed Acyclic Graph (DAG)**. Real-world tools like `npm`, database migrations, and build systems all run on DAGs:
 
-- **Directed Acyclic Graph (DAG):** A directed graph with zero directed cycles. If you start at any vertex and follow directed edges, you can never loop back to your starting point.
-- **Topological Sort:** A linear ordering of all vertices in a DAG such that for every directed edge $u \to v$, vertex $u$ appears before vertex $v$ in the sequence.
-- **In-Degree vs Out-Degree:** The in-degree of a vertex is the count of incoming edges pointing into it (prerequisites). The out-degree is the count of outgoing edges pointing away from it (dependents).
+- **DAG (Directed Acyclic Graph):** A graph with one-way arrows and zero loops. If you follow the arrows, you can never loop back to where you started.
+- **Topological Sort:** Putting tasks in a straight line so that every requirement comes before the task that needs it.
+- **In-Degree vs Out-Degree:** In-degree is how many arrows point into a node (how many requirements it needs). Out-degree is how many arrows point out of a node (how many other tasks are waiting on it).
 
-Imagine getting dressed in the morning. You must put on your underwear before your pants, your socks before your shoes, and your pants before your shoes. A valid linear sequence might be: `[Underwear, Socks, Pants, Shoes]`. Multiple valid sequences can exist (e.g. `[Socks, Underwear, Pants, Shoes]`), but you can never put your shoes on before your socks. Now imagine a circular deadlock: Module A requires Module B to start, Module B requires Module C, and Module C requires Module A. None of the three modules can ever start. A graph can produce a valid topological sort if and only if it has zero cycles.
+Imagine getting dressed in the morning:
+- You must put on your socks before your shoes.
+- You must put on your underwear before your pants, and your pants before your shoes.
+- A good order would be: `[Underwear, Socks, Pants, Shoes]`.
+- Another good order would be: `[Socks, Underwear, Pants, Shoes]`.
+- But you can never put your shoes on before your socks!
+- Now imagine an impossible loop: Task A needs Task B, Task B needs Task C, and Task C needs Task A. Nobody can start because everybody is waiting on someone else! That is a deadlock cycle. You can only arrange tasks in a straight line if there are zero loops.
 
 ```javascript
 // Baseline demonstration of in-degree calculation
@@ -59,8 +67,8 @@ Final Sequence: [ 0, 1, 2, 3 ] (All 4 nodes processed -> Valid DAG!)
 If a cycle exists, nodes within the cycle will never have their in-degrees reduced to zero. When the queue empties, the number of processed nodes will be strictly less than $V$, proving that a deadlock exists.
 
 > [!NOTE]
-> Why does Kahn's algorithm prove the presence of a cycle if `order.length < numCourses`?
-> Because every node in a directed cycle has at least one incoming edge from another node in that cycle. None of them can ever reach an in-degree of zero, so none of them can ever enter the queue.
+> Self-Check: Why does Kahn's algorithm prove there is a loop if `order.length < numCourses`?
+> Answer: Every task inside a loop is waiting on another task in that loop. None of them can ever reach 0 requirements, so none of them can ever enter the queue.
 
 ### 1.2 Three-Color DFS State Tracking (Recursion Stack)
 
@@ -146,7 +154,7 @@ There are a total of `numCourses` courses you have to take, labeled from `0` to 
 - **Constraints:** $1 \le numCourses \le 2,000$, $0 \le prerequisites.length \le 5,000$.
 
 #### 3.1.2 How to Think About It
-Imagine a set of instruction manuals. Book 1 says "Read Book 0 first". Book 0 says "Read Book 1 first". Neither reader can ever begin because both are waiting on the other. If any chain of prerequisites forms a closed loop, none of the books in that loop can ever be read.
+Imagine two instruction manuals. Book 1 says: "Read Book 0 first". Book 0 says: "Read Book 1 first". You can never begin reading because both books are waiting on each other. If any chain of requirements forms a closed circle, you can never finish.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 Running an unmemoized DFS from every node to see if it can reach itself:
@@ -254,7 +262,7 @@ There are a total of `numCourses` courses labeled from `0` to `numCourses - 1`. 
 - **Constraints:** $1 \le numCourses \le 2,000$, $0 \le prerequisites.length \le numCourses \times (numCourses - 1)$.
 
 #### 3.2.2 How to Think About It
-Imagine a bucket of tasks. You look for any task that has zero requirements. You complete it and wipe it off the requirements list of all other tasks. This unlocks new tasks that now have zero remaining requirements. You repeat this until all tasks are completed.
+Imagine a to-do list of tasks. You look for any task that has zero requirements. You finish it, and cross it off the requirement lists of all other tasks. This unlocks new tasks that now have zero requirements. You repeat this until every task is done.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 Generating all $V!$ permutations of courses and testing if every prerequisite constraint is met:
