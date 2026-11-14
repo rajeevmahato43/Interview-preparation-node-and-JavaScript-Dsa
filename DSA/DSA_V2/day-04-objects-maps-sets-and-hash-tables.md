@@ -37,49 +37,168 @@ console.log(userAges.has("Charlie")); // false
 
 Under the hood, a hash table stores items inside a regular array called a **bucket array**.
 
-When you give a key to a hash table:
-1. The **hash function** turns the key (like a word or number) into a large integer called a hash code.
-2. The hash table shrinks that large integer using the remainder operator (`%`) so it fits inside its internal bucket array:
+An array stores items using numbers as indices: `array[0]`, `array[1]`, `array[2]`. But in real programs, our keys are words like `"apple"`, `"user_101"`, or `"sessionId"`.
+
+How does a computer take a word like `"apple"` and find its exact array slot in 1 quick step, without checking slots one by one?
+
+It uses a two-step bridge:
+1. **The Hash Function:** Turns any word or key into a large integer called a **hash code**.
+2. **Modulo Compression:** Shrinks that large integer so it fits inside the actual size of the internal array.
+
+```text
+Key: "cat" ──► Hash Function ──► Large Hash Code: 98262 ──► Modulo (% 8) ──► Bucket Index: 6
+```
+
+#### Step 1: Turning Letters into Numbers
+Computers do not store letters directly; they only store numbers. Every character has a standard integer code (called an ASCII or Unicode character code). For example, in JavaScript:
+* `'c'.charCodeAt(0)` is `99`
+* `'a'.charCodeAt(0)` is `97`
+* `'t'.charCodeAt(0)` is `116`
+
+Why can't we just add the character codes together?
+* `'c' + 'a' + 't' = 99 + 97 + 116 = 312`
+* What about `"act"`? `'a' + 'c' + 't' = 97 + 99 + 116 = 312`!
+
+If we only add the numbers, every anagram (words made with the exact same letters) produces the exact same number and collides.
+
+To prevent this, a real hash function multiplies the running total by a prime number (like `31`) at each letter:
+1. Start with `hash = 0`.
+2. First letter `'c'` ($99$): $(0 \times 31) + 99 = 99$.
+3. Second letter `'a'` ($97$): $(99 \times 31) + 97 = 3166$.
+4. Third letter `'t'` ($116$): $(3166 \times 31) + 116 = 98262$.
+
+Because the position of each letter changes the multiplication, `"cat"` becomes `98262`, while `"act"` becomes `96402`. They get completely different numbers!
+
+#### Step 2: Modulo Compression
+A computer cannot allocate an array with `98262` slots just to store the word `"cat"`. That would waste megabytes of RAM for one word.
+
+Instead, a hash table starts with a small internal array (for example, `capacity = 8`).
+
+We shrink the large integer using the remainder operator (`%`):
 
 $$\text{Bucket Index} = |\text{HashCode}| \pmod{\text{Capacity}}$$
 
-```text
-Key: "apple" ──► Hash Function ──► Hash Code: 93029210
-Capacity = 8:   93029210 % 8 = 2 ──► Stored in Bucket Array Index [2]
+Think of an analog 12-hour wall clock:
+* If 13 hours pass, the clock wraps around: $13 \pmod{12} = 1$ o'clock.
+* If 25 hours pass, the clock wraps around: $25 \pmod{12} = 1$ o'clock.
+
+The remainder operator guarantees that no matter how huge the hash code is, the resulting bucket index always lands inside the safe range `0` to `Capacity - 1`:
+
+$$98262 \pmod{8} = 6 \implies \text{Stored in Bucket Array Index [6]}$$
+
+```javascript
+// Step-by-step Hash Function with Modulo Compression
+function simpleHash(key, capacity) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    // Multiply by prime number 31 and add character code
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0; // >>> 0 keeps it a positive 32-bit integer
+  }
+  // Modulo compression maps hash to a valid array index
+  return hash % capacity;
+}
+
+const capacity = 8;
+console.log("cat -> bucket index:", simpleHash("cat", capacity)); // 6
+console.log("act -> bucket index:", simpleHash("act", capacity)); // 2
+console.log("dog -> bucket index:", simpleHash("dog", capacity)); // 4
 ```
 
-Because calculating the hash code and finding the remainder takes a fixed number of quick steps, looking up an item takes fast $O(1)$ time no matter how large the table is.
+#### How Storing and Looking Up Connect
+* **To Save (`set("cat", "feline")`):** Run the hash math on `"cat"` $\to$ get index `6` $\to$ place `["cat", "feline"]` at `bucket[6]`.
+* **To Find (`get("cat")`):** Run the exact same hash math on `"cat"` $\to$ get index `6` $\to$ jump straight to `bucket[6]` in 1 step!
+
+You never scan the other 7 slots. That is why hash table operations run in fast **$O(1)$ time**.
+
+#### The 3 Rules of a Good Hash Function
+* **Predictable (Deterministic):** The same key must produce the exact same index every single time.
+* **Fast:** Runs in tiny constant steps ($O(L)$ where $L$ is word length), regardless of how many millions of items are stored.
+* **Uniform Distribution:** Spreads items evenly across all buckets so they do not pile up in one spot.
 
 > [!NOTE]
-> **Self-Check:** What happens if you run the same key through a hash function 100 times?  
-> *Answer:* It must return the exact same hash code every single time. Hash functions must be predictable; otherwise, you would store an item in one bucket and search for it in another.
+> **Self-Check:** What would happen if a hash function included `Math.random()` in its calculation?  
+> *Answer:* You would store your data in one bucket (e.g. index 3) and search for it in another bucket (e.g. index 7). The hash table would never find your saved data.
 
 ---
 
 ### 1.2 Hash Collisions and Resolution
 
-Because there are an endless number of possible words and keys, but only a limited number of buckets in an array, two different keys will sometimes end up with the exact same bucket index. This is called a **hash collision**.
+Even with the best hash function, two different keys will sometimes produce the exact same bucket index. This is called a **hash collision**.
 
 ```text
-Key "cat" ──► Hash % 8 ──► Index 4 ──┐
-                                     ├──► COLLISION! Both target Index 4.
-Key "act" ──► Hash % 8 ──► Index 4 ──┘
+Key "cat" ──► Hash % 8 ──► Index 6 ──┐
+                                     ├──► COLLISION! Both keys target Index 6.
+Key "sun" ──► Hash % 8 ──► Index 6 ──┘
 ```
 
-The two main ways to handle collisions are:
+#### Why Collisions Are 100% Unavoidable
+Imagine you have 8 mailboxes and 9 letters. Even if you try your best to spread them out, at least one mailbox must receive 2 letters. This is a mathematical rule called the **Pigeonhole Principle**.
 
-#### Strategy A: Separate Chaining (Used in JavaScript Engines)
-Each bucket slot holds a small list of key-value pairs:
-* **To Add:** Find the bucket index with the hash formula. If other items are already in that bucket, add the new `[key, value]` pair to that bucket's small list.
-* **To Find:** Find the bucket index, then look through that bucket's small list using strict equality (`===`) to find the matching key.
+Because there are endless possible strings in the world, but our computer array has a fixed capacity (like 8 or 16 buckets), collisions are guaranteed to happen.
+
+Engines resolve collisions using two main strategies:
+
+#### Strategy A: Separate Chaining (Used by JavaScript Engines and Java)
+Instead of storing a single item in each bucket slot, every slot in the bucket array holds a small list (or array) of key-value pairs:
 
 ```text
-Bucket [4]: [ "cat", "feline" ] ──► [ "act", "verb" ] ──► null
+Bucket Array:
+[0]: null
+[1]: null
+[2]: [ ["act", "verb"] ] ──► null
+[3]: null
+[4]: [ ["dog", "canine"] ] ──► null
+[5]: null
+[6]: [ ["cat", "feline"] ] ──► [ ["sun", "star"] ] ──► null
+[7]: null
 ```
+
+* **To Add (`set`):**
+  1. Calculate the bucket index using the hash formula.
+  2. Walk through that bucket's small list.
+  3. If the key already exists, update its value.
+  4. If the key is not in the list, append the new `[key, value]` pair to that bucket.
+* **To Find (`get`):**
+  1. Calculate the bucket index.
+  2. Jump straight to that bucket slot in 1 step.
+  3. Check the few items in that bucket's list one by one using strict equality (`key === targetKey`).
+  4. Return the matching value. If the key is not in that bucket, return `undefined`.
+
+**Why Separate Chaining Stays Fast ($O(1)$ Average):**  
+As long as the table resizes before getting too full, each bucket's list holds only 1 or 2 items on average. Checking a list of 1 or 2 items takes almost zero time.
 
 #### Strategy B: Open Addressing (Linear Probing)
-All items are stored directly in the main array. If slot $k$ is already taken, the code checks slot $k+1, k+2, \dots$ until it finds the first empty slot.
-* **Drawback:** Slots can clump together in groups, which slows down future searches toward $O(n)$.
+No extra lists are used. Every item is stored directly inside the main array.
+
+If slot $k$ is already occupied by a different key:
+1. Step to the right: check slot $k + 1$.
+2. If slot $k + 1$ is taken, check $k + 2, k + 3, \dots$
+3. Place the item in the first empty slot found.
+
+```text
+Slot [6] already holds "cat".
+Trying to insert "sun" (hashes to 6):
+Index 6 is taken! ──► Check Index 7 ──► Index 7 is empty ──► Store "sun" in Index [7]
+```
+
+* **To Find (`get`):** Jump to slot $k$. If it holds a different key, keep stepping right until you find your key or hit an empty slot (which means the key does not exist).
+* **The 2 Big Bottlenecks of Linear Probing:**
+  1. **Clustering (Traffic Jams):** Occupied slots bunch together into long continuous chains. New items take more and more steps to find an empty slot, slowing the table down toward $O(n)$.
+  2. **Deletions Need "Tombstones":** If you delete an item from slot 6, you cannot set it to `null`. If you do, searching for `"sun"` will hit the empty slot 6 and stop early, falsely reporting that `"sun"` is missing! You must leave a special marker called a **tombstone** (`"DELETED"`).
+
+#### Separate Chaining vs Open Addressing
+
+| Feature | Separate Chaining (V8 Engine) | Open Addressing (Linear Probing) |
+| :--- | :--- | :--- |
+| **Storage Location** | Each bucket holds a small list of pairs | All items live directly in the main array |
+| **When Colliding** | Appends pair to the bucket's list | Steps right ($k+1, k+2$) to find an empty slot |
+| **When Nearly Full** | Slows down gracefully | Slows down drastically due to clustering |
+| **Deleting Items** | Easy: remove pair from the bucket list | Hard: requires leaving tombstone markers |
+| **Memory Behavior** | Extra memory for small list nodes | Stored side-by-side in one simple array |
+
+> [!NOTE]
+> **Self-Check:** In Separate Chaining, why do we store both the key and the value `[key, value]` in the bucket list, instead of just the value?  
+> *Answer:* Because multiple keys can land in the same bucket. When looking up an item, we must check the key of each pair to know which value belongs to our search.
 
 ---
 
@@ -177,39 +296,219 @@ console.log(uniqueNumbers); // [ 4, 2, 8, 9 ]
 
 ### 2.3 WeakMap and WeakSet
 
-Normal `Map` and `Set` hold onto their objects tightly. Even if the rest of your app has deleted an object, a `Map` will keep it alive in memory, which can cause memory leaks.
+Normal `Map` and `Set` hold **strong references** to their contents. As long as a `Map` or `Set` exists, JavaScript will never clean up the objects stored inside it, even if the rest of your program has completely finished with them.
 
-A **`WeakMap`** holds objects loosely (weak references):
-* When your app no longer uses an object anywhere else, JavaScript cleans it out of memory automatically.
-* Because items can disappear at any time, a `WeakMap` cannot be looped over and does not have a `.size` property.
+In a long-running Node.js backend server (such as an Express or Fastify API), this creates serious **memory leaks**:
 
 ```javascript
-const requestMetadata = new WeakMap();
+// The Memory Leak Trap with Normal Map
+const userCache = new Map();
 
-function logRequest(req) {
-  requestMetadata.set(req, { receivedAt: Date.now() });
-  // When Node.js finishes the HTTP request and destroys 'req',
-  // requestMetadata cleans up its entry automatically without memory leaks!
+function loginUser() {
+  let sessionUser = { id: 101, name: "Alice" };
+  userCache.set(sessionUser, { loggedInAt: Date.now() });
+
+  // Later, the user logs out:
+  sessionUser = null; // We clear our local variable...
+  // BUT userCache STILL holds a strong reference to { id: 101 }!
+  // The V8 garbage collector CANNOT free this memory.
+  // Over time, memory usage grows until the server crashes (Out Of Memory).
 }
 ```
+
+#### What "Weak" Means: The Leash Analogy
+* **Strong Reference (`Map`, `Set`, regular variables):** Holding a dog on a thick leash. As long as you hold the leash, the dog cannot run away, even if everyone else in the house walks out the door.
+* **Weak Reference (`WeakMap`, `WeakSet`):** Pointing your finger at a bird sitting on a branch. You are observing it, but you are not holding it down. If nobody else ties the bird down, it flies away whenever it wants. Once it flies away, the weak collection cleans up its own entry automatically!
+
+#### The Two Universal Rules of Weak Collections
+1. **Objects Only:**
+   * Keys in a `WeakMap` **must be objects** (or non-registered symbols).
+   * Values in a `WeakSet` **must be objects** (or non-registered symbols).
+   * Primitive types (numbers, strings, booleans) are not allowed because primitives are copied by value and never garbage collected.
+2. **Not Iterable (No Loops, No `.size`):**
+   * You cannot loop over a `WeakMap` or `WeakSet` (`for...of` does not exist).
+   * There is no `.size` property.
+   * *Why?* Because garbage collection runs whenever the V8 engine feels like it. If `.size` existed, it could return `10` right now and `8` half a millisecond later. To prevent unpredictable bugs, reading the entire collection at once is forbidden.
+
+---
+
+#### 2.3.1 WeakMap in Depth
+A **`WeakMap`** is a key-value collection where **every key must be an object held weakly**.
+
+Supported methods:
+* `weakMap.set(objectKey, value)`: Saves a value keyed by an object.
+* `weakMap.get(objectKey)`: Reads the value for that object key.
+* `weakMap.has(objectKey)`: Checks if the object key exists ($O(1)$).
+* `weakMap.delete(objectKey)`: Removes the object key and value ($O(1)$).
+
+##### Use Case 1: Attaching Metadata to Node.js HTTP Requests
+In high-traffic backend servers, thousands of `req` (HTTP request) objects are created and destroyed every second. Often, middleware needs to attach temporary metadata (like start timers, authentication details, or tracing IDs):
+
+```javascript
+// ✅ CORRECT: Zero-leak request tracking with WeakMap
+const requestTimings = new WeakMap();
+
+function onRequestStart(req) {
+  // Store start time keyed by the incoming req object
+  requestTimings.set(req, { startTime: Date.now() });
+}
+
+function onRequestEnd(req) {
+  const timing = requestTimings.get(req);
+  if (timing) {
+    const duration = Date.now() - timing.startTime;
+    console.log(`Request completed in ${duration}ms`);
+  }
+  // When Node.js finishes the HTTP response and destroys 'req',
+  // requestTimings automatically frees the entry from memory!
+}
+
+// Runnable test run
+let mockReq = { url: "/api/products", method: "GET" };
+onRequestStart(mockReq);
+onRequestEnd(mockReq);
+
+// Cleanup happens automatically when mockReq is dereferenced
+mockReq = null;
+```
+
+##### Use Case 2: Truly Private Class Properties
+Because standard JavaScript object properties can be inspected, you can use a `WeakMap` to keep private state completely invisible outside a class:
+
+```javascript
+// Truly private state using WeakMap
+const privateData = new WeakMap();
+
+class BankAccount {
+  constructor(initialBalance) {
+    // Store private balance keyed by 'this' instance
+    privateData.set(this, { balance: initialBalance });
+  }
+
+  deposit(amount) {
+    if (amount <= 0) return;
+    const data = privateData.get(this);
+    data.balance += amount;
+  }
+
+  getBalance() {
+    return privateData.get(this).balance;
+  }
+}
+
+const account = new BankAccount(100);
+account.deposit(50);
+console.log(account.getBalance()); // 150
+console.log(account.balance);      // undefined (completely private!)
+```
+
+---
+
+#### 2.3.2 WeakSet in Depth
+A **`WeakSet`** is a collection of **unique objects held weakly**.
+
+Supported methods:
+* `weakSet.add(object)`: Adds an object to the set.
+* `weakSet.has(object)`: Checks if the object exists in the set ($O(1)$).
+* `weakSet.delete(object)`: Removes the object from the set ($O(1)$).
+
+##### Use Case 1: Tagging Objects Without Modifying Them
+Suppose you receive objects from a third-party library, or objects that are frozen with `Object.freeze()`. You need to know: *"Has this object already been validated?"*
+
+Modifying foreign objects directly (e.g. `obj.isValidated = true`) causes bugs, and trying to mutate a frozen object throws an error in strict mode. A `WeakSet` solves this by tagging objects externally:
+
+```javascript
+// ✅ CORRECT: Tagging objects safely with WeakSet
+const validatedObjects = new WeakSet();
+
+function processSecurePayload(payload) {
+  if (validatedObjects.has(payload)) {
+    console.log("Payload already validated. Skipping check.");
+    return;
+  }
+
+  // Perform validation check
+  console.log("Validating payload for the first time...");
+
+  // Tag the payload without mutating its properties!
+  validatedObjects.add(payload);
+}
+
+// Works even on frozen objects!
+const frozenPayload = Object.freeze({ transactionId: "TX_9921", amount: 500 });
+
+processSecurePayload(frozenPayload); // Validating payload for the first time...
+processSecurePayload(frozenPayload); // Payload already validated. Skipping check.
+```
+
+##### Use Case 2: Circular Reference Detection (Cycle Detection)
+When serializing or cloning nested objects, an object that points back to itself causes an infinite loop and crashes with a stack overflow. A `WeakSet` tracks visited objects during recursion without leaking memory:
+
+```javascript
+// Detecting circular references in nested objects
+function hasCycle(obj, visited = new WeakSet()) {
+  if (typeof obj !== "object" || obj === null) {
+    return false;
+  }
+
+  // If we have already visited this object in the current path, a cycle exists!
+  if (visited.has(obj)) {
+    return true;
+  }
+
+  visited.add(obj);
+
+  for (const key of Object.keys(obj)) {
+    if (hasCycle(obj[key], visited)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+const tree = { name: "Root", child: { name: "Leaf" } };
+console.log("Tree has cycle:", hasCycle(tree)); // false
+
+const looped = { name: "Node A" };
+looped.self = looped; // Self-referencing circular loop!
+console.log("Looped has cycle:", hasCycle(looped)); // true
+```
+
+---
+
+#### 2.3.3 Map vs WeakMap vs Set vs WeakSet
+
+| Feature | `Map` | `WeakMap` | `Set` | `WeakSet` |
+| :--- | :--- | :--- | :--- | :--- |
+| **Stores** | Key-Value pairs | Key-Value pairs | Unique values | Unique objects |
+| **Allowed Keys / Items** | Any JavaScript type | **Objects only** | Any JavaScript type | **Objects only** |
+| **Reference Type** | Strong (prevents GC) | **Weak (allows GC)** | Strong (prevents GC) | **Weak (allows GC)** |
+| **Has `.size`?** | ✅ Yes ($O(1)$) | ❌ No | ✅ Yes ($O(1)$) | ❌ No |
+| **Can Loop (`for...of`)?**| ✅ Yes | ❌ No | ✅ Yes | ❌ No |
+| **Primary Backend Use** | Caching, frequency counts | Request metadata, private data | Deduplication, fast checks | Tagging objects, cycle detection |
+
+> [!NOTE]
+> **Self-Check:** Can you use a string as a key in a `WeakMap` (e.g. `weakMap.set("user_1", data)`)?  
+> *Answer:* No! Primitives like strings and numbers cannot be garbage collected. `WeakMap` keys must be objects (or non-registered symbols).
 
 ---
 
 ### 2.4 Collections Reference Table
 
-| Feature | Plain Object (`{}`) | ES6 `Map` | ES6 `Set` | `WeakMap` |
-| :--- | :---: | :---: | :---: | :---: |
-| **Key Types** | Strings and Symbols only | **Any JavaScript Type** | Values only | **Objects only** |
-| **Lookup Time** | $O(1)$ average | **$O(1)$ average** | **$O(1)$ average** | **$O(1)$ average** |
-| **Size Property** | $O(n)$ (`Object.keys`) | **$O(1)$ (`.size`)** | **$O(1)$ (`.size`)** | None |
-| **Built-in Prototype Traps** | Yes (`toString` exists) | **No** | **No** | **No** |
-| **Memory Cleanup**| Keeps object in memory | Keeps object in memory | Keeps object in memory | **Cleans up automatically** |
-| **Delete Key** | `delete obj.k` (slows engine) | **`map.delete(k)` ($O(1)$)**| **`set.delete(v)` ($O(1)$)**| **`wm.delete(k)` ($O(1)$)** |
-| **Iteration Order** | Not guaranteed | **Keeps Insertion Order**| **Keeps Insertion Order**| Cannot loop over |
+| Feature | Plain Object (`{}`) | ES6 `Map` | ES6 `Set` | `WeakMap` | `WeakSet` |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Key / Value Types** | Strings and Symbols | **Any JavaScript Type** | **Any JavaScript Type** | **Keys must be Objects** | **Values must be Objects** |
+| **Lookup Time** | $O(1)$ average | **$O(1)$ average** | **$O(1)$ average** | **$O(1)$ average** | **$O(1)$ average** |
+| **Size Property** | $O(n)$ (`Object.keys`) | **$O(1)$ (`.size`)** | **$O(1)$ (`.size`)** | None (No `.size`) | None (No `.size`) |
+| **Built-in Prototype Traps** | Yes (`toString` exists) | **No** | **No** | **No** | **No** |
+| **Memory Cleanup** | Keeps in memory | Keeps in memory | Keeps in memory | **Cleans up automatically** | **Cleans up automatically** |
+| **Removal Method** | `delete obj.k` (slows engine) | **`map.delete(k)` ($O(1)$)** | **`set.delete(v)` ($O(1)$)** | **`wm.delete(k)` ($O(1)$)** | **`ws.delete(v)` ($O(1)$)** |
+| **Iteration Order** | Not guaranteed | **Keeps Insertion Order** | **Keeps Insertion Order** | Cannot loop over | Cannot loop over |
 
 ---
 
-### 2.5 Essential Map and Set Methods
+### 2.5 Essential Collections Methods
 
 | Method | What It Does | Changes Original? | Time Complexity | Quick Example |
 | :--- | :--- | :---: | :---: | :--- |
@@ -222,6 +521,10 @@ function logRequest(req) {
 | `set.has(val)` | Checks if item is in set | ❌ No | **$O(1)$** | `set.has(99)` $\to$ `true` |
 | `set.delete(val)` | Removes item | ✅ Yes | **$O(1)$** | `set.delete(99)` |
 | `set.size` | Returns count of items | ❌ No | **$O(1)$** | `set.size` $\to$ `1` |
+| `wm.set(obj, val)` | WeakMap: saves value for object | ✅ Yes | **$O(1)$** | `wm.set(req, { time })` |
+| `wm.get(obj)` | WeakMap: reads value for object | ❌ No | **$O(1)$** | `wm.get(req)` |
+| `ws.add(obj)` | WeakSet: adds an object | ✅ Yes | **$O(1)$** | `ws.add(frozenReq)` |
+| `ws.has(obj)` | WeakSet: checks if object exists | ❌ No | **$O(1)$** | `ws.has(frozenReq)` $\to$ `true` |
 
 ---
 
@@ -551,7 +854,7 @@ function slowIntersection(nums1, nums2) {
 * **Zeros and Falsy Values:** Writing `if (map.get(key))` fails if the stored value is `0`, `false`, or `""`. Always use `map.has(key)` to check if a key exists.
 * **Built-in Names on Plain Objects:** Plain objects inherit properties like `constructor` and `toString`. Checking `"toString" in obj` returns `true`. Always use `new Map()` or `Object.hasOwn()`.
 * **Objects as Keys on Plain Objects:** Writing `obj[{id: 1}] = "A"` and `obj[{id: 2}] = "B"` overwrites the first value because plain objects turn both keys into `"[object Object]"`. Use `new Map()` for non-string keys.
-* **Preventing Memory Leaks:** Storing objects in a global `Map` keeps them in memory forever. Use `WeakMap` if you want objects to be cleaned up when no longer used elsewhere in your app.
+* **Preventing Memory Leaks with Weak Collections:** Storing objects in a global `Map` or `Set` keeps them in memory forever. Use `WeakMap` to store object metadata, or `WeakSet` to tag objects without mutating them, so items clean up automatically when no longer used elsewhere.
 
 ---
 
@@ -562,6 +865,7 @@ function slowIntersection(nums1, nums2) {
 * **Load Factor:** When a table becomes 75% full, it doubles its size and moves all items to keep lookups running in **$O(1)$ average time**.
 * **Plain Objects vs Map:** Use `Map` for dynamic key-value caches to support any key type, avoid prototype bugs, and read `.size` in $O(1)$ time.
 * **Set Uniqueness:** Use `Set` for instant $O(1)$ checks and one-line array deduplication (`Array.from(new Set(arr))`).
+* **WeakMap and WeakSet:** Hold objects weakly so the garbage collector can free them. Used for request metadata, class privacy, tagging objects, and detecting cycles without memory leaks.
 * **Deleting While Matching:** When finding shared items between two lists, calling `set.delete(val)` on a match guarantees uniqueness in $O(1)$ time without extra memory.
 
 ---

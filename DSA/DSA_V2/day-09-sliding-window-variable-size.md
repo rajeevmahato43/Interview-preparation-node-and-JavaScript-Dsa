@@ -10,41 +10,37 @@
 
 ## 1. Variable Sliding Window
 
-A **Variable Sliding Window** is a technique where the left and right edges of a window grow and shrink based on the rules of the problem.
+A **variable window** is a group of neighboring values or letters. Its size can grow or shrink to follow the problem's rule.
 
-Instead of testing all $\frac{n(n+1)}{2}$ possible contiguous subarrays ($O(n^2)$ or $O(n^3)$), we use two pointers:
-* The **`right` pointer** steps forward to grow the window and take in new items.
-* The **`left` pointer** steps forward to shrink the window whenever the window breaks a rule (or when we want to find the smallest valid size).
+Use two indexes:
+* `right` moves forward and adds a new item to the window.
+* `left` moves forward to remove items when the window breaks a rule.
 
-Because both pointers only move forward from left to right and never move backward, the entire array is processed in **$O(n)$ linear time**.
+Both indexes only move forward. Each moves at most `n` times, so the scan takes `O(n)` time.
 
-To picture this physically, imagine a caterpillar moving along a tree branch:
-1. **The Head (`right` pointer):** Reaches forward to grab new leaves, stretching the caterpillar's body longer.
-2. **The Body (The Window):** Represents the current sub-array or sub-string.
-3. **The Tail (`left` pointer):** When the body touches a thorn (breaks a rule like a duplicate letter or exceeding an allowed sum), the tail pulls forward, shrinking the body until the caterpillar is safe again.
+Think of the window as a frame over the array. Move its right edge to include the next item. If the frame no longer follows the rule, move its left edge forward until it does.
 
 ```text
 The Expand and Contract Rhythm:
 Input string: "abcabcb", Find Longest Substring Without Repeating Characters
 
-Step 1: Expand right
-[ a ] b  c  a  b  c  b          ──► Valid! Window length = 1
+Step 1: Move right
+[ a ] b  c  a  b  c  b          -> Valid, length = 1
 
-Step 2: Expand right
-[ a  b ] c  a  b  c  b          ──► Valid! Window length = 2
+Step 2: Move right
+[ a  b ] c  a  b  c  b          -> Valid, length = 2
 
-Step 3: Expand right
-[ a  b  c ] a  b  c  b          ──► Valid! Window length = 3
+Step 3: Move right
+[ a  b  c ] a  b  c  b          -> Valid, length = 3
 
-Step 4: Expand right (Duplicate 'a' arrives!)
-[ a  b  c  a ] b  c  b          ──► INVALID! Duplicate 'a' detected!
+Step 4: A repeated 'a' enters
+[ a  b  c  a ] b  c  b          -> Invalid
 
-Step 5: Contract left past first 'a'
-   a [ b  c  a ] b  c  b        ──► Valid again! Window length = 3
+Step 5: Move left past the old 'a'
+   a [ b  c  a ] b  c  b        -> Valid again, length = 3
 ```
 
 ```javascript
-// Node.js code
 "use strict";
 
 // Baseline variable sliding window: Longest Substring Without Repeating Characters
@@ -74,29 +70,29 @@ console.log(longestUniqueSubstr("abcabcbb")); // 3 ("abc")
 
 ---
 
-### 1.1 The Two Operational Strategies
+### 1.1 Find the Longest or Shortest Window
 
-Variable sliding window problems divide into two simple strategies depending on whether you want to find the longest or the shortest window:
+The goal decides when to save the answer:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│               VARIABLE SLIDING WINDOW STRATEGY MATRIX                  │
+│                 VARIABLE WINDOW STRATEGIES                             │
 ├─────────────────────────┬──────────────────────┬───────────────────────┤
-│ Property                │ Strategy 1: Longest  │ Strategy 2: Shortest  │
+│ Rule                    │ Longest              │ Shortest             │
 ├─────────────────────────┼──────────────────────┼───────────────────────┤
-│ Goal                    │ Find biggest window  │ Find smallest window  │
-│ Shrink Condition        │ WHILE window INVALID │ WHILE window VALID    │
-│ Update Location         │ AFTER while loop     │ INSIDE while loop     │
-│ Starting Value          │ maxLen = 0           │ minLen = Infinity     │
-│ Classic Example         │ Longest Substring    │ Min Subarray Sum      │
+│ Goal                    │ Largest valid group  │ Smallest valid group │
+│ Shrink Condition        │ While invalid        │ While still valid    │
+│ Save Answer             │ After shrinking      │ Before each shrink   │
+│ Starting Value          │ maxLen = 0           │ minLen = Infinity    │
+│ Example                 │ Unique letters       │ Sum reaches target   │
 └─────────────────────────┴──────────────────────┴───────────────────────┘
 ```
 
 ---
 
-### 1.2 Why the Nested Loop is Still Linear O(n)
+### 1.2 Why the Nested Loop Is Still O(n)
 
-At first glance, a `while` loop inside a `for` loop looks like $O(n^2)$:
+At first, a `while` loop inside a `for` loop may look like `O(n^2)`:
 
 ```javascript
 for (let right = 0; right < n; right++) {
@@ -106,64 +102,64 @@ for (let right = 0; right < n; right++) {
 }
 ```
 
-**Why this always finishes in $O(n)$ time:**
-1. The `right` pointer moves forward $n$ times (once per turn of the `for` loop).
-2. The `left` pointer only moves forward (`left++`). It **never moves backward and never resets to 0**.
-3. Across the entire run, `left` can move at most $n$ times before it catches up to `right`.
-4. Total pointer movements: $n \text{ (right moves)} + n \text{ (left moves)} \le 2n$.
-5. $O(2n)$ simplifies to **$O(n)$ linear time**.
+It is `O(n)` because:
+1. `right` moves forward at most `n` times.
+2. `left` also moves forward at most `n` times. It never goes back to 0.
+3. There are at most `2n` pointer moves. `O(2n)` is `O(n)`.
 
 > [!NOTE]
-> **Self-Check:** Why does the variable sliding window fail if an array has negative numbers when searching for a target sum?  
-> *Answer:* Negative numbers break the rule that growing the window increases the sum and shrinking the window decreases the sum. With negative numbers, adding an item could make the sum smaller, so you cannot know whether moving `left` helps or hurts. Use **Prefix Sum + Hash Map (Day 10)** for negative numbers.
+> Why can negative values break a window that searches for a target sum?
+>
+> *Answer:* Adding a negative value can make the sum smaller. Removing a value can make it larger. The window no longer changes in a predictable way. Use prefix sums and a Map (Day 10).
 
 ---
 
 ### 1.3 Operations Reference Table
 
-| Operation | Role in Variable Window | Time Complexity | Extra Space | Code Example |
+| Operation | What it does | Time | Extra space | Example |
 | :--- | :--- | :---: | :---: | :--- |
-| **Grow Right** | Add incoming item `s[right]` to window | $O(1)$ | $O(1)$ | `seen.set(s[right], right)` |
-| **Shrink Left** | Shrink window from `left` until valid | $O(1)$ on average | $O(1)$ | `while (invalid) { left++; }` |
-| **Jump Left** | Jump `left` straight past earlier duplicate | $O(1)$ | $O(1)$ | `left = lastSeen.get(char) + 1` |
-| **Window Length** | Measure current window size | $O(1)$ | $O(1)$ | `const len = right - left + 1` |
-| **Update Best Answer**| Save the longest or shortest window size | $O(1)$ | $O(1)$ | `maxLen = Math.max(maxLen, len)` |
+| Grow right | Add the next item | `O(1)` | `O(1)` | `seen.set(s[right], right)` |
+| Shrink left | Remove items until the window is valid | `O(1)` per move | `O(1)` | `left++` |
+| Jump left | Skip past an earlier copy of a letter | `O(1)` average | `O(1)` | `left = lastSeen.get(char) + 1` |
+| Get window size | Count items from `left` to `right` | `O(1)` | `O(1)` | `right - left + 1` |
+| Save best answer | Keep the largest or smallest size | `O(1)` | `O(1)` | `maxLen = Math.max(maxLen, len)` |
 
 ---
 
 ## 2. Pattern Overview
 
 ### 2.1 Pattern Family
-* **Longest Valid Window (Strategy 1):** Grow `right`, shrink `left` while invalid, record `maxLen` after the `while` loop.
-* **Shortest Valid Window (Strategy 2):** Grow `right`, shrink `left` while valid, record `minLen` inside the `while` loop before shrinking.
-* **Character Frequency Window:** Tracking letter counts using a `Map` or a 128-slot ASCII array.
-* **Allowed Flips / Mistakes Window:** Counting zeroes or errors, and shrinking when `zeros > k`.
+* **Longest valid window:** Move `right`. While the window breaks the rule, move `left`. Save the length after it is valid.
+* **Shortest valid window:** Move `right`. While the window follows the rule, save its length and move `left`.
+* **Letter counts:** Use a Map to track how many times each letter appears.
+* **Limited changes:** Count the items that need to change, such as zeroes that can be flipped.
 
 ### 2.2 Pattern Recognition Table
 
-| Problem Keyword | What It Asks | Recommended Approach |
+| Problem words | What it asks | Method |
 | :--- | :--- | :--- |
-| **"Longest substring without repeating characters"** | Find the longest sub-string with all unique letters. | Strategy 1: Map + jump `left` on duplicate. |
-| **"Minimum size subarray with sum $\ge target$"** | Find the shortest positive sub-array that reaches target sum. | Strategy 2: Add to sum + shrink while sum $\ge$ target. |
-| **"Max consecutive ones with at most K flips"** | Find the longest streak with at most $k$ zeroes. | Strategy 1: Grow right, shrink when `zeroes > k`. |
-| **"Longest substring with at most K distinct chars"** | Find max length where `map.size <= k`. | Strategy 1: Map counts + shrink when `size > k`. |
-| **"Minimum window substring"** | Smallest sub-string holding all target letters. | Strategy 2: Match needed letter counts + shrink while valid. |
+| **"Longest group with no repeated letters"** | Find the largest group where each letter appears once. | Keep the last index of each letter. |
+| **"Shortest group with sum at least `target`"** | Find the smallest positive-number group that reaches the target. | Add on the right, then shrink while the sum is large enough. |
+| **"Most consecutive ones with up to `k` flips"** | Find the longest group with at most `k` zeroes. | Count zeroes and shrink when there are too many. |
+| **"Longest group with at most `k` different letters"** | Find the largest group with no more than `k` letter types. | Count letters in a Map. |
+| **"Shortest group containing all target letters"** | Find the smallest group with every needed letter. | Count needed letters, then shrink while the group is valid. |
 
 ### 2.3 When to Use vs When NOT to Use
-* **When to Use**:
-* The problem asks for the **longest** or **shortest** contiguous sub-array or sub-string matching a rule.
-* All numbers are positive (so adding always increases the total, and removing always decreases the total).
-* You can update the window state in $O(1)$ fast time whenever a pointer moves.
+* **Use it when:**
+  * The problem asks for the longest or shortest group of neighboring items that follows a rule.
+  * You can update the window as one item enters or leaves.
+  * For a target-sum window, all numbers are positive. Adding raises the sum and removing lowers it.
 
-* **When NOT to Use**:
-* The array contains negative numbers with sum targets (use **Prefix Sum**, Day 10).
-* You can pick items out of order or skip items (use **Greedy** or **Dynamic Programming**).
-* The window has a fixed constant length $k$ (use **Fixed Sliding Window**, Day 08).
+* **Do not use it when:**
+  * The array has negative values and the rule is about a target sum. Use prefix sums (Day 10).
+  * Items do not need to be next to each other.
+  * The window size is fixed. Use the fixed window (Day 8).
 
 ### 2.4 The 10^7 Operations Rule
-If $n = 50,000$:
-* Testing all $\frac{n(n+1)}{2} \approx 1.25 \times 10^9$ pairs in nested loops takes over **12 seconds**, causing a timeout error.
-* A variable sliding window touches each item at most twice ($2n = 100,000$ operations), finishing in **under 2 milliseconds**.
+For `n = 50,000`:
+* Checking every group can mean about 1.25 billion checks.
+* A variable window moves each pointer forward at most `n` times, for at most about 100,000 moves.
+* `10^7` steps is only a rough guide. Actual run time depends on the computer and the code.
 
 ---
 
@@ -174,26 +170,15 @@ If $n = 50,000$:
 ### 3.1 Longest Substring Without Repeating Characters
 
 #### 3.1.1 Problem Statement
-Given a string `s`, find the length of the **longest substring** without repeating characters.
+Given a string `s`, find the length of its longest group of neighboring characters with no repeats.
 
-* **Sample Input 1:** `s = "abcabcbb"` $\to$ **Expected Output:** `3`  
-  *(The answer is `"abc"`, with length 3)*
-* **Sample Input 2:** `s = "bbbbb"` $\to$ **Expected Output:** `1`  
-  *(The answer is `"b"`, with length 1)*
-* **Sample Input 3:** `s = "pwwkew"` $\to$ **Expected Output:** `3`  
-  *(The answer is `"wke"`, with length 3)*
-* **Constraints:** $0 \le s.length \le 5 \times 10^4$, `s` consists of English letters, digits, symbols, and spaces.
+* **Input:** `s = "abcabcbb"` -> **Output:** `3` (The group `"abc"` has length 3.)
+* **Input:** `s = "bbbbb"` -> **Output:** `1`
+* **Input:** `s = "pwwkew"` -> **Output:** `3` (The group `"wke"` has length 3.)
+* **Input limits:** 0 to 50,000 English letters, digits, symbols, or spaces.
 
 #### 3.1.2 How to Think About It
-Cards on a table: `"a b c a b c b b"`.  
-Read the cards from left to right:
-1. `right = 0` (`'a'`): First time seeing `'a'`. Window is `[a]`, length = 1.
-2. `right = 1` (`'b'`): First time seeing `'b'`. Window is `[a, b]`, length = 2.
-3. `right = 2` (`'c'`): First time seeing `'c'`. Window is `[a, b, c]`, length = 3.
-4. `right = 3` (`'a'`): We have seen `'a'` before at index 0!  
-   Instead of starting over, jump your left finger past the old `'a'` to index 1 (`left = 1`).  
-   The window is now `[b, c, a]`, length = 3.
-5. Keep scanning to the end. The longest valid window seen is 3.
+Read `"abcabcbb"` from left to right. The group `"abc"` has no repeated letters. When the next `a` arrives, move `left` past the old `a`. The group is now `"bca"`, which is still valid. Keep the longest valid group seen.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 The naive way creates every possible sub-string and checks each for duplicate characters using a Set:
@@ -213,14 +198,13 @@ function lengthOfLongestSubstringBrute(s) {
 }
 ```
 
-* **The Bottleneck:** Quadratic $O(n^2)$ time ($2.5 \times 10^9$ operations for $50,000$ characters). When a duplicate `'a'` appears in `"abca"`, brute force throws away `"bc"` and restarts from `"b"`, checking letters it already checked.
+* **The slow part:** The loops can take `O(n^2)` time. They check many of the same letters again. When a repeated letter appears, the window method keeps the useful part instead of starting over.
 
 #### 3.1.4 The Pattern Insight
-Use a **Variable Sliding Window with a Last-Seen Map**:
-* Store the latest index where each character appeared: `char -> lastSeenIndex`.
-* When `s[right]` is already in the map and its index is $\ge left$, jump `left = lastSeenIndex + 1` directly.
-* Update `maxLen = Math.max(maxLen, right - left + 1)`.
-* Every character is checked in $O(1)$ time, eliminating repeated scans.
+Use a window and a Map that stores the last index of each character:
+* If a repeated character is still inside the window, move `left` to the spot after its old position.
+* Save the length `right - left + 1` if it is the largest so far.
+* A character outside the current window does not need to be removed from the Map. Its old index is before `left`.
 
 #### 3.1.5 Pseudocode
 
@@ -245,20 +229,19 @@ FUNCTION LengthOfLongestSubstring(s):
 #### 3.1.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(min(n, m)) space variable sliding window with index jump
+// ✅ CORRECT: Remembers the last index of each character.
 function lengthOfLongestSubstring(s) {
   if (typeof s !== "string" || s.length === 0) return 0;
 
-  const lastSeen = new Map(); // char -> last seen index
+  const lastSeen = new Map(); // Character -> last index.
   let left = 0;
   let maxLen = 0;
 
   for (let right = 0; right < s.length; right++) {
     const char = s[right];
 
-    // If character was seen and its recorded position is within active window
+    // Move past the old character if it is still in the window.
     if (lastSeen.has(char) && lastSeen.get(char) >= left) {
-      // Jump left directly past the duplicate
       left = lastSeen.get(char) + 1;
     }
 
@@ -279,16 +262,16 @@ console.log(lengthOfLongestSubstring(""));         // 0
 #### 3.1.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Using Array.includes() and Array.shift() inside loop
+// ❌ ANTI-PATTERN: Searches and shifts an array on every step.
 function buggyLengthOfLongestSubstring(s) {
   let maxLen = 0;
   const currentWindow = [];
 
-  // BUG: Array.includes() and Array.shift() are O(k) linear operations inside O(n) loop
+  // includes() scans the window, and shift() moves its remaining items.
   for (let i = 0; i < s.length; i++) {
     const char = s[i];
     while (currentWindow.includes(char)) {
-      currentWindow.shift(); // O(k) memory shift in RAM on every call!
+      currentWindow.shift();
     }
     currentWindow.push(char);
     maxLen = Math.max(maxLen, currentWindow.length);
@@ -296,40 +279,28 @@ function buggyLengthOfLongestSubstring(s) {
   return maxLen;
 }
 ```
-* **Why it fails:** Calling `.shift()` and `.includes()` inside a loop makes the code take $O(n \cdot k)$ time and creates heavy memory garbage.
+* **Why it is slow:** `includes()` scans the current group, and `shift()` moves its remaining items. Repeating this work can take `O(n * k)` time.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer steps through the string once. Map lookups and writes take $O(1)$ time. Total operations: $n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(\min(n, m))}$, where $m$ is the number of distinct characters in the alphabet (at most 128 for ASCII).
+* **Time:** `O(n)`. `right` visits each character once. Map checks and updates take `O(1)` time on average.
+* **Extra space:** `O(d)`, where `d` is the number of different characters stored in the Map. It can be at most `O(n)`.
 
 ---
 
 ### 3.2 Minimum Size Subarray Sum
 
 #### 3.2.1 Problem Statement
-Given an array of positive integers `nums` and a positive integer `target`, return the **minimal length** of a contiguous subarray of which the sum is greater than or equal to `target`. If there is no such subarray, return `0` instead.
+Given an array of positive numbers and a `target`, return the length of the shortest group of neighboring numbers whose sum is at least the target. Return `0` if no group works.
 
-* **Sample Input 1:** `target = 7`, `nums = [2, 3, 1, 2, 4, 3]` $\to$ **Expected Output:** `2`  
-  *(Subarray `[4, 3]` has minimal length 2 with sum 7)*
-* **Sample Input 2:** `target = 4`, `nums = [1, 4, 4]` $\to$ **Expected Output:** `1`
-* **Sample Input 3:** `target = 11`, `nums = [1, 1, 1, 1, 1, 1, 1, 1]` $\to$ **Expected Output:** `0`
-* **Constraints:** $1 \le target \le 10^9$, $1 \le nums.length \le 10^5$, $1 \le nums[i] \le 10^4$.
+* **Input:** `target = 7`, `nums = [2, 3, 1, 2, 4, 3]` -> **Output:** `2` (The group `[4, 3]` sums to 7.)
+* **Input:** `target = 4`, `nums = [1, 4, 4]` -> **Output:** `1`
+* **Input:** `target = 11`, `nums = [1, 1, 1, 1, 1, 1, 1, 1]` -> **Output:** `0`
+* **Input limits:** 1 to 100,000 positive numbers. Each number is at most 10,000. `target` is positive.
 
 #### 3.2.2 How to Think About It
-Adding weights onto a scale with target = 7: `[ 2, 3, 1, 2, 4, 3 ]`.
-1. Add 2 $\to$ sum = 2 (under target).
-2. Add 3 $\to$ sum = 5 (under target).
-3. Add 1 $\to$ sum = 6 (under target).
-4. Add 2 $\to$ sum = 8. Target reached! Window is `[2, 3, 1, 2]`, length = 4.  
-   Can we make it smaller?  
-   Remove 2 from left $\to$ sum = 6. Now below target.
-5. Add 4 $\to$ sum = 10. Target reached! Window is `[3, 1, 2, 4]`, length = 4.  
-   Shrink from left: remove 3 $\to$ sum = 7. Still valid! Length = 3 (`[1, 2, 4]`).  
-   Remove 1 $\to$ sum = 6. Below target.
-6. Add 3 $\to$ sum = 9. Target reached! Window is `[2, 4, 3]`, length = 3.  
-   Shrink from left: remove 2 $\to$ sum = 7. Still valid! Length = 2 (`[4, 3]`).  
-   Remove 4 $\to$ sum = 3. Below target.
-7. The smallest valid window length found is 2.
+For target `7`, add values from `[2, 3, 1, 2, 4, 3]` until the sum reaches the target. The first valid group is `[2, 3, 1, 2]`, with length 4.
+
+Now remove values from the left while the sum is still at least 7. Later, the group `[1, 2, 4]` also works. Then `[4, 3]` works and has length 2. Keep the shortest length found.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
 The naive way checks every possible sub-array starting from every index:
@@ -351,18 +322,14 @@ function minSubArrayLenBrute(target, nums) {
 }
 ```
 
-* **The Bottleneck:** Checks $O(n^2)$ pairs. For $n = 100,000$, this runs $10^{10}$ additions and freezes single-threaded Node.js for tens of seconds.
+* **The slow part:** Checking all possible groups can take `O(n^2)` time.
 
 #### 3.2.4 The Pattern Insight
-Because all numbers are positive, the sum is predictable:
-* Adding a number always increases the sum.
-* Removing a number always decreases the sum.
-Use **Strategy 2 (Shortest Window)**:
-* Move `right` forward and add `nums[right]` to `currentSum`.
-* **While `currentSum >= target`:**
-  - Update `minLen = Math.min(minLen, right - left + 1)`.
-  - Shrink window: subtract `nums[left]` and increment `left++`.
-* Total runtime drops from $O(n^2)$ to $O(n)$!
+This method needs positive numbers:
+* Adding a number makes the sum larger.
+* Removing a number makes the sum smaller.
+
+Move `right` forward and add its value. While the sum is at least `target`, save the current length, remove the value at `left`, and move `left` forward. Each pointer moves at most `n` times, so the scan takes `O(n)` time.
 
 #### 3.2.5 Pseudocode
 
@@ -386,7 +353,7 @@ FUNCTION MinSubArrayLen(target, nums):
 #### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space variable sliding window
+// ✅ CORRECT: Shrinks the window while its sum is still large enough.
 function minSubArrayLen(target, nums) {
   if (!Array.isArray(nums) || nums.length === 0 || target <= 0) return 0;
 
@@ -397,7 +364,7 @@ function minSubArrayLen(target, nums) {
   for (let right = 0; right < nums.length; right++) {
     currentSum += nums[right];
 
-    // Strategy 2 (Shortest Window): While condition is met, record and shrink
+    // Save this length before removing the left value.
     while (currentSum >= target) {
       const windowLen = right - left + 1;
       if (windowLen < minLen) {
@@ -421,12 +388,12 @@ console.log(minSubArrayLen(11, [1, 1, 1, 1, 1]));   // 0
 #### 3.2.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Using if instead of while during contraction
+// ❌ ANTI-PATTERN: Removes only one value at a time.
 function buggyMinSubArrayLenIf(target, nums) {
   let left = 0, currentSum = 0, minLen = Infinity;
   for (let right = 0; right < nums.length; right++) {
     currentSum += nums[right];
-    // BUG: Only shrinks by ONE position instead of shrinking as far as possible!
+    // The window may still reach the target after this one removal.
     if (currentSum >= target) {
       minLen = Math.min(minLen, right - left + 1);
       currentSum -= nums[left++];
@@ -435,43 +402,35 @@ function buggyMinSubArrayLenIf(target, nums) {
   return minLen === Infinity ? 0 : minLen;
 }
 ```
-* **Why it fails:** Using `if` instead of `while` shrinks `left` only once per step. If the sub-array is still $\ge target$ after removing `nums[left]`, it misses the true shortest window.
+* **Why it fails:** One removal may not be enough. Keep shrinking while the sum is still at least `target`, and save each valid length.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer moves forward $n$ times. The `left` pointer moves forward at most $n$ times. Total steps: $2n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only store simple number variables in memory.
+* **Time:** `O(n)`. Each pointer moves forward at most `n` times.
+* **Extra space:** `O(1)`. The function uses a few number variables.
 
 ---
 
 ### 3.3 Max Consecutive Ones III
 
 #### 3.3.1 Problem Statement
-Given a binary array `nums` and an integer `k`, return the maximum number of consecutive `1`'s in the array if you can flip at most `k` `0`'s.
+Given an array of `0`s and `1`s, find the longest group of `1`s you can make by changing at most `k` zeroes to ones.
 
-* **Sample Input 1:** `nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0]`, `k = 2` $\to$ **Expected Output:** `6`  
-  *(Flipping two zeroes at indices 4 and 5 gives `[1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1]` with length 6)*
-* **Sample Input 2:** `nums = [0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1]`, `k = 3` $\to$ **Expected Output:** `10`
-* **Sample Input 3:** `nums = [0, 0, 0, 0]`, `k = 0` $\to$ **Expected Output:** `0`
-* **Constraints:** $1 \le nums.length \le 10^5$, `nums[i]` is either `0` or `1`, $0 \le k \le nums.length$.
+* **Input:** `nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0]`, `k = 2` -> **Output:** `6`
+* **Input:** `nums = [0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1]`, `k = 3` -> **Output:** `10`
+* **Input:** `nums = [0, 0, 0, 0]`, `k = 0` -> **Output:** `0`
+* **Input limits:** 1 to 100,000 values. Each value is 0 or 1. `k` is between 0 and the array length.
 
 #### 3.3.2 How to Think About It
-Rephrase the problem in simple English:  
-**Find the longest sub-array that contains at most `k` zeroes.**  
-If a window has $\le k$ zeroes, we can flip all of them to ones, turning the whole window into ones.
-1. Expand `right`: count every `0` that enters the window (`zeroCount++`).
-2. If `zeroCount > k`, the window has too many zeroes!
-3. Shrink `left`: move your left finger forward until one `0` leaves the window (`zeroCount--`).
-4. Keep track of the largest valid window size you have seen.
+The window can contain at most `k` zeroes. Count zeroes as they enter. If there are too many, move `left` until one leaves. Save the largest valid window size.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-Checking all pairs of indices and counting zeroes takes $O(n^2)$ time. For $10^5$ items, this takes $10^{10}$ operations and freezes Node.js.
+Checking every group and counting its zeroes can take `O(n^2)` time.
 
 #### 3.3.4 The Pattern Insight
-Use **Strategy 1 (Longest Window)**:
-* `right` moves forward continuously, taking in elements.
-* When `nums[right] === 0`, add 1 to `zeroCount`.
-* **While `zeroCount > k`:** if `nums[left] === 0`, subtract 1 from `zeroCount`, then increment `left++`.
-* Once valid, update `maxLen = Math.max(maxLen, right - left + 1)`.
+Use the longest-window method:
+* When a zero enters, add 1 to `zeroCount`.
+* While `zeroCount > k`, move `left` forward. Subtract 1 from `zeroCount` when a zero leaves.
+* When the window is valid, save its length.
 
 #### 3.3.5 Pseudocode
 
@@ -498,7 +457,7 @@ FUNCTION LongestOnes(nums, k):
 #### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space variable sliding window
+// ✅ CORRECT: Keeps at most k zeroes in the window.
 function longestOnes(nums, k) {
   if (!Array.isArray(nums) || nums.length === 0 || k < 0) return 0;
 
@@ -507,12 +466,12 @@ function longestOnes(nums, k) {
   let maxLen = 0;
 
   for (let right = 0; right < nums.length; right++) {
-    // If incoming element is zero, consume one flip allowance
+    // Count a zero that enters.
     if (nums[right] === 0) {
       zeroCount++;
     }
 
-    // Strategy 1 (Longest Window): Contract left while window is INVALID
+    // Move left until the window has at most k zeroes.
     while (zeroCount > k) {
       if (nums[left] === 0) {
         zeroCount--;
@@ -520,7 +479,7 @@ function longestOnes(nums, k) {
       left++;
     }
 
-    // Record maximum valid window length
+    // Save the length of this valid window.
     const currentLen = right - left + 1;
     if (currentLen > maxLen) {
       maxLen = currentLen;
@@ -539,12 +498,12 @@ console.log(longestOnes([0, 0, 0, 0], 0)); // 0
 #### 3.3.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Slicing and filtering arrays inside the loop
+// ❌ ANTI-PATTERN: Copies each group and counts its zeroes again.
 function buggyLongestOnes(nums, k) {
   let maxLen = 0;
   for (let i = 0; i < nums.length; i++) {
     for (let j = i; j < nums.length; j++) {
-      // BUG: Allocates a new slice and iterates to count zeroes -> O(n^3) time!
+      // Repeatedly copying and checking each group is slow.
       const zeroes = nums.slice(i, j + 1).filter(x => x === 0).length;
       if (zeroes <= k) maxLen = Math.max(maxLen, j - i + 1);
     }
@@ -552,32 +511,30 @@ function buggyLongestOnes(nums, k) {
   return maxLen;
 }
 ```
-* **Why it fails:** Calling `.slice()` and `.filter()` inside nested loops creates $O(n^3)$ operations, crashing performance immediately.
+* **Why it is slow:** The loops check many groups, and `slice()` and `filter()` scan and copy their values again.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `right` pointer moves $n$ times. The `left` pointer moves at most $n$ times. Total steps $\le 2n \implies O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use simple number variables.
+* **Time:** `O(n)`. Each pointer moves forward at most `n` times.
+* **Extra space:** `O(1)`. The function uses a few number variables.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Where to Update Answer (Longest vs Shortest):**
-  - In **Longest Window** problems (like Longest Substring), update `maxLen` **after** the `while` loop, once the window is valid again.
-  - In **Shortest Window** problems (like Min Subarray Sum), update `minLen` **inside** the `while` loop while the window is valid, right before shrinking `left++`.
-* **Target Sum Never Reached:** In shortest window problems, if the total sum never reaches `target`, `minLen` stays `Infinity`. Always return `minLen === Infinity ? 0 : minLen`.
-* **Window Length Formula:** The number of items between index `left` and `right` inclusive is always **`right - left + 1`**. Forgetting `+ 1` is the most common off-by-one bug.
-* **Empty Input Strings and Arrays:** Always check `if (!arr || arr.length === 0) return 0;` at the very start of the function.
+* **When to save the answer:** For the longest window, save the length after shrinking. For the shortest window, save each valid length before shrinking again.
+* **No matching group:** If the sum never reaches `target`, return `0` instead of `Infinity`.
+* **Window length:** Count both ends with `right - left + 1`.
+* **Empty input:** Check for an empty array or string before starting.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Variable Sliding Window:** Both pointers move forward. `right` grows the window; `left` shrinks the window to keep rules satisfied.
-* **$2n$ Step Limit:** Because neither pointer ever resets or moves backward, total operations are capped at $2n \implies O(n)$.
-* **Strategy 1 (Longest):** Shrink while invalid (`while (invalid) left++`). Record answer after `while`.
-* **Strategy 2 (Shortest):** Shrink while valid (`while (valid) { update; left++; }`). Record answer inside `while`.
-* **Positive Numbers Required:** In sum problems, numbers must be positive ($\ge 0$). For negative numbers, use Prefix Sums.
+* Both indexes move forward. `right` adds to the window; `left` removes from it.
+* Each index moves at most `n` times, so the scan takes `O(n)` time.
+* **Longest window:** Shrink while the rule is broken. Save the answer after shrinking.
+* **Shortest window:** While the rule is met, save the answer and shrink.
+* For a target-sum window, use positive numbers. Negative numbers can make the sum change in either direction; use prefix sums instead.
 
 ---
 
@@ -585,45 +542,45 @@ function buggyLongestOnes(nums, k) {
 
 ### 6.1 Fruit Into Baskets
 
-You are visiting a farm with trees in a row. You have 2 baskets, and each basket can only hold a single type of fruit. Return the maximum total number of fruits you can pick in a contiguous sequence.
+You have two baskets. Each can hold one type of fruit. Find the largest group of neighboring trees whose fruit fits in the baskets.
 
-* **Difficulty:** Medium | **Focus:** At Most 2 Distinct Elements
-* **Sample Input 1:** `fruits = [1, 2, 1]` $\to$ **Expected Output:** `3`
-* **Sample Input 2:** `fruits = [0, 1, 2, 2]` $\to$ **Expected Output:** `3`
-* **Sample Input 3:** `fruits = [1, 2, 3, 2, 2]` $\to$ **Expected Output:** `4`
-* **Constraints:** $1 \le fruits.length \le 10^5$, $0 \le fruits[i] < fruits.length$.
-* **Hint 1:** Rephrase: Find the length of the longest contiguous subarray with at most 2 distinct integer values.
-* **Hint 2:** Use a `Map` to count the fruit types inside the current window.
-* **Hint 3:** While `map.size > 2`, subtract 1 from the count of `fruits[left]`. Delete the key if its count reaches 0, and advance `left++`. After shrinking, update `maxLen = Math.max(maxLen, right - left + 1)`.
+* **Difficulty:** Medium | **Focus:** At Most Two Fruit Types
+* **Input:** `fruits = [1, 2, 1]` -> **Output:** `3`
+* **Input:** `fruits = [0, 1, 2, 2]` -> **Output:** `3`
+* **Input:** `fruits = [1, 2, 3, 2, 2]` -> **Output:** `4`
+* **Input limits:** 1 to 100,000 trees.
+* **Hint 1:** Find the longest neighboring group with at most two fruit types.
+* **Hint 2:** Use a `Map` to count each type in the current group.
+* **Hint 3:** While there are more than two types, move `left` and lower the count of each fruit that leaves. Remove a type when its count reaches 0.
 
 ---
 
 ### 6.2 Longest Substring with At Most K Distinct Characters
 
-Given a string `s` and an integer `k`, return the length of the longest substring of `s` that contains at most `k` distinct characters.
+Given a string `s` and a number `k`, find the length of the longest group of neighboring characters with at most `k` different characters.
 
-* **Difficulty:** Medium | **Focus:** Dynamic Character Frequencies
-* **Sample Input 1:** `s = "eceba"`, `k = 2` $\to$ **Expected Output:** `3` (Substring `"ece"`)
-* **Sample Input 2:** `s = "aa"`, `k = 1` $\to$ **Expected Output:** `2`
-* **Constraints:** $1 \le s.length \le 5 \times 10^4$, $0 \le k \le 50$.
-* **Hint 1:** Grow `right`, adding characters to a frequency `Map`.
-* **Hint 2:** While `map.size > k`, subtract 1 from `s[left]` count, remove it from the map if 0, and increment `left++`.
-* **Hint 3:** Update `maxLen = Math.max(maxLen, right - left + 1)`.
+* **Difficulty:** Medium | **Focus:** Count Letters in the Window
+* **Input:** `s = "eceba"`, `k = 2` -> **Output:** `3` (The group `"ece"` has length 3.)
+* **Input:** `s = "aa"`, `k = 1` -> **Output:** `2`
+* **Input limits:** 1 to 50,000 characters. `k` is between 0 and 50.
+* **Hint 1:** Use a `Map` to count the letters in the current group.
+* **Hint 2:** While the group has more than `k` different letters, move `left` and update the counts.
+* **Hint 3:** Save the largest valid group length.
 
 ---
 
 ### 6.3 Minimum Window Substring
 
-Given two strings `s` and `t`, return the minimum window substring of `s` such that every character in `t` (including duplicates) is included in the window. If there is no such substring, return `""`.
+Given strings `s` and `t`, find the shortest group in `s` that contains every letter in `t`, including repeated letters. Return `""` if no such group exists.
 
-* **Difficulty:** Hard | **Focus:** Dual-Map Substring Matching
-* **Sample Input 1:** `s = "ADOBECODEBANC"`, `t = "ABC"` $\to$ **Expected Output:** `"BANC"`
-* **Sample Input 2:** `s = "a"`, `t = "a"` $\to$ **Expected Output:** `"a"`
-* **Sample Input 3:** `s = "a"`, `t = "aa"` $\to$ **Expected Output:** `""`
-* **Constraints:** $m == s.length$, $n == t.length$, $1 \le m, n \le 10^5$.
-* **Hint 1:** Build a frequency map of needed characters for `t`. Keep a counter `formed` tracking how many distinct characters have their needed counts satisfied.
-* **Hint 2:** Grow `right`. When `formed === requiredCount`, the window is valid.
-* **Hint 3:** While valid, compare against `minLen`, then shrink `left`: if removing `s[left]` drops its count below requirement, subtract 1 from `formed`. Advance `left++`.
+* **Difficulty:** Hard | **Focus:** Match All Needed Letters
+* **Input:** `s = "ADOBECODEBANC"`, `t = "ABC"` -> **Output:** `"BANC"`
+* **Input:** `s = "a"`, `t = "a"` -> **Output:** `"a"`
+* **Input:** `s = "a"`, `t = "aa"` -> **Output:** `""`
+* **Input limits:** `s` and `t` each have 1 to 100,000 characters.
+* **Hint 1:** Count the letters needed from `t`.
+* **Hint 2:** Move `right` until the window has enough of every needed letter.
+* **Hint 3:** While it has enough, save the shortest length and move `left`. Stop shrinking when the window is missing a needed letter.
 
 ---
 

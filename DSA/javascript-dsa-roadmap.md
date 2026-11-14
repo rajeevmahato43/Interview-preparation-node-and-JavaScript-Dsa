@@ -264,13 +264,12 @@ Modern CPU cores process roughly $10^7$ to $10^8$ operations per second. Given t
 - **End-of-Lecture Deep-Dive:** Mathematical invariant proof of greedy line skipping, avoiding duplicate triplet allocation in V8 heap memory.
 - **Hands-On Exercises:** Reverse vowels of a string (Easy), Two Sum Sorted (Easy), 3Sum with strict duplicate avoidance (Medium).
 
-### [Day 07: Two Pointers: Same-Direction & Fast/Slow Pointers](dsa-lectures/day-07-two-pointers-fast-slow-and-partitioning.md)
-- **Core Topics:** Fast and slow index traversal, in-place array compaction, zero moving, Dutch National Flag 3-way partitioning.
-- **Why It Matters:** Essential for in-place data reorganization without allocating auxiliary buffer arrays.
+### [Day 07: Two Pointers: Fast & Slow and In-Place Partitioning](dsa-lectures/day-07-two-pointers-fast-slow-and-partitioning.md)
+- **Core Topics:** Read/write pointers to keep values in place, moving zeroes, grouping values into three parts, and a linked-list fast/slow preview.
+- **Why It Matters:** Reorganizes values in the same array without making another array.
 - **Pattern & Trigger:** "Modify array in-place", "Remove elements without extra memory", "Partition into 3 categories".
 - **Benchmark Problems:** Remove Duplicates from Sorted Array (LC 26), Move Zeroes (LC 283), Sort Colors / Dutch National Flag (LC 75).
-- **End-of-Lecture Deep-Dive:** V8 array continuous buffer writes, cache locality advantages of sequential in-place writes.
-- **Hands-On Exercises:** Move zeroes to end (Easy), Remove element in-place (Easy), Sort Colors 3-pointer partition (Medium).
+- **Hands-On Exercises:** Remove Duplicates II, Move Zeroes, three-way partition around a pivot.
 
 ---
 

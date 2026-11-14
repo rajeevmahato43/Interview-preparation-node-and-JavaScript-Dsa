@@ -8,175 +8,263 @@
 
 ---
 
-## 1. Fast & Slow Pointers
+## Prerequisites
 
-**Fast & Slow pointers** start at the beginning of an array or list. Both pointers move in the **same direction**, but at different speeds or following different rules.
+- An **index** is an item's position number in an array.
+- **In place** means changing the same array instead of making a new one.
+- `O(n)` work grows with the number of values. `O(n^2)` work can grow like the number of values multiplied by itself.
+- **Extra space** is memory used besides the input array. `O(1)` extra space means using a fixed amount, such as a few variables. `O(n)` extra space grows with the array.
+- Review [Day 6](day-06-two-pointers-opposing-and-symmetrical.md) for pointers that start at opposite ends and move toward each other.
 
-Instead of making a new array or calling slow methods like `.splice()` ($O(n^2)$), one pointer reads ahead while the other pointer writes good data right into the original array ($O(n)$ time, $O(1)$ extra space).
+## 1. Pointer Methods
 
-To picture this physically, imagine sorting a line of playing cards on a table:
-* **The Scout (`fast`):** Walks quickly ahead, looking at every card on the table.
-* **The Scribe (`slow`):** Points to the next empty spot where a kept card belongs.
-* When the Scout sees junk (like duplicate cards or zeroes), it skips them.
-* When the Scout finds a good card, it copies that card into the Scribe's spot, and the Scribe takes one step forward.
+This lesson uses three ways to move pointers:
+
+- **Read and write:** `read` checks each array value. `write` marks the next spot for a value we want to keep.
+- **Tortoise and hare:** Two linked-list pointers move at different speeds. This is only a preview; linked lists come in Days 11 and 12.
+- **Three-way grouping:** Three pointers put values into three groups. This is a different method from read and write.
+
+In the array examples, a pointer is an index that tells us which spot to read or write.
+
+### 1.1 Read and Write Pointers
+
+`read` checks each value from left to right. `write` marks where the next value we keep should go. `read` moves for every value. `write` moves only when we keep a value, so it may stay still while `read` moves.
+
+Imagine checking cards in a line. One finger checks each card. Another finger points to the next open place for a card you want to keep. If you skip a card, only the first finger moves. If you keep it, both fingers move.
+
+Move all zeroes in `[0, 1, 0, 3, 12]` to the end. Keep the other values in the same order:
 
 ```text
-Array: [ 0, 1, 0, 3, 12 ], Target: Move Zeroes
-
-fast = 0: Value 0 (Zero)   ──► Skip. slow stays at 0.
-fast = 1: Value 1 (Valid)  ──► Swap into slot 0! Array: [ 1, 0, 0, 3, 12 ]. slow becomes 1.
-fast = 2: Value 0 (Zero)   ──► Skip. slow stays at 1.
-fast = 3: Value 3 (Valid)  ──► Swap into slot 1! Array: [ 1, 3, 0, 0, 12 ]. slow becomes 2.
-fast = 4: Value 12 (Valid) ──► Swap into slot 2! Array: [ 1, 3, 12, 0, 0 ]. slow becomes 3.
+Read 0: skip                    [ 0, 1, 0, 3, 12 ]
+Read 1: write at the front     [ 1, 1, 0, 3, 12 ]
+Read 0: skip                    [ 1, 1, 0, 3, 12 ]
+Read 3: write next             [ 1, 3, 0, 3, 12 ]
+Read 12: write next            [ 1, 3, 12, 3, 12 ]
+Fill the rest with 0           [ 1, 3, 12, 0, 0 ]
 ```
 
 ```javascript
 // Node.js code
 "use strict";
 
-// Baseline fast & slow partitioning
-function partitionNonZeroes(arr) {
-  let slow = 0;
+// ✅ CORRECT: Keep non-zero values in their original order.
+function moveZeroes(nums) {
+  if (!Array.isArray(nums)) {
+    throw new TypeError("nums must be an array");
+  }
 
-  for (let fast = 0; fast < arr.length; fast++) {
-    if (arr[fast] !== 0) {
-      if (slow !== fast) {
-        const temp = arr[slow];
-        arr[slow] = arr[fast];
-        arr[fast] = temp;
+  let write = 0;
+
+  for (let read = 0; read < nums.length; read++) {
+    if (nums[read] !== 0) {
+      if (write !== read) {
+        nums[write] = nums[read];
       }
-      slow++;
+      write++;
     }
   }
 
-  return slow; // Returns count of non-zero elements
+  while (write < nums.length) {
+    nums[write] = 0;
+    write++;
+  }
+
+  return nums;
 }
 
 const numbers = [0, 1, 0, 3, 12];
-partitionNonZeroes(numbers);
-console.log(numbers); // [ 1, 3, 12, 0, 0 ]
+console.log(moveZeroes(numbers)); // [ 1, 3, 12, 0, 0 ]
+console.log(moveZeroes([]));      // []
+
+// ❌ COMMON BUG: Removing items while reading can skip a zero and move many values.
+function buggyMoveZeroes(nums) {
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === 0) {
+      nums.splice(i, 1);
+      nums.push(0);
+    }
+  }
+  return nums;
+}
+
+console.log(buggyMoveZeroes([0, 0, 1])); // [ 0, 1, 0 ] (one zero was skipped)
 ```
 
-### 1.1 Read and Write Pointer Partitioning
-
-When rewriting an array in-place, both pointers move forward with clear jobs:
-* **The Reader (`fast`):** Checks every item from index `0` to `n - 1`.
-* **The Writer (`slow`):** Marks the spot for the next kept item. It only steps forward when `fast` finds an item we want to keep.
-
-```text
-[  Valid Kept Items  |  Discarded Items  |  Uninspected Items  ]
- 0                slow - 1             fast - 1              n - 1
-```
+`write` marks the next open spot. The values before it are the ones we keep. Fill the rest with `0`. We check each value once (`O(n)`) and use only a few extra variables (`O(1)` space).
 
 > [!NOTE]
-> **Self-Check:** What is the performance difference between calling `arr.splice(i, 1)` and using a `slow` write pointer?  
-> *Answer:* `splice()` shifts every remaining item in memory to the left on each call ($O(n)$ work per delete, leading to $O(n^2)$ total time). A `slow` pointer directly overwrites `arr[slow]` in $O(1)$ time without moving other items.
+> After checking one value, which part of the array holds the values we want to keep?
 
----
+### 1.2 The Read and Write Rule
 
-### 1.2 Tortoise and Hare Speeds
+An **invariant** is a rule that must stay true after every step. For these pointers:
 
-When moving through linked lists, the two pointers move at different speeds:
-* **Tortoise (`slow`):** Moves **1 step** at a time.
-* **Hare (`fast`):** Moves **2 steps** at a time.
+- Before `write`: the values we keep, in their original order.
+- From `write` up to `read`: values we checked but no longer need.
+- From `read` to the end: values we have not checked yet.
 
-If there is a loop, the fast pointer enters the loop and catches up to the slow pointer from behind. Because the gap between them shrinks by 1 step in every round ($2 - 1 = 1$), they are guaranteed to meet. If there is no loop, the fast pointer reaches the end (`null`) in $O(n)$ time.
+> [!NOTE]
+> One `splice()` can move many values. What happens if a loop calls it many times?
 
----
+### 1.3 Tortoise and Hare Preview
 
-### 1.3 Pointer Movement Summary
+In a linked list, values are joined by links. The slow pointer moves one link at a time. The fast pointer moves two. If the list ends, fast reaches the end or `null`. If the list loops back, fast eventually meets slow.
 
-| Strategy | Speed of Slow | Speed of Fast | Main Use Case | Time Complexity | Extra Space |
-| :--- | :---: | :---: | :--- | :---: | :---: |
-| **Reader / Writer** | Moves on condition | Moves every step | Remove duplicates, move zeroes, filter items | **$O(n)$** | **$O(1)$** |
-| **Tortoise & Hare** | 1 step per turn | 2 steps per turn | Find loops, find middle node | **$O(n)$** | **$O(1)$** |
-| **Three-Way Partition**| Low boundary | Mid scanner & High | Dutch National Flag (sort 3 values) | **$O(n)$** | **$O(1)$** |
+Check for a meeting after both pointers move. At first, both point to the first value, even when there is no loop. If there is a loop, fast moves one extra link each turn, so it eventually meets slow. Learn this method after [Day 11](day-11-singly-and-doubly-linked-lists.md), in [Day 12](day-12-linked-list-reversals-and-cycle-detection.md).
 
----
+### 1.4 Pointer Movement Summary
 
-## 2. Pattern Overview
+| Method | How the pointers move | Use it to | Time | Extra space |
+| :--- | :--- | :--- | :---: | :---: |
+| **Read / Write** | Read checks each item; write moves when an item is kept | Move chosen values to the front | `O(n)` | `O(1)` |
+| **Tortoise / Hare** | One link vs. two links per turn | Find a list middle or loop | `O(n)` | `O(1)` |
+| **Three-Way Grouping** | `low` and `high` mark group edges; `mid` checks values | Put values into three groups | `O(n)` | `O(1)` |
 
-### Pattern Family
-* **Reader & Writer Pointers:** Both pointers move forward. `fast` reads every item while `slow` writes kept items into the array.
-* **Tortoise & Hare (Floyd's Algorithm):** 1-step vs 2-step speeds to find cycles and middle nodes.
-* **Dutch National Flag (3 Pointers):** Low, Mid, and High pointers that divide an array into three parts in one pass.
+## 2. Put Values into Three Groups
 
-### Pattern Recognition Table
+This method is called **three-way partitioning**. It means putting values into three groups using a rule. Values in a group do not have to be sorted.
 
-| Problem Keyword | What It Asks | Recommended Approach |
+The Dutch National Flag method puts `0`s, `1`s, and `2`s into three groups in one pass. A pass means going through the array from one end to the other. Think of sorting red, white, and blue balls into three bins. At any time, the array has four parts:
+
+```text
+[ 0s | 1s | not checked yet | 2s ]
+ 0    low  mid               high          n - 1
+```
+
+`low` marks where the next `0` goes. `mid` marks the next value to check. `high` marks where the next `2` goes.
+
+### 2.1 Keep the Four Parts Clear
+
+At the start of each step:
+
+- Before `low`: all values are `0`.
+- From `low` to `mid - 1`: all values are `1`.
+- From `mid` to `high`: values are not checked yet.
+- After `high`: all values are `2`.
+
+Check `nums[mid]`:
+
+- **It is `0`:** Swap (trade places) it with `nums[low]`. Move `low` and `mid` forward. If they were in different spots, a `1` moves to `mid`.
+- **It is `1`:** Leave it in place. Move `mid` forward.
+- **It is `2`:** Swap it with `nums[high]` and move `high` back. Keep `mid` in place because the new value at `mid` still needs checking.
+
+Each step deals with one value that has not been checked yet. Stop when `mid > high`. Then every value is in the right group.
+
+### 2.2 Check the Values Left
+
+Start with `[2, 0, 1]`. Watch what happens when `2` moves to the right:
+
+| Action | Array | `low` | `mid` | `high` |
+| :--- | :--- | :---: | :---: | :---: |
+| Start | `[2, 0, 1]` | 0 | 0 | 2 |
+| See `2`; swap with the rightmost spot | `[1, 0, 2]` | 0 | 0 | 1 |
+| Check the new `1`; move `mid` | `[1, 0, 2]` | 0 | 1 | 1 |
+| See `0`; swap it to the left | `[0, 1, 2]` | 1 | 2 | 1 |
+| Stop; no values are left to check | `[0, 1, 2]` | 1 | 2 | 1 |
+
+Values in a group may change order. Use this method only if that is okay.
+
+> [!NOTE]
+> Why must we check the value swapped in from the right before moving `mid`?
+
+### 2.3 Compare Pointer Methods
+
+| Pattern | How the pointers move | Use it for |
 | :--- | :--- | :--- |
-| **"In-place" + "$O(1)$ extra space"** | Change the array without making a new copy. | Reader & Writer Pointers. |
-| **"Remove duplicates from sorted array"** | Keep only one copy of each number. | Overwrite when `nums[fast] !== nums[slow]`. |
-| **"Remove all instances of val"** | Filter out a specific value without empty gaps. | Copy `nums[fast]` to `nums[slow]` when `!== val`. |
-| **"Sort 3 values" / "Dutch National Flag"** | Group an array into 3 sections in-place. | Three pointers (`low`, `mid`, `high`). |
-| **"Find middle of linked list"** | Find the center node in one pass. | Tortoise (1 step) & Hare (2 steps). |
+| Opposing pointers | Start at both ends and move inward | Find a pair in a sorted array |
+| Read / write | Move forward; write only values you keep | Remove values from an array |
+| Three-way grouping | Check the middle; make the part not checked yet smaller from either side | Group three kinds of values |
+| Sliding window | Move the two ends of a range | Work with a fixed-size part of an array |
 
-### When to Use
-* The problem asks to clean up, remove duplicates, or group an array in-place using $O(1)$ extra space.
-* The array is already sorted, so duplicate values sit right next to each other.
-* You need to avoid slow $O(n^2)$ array shifts from `splice()`.
+[Day 6](day-06-two-pointers-opposing-and-symmetrical.md) covers opposing pointers. [Day 8](day-08-sliding-window-fixed-size.md) covers sliding windows. Each pattern moves its pointers in a different way.
 
-### When NOT to Use
-* The order of items does not matter and you can delete an item by swapping it with the last element in $O(1)$ time.
-* You need to find two numbers that add up to a target in a sorted array (use Opposing Two Pointers).
-* You need to find contiguous sub-arrays with sum or length limits (use Sliding Window).
+## 3. Pick a Method
 
-### The $10^7$ Operations Constraint Rule
-If an array has $n = 50,000$ items:
-* Calling `splice()` inside a loop shifts up to $50,000$ items on every call. That runs $\approx \frac{n^2}{2} = 1.25 \times 10^9$ operations and freezes Node.js for several seconds.
-* Fast and slow pointers visit each item once with zero memory shifting ($50,000$ operations). This finishes in **under 1 millisecond**.
+### 3.1 Match the Clue
+
+| Problem clue | What it means | Try |
+| :--- | :--- | :--- |
+| **Change an array without making another one** | Use little extra memory. | Read / write pointers. |
+| **Remove copies from a sorted array** | Keep one of each value. | Keep a value when it is different from the last one kept. |
+| **Remove a chosen value** | Move all other values to the front. | Read / write pointers. |
+| **Group three kinds of values** | Put each value in the right group. | Three-way grouping. |
+| **Find the middle of a linked list** | Find its center while checking links. | Tortoise and hare, after learning linked lists. |
+
+### 3.2 When This Method Fits
+
+- Use read/write when you can decide to keep or skip each value as you read it.
+- Use it for duplicates when the array is sorted. Copies of the same value are next to each other.
+- Use three-way grouping when every value belongs in one of three groups and the order inside each group does not matter.
+- Use these methods instead of removing items one by one and shifting the rest.
+
+### 3.3 When to Pick Another Method
+
+- You must keep every value in its original spot.
+- You need to remove one item and its order does not matter; swapping with the last item may be simpler.
+- You need a pair from both ends of a sorted array; use opposing pointers.
+- You need to check a range of nearby values; use a sliding window.
+
+### 3.4 Compare the Steps
+
+About 10 million steps is only a rough guide. It does not tell you the exact run time.
+
+For an array with 50,000 values:
+
+- One pass checks about 50,000 values.
+- If all values match, the first `splice()` moves nearly 50,000 values. Each next call moves one fewer value. Together, they move about **1.25 billion values**.
+- The actual run time depends on the computer and the input.
 
 ---
 
-## 3. Problem Walkthroughs
+## 4. Problem Walkthroughs
 
 ---
 
-### 3.1 Remove Duplicates from Sorted Array
+### 4.1 Remove Duplicates from Sorted Array
 
-#### 3.1.1 Problem Statement
-Given an integer array `nums` sorted in non-decreasing order, remove the duplicates **in-place** so that each unique element appears only **once**. Keep the relative order of the elements the same. Then return the number of unique elements in `nums`.
+#### 4.1.1 Problem Statement
+Given an integer array `nums`, sorted from smallest to largest, keep one copy of each value. Change `nums` itself and keep the values in the same order. Return `k`, the number of different values.
 
-Let `k` be the count of unique elements. You must change `nums` so that the first `k` spots hold the unique numbers in their original order.
+Only the first `k` spots matter. The rest can contain any values. In the samples, `_` marks a spot that does not matter.
 
-* **Sample Input 1:** `nums = [1, 1, 2]` $\to$ **Expected Output:** `k = 2`, `nums = [1, 2, _]`
-* **Sample Input 2:** `nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]` $\to$ **Expected Output:** `k = 5`, `nums = [0, 1, 2, 3, 4, _, _, _, _, _]`
-* **Constraints:** $1 \le nums.length \le 3 \times 10^4$, $-100 \le nums[i] \le 100$, `nums` is sorted in non-decreasing order.
+* **Input:** `nums = [1, 1, 2]` -> **Output:** `k = 2`, `nums = [1, 2, _]`
+* **Input:** `nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]` -> **Output:** `k = 5`, `nums = [0, 1, 2, 3, 4, _, _, _, _, _]`
+* **Input limits:** `nums` has 1 to 30,000 values. Each value is between -100 and 100. The values are sorted from smallest to largest, and may repeat.
 
-#### 3.1.2 How to Think About It
-Picture cards laid out on a table: `[0, 0, 1, 1, 1, 2, 2, 3, 3, 4]`.  
-The first card (`0`) is already unique because it is the very first one.  
-Place your left index finger (`slow`) on card 0.  
-Use your right index finger (`fast`) to look through the cards starting from card 1:
-1. Card at `fast` is `0`. It matches the card at `slow` (`0 === 0`). This is a duplicate! Skip it.
-2. Card at `fast` is `1`. It does not match the card at `slow`. This is a brand new unique number!
-3. Move your left finger to slot 1 (`slow++`) and write card `1` into that slot.
-4. Keep going until `fast` reaches the end. All unique cards are now packed tightly from index `0` to `slow`.
+#### 4.1.2 How to Think About It
+Picture the sorted cards `[0, 0, 1, 1, 1, 2]` on a table. Keep the first card. Compare each next card with the last one you kept. If they are the same, skip it. If they are different, put it in the next open spot. The kept cards stay together at the front.
 
-#### 3.1.3 Brute Force Approach & Bottleneck
-The naive way loops through the array and calls `.splice(i + 1, 1)` whenever two neighbor numbers are the same:
+#### 4.1.3 Brute Force Approach & Bottleneck
+One simple way is to remove a value each time it matches the value next to it. **Bottleneck** means the slow part:
 
 ```javascript
+// Node.js code
+"use strict";
+
 function removeDuplicatesBrute(nums) {
   let i = 0;
   while (i < nums.length - 1) {
     if (nums[i] === nums[i + 1]) {
-      nums.splice(i + 1, 1); // Costly memory shift!
+      nums.splice(i + 1, 1); // Moves later values to the left.
     } else {
       i++;
     }
   }
   return nums.length;
 }
+
+const bruteInput = [1, 1, 2];
+console.log(removeDuplicatesBrute(bruteInput), bruteInput); // 2 [ 1, 2 ]
 ```
 
-* **The Bottleneck:** Every time `splice()` runs, it shifts all remaining items to the left in memory ($O(n)$ work). For $30,000$ duplicates, this causes millions of item shifts ($O(n^2)$ time).
+* One `splice()` may move every value after the removed one. If all 30,000 values are the same, the first call moves nearly 30,000 values. Each next call moves one fewer value. Together, they move about **450 million values**. This takes `O(n^2)` work.
 
-#### 3.1.4 The Pattern Insight
-Because `nums` is sorted, identical numbers always sit side-by-side.  
-We do not need to delete anything. We just let `fast` search for the next number that differs from `nums[slow]`. When found, move `slow++` and write `nums[slow] = nums[fast]`.
+#### 4.1.4 Why This Works
+Since the array is sorted, equal values are side by side. Do not delete them. Check each value and write it only if it is not the same as the last value kept.
 
-#### 3.1.5 Pseudocode
+#### 4.1.5 Pseudocode
+
+Pseudocode is a short list of steps. It is not written in JavaScript.
 
 ```text
 FUNCTION RemoveDuplicates(nums):
@@ -192,26 +280,32 @@ FUNCTION RemoveDuplicates(nums):
   RETURN slow + 1
 ```
 
-#### 3.1.6 Optimal Solution
+#### 4.1.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space in-place deduplication
-function removeDuplicates(nums) {
-  if (!Array.isArray(nums) || nums.length === 0) return 0;
+// Node.js code
+"use strict";
 
-  // slow tracks the last confirmed unique element slot
+// ✅ CORRECT: Checks each value once and uses only a few variables.
+function removeDuplicates(nums) {
+  if (!Array.isArray(nums)) {
+    throw new TypeError("nums must be an array");
+  }
+  if (nums.length === 0) return 0;
+
+  // slow is the index of the last value we kept.
   let slow = 0;
 
-  // fast scans forward starting from index 1
+  // Start at 1 because the first value is already kept.
   for (let fast = 1; fast < nums.length; fast++) {
-    // Overwrite next slow slot when a new unique value is found
+    // Keep the value if it is not the same as the last one kept.
     if (nums[fast] !== nums[slow]) {
       slow++;
       nums[slow] = nums[fast];
     }
   }
 
-  // The count of unique numbers is index + 1
+  // slow is an index, so add 1 to get the count.
   return slow + 1;
 }
 
@@ -223,83 +317,103 @@ console.log(k1, arr1.slice(0, k1)); // 2 [ 1, 2 ]
 const arr2 = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4];
 const k2 = removeDuplicates(arr2);
 console.log(k2, arr2.slice(0, k2)); // 5 [ 0, 1, 2, 3, 4 ]
+console.log(removeDuplicates([]));  // 0
 ```
 
-#### 3.1.7 Common Anti-Pattern
+The `slice()` calls only show the first `k` values. They make new arrays for the examples; `removeDuplicates` does not.
+
+#### 4.1.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Using new Set() to deduplicate (fails O(1) memory requirement)
+// Node.js code
+"use strict";
+
+// ❌ COMMON BUG: This makes a Set and a new array, so extra memory grows with the input.
 function removeDuplicatesSet(nums) {
-  const unique = Array.from(new Set(nums)); // Burns O(n) heap memory!
+  const unique = Array.from(new Set(nums));
   for (let i = 0; i < unique.length; i++) nums[i] = unique[i];
   return unique.length;
 }
-```
-* **Why it fails:** Making a new `Set` and a new helper array wastes extra memory. The problem requires $O(1)$ extra space.
 
-#### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer checks each index from `1` to `n - 1` exactly once.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We modify the array directly without allocating extra data structures.
+const setInput = [1, 1, 2];
+console.log(removeDuplicatesSet(setInput), setInput); // 2 [ 1, 2 ]
+```
+* **Why it fails:** The `Set` and the new array need space that grows with the input. This problem allows only `O(1)` extra space.
+
+#### 4.1.8 Complexity Derivation
+* **Time:** `O(n)`. `fast` checks every value once.
+* **Extra space:** `O(1)`. The function uses only a few variables.
 
 ---
 
-### 3.2 Sort Colors
+### 4.2 Sort Colors
 
-#### 3.2.1 Problem Statement
-Given an array `nums` with $n$ objects colored red (`0`), white (`1`), or blue (`2`), sort them **in-place** so that objects of the same color are adjacent, with the colors in the order red, white, and blue.
+#### 4.2.1 Problem Statement
+Given an array `nums` with values `0`, `1`, and `2`, put the `0`s first, the `1`s next, and the `2`s last. Change `nums` itself.
 
-You must solve this problem without using the library's sort function and in a single pass using $O(1)$ constant extra space.
+Do not use `sort()`. Check the array once and use only a few extra variables.
 
-* **Sample Input 1:** `nums = [2, 0, 2, 1, 1, 0]` $\to$ **Expected Output:** `[0, 0, 1, 1, 2, 2]`
-* **Sample Input 2:** `nums = [2, 0, 1]` $\to$ **Expected Output:** `[0, 1, 2]`
-* **Sample Input 3:** `nums = [0]` $\to$ **Expected Output:** `[0]`
-* **Constraints:** $n == nums.length$, $1 \le n \le 300$, `nums[i]` is either `0`, `1`, or `2`.
+* **Input:** `nums = [2, 0, 2, 1, 1, 0]` -> **Output:** `[0, 0, 1, 1, 2, 2]`
+* **Input:** `nums = [2, 0, 1]` -> **Output:** `[0, 1, 2]`
+* **Input:** `nums = [0]` -> **Output:** `[0]`
+* **Input limits:** `nums` has 1 to 300 values. Each value is `0`, `1`, or `2`.
 
-#### 3.2.2 How to Think About It
-Imagine three bins for pool balls: Red (`0`), White (`1`), and Blue (`2`).  
-Place three markers along the table:
-* `low = 0`: The spot where the next Red (`0`) belongs.
-* `high = n - 1`: The spot where the next Blue (`2`) belongs.
-* `mid = 0`: Your scanner checking each ball one by one.
+#### 4.2.2 How to Think About It
+Imagine a row of red (`0`), white (`1`), and blue (`2`) balls. Make three areas: red on the left, white in the middle, and blue on the right. Check the first ball that is not in an area yet.
 
-As `mid` walks forward:
-1. **If ball is 0 (Red):** Swap it into the `low` bin (`swap(nums[low], nums[mid])`), then step both `low++` and `mid++`.
-2. **If ball is 1 (White):** It is already in the right middle zone! Simply step forward: `mid++`.
-3. **If ball is 2 (Blue):** Swap it into the `high` bin (`swap(nums[mid], nums[high])`), then shrink the blue boundary: `high--`. **Do not move `mid`**, because the new ball brought in from `high` has not been checked yet!
+- If it is red, move it into the left area.
+- If it is white, leave it in the middle area.
+- If it is blue, move it into the right area.
 
-#### 3.2.3 Brute Force Approach & Bottleneck
-The naive way counts how many 0s, 1s, and 2s exist in a first pass (or sorts with `nums.sort((a, b) => a - b)` in $O(n \log n)$ time), then writes them back in a second pass:
+When a blue ball moves right, another ball comes back from that spot. Check that ball before moving on.
+
+#### 4.2.3 Brute Force Approach & Bottleneck
+
+A simple way is to find the smallest value left and move it to the next open spot. Repeat for every spot:
 
 ```javascript
-function sortColorsCounting(nums) {
-  let c0 = 0, c1 = 0, c2 = 0;
-  for (const n of nums) {
-    if (n === 0) c0++;
-    else if (n === 1) c1++;
-    else c2++;
+// Node.js code
+"use strict";
+
+function sortColorsBrute(nums) {
+  if (!Array.isArray(nums)) {
+    throw new TypeError("nums must be an array");
   }
-  let idx = 0;
-  while (c0-- > 0) nums[idx++] = 0;
-  while (c1-- > 0) nums[idx++] = 1;
-  while (c2-- > 0) nums[idx++] = 2;
+
+  for (let i = 0; i < nums.length - 1; i++) {
+    let smallest = i;
+    for (let j = i + 1; j < nums.length; j++) {
+      if (nums[j] < nums[smallest]) {
+        smallest = j;
+      }
+    }
+
+    if (smallest !== i) {
+      const temp = nums[i];
+      nums[i] = nums[smallest];
+      nums[smallest] = temp;
+    }
+  }
+
   return nums;
 }
+
+console.log(sortColorsBrute([2, 0, 2, 1, 1, 0])); // [ 0, 0, 1, 1, 2, 2 ]
 ```
 
-* **The Bottleneck:** This needs two full passes over the array. While it runs in $O(n)$ time, the interview question explicitly asks for a **single-pass in-place partitioning** algorithm.
+For each spot, we may need to check all the values after it. This takes `O(n^2)` time. Counting the values first is faster, but needs two passes: one to count and one to write. The problem asks for one pass, so use three-way grouping instead.
 
-#### 3.2.4 The Pattern Insight
-Use the **Dutch National Flag (Three-Way Partitioning)** algorithm:  
-Divide the array into four clear zones:
-* `[0 ... low - 1]`: All confirmed `0`s.
-* `[low ... mid - 1]`: All confirmed `1`s.
-* `[mid ... high]`: Unchecked items.
-* `[high + 1 ... n - 1]`: All confirmed `2`s.
+#### 4.2.4 Why This Works
+Use the Dutch National Flag method from Section 2. Keep these four parts in order:
 
-The loop runs while `mid <= high`.  
-When swapping with `high`, we do not advance `mid` because the ball that arrived at `nums[mid]` could be a `0` or `2`. We must check it on the next step.
+- Before `low`: `0`s.
+- From `low` to the spot before `mid`: `1`s.
+- From `mid` through `high`: values not checked yet.
+- After `high`: `2`s.
 
-#### 3.2.5 Pseudocode
+After swapping a `2` with `nums[high]`, keep `mid` in place. Check the new value at `mid` before moving on.
+
+#### 4.2.5 Pseudocode
 
 ```text
 FUNCTION SortColors(nums):
@@ -314,42 +428,49 @@ FUNCTION SortColors(nums):
       mid = mid + 1
     ELSE IF nums[mid] == 1:
       mid = mid + 1
-    ELSE:
+    ELSE IF nums[mid] == 2:
       SWAP(nums[mid], nums[high])
       high = high - 1
 
   RETURN nums
 ```
 
-#### 3.2.6 Optimal Solution
+#### 4.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) single-pass Dutch National Flag 3-pointer partition
-function sortColors(nums) {
-  if (!Array.isArray(nums) || nums.length <= 1) return nums;
+// Node.js code
+"use strict";
 
-  let low = 0;                  // Boundary for 0s
-  let mid = 0;                  // Current element scanner
-  let high = nums.length - 1;   // Boundary for 2s
+// ✅ CORRECT: Check each value once; use only a few extra variables.
+function sortColors(nums) {
+  if (!Array.isArray(nums)) {
+    throw new TypeError("nums must be an array");
+  }
+
+  let low = 0;                 // Next place for a 0.
+  let mid = 0;                 // Next value to check.
+  let high = nums.length - 1;  // Next place for a 2.
 
   while (mid <= high) {
     if (nums[mid] === 0) {
-      // 0 belongs in the low segment
+      // Put 0 on the left.
       const temp = nums[low];
       nums[low] = nums[mid];
       nums[mid] = temp;
       low++;
       mid++;
     } else if (nums[mid] === 1) {
-      // 1 belongs in the middle segment; simply scan forward
+      // 1 is already in the middle.
       mid++;
-    } else {
-      // 2 belongs in the high segment
+    } else if (nums[mid] === 2) {
+      // Put 2 on the right.
       const temp = nums[mid];
       nums[mid] = nums[high];
       nums[high] = temp;
       high--;
-      // Note: Do NOT increment mid here; uninspected element was swapped into mid!
+      // Check the new value at mid on the next step.
+    } else {
+      throw new RangeError("each value must be 0, 1, or 2");
     }
   }
 
@@ -360,12 +481,16 @@ function sortColors(nums) {
 console.log(sortColors([2, 0, 2, 1, 1, 0])); // [ 0, 0, 1, 1, 2, 2 ]
 console.log(sortColors([2, 0, 1]));          // [ 0, 1, 2 ]
 console.log(sortColors([0]));                // [ 0 ]
+console.log(sortColors([]));                 // []
 ```
 
-#### 3.2.7 Common Anti-Pattern
+#### 4.2.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Incrementing mid after swapping with high
+// Node.js code
+"use strict";
+
+// ❌ COMMON BUG: Moving past the new value after a swap.
 function buggySortColors(nums) {
   let low = 0, mid = 0, high = nums.length - 1;
   while (mid <= high) {
@@ -382,50 +507,69 @@ function buggySortColors(nums) {
       nums[mid] = nums[high];
       nums[high] = temp;
       high--;
-      mid++; // BUG: Advances past swapped item without inspecting it!
+      mid++; // BUG: Moves past the new value without checking it!
     }
   }
   return nums;
 }
-```
-* **Why it fails:** Swapping `nums[mid]` with `nums[high]` brings an unchecked number into `nums[mid]`. Moving `mid++` skips that number. If the number was `0`, it stays stuck in the middle of the array forever.
 
-#### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. In every step, either `mid` moves right or `high` moves left. We inspect each item at most once.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only use three number pointers to sort the array directly.
+const buggyColors = [1, 2, 0];
+console.log(buggySortColors(buggyColors)); // [ 1, 0, 2 ] (not sorted)
+```
+* **Why it fails:** Swapping with `nums[high]` brings a new value to `nums[mid]`. Moving `mid` skips it. For `[1, 2, 0]`, this skips the `0`, so the array is still out of order.
+
+#### 4.2.8 Complexity Derivation
+* **Time:** `O(n)`. Each step checks one value, so there are at most `n` steps.
+* **Extra space:** `O(1)`. The function uses only a few variables.
 
 ---
 
-### 3.3 Remove Element
+### 4.3 Remove Element
 
-#### 3.3.1 Problem Statement
-Given an integer array `nums` and an integer `val`, remove all occurrences of `val` in `nums` **in-place**. The order of the elements may be changed. Then return the number of elements in `nums` which are not equal to `val`.
+#### 4.3.1 Problem Statement
+Given an integer array `nums` and a value `val`, remove every value equal to `val`. Change `nums` itself and return how many values remain.
 
-Let `k` be the count of elements that are not equal to `val`. You must modify `nums` so that the first `k` spots hold the kept elements.
+The first `k` spots must hold values that are not `val`. Their order may change.
 
-* **Sample Input 1:** `nums = [3, 2, 2, 3]`, `val = 3` $\to$ **Expected Output:** `k = 2`, `nums = [2, 2, _, _]`
-* **Sample Input 2:** `nums = [0, 1, 2, 2, 3, 0, 4, 2]`, `val = 2` $\to$ **Expected Output:** `k = 5`, `nums = [0, 1, 3, 0, 4, _, _, _]`
-* **Constraints:** $0 \le nums.length \le 100$, $0 \le nums[i], val \le 50$.
+* **Input:** `nums = [3, 2, 2, 3]`, `val = 3` -> **Output:** `k = 2`, `nums = [2, 2, _, _]`
+* **Input:** `nums = [0, 1, 2, 2, 3, 0, 4, 2]`, `val = 2` -> **Output:** `k = 5`, `nums = [0, 1, 3, 0, 4, _, _, _]`
+* **Input limits:** `nums` can have 0 to 100 values. Each value and `val` are between 0 and 50.
 
-#### 3.3.2 How to Think About It
-Imagine a bouncer checking a guest list.  
-The number `val` is on the banned list.  
-* `slow` marks the next chair for an approved guest (`slow = 0`).
-* `fast` walks through every person in line:
-  - If the person at `fast` is banned (`nums[fast] === val`), skip them!
-  - If the person at `fast` is approved (`nums[fast] !== val`), give them the chair at `nums[slow]` and move `slow++`.
+#### 4.3.2 How to Think About It
+Imagine checking tickets at a door. Skip every ticket that matches `val`. Put each other ticket in the next open spot at the front. The number of filled spots is the answer.
 
-#### 3.3.3 Brute Force Approach & Bottleneck
-Using `.splice()` inside a loop shifts items left every time `val` is found. This burns $O(n^2)$ time.
+#### 4.3.3 Brute Force Approach & Bottleneck
+One simple way removes `val` each time it appears. The **bottleneck** is the part that makes this method slow:
 
-#### 3.3.4 The Pattern Insight
-Instead of shifting memory, overwrite items in-place. `fast` reads every item, and we only write `nums[slow] = nums[fast]` when the item is **not** equal to `val`. `slow` naturally keeps count of all kept items.
+```javascript
+// Node.js code
+"use strict";
+
+function removeElementBrute(nums, val) {
+  let i = 0;
+  while (i < nums.length) {
+    if (nums[i] === val) {
+      nums.splice(i, 1);
+    } else {
+      i++;
+    }
+  }
+  return nums.length;
+}
+
+const bruteItems = [3, 2, 2, 3];
+console.log(removeElementBrute(bruteItems, 3), bruteItems); // 2 [ 2, 2 ]
+```
+
+Each removal may move many values after it. Repeating this can take `O(n^2)` time.
+
+#### 4.3.4 Why This Works
+Do not delete values one at a time. Check each value once. Write it only if it is not `val`. At the end, `slow` is how many values we kept.
 
 > [!NOTE]
-> **Self-Check:** Why does `removeDuplicates` return `slow + 1`, while `removeElement` returns `slow`?  
-> *Answer:* In `removeDuplicates`, `slow` is the *index* of the last unique item, so the total count is `slow + 1`. In `removeElement`, `slow` starts at 0 and increments *right after* writing each kept item, so it already holds the total *count* of kept items.
+> Why does one function return `slow + 1`, but the other return `slow`?
 
-#### 3.3.5 Pseudocode
+#### 4.3.5 Pseudocode
 
 ```text
 FUNCTION RemoveElement(nums, val):
@@ -439,24 +583,29 @@ FUNCTION RemoveElement(nums, val):
   RETURN slow
 ```
 
-#### 3.3.6 Optimal Solution
+#### 4.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space element removal
-function removeElement(nums, val) {
-  if (!Array.isArray(nums) || nums.length === 0) return 0;
+// Node.js code
+"use strict";
 
-  let slow = 0; // Index for the next retained element
+// ✅ CORRECT: Check each value once; use only a few extra variables.
+function removeElement(nums, val) {
+  if (!Array.isArray(nums)) {
+    throw new TypeError("nums must be an array");
+  }
+
+  let slow = 0; // Next place for a value we keep.
 
   for (let fast = 0; fast < nums.length; fast++) {
-    // Only copy and advance slow when item is NOT the target value
+    // Copy the value only when it is not val.
     if (nums[fast] !== val) {
       nums[slow] = nums[fast];
       slow++;
     }
   }
 
-  // slow naturally holds the count of retained elements
+  // slow is the number of values we kept.
   return slow;
 }
 
@@ -468,16 +617,22 @@ console.log(len1, test1.slice(0, len1)); // 2 [ 2, 2 ]
 const test2 = [0, 1, 2, 2, 3, 0, 4, 2];
 const len2 = removeElement(test2, 2);
 console.log(len2, test2.slice(0, len2)); // 5 [ 0, 1, 3, 0, 4 ]
+console.log(removeElement([], 2));       // 0
 ```
 
-#### 3.3.7 Common Anti-Pattern
+This solution keeps the remaining values in their original order. The `slice()` calls only show the first `k` values; they are not part of the function.
+
+#### 4.3.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Advancing slow on unwanted values
+// Node.js code
+"use strict";
+
+// ❌ COMMON BUG: Moving slow for a value we should skip.
 function buggyRemoveElement(nums, val) {
   let slow = 0;
   for (let fast = 0; fast < nums.length; fast++) {
-    if (nums[fast] === val) { // BUG: Advances on unwanted elements!
+    if (nums[fast] === val) { // BUG: Moves slow for a value we should skip.
       slow++;
     } else {
       nums[slow] = nums[fast];
@@ -485,74 +640,76 @@ function buggyRemoveElement(nums, val) {
   }
   return slow;
 }
+
+const buggyItems = [3, 2, 2, 3];
+const buggyCount = buggyRemoveElement(buggyItems, 3);
+console.log(buggyCount, buggyItems.slice(0, buggyCount)); // 2 [ 3, 2 ]
 ```
-* **Why it fails:** Moving `slow` when `nums[fast] === val` ruins the front of the array. It keeps the banned numbers and overwrites valid numbers.
+* **Why it fails:** `slow` moves when it should stay still. A value equal to `val` can stay at the front, and a value we want can be lost.
 
-#### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The `fast` pointer takes one single pass through `nums`.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We rewrite items directly in the existing array.
-
----
-
-## 4. Tricky Edge Cases
-
-* **Index vs Count Confusion (`slow` vs `slow + 1`):**
-  - In `removeDuplicates`, `slow` is the *index* of the last unique item, so return **`slow + 1`**.
-  - In `removeElement`, `slow` increments *after* writing, so `slow` is already the **count**.
-* **All Items Match Target (`nums = [2, 2, 2]`, `val = 2`):** `slow` never increments, and the function correctly returns `0`.
-* **All Items Unique (`nums = [1, 2, 3]`):** `fast` and `slow` move side-by-side. The check `if (slow !== fast)` prevents copying an item onto itself.
-* **Empty Input Array (`[]`):** Always check empty arrays at the top so loops do not throw errors and return `0` immediately.
+#### 4.3.8 Complexity Derivation
+* **Time:** `O(n)`. Check every value once.
+* **Extra space:** `O(1)`. Use only a few variables.
 
 ---
 
-## 5. Summary Cheat Sheet
+## 5. Tricky Edge Cases
 
-* **Fast & Slow Mechanics:** Both pointers move in the same direction. `fast` reads every item; `slow` marks the spot for kept items.
-* **Eliminates `splice()`:** Replaces slow $O(n^2)$ memory shifts with fast $O(1)$ in-place overwrites.
-* **Sorted Array Synergy:** When an array is sorted, matching items always sit next to each other (`nums[fast] !== nums[slow]`).
-* **Speed Difference:** Moving at 1-step vs 2-step speeds detects cycles in linked structures without extra memory.
+* **Index or count:** `removeDuplicates` returns `slow + 1` because `slow` is an index that starts at 0. `removeElement` returns `slow` because it counts the values kept.
+* **Empty array:** All four array functions should work with `[]`.
+* **No duplicates:** `removeDuplicates([1, 2, 3])` should keep all three values.
+* **Remove every value:** `removeElement([2, 2], 2)` should return `0`.
+* **Remove no values:** `removeElement([1, 3], 2)` should return `2`.
+* **Move zeroes:** Try arrays with no zeroes, only zeroes, and zeroes at the end. Keep the other values in order.
+* **Three groups:** Try arrays with all `0`s, all `1`s, all `2`s, and mixed values. After swapping with the right side, check the new value at `mid`.
+* **Sort Colors input:** Values must be `0`, `1`, or `2`. The function throws an error for any other value.
 
 ---
 
-## 6. Practice Problems
+## 6. Summary Cheat Sheet
 
-### 6.1 Remove Duplicates from Sorted Array II
+* **Read / write:** Check each value once. Put each value we keep at the next open spot.
+* **Sorted duplicates:** Compare each value with the last one kept.
+* **Three groups:** Track the `0`s, `1`s, values not checked yet, and `2`s. After swapping with `high`, check `mid` again.
+* **Repeated `splice()`:** It can shift many values each time. Many removals can take `O(n^2)` time.
+* **Tortoise / hare:** This lesson only gives a first look at linked lists. Learn how list links work before finding a loop or middle.
+* **Changing the array:** These methods change the input array. Make a copy first if you need to keep the original.
 
-Given an integer array `nums` sorted in non-decreasing order, remove some duplicates in-place so that each unique element appears **at most twice**. Keep the relative order of the elements the same. Return `k` after placing the final result in the first `k` spots of `nums`.
+---
 
-* **Difficulty:** Medium | **Focus:** At Most K Duplicates
+## 7. Practice Problems
+
+### 7.1 Remove Duplicates from Sorted Array II
+
+Given an integer array `nums`, sorted from smallest to largest, keep each value no more than twice. Keep the same order. Return `k`, the number of values kept.
+
 * **Sample Input 1:** `nums = [1, 1, 1, 2, 2, 3]` $\to$ **Expected Output:** `5`, `nums = [1, 1, 2, 2, 3, _]`
-* **Sample Input 2:** `nums = [0, 0, 1, 1, 1, 1, 2, 3, 3]` $\to$ **Expected Output:** `7`, `nums = [0, 0, 1, 1, 2, 3, 3, _]`
-* **Constraints:** $1 \le nums.length \le 3 \times 10^4$, $-10^4 \le nums[i] \le 10^4$, `nums` is sorted.
-* **Hint 1:** Any array with length $\le 2$ is already valid. Start with `slow = 2` and `fast = 2`.
-* **Hint 2:** Compare `nums[fast]` with `nums[slow - 2]`. If they are different, write `nums[slow] = nums[fast]` and increment `slow++`.
+* **Sample Input 2:** `nums = [0, 0, 1, 1, 1, 1, 2, 3, 3]` $\to$ **Expected Output:** `7`, `nums = [0, 0, 1, 1, 2, 3, 3, _, _]`
+* **Input limits:** `nums` has 1 to 30,000 values. Each value is between -10,000 and 10,000. The values are sorted from smallest to largest.
+* **Hint 1:** If the array has one or two values, keep them all. Start `slow` and `fast` at index 2.
+* **Hint 2:** Compare `nums[fast]` with `nums[slow - 2]`. If they are different, copy `nums[fast]` to `nums[slow]`, then add 1 to `slow`.
 
 ---
 
-### 6.2 Linked List Cycle
+### 7.2 Move Zeroes
 
-Given `head`, the head of a singly linked list, check if the linked list has a cycle in it. Return `true` if there is a cycle; otherwise, return `false`.
+Given an integer array, move all zeroes to the end. Keep the other values in the same order. Change the same array and use only a few extra variables.
 
-* **Difficulty:** Easy | **Focus:** Tortoise & Hare Speeds
-* **Sample Input 1:** `head = [3, 2, 0, -4]`, `pos = 1` $\to$ **Expected Output:** `true`
-* **Sample Input 2:** `head = [1, 2]`, `pos = 0` $\to$ **Expected Output:** `true`
-* **Sample Input 3:** `head = [1]`, `pos = -1` $\to$ **Expected Output:** `false`
-* **Constraints:** The number of nodes in the list is in the range $[0, 10^4]$, $-10^5 \le Node.val \le 10^5$.
-* **Hint 1:** Set two pointers: `slow = head` and `fast = head`.
-* **Hint 2:** In each step, move `slow` by 1 node and `fast` by 2 nodes. If `fast` or `fast.next` hits `null`, there is no cycle. If `slow === fast`, a cycle exists.
+* **Sample Input 1:** `nums = [0, 1, 0, 3, 12]` $\to$ **Expected Output:** `[1, 3, 12, 0, 0]`
+* **Sample Input 2:** `nums = [0, 0]` $\to$ **Expected Output:** `[0, 0]`
+* **Hint 1:** Check each value. Put each non-zero value in the next open spot.
+* **Hint 2:** After checking all values, what should go in the open spots?
 
----
+### 7.3 Group Values Around a Pivot
 
-### 6.3 Find the Middle of the Linked List
+Given an integer array and a `pivot` value, put smaller values first, values equal to the pivot next, and larger values last. Do not sort the array. The order inside each group does not matter.
 
-Given the `head` of a singly linked list, return the middle node of the linked list. If there are two middle nodes, return the second middle node.
+The `pivot` is the value used to split the array into groups. `nums` may be empty.
 
-* **Difficulty:** Easy | **Focus:** Finding the Middle Node
-* **Sample Input 1:** `head = [1, 2, 3, 4, 5]` $\to$ **Expected Output:** Node with value `3`
-* **Sample Input 2:** `head = [1, 2, 3, 4, 5, 6]` $\to$ **Expected Output:** Node with value `4`
-* **Constraints:** The number of nodes in the list is in the range $[1, 100]$, $1 \le Node.val \le 100$.
-* **Hint 1:** Set `slow = head` and `fast = head`.
-* **Hint 2:** In each step, move `slow = slow.next` (1 step) and `fast = fast.next.next` (2 steps). When `fast` reaches `null` or `fast.next === null`, `slow` is right at the middle.
+* **Input:** `nums = [9, 12, 3, 7, 12, 5, 12]`, `pivot = 7` -> **One valid output:** `[3, 5, 7, 12, 9, 12, 12]`
+* **Input:** `nums = [4, 4, 4]`, `pivot = 4` -> **Output:** `[4, 4, 4]`
+* **Hint 1:** Keep a left spot for smaller values, a middle spot for values not checked yet, and a right spot for larger values.
+* **Hint 2:** When you swap a larger value with the right spot, check the new value in the middle before moving on.
 
 ---
 

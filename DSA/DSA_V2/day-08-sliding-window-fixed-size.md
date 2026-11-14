@@ -10,39 +10,34 @@
 
 ## 1. Fixed Sliding Window
 
-A **Fixed Sliding Window** is a technique used when working with sub-arrays or sub-strings of an exact, fixed size $k$.
+A **fixed window** is a group of `k` neighboring values or letters. The group always stays the same size as it moves.
 
-Instead of recalculating every window of size $k$ from scratch (which takes $O(k)$ time per window and causes a slow $O(n \cdot k)$ bottleneck), we slide the window forward by one step. We update our result in $O(1)$ fast time by subtracting the item leaving on the left and adding the item entering on the right:
+Do not add all `k` values again after each move. Keep the current result. Subtract the value leaving on the left, then add the new value on the right:
 
-$$\text{New Window State} = \text{Current Window State} - \text{Item Leaving} + \text{Item Entering}$$
+`new total = old total - value leaving + value entering`
 
-To picture this physically, imagine looking out a train window that frames exactly $k = 3$ telephone poles along the tracks:
-* As the train moves forward, you **do not close your eyes and recount all three poles**.
-* The middle two poles did not change at all.
-* Exactly **one pole leaves your view** on the left edge, and **one new pole enters your view** on the right edge.
-* You subtract the value of the pole leaving and add the value of the pole entering.
+Imagine a frame that shows three poles as a train passes them. When the train moves, one pole leaves the frame and one enters. The other two stay in view. Update the total using only the pole that left and the one that entered.
 
 ```text
 Array: [ 2, 1, 5, 1, 3, 2 ], Window Size k = 3
 
-Window 0: [ 2,  1,  5 ]  1,   3,   2   ──► Initial Sum = 2 + 1 + 5 = 8
+Window 0: [ 2,  1,  5 ]  1,   3,   2   -> Sum = 2 + 1 + 5 = 8
            -2       +1
-Window 1:   2  [ 1,  5,  1 ]  3,   2   ──► New Sum = 8 - 2 + 1 = 7
+Window 1:   2  [ 1,  5,  1 ]  3,   2   -> New sum = 8 - 2 + 1 = 7
                -1       +3
-Window 2:   2,  1  [ 5,  1,  3 ]  2   ──► New Sum = 7 - 1 + 3 = 9  (Max Sum!)
+Window 2:   2,  1  [ 5,  1,  3 ]  2   -> New sum = 7 - 1 + 3 = 9  (max sum)
                    -5       +2
-Window 3:   2,  1,  5  [ 1,  3,  2 ]   ──► New Sum = 9 - 5 + 2 = 6
+Window 3:   2,  1,  5  [ 1,  3,  2 ]   -> New sum = 9 - 5 + 2 = 6
 ```
 
 ```javascript
-// Node.js code
 "use strict";
 
-// Baseline fixed sliding window: Maximum sum subarray of length k
+// Find the largest sum among groups of length k.
 function maxSubarraySum(arr, k) {
   if (!Array.isArray(arr) || arr.length < k || k <= 0) return 0;
 
-  // Phase 1: Build sum of the initial window
+  // Add the first group.
   let windowSum = 0;
   for (let i = 0; i < k; i++) {
     windowSum += arr[i];
@@ -50,9 +45,9 @@ function maxSubarraySum(arr, k) {
 
   let maxSum = windowSum;
 
-  // Phase 2: Slide across the remaining elements
+  // Move the group across the remaining values.
   for (let i = k; i < arr.length; i++) {
-    // Subtract element exiting on left (i - k), add element entering on right (i)
+    // Remove the value that leaves and add the value that enters.
     windowSum += arr[i] - arr[i - k];
     if (windowSum > maxSum) {
       maxSum = windowSum;
@@ -67,84 +62,87 @@ console.log(maxSubarraySum([2, 1, 5, 1, 3, 2], 3)); // 9
 
 ---
 
-### 1.1 Invariant State Transition
+### 1.1 How the Window Moves
 
-A fixed sliding window always keeps the exact same size $k$:
-
-$$\text{Active Window: } \text{arr}[i - k + 1 \dots i] \implies \text{Contains exactly } k \text{ elements}$$
+A fixed window always contains exactly `k` items. First, add the first `k` items. For each move after that, remove one item and add one item.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │                      FIXED WINDOW LIFECYCLE PHASES                     │
 ├─────────────────────┬──────────────────┬─────────────────┬─────────────┤
-│ Index Range         │ Item Leaving     │ Item Entering   │ Action      │
+│ Index Range         │ Leaves           │ Enters          │ Action      │
 ├─────────────────────┼──────────────────┼─────────────────┼─────────────┤
-│ 0 to k - 1          │ None             │ arr[i]          │ Build window│
-│ k to n - 1          │ arr[i - k]       │ arr[i]          │ Slide: -out +in│
+│ 0 to k - 1          │ None             │ arr[i]          │ Build       │
+│ k to n - 1          │ arr[i - k]       │ arr[i]          │ Move window │
 └─────────────────────┴──────────────────┴─────────────────┴─────────────┘
 ```
 
 > [!NOTE]
-> **Self-Check:** If an input array has $n = 100,000$ numbers and $k = 30,000$, how many math operations does the sliding window perform versus recalculating from scratch?  
-> *Answer:* Recalculating from scratch takes $(n - k + 1) \times k \approx 70,000 \times 30,000 = 2.1 \times 10^9$ operations (freezing Node.js). The sliding window does $k$ initial additions and then 2 operations per step $\approx 170,000$ operations (finishing in under 2 milliseconds).
+> With `n = 100,000` values and `k = 30,000`, which method does less work: adding every window again, or updating the total as it moves?
+>
+> *Answer:* Updating the total does less work. Re-adding each window can take about 2.1 billion additions. Building the first total and then moving the window takes about 170,000 additions and subtractions.
 
 ---
 
-### 1.2 Rolling Arithmetic vs Recomputation
+### 1.2 Reuse the Previous Total
 
-| Strategy | Operations Per Window | Total Time Complexity | Extra Space | Node.js Impact |
-| :--- | :---: | :---: | :---: | :--- |
-| **Naive Slicing (`.slice().reduce()`)** | $O(k)$ | **$O(n \cdot k)$** | $O(k)$ memory churn | Garbage collector pauses, slow execution |
-| **Fixed Sliding Window** | $O(1)$ | **$O(n)$** | $O(1)$ | Non-blocking, instant execution |
+| Strategy | Work per window | Total time | Extra space |
+| :--- | :---: | :---: | :---: |
+| Add every window again | `O(k)` | `O(n * k)` | `O(1)` if no copy is made |
+| Copy and add every window | `O(k)` | `O(n * k)` | `O(k)` temporary space |
+| Fixed sliding window | `O(1)` after the first window | `O(n)` | `O(1)` |
 
-When calculating averages, do not divide by $k$ inside the loop. Small decimal rounding errors add up over thousands of steps. Keep the raw sum as an integer inside the loop, and divide by $k$ just once at the very end.
+For averages, keep the window sum and divide by `k` when you return the answer. This avoids doing a division on every move.
 
 ---
 
 ### 1.3 Operations Reference Table
 
-| Operation | Role in Fixed Window | Time Complexity | Extra Space | Code Example |
+| Operation | What it does | Time | Extra space | Example |
 | :--- | :--- | :---: | :---: | :--- |
-| **Build Initial Window** | Sums first $k$ items ($0 \dots k - 1$) | $O(k)$ | $O(1)$ | `for (let i = 0; i < k; i++) sum += arr[i]` |
-| **Slide Window** | Subtract leaving `arr[i - k]`, add entering `arr[i]` | $O(1)$ | $O(1)$ | `sum += arr[i] - arr[i - k]` |
-| **Update Best Answer** | Keeps track of maximum or minimum sum | $O(1)$ | $O(1)$ | `maxSum = Math.max(maxSum, sum)` |
-| **Update Frequency Counts** | Adjust counts in 26-slot typed array | $O(1)$ | $O(1)$ | `counts[inCode]++; counts[outCode]--` |
-| **Check Counts Match** | Compare 26 frequency slots | $O(1)$ | $O(1)$ | `arraysEqual(pCount, sCount)` |
+| Build first window | Add its first `k` values | `O(k)` | `O(1)` | `sum += arr[i]` |
+| Move the window | Remove one value and add one | `O(1)` | `O(1)` | `sum += arr[i] - arr[i - k]` |
+| Save the best result | Keep the largest or smallest total | `O(1)` | `O(1)` | `maxSum = Math.max(maxSum, sum)` |
+| Update letter counts | Add or remove one letter count | `O(1)` | `O(1)` | `counts[inCode]++` |
+| Compare letter counts | Check all 26 lowercase letters | `O(1)` | `O(1)` | `arraysEqual(pCount, sCount)` |
 
 ---
 
 ## 2. Pattern Overview
 
 ### 2.1 Pattern Family
-* **Rolling Sum / Average:** Keeping a running total across fixed sub-arrays.
-* **Character Frequency Window:** Keeping a 26-slot count array across fixed-length substrings (like anagram matching).
-* **Rolling Hash (Rabin-Karp):** Rolling a hash value across strings to find substrings quickly.
-* **Monotonic Deque Window:** Keeping track of the maximum or minimum item in every window of size $k$ using a double-ended queue in $O(n)$ time.
+* **Rolling total or average:** Keep the total for the current group. Remove what leaves and add what enters.
+* **Letter counts:** Keep a count for each letter in the current group. Use this to find anagrams.
+* **Rolling hash:** Turn each group of letters into a number for quick comparison. Different groups can have the same number, so check matches before using them.
+* **Window maximum:** Use a deque (a list where items can be added or removed at either end). Keep useful indexes in decreasing value order. The first index points to the largest value.
+
+For `[1, 3, -1, -3, 5]` with `k = 3`, the first window has maximum `3`. Keep the indexes of `3` and `-1` in the deque. When `5` enters, remove the smaller values before it: they cannot be the maximum while `5` is still in the window. Also remove an index when its value has left the window.
 
 ### 2.2 Pattern Recognition Table
 
-| Problem Keyword | What It Asks | Recommended Approach |
+| Problem words | What it asks | Method |
 | :--- | :--- | :--- |
-| **"Subarray of length $k$" + "Max/Min sum or average"** | Find the best sum or average over a fixed size $k$. | Fixed window with a running sum. |
-| **"Find all anagrams" / "Permutation of string"** | Match character counts across fixed window size $|p|$. | Fixed window with two 26-slot count arrays. |
-| **"Substrings of size $k$ with distinct characters"** | Check for unique characters in chunks of size $k$. | Fixed window with character set or count array. |
-| **"Sliding window maximum"** | Find the largest number in every window of size $k$. | Fixed window with Monotonic Deque. |
+| **"Groups of size `k`" + "largest/smallest sum or average"** | Find the best total or average in any group of size `k`. | Keep a running total. |
+| **"Find all anagrams" / "Find a rearranged word"** | Find groups with the same letter counts. | Keep and compare letter counts. |
+| **"Groups of size `k` with no repeated letters"** | Find groups where each letter appears once. | Track letters in the current group. |
+| **"Largest value in each window"** | Find the largest value in every group of size `k`. | Keep possible maximums in a deque. |
 
 ### 2.3 When to Use vs When NOT to Use
-* **When to Use**:
-* The problem gives a **fixed window size $k$** (or a constant interval).
-* The problem asks about contiguous sub-arrays or sub-strings, not scattered items.
-* You can calculate the next window by subtracting the item that left and adding the item that entered.
+* **Use it when:**
+  * The problem gives a fixed size `k`.
+  * It asks about neighboring values or letters.
+  * You can update the result using the item that left and the item that entered.
 
-* **When NOT to Use**:
-* The window must grow or shrink based on conditions (use **Variable Sliding Window**, Day 09).
-* Negative numbers exist and you need an exact target sum with arbitrary lengths (use **Prefix Sum + Hash Map**, Day 10).
-* Items can be picked in any order (use **Greedy** or **Two Pointers**).
+* **Do not use it when:**
+  * The window size must grow or shrink based on a rule. Use a variable window (Day 9).
+  * You need a target sum with any window size and the array has negative numbers. Use prefix sums (Day 10).
+  * The selected items do not need to be next to each other.
 
 ### 2.4 The 10^7 Operations Rule
-If $n = 100,000$ and $k = 50,000$:
-* A brute-force nested loop runs $(n - k + 1) \times k \approx 2.5 \times 10^9$ operations, freezing single-threaded Node.js for over 15 seconds.
-* A fixed sliding window runs $n = 100,000$ single-step operations, finishing in **under 2 milliseconds**.
+For `n = 100,000` and `k = 50,000`:
+* Adding every window again can take about 2.5 billion additions.
+* The fixed window builds one total, then moves across the array. It does about 100,000 steps.
+* `10^7` steps is only a rough guide. Actual run time depends on the computer and the code.
 
 ---
 
@@ -155,30 +153,19 @@ If $n = 100,000$ and $k = 50,000$:
 ### 3.1 Maximum Average Subarray I
 
 #### 3.1.1 Problem Statement
-You are given an integer array `nums` consisting of $n$ elements, and an integer $k$. Find a contiguous subarray whose **length is equal to $k$** that has the maximum average value and return this value. Any calculation error less than $10^{-5}$ will be accepted.
+Given an integer array `nums` and a number `k`, find the largest average among all groups of `k` neighboring values.
 
-* **Sample Input 1:** `nums = [1, 12, -5, -6, 50, 3]`, `k = 4` $\to$ **Expected Output:** `12.75000`  
-  *(Subarray `[12, -5, -6, 50]` has sum $51$, average $51 / 4 = 12.75$)*
-* **Sample Input 2:** `nums = [5]`, `k = 1` $\to$ **Expected Output:** `5.00000`
-* **Sample Input 3:** `nums = [-1]`, `k = 1` $\to$ **Expected Output:** `-1.00000`
-* **Constraints:** $n == nums.length$, $1 \le k \le n \le 10^5$, $-10^4 \le nums[i] \le 10^4$.
+* **Input:** `nums = [1, 12, -5, -6, 50, 3]`, `k = 4` -> **Output:** `12.75` (The group `[12, -5, -6, 50]` has sum 51 and average 12.75.)
+* **Input:** `nums = [5]`, `k = 1` -> **Output:** `5`
+* **Input:** `nums = [-1]`, `k = 1` -> **Output:** `-1`
+* **Input limits:** 1 to 100,000 values. `k` is between 1 and the array length. Each value is between -10,000 and 10,000.
 
 #### 3.1.2 How to Think About It
-Lay out numbered cards on a table: `[ 1, 12, -5, -6, 50, 3 ]`.  
-Take a cardboard frame that shows exactly $k = 4$ cards at a time.
-1. Place the frame over the first 4 cards: `[ 1, 12, -5, -6 ]`.  
-   Add them up: $1 + 12 - 5 - 6 = 2$.  
-   Save `maxSum = 2`.
-2. Slide the frame one spot to the right:  
-   Card `1` (at index 0) leaves on the left.  
-   Card `50` (at index 4) enters on the right.  
-   New sum = $2 - 1 + 50 = 51$.  
-   Since $51 > 2$, update `maxSum = 51`.
-3. Slide the frame one more spot:  
-   Card `12` leaves, card `3` enters.  
-   New sum = $51 - 12 + 3 = 42$.  
-   Since $42 < 51$, `maxSum` stays $51$.
-4. Divide `maxSum` by $k = 4$ just once at the very end: $51 / 4 = 12.75$.
+Start with the first four values: `[1, 12, -5, -6]`. Their sum is `2`.
+
+- Move one spot right. Remove `1` and add `50`. The new sum is `51`.
+- Move again. Remove `12` and add `3`. The new sum is `42`.
+- The largest sum is `51`. Divide it by `4` to get the largest average: `12.75`.
 
 #### 3.1.3 Brute Force Approach & Bottleneck
 The naive way recalculates every window from scratch using nested loops:
@@ -197,14 +184,13 @@ function findMaxAverageBrute(nums, k) {
 }
 ```
 
-* **The Bottleneck:** Neighbor windows share $k - 1$ identical numbers. The brute force way re-adds those same numbers every single time, causing $O(n \cdot k)$ work ($2.5 \times 10^9$ operations on big arrays).
+* **The slow part:** Neighboring groups share `k - 1` values. The slow method adds those same values again for every group. This can take `O(n * k)` time.
 
 #### 3.1.4 The Pattern Insight
-Instead of re-adding $k$ items, reuse the sum you already have:
-* Subtract the leaving item `nums[i - k]`.
-* Add the entering item `nums[i]`.
-* This makes each window update take $O(1)$ constant time.
-* Keep the raw sum as an integer and divide by $k$ only at the return statement to avoid floating-point errors.
+Reuse the sum from the previous group:
+* Subtract the value leaving the group, `nums[i - k]`.
+* Add the value entering, `nums[i]`.
+* Compare sums. Divide the largest sum by `k` at the end.
 
 #### 3.1.5 Pseudocode
 
@@ -226,11 +212,11 @@ FUNCTION FindMaxAverage(nums, k):
 #### 3.1.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space fixed sliding window
+// ✅ CORRECT: Reuses the previous window sum.
 function findMaxAverage(nums, k) {
   if (!Array.isArray(nums) || nums.length < k || k <= 0) return 0;
 
-  // Phase 1: Sum the first window of length k
+  // Sum the first group.
   let currentSum = 0;
   for (let i = 0; i < k; i++) {
     currentSum += nums[i];
@@ -238,7 +224,7 @@ function findMaxAverage(nums, k) {
 
   let maxSum = currentSum;
 
-  // Phase 2: Slide across the remaining elements
+  // Move the group across the remaining values.
   for (let i = k; i < nums.length; i++) {
     currentSum += nums[i] - nums[i - k];
     if (currentSum > maxSum) {
@@ -246,7 +232,7 @@ function findMaxAverage(nums, k) {
     }
   }
 
-  // Single division at return prevents float rounding accumulation
+  // Divide only after finding the largest sum.
   return maxSum / k;
 }
 
@@ -259,53 +245,46 @@ console.log(findMaxAverage([-1], 1));                  // -1
 #### 3.1.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Dividing by k inside the loop and initializing maxAvg to 0
+// ❌ ANTI-PATTERN: Starts the best average at 0.
 function buggyFindMaxAverage(nums, k) {
   let avg = 0;
   for (let i = 0; i < k; i++) avg += nums[i] / k;
 
-  // BUG 1: Initializing to 0 fails completely when all numbers are negative!
+  // This is wrong when every average is below 0.
   let maxAvg = 0;
 
   for (let i = k; i < nums.length; i++) {
-    // BUG 2: Repeated float division accumulates IEEE-754 precision drift
     avg += (nums[i] - nums[i - k]) / k;
     maxAvg = Math.max(maxAvg, avg);
   }
   return maxAvg;
 }
 ```
-* **Why it fails:** If all numbers are negative (like `nums = [-5, -2], k = 2`), setting `maxAvg = 0` makes the code return `0` instead of `-3.5`. Also, dividing by $k$ inside the loop causes decimal precision drift.
+* **Why it fails:** If all values are negative, `0` is larger than every real average. For example, with `nums = [-5, -2]` and `k = 2`, it returns `0` instead of `-3.5`. Start with the first group's average or use `-Infinity`.
 
 #### 3.1.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$. The first loop does $k$ steps. The second loop does $n - k$ steps. Total steps: $k + (n - k) = n$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only store two numbers (`currentSum` and `maxSum`) in memory.
+* **Time:** `O(n)`. The first loop adds `k` values. The second loop moves across the rest of the array.
+* **Extra space:** `O(1)`. The function stores only a few numbers.
 
 ---
 
 ### 3.2 Find All Anagrams in a String
 
 #### 3.2.1 Problem Statement
-Given two strings `s` and `p`, return an array of all the start indices of `p`'s anagrams in `s`. You may return the answer in any order.
+Given strings `s` and `p`, return the start positions of every group in `s` that uses the same letters as `p`, in any order.
 
-An Anagram is a word or phrase formed by rearranging the letters of another word or phrase, using all the original letters exactly once.
+An **anagram** uses the same letters the same number of times, but the letters may be in a different order.
 
-* **Sample Input 1:** `s = "cbaebabacd"`, `p = "abc"` $\to$ **Expected Output:** `[0, 6]`  
-  *(Substring `"cba"` at index 0 and `"bac"` at index 6 are anagrams of `"abc"`)*
-* **Sample Input 2:** `s = "abab"`, `p = "ab"` $\to$ **Expected Output:** `[0, 1, 2]`
-* **Sample Input 3:** `s = "hello"`, `p = "world"` $\to$ **Expected Output:** `[]`
-* **Constraints:** $1 \le s.length, p.length \le 3 \times 10^4$, `s` and `p` consist of lowercase English letters.
+* **Input:** `s = "cbaebabacd"`, `p = "abc"` -> **Output:** `[0, 6]` (The groups `"cba"` and `"bac"` use the same letters as `"abc"`.)
+* **Input:** `s = "abab"`, `p = "ab"` -> **Output:** `[0, 1, 2]`
+* **Input:** `s = "hello"`, `p = "world"` -> **Output:** `[]`
+* **Input limits:** 1 to 30,000 lowercase letters in each string.
 
 #### 3.2.2 How to Think About It
-Imagine you have letter tiles for `p = "abc"`. Its length is $k = 3$.  
-You slide a 3-letter frame across `s = "cbaebabacd"`:
-1. Window at index 0 is `"cba"`. Count of `'a'` is 1, `'b'` is 1, `'c'` is 1. This matches `p`! Add index `0` to results.
-2. Slide to index 1: Drop `'c'` on the left, add `'e'` on the right. Current window is `"bae"`. Letter `'e'` does not belong! Mismatch.
-3. Slide to index 2: Drop `'b'`, add `'b'`. Window is `"aeb"`. Mismatch.
-4. Keep sliding until index 6 (`"bac"`). The letter counts match `p` again! Add index `6` to results.
+For `p = "abc"`, look at groups of three letters in `s`. The first group, `"cba"`, has one `a`, one `b`, and one `c`, so save its start position. When the group moves, remove the letter that leaves and add the one that enters. Save a position whenever the letter counts match.
 
 #### 3.2.3 Brute Force Approach & Bottleneck
-The naive way cuts out every substring of length $k$, sorts its letters, and compares it to sorted `p`:
+The slow method cuts out every group of length `k`, sorts its letters, and compares it with sorted `p`:
 
 ```javascript
 function findAnagramsBrute(s, p) {
@@ -323,16 +302,14 @@ function findAnagramsBrute(s, p) {
 }
 ```
 
-* **The Bottleneck:** Sorting every chunk takes $O(k \log k)$ time, leading to $O(n \cdot k \log k)$ total time. Creating new strings on every step also causes heavy memory allocations.
+* **The slow part:** Sorting every group takes `O(k log k)` time. Doing this for all groups takes `O(n * k log k)` time and creates many temporary strings.
 
 #### 3.2.4 The Pattern Insight
-You do not need to sort strings to check for an anagram. You only need to compare letter counts.
-* The window size is fixed at $k = p.length$.
-* Use two fixed 26-slot integer arrays (`pCount` and `sCount`).
-* On each slide:
-  - Subtract 1 from count of the leaving letter: `sCount[s.charCodeAt(i - k) - 97]--`.
-  - Add 1 to count of the entering letter: `sCount[s.charCodeAt(i) - 97]++`.
-  - Compare the two 26-slot arrays in $O(26) = O(1)$ constant time.
+Do not sort each group. Count the letters instead.
+* The group size is `p.length`.
+* Use one 26-number array for `p` and one for the current group.
+* When the window moves, subtract the leaving letter and add the entering letter.
+* Compare the 26 counts. Since there are always 26 lowercase letters, this check takes a fixed amount of work.
 
 #### 3.2.5 Pseudocode
 
@@ -363,7 +340,7 @@ FUNCTION FindAnagrams(s, p):
 #### 3.2.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space fixed sliding window frequency matching
+// ✅ CORRECT: Keeps letter counts and updates them as the window moves.
 function findAnagrams(s, p) {
   const result = [];
   if (typeof s !== "string" || typeof p !== "string" || s.length < p.length) {
@@ -375,7 +352,7 @@ function findAnagrams(s, p) {
   const sCount = new Int32Array(26);
   const aCode = 97; // 'a'.charCodeAt(0)
 
-  // Phase 1: Build frequencies for p and initial window of s
+  // Count letters in p and in the first group of s.
   for (let i = 0; i < k; i++) {
     pCount[p.charCodeAt(i) - aCode]++;
     sCount[s.charCodeAt(i) - aCode]++;
@@ -385,10 +362,10 @@ function findAnagrams(s, p) {
     result.push(0);
   }
 
-  // Phase 2: Slide window across remaining characters of s
+  // Move the window across the rest of s.
   for (let i = k; i < s.length; i++) {
-    sCount[s.charCodeAt(i) - aCode]++;       // Add incoming character
-    sCount[s.charCodeAt(i - k) - aCode]--;   // Remove outgoing character
+    sCount[s.charCodeAt(i) - aCode]++;       // Add the new letter.
+    sCount[s.charCodeAt(i - k) - aCode]--;   // Remove the old letter.
 
     if (arraysEqual(pCount, sCount)) {
       result.push(i - k + 1);
@@ -398,7 +375,7 @@ function findAnagrams(s, p) {
   return result;
 }
 
-// Constant-time comparison: exactly 26 iterations = O(1)
+// Check the counts for all 26 lowercase letters.
 function arraysEqual(a, b) {
   for (let i = 0; i < 26; i++) {
     if (a[i] !== b[i]) return false;
@@ -415,10 +392,10 @@ console.log(findAnagrams("hello", "world"));     // []
 #### 3.2.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Allocating new Map on every window slide
+// ❌ ANTI-PATTERN: Makes a new Map for every group.
 function buggyFindAnagramsMap(s, p) {
   const result = [];
-  // BUG: Allocates a new Map object in heap memory on every loop index
+  // This repeats the counting work for every group.
   for (let i = 0; i <= s.length - p.length; i++) {
     const map = new Map();
     for (let j = i; j < i + p.length; j++) {
@@ -429,41 +406,35 @@ function buggyFindAnagramsMap(s, p) {
   return result;
 }
 ```
-* **Why it fails:** Making a brand new `Map` on every loop step wastes memory and slows down execution, turning an $O(n)$ pattern back into an $O(n \cdot k)$ bottleneck.
+* **Why it is slow:** Making a new `Map` for every group repeats the counting work. Keep and update one set of counts as the window moves.
 
 #### 3.2.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$, where $n = s.length$. Setting up initial counts takes $O(k)$ time. Sliding the window runs $n - k$ times. In each step, updating the array is $O(1)$ and checking equality takes 26 steps ($O(1)$). Total time: $O(k) + 26 \times O(n - k) = O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We allocate exactly two 26-slot typed arrays, which never grow with string length.
+* **Time:** `O(n)`, where `n = s.length`. Count the first group, then check each next group once. Comparing counts checks the same 26 letters each time.
+* **Extra space:** `O(1)`. The function uses two arrays with 26 slots each.
 
 ---
 
 ### 3.3 Permutation in String
 
 #### 3.3.1 Problem Statement
-Given two strings `s1` and `s2`, return `true` if `s2` contains a permutation of `s1`, or `false` otherwise.
+Given strings `s1` and `s2`, return `true` if some group in `s2` has the same letters as `s1`. Otherwise, return `false`.
 
-In other words, return `true` if one of `s1`'s permutations is a substring of `s2`.
-
-* **Sample Input 1:** `s1 = "ab"`, `s2 = "eidbaooo"` $\to$ **Expected Output:** `true`  
-  *(Substring `"ba"` at index 3 is a permutation of `"ab"`)*
-* **Sample Input 2:** `s1 = "ab"`, `s2 = "eidboaoo"` $\to$ **Expected Output:** `false`
-* **Sample Input 3:** `s1 = "adc"`, `s2 = "dcda"` $\to$ **Expected Output:** `true`
-* **Constraints:** $1 \le s1.length, s2.length \le 10^4$, `s1` and `s2` consist of lowercase English letters.
+* **Input:** `s1 = "ab"`, `s2 = "eidbaooo"` -> **Output:** `true` (`"ba"` has the same letters as `"ab"`.)
+* **Input:** `s1 = "ab"`, `s2 = "eidboaoo"` -> **Output:** `false`
+* **Input:** `s1 = "adc"`, `s2 = "dcda"` -> **Output:** `true`
+* **Input limits:** 1 to 10,000 lowercase letters in each string.
 
 #### 3.3.2 How to Think About It
-A permutation of `s1` has the exact same letters and length as `s1`.  
-Because every permutation has length equal to `s1.length`, this problem is identical to checking if any window of size $k = s1.length$ in `s2` has the exact same letter counts as `s1`.  
-Slide a frame of size `s1.length` across `s2`. The moment the counts inside the window match `s1`, return `true` right away!
+Every rearrangement of `s1` has the same length and the same letter counts. Check each group of that length in `s2`. If its letter counts match, return `true`.
 
 #### 3.3.3 Brute Force Approach & Bottleneck
-Generating all permutations of `s1` takes $O(k!)$ factorial time. If $k = 10$, $10! = 3,628,800$ permutations. Checking them against `s2` freezes your application immediately.
+Generating all possible rearrangements takes `O(k!)` time. With 10 letters, there are more than 3.6 million possible arrangements. Counting letters in each moving group avoids making them all.
 
 #### 3.3.4 The Pattern Insight
-Never generate permutations. Use a **Fixed Sliding Window of size $k = s1.length$**:
-* Track letter counts using two 26-slot arrays.
-* Slide the window across `s2`.
-* Check if counts match. If they match, exit early with `true`.
-* If the loop finishes without a match, return `false`.
+Use a fixed window with size `s1.length`:
+* Count the letters in `s1` and in the first group of `s2`.
+* Move the group across `s2`, updating only the two changed letter counts.
+* Return `true` if the counts match. If no group matches, return `false`.
 
 #### 3.3.5 Pseudocode
 
@@ -493,7 +464,7 @@ FUNCTION CheckInclusion(s1, s2):
 #### 3.3.6 Optimal Solution
 
 ```javascript
-// ✅ CORRECT: Optimal O(n) time, O(1) space fixed sliding window early exit
+// ✅ CORRECT: Moves a fixed-size window and compares letter counts.
 function checkInclusion(s1, s2) {
   if (typeof s1 !== "string" || typeof s2 !== "string" || s1.length > s2.length) {
     return false;
@@ -504,7 +475,7 @@ function checkInclusion(s1, s2) {
   const count2 = new Int32Array(26);
   const aCode = 97;
 
-  // Phase 1: Build initial window
+  // Count letters in s1 and in the first window.
   for (let i = 0; i < k; i++) {
     count1[s1.charCodeAt(i) - aCode]++;
     count2[s2.charCodeAt(i) - aCode]++;
@@ -512,7 +483,7 @@ function checkInclusion(s1, s2) {
 
   if (matches26(count1, count2)) return true;
 
-  // Phase 2: Slide across s2
+  // Move the window across s2.
   for (let i = k; i < s2.length; i++) {
     count2[s2.charCodeAt(i) - aCode]++;
     count2[s2.charCodeAt(i - k) - aCode]--;
@@ -539,9 +510,9 @@ console.log(checkInclusion("adc", "dcda"));     // true
 #### 3.3.7 Common Anti-Pattern
 
 ```javascript
-// ❌ ANTI-PATTERN: Generating all string permutations
+// ❌ ANTI-PATTERN: Generates every possible letter order.
 function buggyCheckInclusion(s1, s2) {
-  // BUG: Factorial O(k!) complexity explodes when s1.length >= 8
+  // The number of arrangements grows very quickly.
   const permutations = generatePermutations(s1);
   for (const perm of permutations) {
     if (s2.includes(perm)) return true;
@@ -549,30 +520,30 @@ function buggyCheckInclusion(s1, s2) {
   return false;
 }
 ```
-* **Why it fails:** Generating permutations takes factorial $O(k!)$ time. For $k = 10$, that is over 3.6 million strings, which crashes Node.js memory.
+* **Why it is a poor fit:** The number of arrangements grows very quickly. Counting letters in each window is simpler and does not create all those strings.
 
 #### 3.3.8 Complexity Derivation
-* **Time Complexity:** $\mathbf{O(n)}$, where $n = s2.length$. Building the initial window takes $O(k)$ steps. The slide loop runs $n - k$ times, doing $O(1)$ operations per step. Total time is $O(n)$.
-* **Auxiliary Space Complexity:** $\mathbf{O(1)}$. We only allocate two 26-slot integer arrays.
+* **Time:** `O(n)`, where `n` is the length of `s2`. Count the first group, then check each next group once.
+* **Extra space:** `O(1)`. The function uses two arrays with 26 slots each.
 
 ---
 
 ## 4. Tricky Edge Cases
 
-* **Window Size $k$ Larger than Array ($k > n$):** Always check `if (nums.length < k || k <= 0) return 0;` at the beginning. If you miss this, negative indices cause `NaN` errors.
-* **All Negative Numbers:** When looking for the maximum sum, setting `maxSum = 0` will give the wrong answer `0` instead of the true negative max. Always start `maxSum` with the sum of the first window (`currentSum`) or `-Infinity`.
-* **Decimal Precision Drift:** Calculating `sum += nums[i] / k` inside an $n$-step loop creates small decimal rounding errors. Keep the raw sum as an integer and divide by $k$ once at the end.
-* **Single Element Arrays:** When $n = 1$ and $k = 1$, the sliding loop does not run. The code directly returns the initial window sum.
+* **Window too large:** If `k` is bigger than the array or string, there is no full window. Check this before reading its values.
+* **All values are negative:** Start the best sum from the first window, not from `0`.
+* **Average:** Keep a sum while the window moves. Divide by `k` at the end.
+* **One-item window:** When `k = 1`, each item is its own window.
 
 ---
 
 ## 5. Summary Cheat Sheet
 
-* **Fixed Window Invariant:** The window length stays constant ($k$). Calculate each new window by subtracting the leaving item and adding the entering item.
-* **Formula:** $\text{windowState} = \text{windowState} + \text{arr}[i] - \text{arr}[i - k]$.
-* **Replaces $O(n \cdot k)$ with $O(n)$:** Neighbor windows share $k - 1$ items; re-adding them from scratch is wasted work.
-* **Character Matching:** For fixed string anagrams, use two 26-slot typed arrays (`new Int32Array(26)`) and compare them in $O(1)$ time.
-* **Avoid Array Slicing:** Avoid calling `slice()` and `reduce()` inside loops to keep garbage collection fast and smooth in Node.js.
+* The window always has `k` items.
+* On each move, subtract the value that leaves and add the value that enters.
+* Reusing the total takes `O(n)` time instead of adding every group again in `O(n * k)` time.
+* For lowercase letter counts, use two 26-slot arrays.
+* Avoid copying and sorting each group when a running total or counts are enough.
 
 ---
 
@@ -583,12 +554,12 @@ function buggyCheckInclusion(s1, s2) {
 Given a string `s`, return the number of good substrings of length three. A string is good if there are no repeated characters.
 
 * **Difficulty:** Easy | **Focus:** Fixed Window Validation
-* **Sample Input 1:** `s = "xyzzaz"` $\to$ **Expected Output:** `1` (Only `"xyz"` has distinct characters)
-* **Sample Input 2:** `s = "aababcabc"` $\to$ **Expected Output:** `4` (Substrings: `"abc"`, `"bca"`, `"cab"`, `"abc"`)
-* **Sample Input 3:** `s = "aa"` $\to$ **Expected Output:** `0`
-* **Constraints:** $1 \le s.length \le 100$, `s` consists of lowercase English letters.
-* **Hint 1:** Because $k = 3$ is constant and small, check characters directly using indices `i - 2`, `i - 1`, and `i` without calling `slice()`.
-* **Hint 2:** Test `s[i - 2] !== s[i - 1] && s[i - 1] !== s[i] && s[i - 2] !== s[i]`. If true, add 1 to your count.
+* **Input:** `s = "xyzzaz"` -> **Output:** `1` (Only `"xyz"` has three different letters.)
+* **Input:** `s = "aababcabc"` -> **Output:** `4`
+* **Input:** `s = "aa"` -> **Output:** `0`
+* **Input limits:** 1 to 100 lowercase letters.
+* **Hint 1:** Check each group of three using its three indexes.
+* **Hint 2:** Add to the count only when all three letters are different.
 
 ---
 
@@ -597,28 +568,28 @@ Given a string `s`, return the number of good substrings of length three. A stri
 Given a string `s` and an integer `k`, return the maximum number of vowel letters (`'a'`, `'e'`, `'i'`, `'o'`, `'u'`) in any substring of `s` with length `k`.
 
 * **Difficulty:** Medium | **Focus:** Rolling Count State Transition
-* **Sample Input 1:** `s = "abciiidef"`, `k = 3` $\to$ **Expected Output:** `3` (The substring `"iii"` contains 3 vowels)
-* **Sample Input 2:** `s = "aeiou"`, `k = 2` $\to$ **Expected Output:** `2`
-* **Sample Input 3:** `s = "leetcode"`, `k = 3` $\to$ **Expected Output:** `2`
-* **Constraints:** $1 \le s.length \le 10^5$, $1 \le k \le s.length$, `s` consists of lowercase English letters.
-* **Hint 1:** Create a helper or Set to check if a character is a vowel in $O(1)$ time.
-* **Hint 2:** Count the vowels in the first $k$ characters.
-* **Hint 3:** Slide from $i = k$ to $n - 1$: if the entering character is a vowel, add 1 to count. If the leaving character `s[i - k]` was a vowel, subtract 1 from count. Keep track of `maxVowels`.
+* **Input:** `s = "abciiidef"`, `k = 3` -> **Output:** `3` (The group `"iii"` has three vowels.)
+* **Input:** `s = "aeiou"`, `k = 2` -> **Output:** `2`
+* **Input:** `s = "leetcode"`, `k = 3` -> **Output:** `2`
+* **Input limits:** 1 to 100,000 lowercase letters. `k` is between 1 and the string length.
+* **Hint 1:** Count the vowels in the first group.
+* **Hint 2:** When the group moves, add 1 if the new letter is a vowel and subtract 1 if the leaving letter is a vowel.
+* **Hint 3:** Save the largest vowel count.
 
 ---
 
 ### 6.3 Sliding Window Maximum
 
-You are given an array of integers `nums`, there is a sliding window of size `k` which is moving from the very left of the array to the very right. You can only see the `k` numbers in the window. Each time the sliding window moves right by one position, return the max sliding window.
+Given an array `nums` and a window size `k`, return the largest value in each window as it moves from left to right.
 
 * **Difficulty:** Hard | **Focus:** Monotonic Deque Optimization
-* **Sample Input 1:** `nums = [1, 3, -1, -3, 5, 3, 6, 7]`, `k = 3` $\to$ **Expected Output:** `[3, 3, 5, 5, 6, 7]`
-* **Sample Input 2:** `nums = [1]`, `k = 1` $\to$ **Expected Output:** `[1]`
-* **Sample Input 3:** `nums = [1, -1]`, `k = 1` $\to$ **Expected Output:** `[1, -1]`
-* **Constraints:** $1 \le nums.length \le 10^5$, $-10^4 \le nums[i] \le 10^4$, $1 \le k \le nums.length$.
-* **Hint 1:** If an entering number `nums[i]` is bigger than older numbers in the window, those smaller numbers can never be the maximum of this or future windows.
-* **Hint 2:** Keep a double-ended queue (deque) of indices storing values in decreasing order.
-* **Hint 3:** Before adding `i`, remove smaller numbers from the back. Remove the front index if it has fallen outside the window (`deque[front] <= i - k`). Once $i \ge k - 1$, `nums[deque[front]]` is the maximum for that window.
+* **Input:** `nums = [1, 3, -1, -3, 5, 3, 6, 7]`, `k = 3` -> **Output:** `[3, 3, 5, 5, 6, 7]`
+* **Input:** `nums = [1]`, `k = 1` -> **Output:** `[1]`
+* **Input:** `nums = [1, -1]`, `k = 1` -> **Output:** `[1, -1]`
+* **Input limits:** 1 to 100,000 values. `k` is between 1 and the array length.
+* **Hint 1:** A smaller value before a new, larger value cannot be the maximum while both are in the window.
+* **Hint 2:** Keep indexes in a deque. The values at those indexes stay in largest-to-smallest order.
+* **Hint 3:** Remove indexes that leave the window. The first index in the deque points to the current maximum.
 
 ---
 
